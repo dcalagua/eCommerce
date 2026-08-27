@@ -97,8 +97,40 @@ export function createEbimTheme({ mode, accent, density, tenantAccent }: EbimThe
       },
       MuiOutlinedInput: {
         styleOverrides: {
-          root: { borderRadius: R.md },
+          root: {
+            borderRadius: R.md,
+            // Unico anillo de foco del campo: el propio fieldset a 2px con el
+            // token AA (`accent-deep`). El outline global de :focus-visible esta
+            // desactivado sobre el <input> (tokens.css) para no pintar un
+            // segundo borde por dentro.
+            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+              borderWidth: 2,
+              borderColor: deep,
+            },
+            // Multilinea: MUI pone el padding vertical en el root y deja el textarea
+            // a 0 (OutlinedInput.js:98/161). Hay que aplicarlo al root, no al textarea,
+            // o se sumarian los dos y doblarian el alto.
+            '&.MuiInputBase-multiline': { paddingTop: d.padY, paddingBottom: d.padY },
+          },
+          // Aire interior del campo, de la densidad activa. El alto NO se fija: sale
+          // del padding, asi el control crece con la fuente y el textarea con su
+          // contenido (minRows) en lugar de quedar recortado.
           input: { paddingTop: d.padY, paddingBottom: d.padY },
+          inputMultiline: { paddingTop: 0, paddingBottom: 0 },
+        },
+      },
+      MuiInputLabel: {
+        styleOverrides: {
+          // La etiqueta en reposo se situa en px desde el borde superior del control:
+          // no puede centrarse con 50% porque es absolute respecto al FormControl,
+          // que incluye el texto de ayuda. Etiqueta y valor miden ambos 1.4375em
+          // (FormLabel.js:46 / InputBase.js:140), asi que el offset que la centra en
+          // el control se reduce a `padding superior + borde`. MUI trae 16px fijos,
+          // calibrados para su padding de 16.5px, y dejaban la etiqueta caida abajo.
+          outlined: {
+            transform: `translate(14px, ${d.padY + 1}px) scale(1)`,
+            '&.MuiInputLabel-shrink': { transform: 'translate(14px, -9px) scale(0.75)' },
+          },
         },
       },
       MuiChip: {

@@ -20,6 +20,7 @@ import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { SectionTabs } from '@/shared/ui/SectionTabs'
+import { TaxesSection } from './settings/TaxesSection'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import { EmptyState, ErrorState, LoadingState, UnauthorizedState } from '@/shared/ui/states'
 import { useAppearance } from '@/theme/appearance-context'
@@ -365,6 +366,23 @@ export function SettingsPage() {
                         />
                       </Stack>
                     )}
+                  </ManagedSection>
+                </CardContent>
+              </Card>
+            ),
+          },
+          {
+            id: 'taxes',
+            label: t('admin.settings.tab.taxes'),
+            content: (
+              <Card>
+                <CardContent>
+                  <ManagedSection>
+                    <TaxesSection
+                      organizationId={tenant?.organization_id ?? null}
+                      companyId={activeCompanyId}
+                      canManage={canManage}
+                    />
                   </ManagedSection>
                 </CardContent>
               </Card>

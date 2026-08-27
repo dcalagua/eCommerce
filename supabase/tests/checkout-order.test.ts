@@ -203,6 +203,111 @@ describe('el importe lo calcula la base', () => {
     expect(order).toEqual({ subtotal: '349.70', tax_total: '62.95', grand_total: '412.65' })
   })
 
+  // --- categoria fiscal por producto (P09) -------------------------------
+
+  /** Crea una categoria fiscal con su tasa vigente y la devuelve. */
+  async function taxCategory(code: string, rate: string): Promise<string> {
+    const [cat] = await svc(
+      `insert into public.tax_categories (organization_id, company_id, code, name)
+         values ($1, $2, $3, $3) returning id`,
+      [TENANT_A.organizationId, TENANT_A.companyId, code],
+    )
+    const id = String(cat?.id)
+    await svc(
+      `insert into public.tax_rates (organization_id, company_id, tax_category_id, rate)
+         values ($1, $2, $3, $4)`,
+      [TENANT_A.organizationId, TENANT_A.companyId, id, rate],
+    )
+    return id
+  }
+
+  it('un producto exento no paga impuesto aunque el resto del carrito si', async () => {
+    const exento = await taxCategory('exento', '0')
+    const arroz = await addProduct(TENANT_A, storeA, {
+      sku: 'ARROZ-1K', slug: 'arroz-1k', price: '10.00', stock: 50,
+    })
+    await svc(`update public.products set tax_category_id = $2 where id = $1`, [arroz, exento])
+
+    // 1 silla a 100.00 (18 %) + 4 arroces a 10.00 (exento).
+    const result = await checkout(STORE_A_SLUG, [
+      { product_id: sillaA, quantity: 1 },
+      { product_id: arroz, quantity: 4 },
+    ])
+
+    // El impuesto sale SOLO de la silla: 100.00 * 0.18 = 18.00.
+    expect(result.subtotal).toBe('140.00')
+    expect(result.tax_total).toBe('18.00')
+    expect(result.grand_total).toBe('158.00')
+  })
+
+  it('la categoria del producto manda sobre la de la tienda', async () => {
+    const reducido = await taxCategory('reducido', '0.1000')
+    const pan = await addProduct(TENANT_A, storeA, {
+      sku: 'PAN-500', slug: 'pan-500', price: '200.00', stock: 10,
+    })
+    await svc(`update public.products set tax_category_id = $2 where id = $1`, [pan, reducido])
+
+    const result = await checkout(STORE_A_SLUG, [{ product_id: pan, quantity: 1 }])
+
+    // 10 % de la categoria del producto, no el 18 % de la tienda.
+    expect(result.tax_total).toBe('20.00')
+    expect(result.grand_total).toBe('220.00')
+  })
+
+  it('con tax_inclusive el impuesto se EXTRAE y el total es el que vio el comprador', async () => {
+    await svc(`update public.store_settings set tax_inclusive = true where store_id = $1`, [storeA])
+    const lampara = await addProduct(TENANT_A, storeA, {
+      sku: 'LAMP-118', slug: 'lamp-118', price: '118.00', stock: 5,
+    })
+
+    const result = await checkout(STORE_A_SLUG, [{ product_id: lampara, quantity: 1 }])
+
+    // 118.00 con 18 % dentro: neto 100.00, impuesto 18.00. El comprador paga
+    // exactamente los 118.00 de la etiqueta, ni un centimo mas.
+    expect(result.tax_inclusive).toBe(true)
+    expect(result.subtotal).toBe('100.00')
+    expect(result.tax_total).toBe('18.00')
+    expect(result.grand_total).toBe('118.00')
+
+    await svc(`update public.store_settings set tax_inclusive = false where store_id = $1`, [storeA])
+  })
+
+  it('una tasa caducada no se aplica: vale la vigente en la fecha del pedido', async () => {
+    const temporal = await taxCategory('temporal', '0.5000')
+    // Se cierra la del 50 % y se abre una del 5 %.
+    await svc(
+      `update public.tax_rates set valid_to = now() where tax_category_id = $1`,
+      [temporal],
+    )
+    await svc(
+      `insert into public.tax_rates (organization_id, company_id, tax_category_id, rate)
+         values ($1, $2, $3, 0.0500)`,
+      [TENANT_A.organizationId, TENANT_A.companyId, temporal],
+    )
+    const cafe = await addProduct(TENANT_A, storeA, {
+      sku: 'CAFE-250', slug: 'cafe-250', price: '100.00', stock: 8,
+    })
+    await svc(`update public.products set tax_category_id = $2 where id = $1`, [cafe, temporal])
+
+    const result = await checkout(STORE_A_SLUG, [{ product_id: cafe, quantity: 1 }])
+
+    expect(result.tax_total).toBe('5.00')
+  })
+
+  it('el cliente no puede colar una tasa ni una categoria fiscal en el payload', async () => {
+    for (const field of ['tax_rate', 'tax_total', 'tax_category_id']) {
+      const message = await expectFailure(() =>
+        svc(
+          `select public.create_order_for_slug($1, 'ana@compradora.com',
+             jsonb_build_array(jsonb_build_object(
+               'product_id', $2::text, 'quantity', 1, $3::text, '0')))`,
+          [STORE_A_SLUG, sillaA, field],
+        ),
+      )
+      expect(`${field}: ${message}`).toMatch(/CAMPO_NO_PERMITIDO/)
+    }
+  })
+
   it('el precio que manda el cliente se RECHAZA, no se ignora', async () => {
     const message = await expectFailure(() =>
       svc(

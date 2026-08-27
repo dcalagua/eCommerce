@@ -217,7 +217,24 @@ export function FieldLabel({ htmlFor, children }: { htmlFor: string; children: R
   )
 }
 
-export const ROUNDED_FIELD_SX = { '& .MuiOutlinedInput-root': { borderRadius: '11px' } } as const
+/**
+ * Alto del campo en el area de auth. El login esta EXONERADO de la densidad
+ * global (~39px en equilibrada) por decision del operador: aqui el control
+ * macizo para no verse como una barra fina al lado del CTA. Se fija en el root,
+ * que es inline-flex con align-items:center, y se anula el padding vertical del
+ * input: el texto queda centrado sin numeros fraccionarios que recalcular.
+ */
+const AUTH_FIELD_H = 48
+
+export const ROUNDED_FIELD_SX = {
+  '& .MuiOutlinedInput-root': {
+    borderRadius: '11px',
+    // Pisa el padding por densidad del tema; `minHeight` lo blinda ante el orden.
+    height: `${AUTH_FIELD_H}px`,
+    minHeight: `${AUTH_FIELD_H}px`,
+  },
+  '& .MuiOutlinedInput-input': { paddingTop: 0, paddingBottom: 0 },
+} as const
 
 export const CTA_SX = {
   borderRadius: '11px',

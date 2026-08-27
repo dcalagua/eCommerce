@@ -17,6 +17,19 @@ let db: PGlite
 /** `tenants` es la tabla ancla del tenant: su PK ES el organization_id. */
 const TENANT_ANCHOR = ['tenants']
 
+/**
+ * Catalogos de referencia GLOBALES del producto: no son datos de tenant, asi
+ * que no llevan organization_id/company_id ni PK uuid. `currencies` es ISO 4217:
+ * un hecho del mundo, no una preferencia de cliente, y su clave natural es el
+ * codigo de 3 letras.
+ *
+ * La exencion es NOMINAL a proposito (lista de tablas, no un patron): el dia que
+ * alguien meta aqui una tabla de negocio, el aislamiento se rompe en silencio.
+ * Requisito para entrar: sin columnas de tenant, RLS activada, y sin GRANT de
+ * escritura a anon/authenticated.
+ */
+const REFERENCE_CATALOG = ['currencies']
+
 beforeAll(async () => {
   db = await createTestDatabase()
 }, 120_000)
@@ -89,10 +102,44 @@ describe('jerarquia organization -> company -> datos (contrato §3)', () => {
 
     for (const row of result) {
       const table = String(row.table_name)
-      if (TENANT_ANCHOR.includes(table)) continue
+      if (TENANT_ANCHOR.includes(table) || REFERENCE_CATALOG.includes(table)) continue
       expect(`${table}: org=${row.has_org} company=${row.has_company}`).toBe(
         `${table}: org=true company=true`,
       )
+    }
+  })
+
+  // La exencion de REFERENCE_CATALOG solo es legitima si la tabla es de verdad
+  // un catalogo global de solo lectura. Sin este test, la lista es una puerta
+  // trasera al aislamiento: bastaria con anadir un nombre para saltarse el RLS.
+  it('los catalogos exentos son globales y de solo lectura', async () => {
+    for (const table of REFERENCE_CATALOG) {
+      const tenantCols = await rows(`
+        select a.attname as column_name
+        from pg_class c
+        join pg_namespace n on n.oid = c.relnamespace
+        join pg_attribute a on a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped
+        where n.nspname = 'public' and c.relname = '${table}'
+          and a.attname in ('organization_id', 'company_id')
+      `)
+      expect(`${table} columnas de tenant: ${tenantCols.length}`).toBe(`${table} columnas de tenant: 0`)
+
+      const rls = await rows(`
+        select c.relrowsecurity as enabled
+        from pg_class c
+        join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = 'public' and c.relname = '${table}'
+      `)
+      expect(`${table} rls: ${rls[0]?.enabled}`).toBe(`${table} rls: true`)
+
+      const writes = await rows(`
+        select grantee, privilege_type
+        from information_schema.role_table_grants
+        where table_schema = 'public' and table_name = '${table}'
+          and grantee in ('anon', 'authenticated', 'PUBLIC')
+          and privilege_type in ('INSERT', 'UPDATE', 'DELETE')
+      `)
+      expect(`${table} grants de escritura: ${writes.length}`).toBe(`${table} grants de escritura: 0`)
     }
   })
 
@@ -166,6 +213,7 @@ describe('dinero y tipos', () => {
     `)
     expect(result.length).toBeGreaterThan(0)
     for (const row of result) {
+      if (REFERENCE_CATALOG.includes(String(row.table_name))) continue
       expect(`${row.table_name}.${row.column_name}:${row.type_name}`).toMatch(/:uuid$/)
     }
   })

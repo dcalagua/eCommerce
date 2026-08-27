@@ -5,6 +5,53 @@ Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md` (11 documentos leídos en la raíz 
 Última actualización: 2026-08-27 (P08)
 
 ## Fase actual
+**P09 — Monedas e impuestos configurables (COMPLETA para el alcance encargado).** Gate: PASS.
+`typecheck`, `lint`, `test` (**514 tests / 36 archivos**), `test:db` (243) y `build`, los cinco verdes.
+
+Sacó de código dos decisiones que estaban cableadas y que impedían dar de alta un tenant fuera de Perú:
+`stores.currency default 'PEN'` y `store_settings.tax_rate default 0.1800` (IGV). La lista de monedas
+vivía además en un `const` de React (`OnboardingPage`), sin **BOB**: ninguna tienda boliviana podía
+crearse sin desplegar.
+
+La migración 16 añade `currencies` (catálogo ISO 4217 **global**, con `minor_unit` porque CLP no tiene
+decimales), `tenant_currencies` (qué habilita cada sociedad, una sola base por índice parcial),
+`tax_categories` y `tax_rates` **con vigencia**: la tasa se versiona, no se sobrescribe, así que un
+pedido de hace seis meses se recalcula con la tasa de su fecha. `ebim.effective_tax_rate` resuelve en
+cascada producto → tienda → legado → 0; es `SECURITY DEFINER` con autorización explícita dentro (la
+tienda debe estar `active`) y devuelve un escalar, nunca filas de tenant, para que la vitrina anónima
+pueda pintar el precio con IVA sin SELECT sobre `tax_rates`.
+
+La migración 17 mueve el impuesto de `create_order` **a nivel de línea**, agrupado y redondeado **por
+tasa**, que es como se factura cuando hay varios tipos en el mismo carrito. Con una sola tasa el
+resultado coincide al céntimo con el anterior. Soporta `tax_inclusive`: cuando los precios ya llevan
+impuesto, se extrae en vez de sumarse y el total es exactamente el que vio el comprador. La 18 añade
+`set_tax_rate`, que cierra la vigente y abre la nueva en una transacción — **`security invoker` a
+propósito**: la autorización la siguen poniendo las policies, así que no puede escribir nada que su
+llamante no pudiera escribir directamente.
+
+Backoffice: nueva pestaña **Impuestos** en Configuración (categorías, tasa vigente, marcar por defecto).
+El selector de moneda del alta lee el catálogo y ya no trae valor por defecto: la moneda es una decisión
+contable y prácticamente inmutable tras el primer pedido, así que se elige.
+
+**Dos invariantes cazaron bugs propios durante la fase:** `tax_rates` sin índice sobre
+`(organization_id, company_id)` —un scan por tenant en cada lectura, no solo una regla incumplida— y una
+columna `prices_include_tax` que violaba el guard «toda columna con *price* es numeric»; se renombró la
+columna a `tax_inclusive` en vez de aflojar el guard.
+
+**Se modificó un test de invariantes** y queda anotado aquí a propósito: `currencies` es un catálogo
+global (sin columnas de tenant, PK no uuid), así que rompía dos invariantes de aislamiento. Se añadió
+`REFERENCE_CATALOG = ['currencies']`, **nominal y no un patrón**, y se compensó con un test nuevo —«los
+catálogos exentos son globales y de solo lectura»— que verifica que cada tabla de esa lista no tiene
+columnas de tenant, tiene RLS activada y no tiene ningún GRANT de escritura a `anon`/`authenticated`.
+Si alguien mete ahí una tabla de negocio para saltarse el RLS, falla.
+
+**Dependencia reparada:** faltaba `@testing-library/dom` (peer de `@testing-library/react@16`). Con ella
+ausente, `typecheck` daba 29 errores y **los 34 archivos de test no arrancaban**, incluidos los de BD.
+
+Nada desplegado, sin push ni PR. Sigue sin project ref. Siguiente: M1 — canales (`channels`,
+`channel_id` en `orders`, `product_channels`) sobre catálogo único.
+
+## Fase anterior
 **P08 — Quality gate (COMPLETA). Resultado: PASS.** Informe corto en `docs/OVERNIGHT_REPORT.md`.
 Los cinco gates verdes sobre un `node_modules` reinstalado desde cero: `npm ci` (exit 0), `npm run lint`
 (0 problemas), `npm run typecheck` (`tsc --noEmit`, sin OOM), `npm run test` (**493 tests / 34 archivos**)
@@ -27,7 +74,7 @@ pero la inmutabilidad se vuelve vinculante desde el primer `supabase db push`. A
 Nada desplegado, sin push ni PR. Siguiente: P09, que depende del **project ref** (aplicar migraciones,
 `db:types`, desplegar las 4 Edge Functions) — hasta entonces todo lo demás está bloqueado o es backlog.
 
-## Fase anterior
+## Dos fases atrás
 **P07 — Pedidos y configuración de la tienda (COMPLETA para el alcance encargado).** El backoffice ya
 gestiona lo que la vitrina genera. `/app/orders`: listado con buscador general (número, cliente o correo),
 tabs de estado, filtro de fecha por rangos cerrados y Exportar CSV de lo que se está viendo; el detalle se
@@ -52,7 +99,7 @@ solo admiten `https://` externo (el logo-auto del contrato §4.3) o una ruta del
 vitrina firma esa ruta con el cliente anónimo y refleja los cambios sin tocar una línea de la vitrina.
 Nada desplegado: sigue sin project ref. Siguiente: P08 (quality gate).
 
-## Dos fases atrás
+## Tres fases atrás
 **P06 — Carrito y checkout (COMPLETA para el alcance encargado).** Flujo entero del comprador anónimo:
 producto → carrito → checkout → pedido. El carrito vive en `localStorage` **por tienda**
 (`ebim.ecommerce.cart.v1:<store_id>`), suma/resta/quita, calcula el subtotal en céntimos y **no puede

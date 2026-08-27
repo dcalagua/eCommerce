@@ -126,6 +126,11 @@ describe('flujo login → onboarding → /app', () => {
     expect(screen.getByLabelText<HTMLInputElement>('Dirección de la tienda').value).toBe(
       'bodega-central',
     )
+    // La moneda ya no viene con un default cableado: se elige. Es una decision
+    // contable y practicamente inmutable tras el primer pedido.
+    await user.click(screen.getByLabelText('Moneda'))
+    await user.click(await screen.findByRole('option', { name: /^PEN/ }))
+
     await user.click(screen.getByRole('button', { name: 'Crear mi tienda' }))
 
     // 3 · Con espacio creado → panel con KPIs reales

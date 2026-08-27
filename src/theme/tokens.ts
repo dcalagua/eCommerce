@@ -100,3 +100,4 @@ export const DENSITY_METRICS: Record<Density, { controlH: number; rowH: number; 
   equilibrada: { controlH: 36, rowH: 44, padY: 9, padX: 12 },
   compacta: { controlH: 32, rowH: 38, padY: 6, padX: 10 },
 }
+

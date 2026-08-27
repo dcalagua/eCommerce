@@ -175,6 +175,18 @@ body {
   outline: none;
 }
 
+/* Campos de formulario: el anillo de foco lo dibuja MUI sobre el propio
+   fieldset (.MuiOutlinedInput-notchedOutline pasa a 2px al enfocar). El
+   outline global se sumaba a ese borde sobre el <input> interno y se veia
+   DOBLE BORDE. Se apaga solo en el elemento editable; los botones de los
+   adornos (limpiar, ver contrasena, etc.) conservan su foco visible. */
+.MuiInputBase-root > input:focus-visible,
+.MuiInputBase-root > textarea:focus-visible,
+.MuiInputBase-root > select:focus-visible,
+.MuiInputBase-root > .MuiSelect-select:focus-visible {
+  outline: none !important;
+}
+
 /* ===== Sidebar: hover de items (vive sobre el degradé --sidebar) ===== */
 .eb-nav-h {
   transition: background 0.15s ease, color 0.15s ease;

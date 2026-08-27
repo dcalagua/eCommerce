@@ -19,6 +19,7 @@ import { z } from 'zod'
 import { useSessionContext } from '@/features/auth/session-context'
 import { useTenant } from '@/features/tenant/tenant-context'
 import { WORKSPACE_KEY_ROOT } from '@/features/tenant/workspace'
+import { useCurrencies } from '@/shared/lib/currencies'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { BrandLockup } from '@/shared/ui/BrandLockup'
@@ -31,8 +32,13 @@ import {
   slugify,
 } from './bootstrapTenant'
 
-/** Monedas de arranque. La tienda puede cambiarla después en Configuración. */
-export const CURRENCIES = ['PEN', 'USD', 'EUR', 'CLP', 'COP', 'MXN'] as const
+/**
+ * La lista de monedas vive en `public.currencies`, no aquí: cablearla obligaba
+ * a desplegar para dar de alta un país nuevo (BOB no estaba, así que ninguna
+ * tienda boliviana podía crearse). El schema solo valida la FORMA —tres letras
+ * mayúsculas—; que el código exista lo garantiza la FK contra el catálogo.
+ */
+const CURRENCY_CODE_RE = /^[A-Z]{3}$/
 
 const schema = z.object({
   businessName: z
@@ -45,7 +51,7 @@ const schema = z.object({
     .trim()
     .toLowerCase()
     .regex(STORE_SLUG_RE, 'onboarding.error.slugFormat'),
-  currency: z.enum(CURRENCIES),
+  currency: z.string().regex(CURRENCY_CODE_RE, 'onboarding.error.currency'),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -75,8 +81,10 @@ export function OnboardingPage() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { businessName: '', storeSlug: '', currency: 'PEN' },
+    defaultValues: { businessName: '', storeSlug: '', currency: '' },
   })
+
+  const { data: currencies = [] } = useCurrencies()
 
   async function onSubmit(values: FormValues) {
     setServerError(null)
@@ -186,14 +194,13 @@ export function OnboardingPage() {
                   select
                   label={t('onboarding.currency')}
                   fullWidth
-                  defaultValue="PEN"
                   error={Boolean(errors.currency)}
                   helperText={fieldError('currency') ?? t('onboarding.currency.help')}
                   {...register('currency')}
                 >
-                  {CURRENCIES.map((currency) => (
-                    <MenuItem key={currency} value={currency}>
-                      {currency}
+                  {currencies.map((currency) => (
+                    <MenuItem key={currency.code} value={currency.code}>
+                      {currency.code} — {currency.name}
                     </MenuItem>
                   ))}
                 </TextField>
