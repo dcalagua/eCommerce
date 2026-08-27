@@ -1,9 +1,10 @@
-import { tryGetSupabaseClient } from '@/shared/lib/supabase'
+import { tryGetStorefrontClient } from '@/shared/lib/supabase'
 import { tenantBrandingSchema, type TenantBranding } from './types'
 
 /**
- * Vista pública de solo lectura: expone únicamente datos publicables de la tienda.
- * El tenant se resuelve por `brand_slug` de la URL contra esta vista, nunca por un
+ * Vista pública de solo lectura (`20260827090500_public_read_model.sql`): expone
+ * únicamente el shape de branding homologado del contrato §4.3. El tenant se
+ * resuelve por `brand_slug` de la URL contra esta vista, nunca por un
  * identificador que declare el cliente.
  */
 export const PUBLIC_STORE_VIEW = 'public_store_branding'
@@ -17,7 +18,8 @@ export class StoreNotFoundError extends Error {
 
 /** Devuelve `null` mientras el backend no esté conectado (fase P01). */
 export async function fetchStoreBranding(slug: string): Promise<TenantBranding | null> {
-  const supabase = tryGetSupabaseClient()
+  // Cliente ANÓNIMO a propósito: la vitrina no depende de quién tenga sesión.
+  const supabase = tryGetStorefrontClient()
   if (!supabase) return null
 
   const { data, error } = await supabase

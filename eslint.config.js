@@ -24,4 +24,11 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
+  {
+    // Edge Functions (Deno): globals propios y sin `import.meta.env` del bundle.
+    files: ['supabase/functions/**/*.ts'],
+    languageOptions: {
+      globals: { Deno: 'readonly' },
+    },
+  },
 )

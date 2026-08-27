@@ -10,7 +10,9 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:types": "supabase gen types typescript --linked --schema public > src/shared/lib/database.types.ts",
+    "test:db": "vitest run supabase/tests"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -27,6 +29,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@eslint/js": "^9.18.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",

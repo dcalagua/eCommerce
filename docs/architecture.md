@@ -25,16 +25,46 @@ El **hub EBIM** es el emisor de identidad y dueño del catálogo/billing. eComme
 escribe en él. La identidad del comprador final del storefront es **local** a este proyecto (patrón §2.5,
 igual que los proveedores externos de eSupplier); los usuarios del tenant llegan por SSO del hub.
 
-## Modelo de datos (base)
+## Modelo de datos (implementado en P02)
 
-- Toda tabla de negocio: `organization_id uuid`, `company_id uuid` (uuids del hub), `created_at`, `updated_at`.
-- Núcleo previsto: `stores` (config de storefront por sociedad), `categories`, `products`, `product_variants`,
-  `product_images`, `inventory`, `price_lists`, `customers` (local), `carts`, `cart_items`, `orders`,
-  `order_items`, `payments`, `audit_log`.
-- RLS en todas: default deny + policy `org_id = jwt.org_id AND company_id = ANY(jwt.companies)`.
-- Storefront público: policies de **solo lectura** limitadas a filas publicadas (`status = 'published'`) del
-  tenant resuelto por dominio/slug, expuestas mediante vistas públicas que no filtran datos internos.
-- Sin forks de schema por cliente: diferencias por `config` en capas + `custom_fields` (JSONB) + addons.
+Nueve tablas en `supabase/migrations`, todas con `organization_id uuid` + `company_id uuid` (uuids del hub),
+`created_at`/`updated_at`, PK uuid y RLS default deny **forzada**:
+
+```
+tenants (PK = organization_id del hub)
+  └── tenant_members (usuario × sociedad × rol de app)
+  └── stores (una tienda por sociedad; slug/dominio públicos)
+        ├── store_settings (1:1 — branding publicable + config interna)
+        ├── categories (árbol dentro de la misma tienda)
+        ├── products ──── product_images (ruta en Storage)
+        └── orders ────── order_items (snapshot de precio; line_total GENERATED)
+```
+
+- **`organization_id` es el "tenant_id"** del modelo: nombre exacto del contrato §3, sin variantes.
+  `store_id` es la dimensión adicional propia de eCommerce.
+- **FK compuestas** `(store_id, organization_id, company_id) → stores`: una fila hija no puede declarar un
+  tenant distinto al de su tienda, aunque alguien se equivoque copiando uuids.
+- **Predicado único de acceso** `ebim.can_access(org, company)`: claims del JWT **y** membresía activa.
+  Escritura además por rol: `ebim.has_role(...)` con `owner/admin/catalog/orders/viewer`.
+- **Dinero en `numeric(14,2)`**, nunca float; los importes salen de la API como string decimal.
+- Storefront público: policies `to anon` limitadas a tienda activa + producto publicado, con **GRANT por
+  columna** (RLS filtra filas, nunca columnas) y vistas `security_invoker` encima
+  (`public_stores`, `public_categories`, `public_products`, `public_store_branding` — §4.3).
+- Sin forks de schema por cliente: diferencias por `store_settings.config` + `products.custom_fields` (JSONB).
+- Pendiente de fases siguientes: `product_variants`, `price_lists`, `customers`, `carts`, `payments`, `audit_log`.
+
+## Operaciones de servidor y Edge Functions (P02)
+
+| Función | Autoriza | Cliente | Por qué |
+|---|---|---|---|
+| `bootstrap-tenant` | clave en cabecera `x-ebim-provisioning-key` | `service_role` | crea el tenant: no hay todavía un token del que derivarlo |
+| `create-order` | ninguna (comprador anónimo) | `service_role` | el pedido no puede insertarse desde el navegador |
+| `catalog-product` | JWT del usuario | clave publicable + `Authorization` | **decide la RLS**, no la función |
+| `update-order-status` | JWT del usuario | clave publicable + `Authorization` | idem, más el trigger de transiciones |
+
+`supabase/functions/_shared/` (auth, CORS, errores, validación, reglas de pedido, roles) es TypeScript puro:
+lo compila el `tsc` del repo y lo cubren los tests. `_runtime/clients.ts` queda aparte porque importa el SDK
+con especificador `npm:` y solo existe dentro de Deno.
 
 ## Seguridad
 

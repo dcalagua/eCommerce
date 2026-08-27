@@ -1,0 +1,39 @@
+# Configuracion local de Supabase para eCommerce by EBIM.
+# El project_id real se completa cuando el operador confirme el ref (pendiente P02).
+project_id = "ebim-ecommerce"
+
+[api]
+enabled = true
+port = 54321
+# `ebim` NO se expone por PostgREST: sus funciones son de policy, no de API.
+# Las operaciones de servidor viven en `public` con EXECUTE revocado a anon.
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[storage]
+enabled = true
+file_size_limit = "10MiB"
+
+[auth]
+enabled = true
+
+# --- Edge Functions ---------------------------------------------------------
+# `verify_jwt = false` en las dos publicas/servidor porque su autorizacion no es
+# un JWT de usuario: `create-order` lo llama un comprador anonimo y
+# `bootstrap-tenant` se autentica con la clave de aprovisionamiento en cabecera.
+[functions.bootstrap-tenant]
+verify_jwt = false
+
+[functions.create-order]
+verify_jwt = false
+
+[functions.catalog-product]
+verify_jwt = true
+
+[functions.update-order-status]
+verify_jwt = true
