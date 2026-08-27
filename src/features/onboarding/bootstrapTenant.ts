@@ -1,4 +1,5 @@
 import type { MessageKey } from '@/shared/i18n/messages'
+import { codeFromInvokeError } from '@/shared/lib/edgeError'
 import { tryGetSupabaseClient } from '@/shared/lib/supabase'
 
 export const BOOTSTRAP_FUNCTION = 'bootstrap-tenant'
@@ -55,21 +56,6 @@ export function mapBootstrapCode(code: string): MessageKey {
     default:
       return 'onboarding.error.generic'
   }
-}
-
-/** Extrae `{error:{code}}` de la respuesta de la función, si viene. */
-async function codeFromInvokeError(error: unknown): Promise<string> {
-  const context = (error as { context?: unknown } | null)?.context
-  if (context instanceof Response) {
-    try {
-      const payload: unknown = await context.clone().json()
-      const code = (payload as { error?: { code?: unknown } })?.error?.code
-      if (typeof code === 'string') return code
-    } catch {
-      /* la función no respondió JSON: se cae al genérico */
-    }
-  }
-  return 'ERROR_INTERNO'
 }
 
 /**

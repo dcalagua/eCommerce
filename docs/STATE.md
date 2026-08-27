@@ -2,9 +2,19 @@
 
 GUIDELINES_STATUS: VERIFIED
 Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md` (11 documentos leídos en la raíz de Drive `EBIM-Plataforma`).
-Última actualización: 2026-08-27 (P03)
+Última actualización: 2026-08-27 (P04)
 
 ## Fase actual
+**P04 — Administración de catálogo (COMPLETA para el alcance encargado).** Productos con listado MUI,
+buscador general, tabs de estado, alta/edición en panel lateral con validación Zod, publicar/despublicar,
+archivar y **eliminación segura con conteo real de uso** (contrato §4.2); categorías con CRUD mínimo y la
+misma eliminación segura; imágenes múltiples en el bucket privado `product-images` con principal, orden,
+borrado y validación de MIME/tamaño, todo con la clave publicable y bajo RLS. Migración 10
+(`catalog_admin`) con las tres operaciones que el navegador no puede hacer bien por su cuenta.
+**Variantes de producto NO entran aquí**: no estaban en el encargo de esta fase y no existe tabla; queda
+anotado en pendientes. Nada desplegado: sigue sin project ref. Siguiente: P05 (storefront público).
+
+## Fase anterior
 **P03 — Auth, contexto de tenant y shell administrativo (COMPLETA).** Sesión única de app con recuperación
 al refrescar, login/logout/recuperación de contraseña, `/app/*` protegido por dos guards encadenados
 (sesión → tenant), `TenantProvider` que deriva la jerarquía del JWT y el resto por RLS, alta de espacio de
@@ -79,6 +89,41 @@ sigue sin project ref. Siguiente: P04 (catálogo en el backoffice).
     devuelve `sales`/`currency` en null y la pantalla muestra un guion. Un cero en un panel se lee como dato.
 28. **P03 — el espacio y su primera tienda comparten slug.** Son tablas con unicidad propia, y pedirle dos
     direcciones a quien está dando de alta su negocio es pedirle que decida algo que todavía no sabe.
+29. **P04 — el panel lateral no contradice los lineamientos.** La regla de tabs centrados es para pantallas
+    largas y densas; el alta de producto son ocho campos. Lo que sí se respeta del mismo bloque es la barra
+    de Guardar persistente, aquí `sticky` al pie del drawer. El listado sigue detrás, así que la búsqueda y
+    la pestaña de estado están donde estaban al cerrar.
+30. **P04 — «eliminación segura» es el estándar §4.2 del contrato, no una invención.** Dice literalmente:
+    «desactivar conserva los datos; eliminar muestra el conteo de uso real antes de borrar». Se implementa
+    igual para producto (archivar / conteo de líneas de pedido e imágenes) y para categoría (desactivar /
+    conteo de productos e hijas). El conteo sale de una función `SECURITY INVOKER`, así que son las cifras
+    del tenant que pregunta y no un texto genérico de «esto podría afectar a otros registros».
+31. **P04 — la columna se llama `stock`, no `stock_qty`.** El encargo pedía `stock_qty`; la columna existe
+    desde P02 y la conocen las policies, `create_order` y los tests de aislamiento. Renombrarla sería tocar
+    seis archivos para no ganar nada. Mismo criterio que la decisión 14 con `tenant_id`.
+32. **P04 — imagen principal y orden se resuelven en la base.** `product_images` tiene un índice único
+    parcial que prohíbe dos principales por producto: «quitar la anterior» y «poner la nueva» desde el
+    navegador se comen un 409 a mitad de camino. `set_primary_product_image` y `reorder_product_images` lo
+    hacen en una operación, son `SECURITY INVOKER` y **fallan a propósito** cuando la RLS deja el UPDATE en
+    cero filas — un guardado que no guardó nada es peor que un error.
+33. **P04 — la ruta de imagen añade el producto: `{organization_id}/{store_id}/{product_id}/{uuid}.{ext}`.**
+    Los dos primeros segmentos son los que exige el CHECK de P02 y los que leen las funciones de Storage
+    para autorizar; el tercero es lo que pedía el encargo. El nombre es un uuid nuevo y **la extensión sale
+    del MIME, no del nombre del archivo**: un `.jpg` que en realidad es HTML no se convierte en imagen por
+    llamarse así.
+34. **P04 — el precio sale de la base como texto (`price::text` en el `select`).** Es la decisión 19
+    aplicada al catálogo: un `numeric` en JSON se vuelve float en el primer `JSON.parse`. El formulario lo
+    manda como string decimal a la Edge Function, que ya lo validaba así.
+35. **P04 — Supabase vive en `features/catalog/api/`, nunca en un componente.** Las pantallas piden a los
+    hooks y los hooks a los servicios. Alta y edición de producto van por la Edge Function `catalog-product`
+    (que actúa con el JWT del usuario, sin `service_role`); categorías, imágenes y borrados van directos a
+    la tabla bajo las policies que P02 ya definió. Ninguna consulta lleva filtro de tenant: lo pone la RLS.
+36. **P04 — primero la fila, después el objeto de Storage.** Al revés, si el DELETE fallara por permisos,
+    las fotos ya estarían perdidas y el producto seguiría en el catálogo apuntando a rutas muertas. Lo peor
+    que puede pasar en este orden es dejar objetos huérfanos, que no rompen ninguna pantalla.
+37. **P04 — mientras el espacio de trabajo se resuelve NO se dice «no tienes tiendas».** Mismo criterio que
+    la sesión en P03: no afirmar algo que todavía no se sabe. Las pantallas de catálogo muestran esqueleto
+    durante `status === 'loading'`.
 
 ## Pendientes / riesgos abiertos
 - [ ] Confirmar con el operador el **project ref de Supabase** para eCommerce (aún no existe). Bloquea:
@@ -107,6 +152,17 @@ sigue sin project ref. Siguiente: P04 (catálogo en el backoffice).
 - [ ] Replicar assets de identidad de suite (`EbimMark`, `favicon.svg`) desde los activos compartidos.
 - [ ] Confirmar si el comprador final del storefront es identidad **local** al proyecto eCommerce
       (patrón §2.5, como los proveedores de eSupplier) — supuesto actual: sí, no va al hub.
+- [ ] **Variantes de producto** (talla/color/…): el checklist original de P04 las mencionaba, el encargo de
+      la fase no. No existe tabla `product_variants` ni UI. Decidir con el operador si entran antes del
+      storefront (P05 las mostraría) o si el modelo se queda en producto simple.
+- [ ] **Miniatura en el listado de productos**: hoy las imágenes solo se ven al editar. El bucket es
+      privado, así que enseñarlas en la tabla obliga a firmar N URLs por página; se hace cuando el listado
+      tenga paginación, que tampoco tiene todavía.
+- [x] ~~`categories` admite jerarquía sin límite de profundidad~~ → **acotado en P04**: el CRUD mínimo no
+      ofrece selector de padre, así que por UI el árbol no puede crecer más de un nivel. El límite duro en
+      la base se pone cuando exista la pantalla de árbol.
+- [ ] **Alt text de las imágenes**: la columna `alt` existe y hoy se guarda en null (la vista cae al texto
+      genérico «Imagen del producto»). Es un requisito real de WCAG AA; entra con la ficha del storefront.
 
 ## Checklist P00–P08
 - [x] **P00 — Lineamientos:** Drive leído, CLAUDE.md + trace + state + architecture creados. VERIFIED.
@@ -120,7 +176,10 @@ sigue sin project ref. Siguiente: P04 (catálogo en el backoffice).
       `/app/*` (sesión → tenant), `TenantProvider` sin tenant cableado, alta de espacio de sí mismo con JWT
       verificado, shell MUI responsive (sidebar/drawer, header, breadcrumb, selectores) y panel de KPIs
       reales. VERIFIED (75 tests nuevos).
-- [ ] **P04 — Catálogo (backoffice):** productos, variantes, categorías, precios, stock, imágenes en Storage.
+- [x] **P04 — Catálogo (backoffice):** productos (listado, buscador, tabs de estado, alta/edición en drawer
+      con Zod, publicar/despublicar, archivar, eliminación segura), categorías con CRUD mínimo, precios,
+      stock e imágenes múltiples en Storage con principal y orden. VERIFIED (93 tests nuevos).
+      **Variantes de producto quedan fuera**: no estaban en el encargo de la fase (ver pendientes).
 - [ ] **P05 — Storefront público:** resolución de tenant por dominio/slug, listado y ficha de producto,
       branding por tenant, SEO básico.
 - [ ] **P06 — Carrito y checkout:** carrito persistente, cálculo de totales/impuestos, orden creada
@@ -129,6 +188,77 @@ sigue sin project ref. Siguiente: P04 (catálogo en el backoffice).
       configuración por sociedad (branding, moneda, custom fields).
 - [ ] **P08 — Quality gate:** typecheck + build + lint verdes, Vitest/Playwright, auditoría RLS y de
       secretos (sin `service_role` en el bundle), revisión de accesibilidad AA.
+
+## Verificaciones de esta fase (P04)
+- `npm run typecheck` (`tsc --noEmit`) → verde.
+- `npm run lint` (ESLint 9 flat config) → verde, **0 problemas** (0 errores, 0 avisos).
+- `npm run test` (Vitest 3) → **319 tests / 23 archivos, todos verdes** (226 de P01–P03 + 93 nuevos).
+- `npm run build` (`vite build`) → verde. Se mantiene el aviso de chunk >500 kB del vendor MUI (P01).
+- Auditoría de secretos sobre `dist/`: las únicas coincidencias de `service_role`/`sb_secret_` siguen
+  siendo la regex del guard `assertNoServiceKey` y el chequeo de prefijo del propio SDK. Sin claves de
+  servicio: el navegador sube a Storage con la clave publicable y la sesión del usuario.
+- Sin push, sin PR, **sin deploy remoto**: sigue sin existir project ref.
+
+### Qué se construyó
+- **Servicios** (`features/catalog/api/`): `products.ts`, `categories.ts`, `images.ts`, `errors.ts` y
+  `client.ts`. Es la única puerta a Supabase del catálogo; ningún componente importa el SDK.
+- **Hooks** (`useProducts`, `useCategories`, `useProductImages`): consultas y mutaciones de React Query,
+  con invalidación de todo el catálogo *y* de los KPIs del panel, que cuentan las mismas tablas.
+- **Productos** (`ProductsPage` + `ProductDrawer`): tabla MUI con SKU, nombre, categoría, precio, stock y
+  estado; un buscador general, tabs de estado y Exportar a CSV; menú de fila con editar, publicar,
+  despublicar, archivar y eliminar. El alta/edición es un `Drawer` derecho con los ocho campos del encargo,
+  validación Zod cuyos mensajes son **claves de i18n** (el mismo esquema sirve en ES y EN) y barra de
+  guardar persistente. Un error del servidor **no cierra el panel**: lo que el usuario escribió se queda.
+- **Imágenes** (`ProductImagesPanel`): subida múltiple, principal, mover antes/después, quitar, validación
+  de MIME y tamaño (5 MB) y miniaturas por **URL firmada** — el bucket es privado (decisión P02 #18).
+- **Categorías** (`CategoriesPage` + `CategoryDrawer`): listado, alta, edición, activar/desactivar y
+  eliminación segura. Sin selector de padre a propósito (ver pendientes).
+- **UI de suite reusable**: `TableSkeleton`/`GridSkeleton`, `FormDrawer`, `ConfirmDeleteDialog` (el estándar
+  §4.2 hecho componente) y `FeedbackProvider` + `useFeedback` para los avisos efímeros.
+- **Migración 10** `20260827091100_catalog_admin.sql`: trigger de primera imagen principal, ascenso al
+  borrar la principal, `set_primary_product_image`, `reorder_product_images`, `product_deletion_usage` y
+  `category_deletion_usage`. Todas `SECURITY INVOKER`, `search_path` fijo y `EXECUTE` revocado a `anon`.
+
+### Un defecto de P02 que este trabajo destapó
+Las tres claves foráneas compuestas con `on delete set null` (`products.category_id`,
+`order_items.product_id` y `categories.parent_id`) ponían a null **toda** la clave, incluido `store_id`,
+que es NOT NULL. En la práctica: **borrar una categoría con productos, o un producto con líneas de pedido,
+fallaba con un error de constraint** — justo las dos operaciones que P04 estrena. Se corrigió con la lista
+de columnas de Postgres 15+ (`on delete set null (category_id)`), editando las migraciones de P02 porque
+ninguna está aplicada todavía. Los dos tests que lo destaparon siguen en el banco.
+
+### Tests nuevos (93)
+- `supabase/tests/catalog-admin.test.ts` (20) — sobre Postgres real: la primera imagen queda principal;
+  cambiar la principal deja exactamente una; volver a marcar la misma no falla; un rol `viewer` recibe
+  `SIN_PERMISO` en vez de un no-op silencioso; para el tenant vecino la imagen no existe; `anon` no ejecuta
+  ninguna de las cuatro funciones; el reorden se aplica entero y rechaza listas parciales, repetidas o
+  vacías; el conteo de uso es el real y el tenant vecino no lo obtiene ni forzando el `org_id` en el JWT;
+  borrar la categoría deja los productos sin categoría en vez de borrarlos; borrar la principal asciende la
+  siguiente; y borrar el producto se lleva sus imágenes dejando la línea de pedido con su snapshot.
+- `src/features/catalog/catalog.test.ts` (38) — funciones puras: el dinero nunca se guarda como `number`;
+  el formulario rechaza precio con coma, con moneda pegada o con tres decimales, y stock negativo o
+  decimal; el slug usa el mismo formato que la Edge Function; los mensajes son claves de i18n; validación
+  de imagen por MIME y tamaño; la ruta empieza por `{org}/{store}/{product}/` y la extensión sale del MIME;
+  dos subidas no comparten nombre; `moveImage` nunca pierde elementos; el buscador neutraliza los
+  separadores del filtro `or` de PostgREST; los errores de RLS se explican como falta de permiso y lo
+  desconocido **no filtra el mensaje de Postgres**; y el CSV neutraliza las celdas que Excel ejecutaría.
+- `src/features/catalog/ProductsPage.test.tsx` (18) — contra el árbol real con un backend falso: la tabla,
+  el esqueleto mientras se resuelve el espacio, el estado vacío, el gating por rol, un solo buscador, las
+  cuatro pestañas; **el alta manda `create` sin ninguno de los nueve campos de tenant** que el contrato
+  prohíbe; el slug se sugiere del nombre; un precio inválido se detiene en el cliente; publicar manda solo
+  el estado; y el diálogo de borrado enseña el conteo real y ofrece archivar.
+- `src/features/catalog/CategoriesPage.test.tsx` (7) — el alta escribe el tenant que el JWT resolvió, un
+  slug inválido no llega a escribir nada, desactivar conserva la fila, y el diálogo cuenta productos e hijas.
+- `src/features/catalog/ProductImagesPanel.test.tsx` (11) — sin producto guardado no hay dónde subir; el
+  objeto y la fila apuntan a la misma ruta bajo `{org}/{store}/{product}/`; varias a la vez se colocan en
+  orden; el `accept` declara solo los cuatro formatos y, si un archivo se cuela igual, la validación propia
+  lo para antes de tocar Storage; el tamaño se corta en 5 MB; marcar principal deja una sola; reordenar
+  manda la lista completa; y quitar borra la fila **y** el objeto de Storage.
+- `src/app/routes.test.tsx` — actualizado: el backoffice tiene ahora cinco secciones.
+
+### Nota de coordinación
+No se escribió en Drive (la carpeta es de solo lectura para este repo). El aviso de alta de eCommerce en la
+suite y la definición de crew siguen pendientes desde P02/P03.
 
 ## Verificaciones de esta fase (P03)
 - `npm run typecheck` (`tsc --noEmit`) → verde.

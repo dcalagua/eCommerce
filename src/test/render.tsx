@@ -6,6 +6,7 @@ import type { Session } from '@supabase/supabase-js'
 import { SessionProvider } from '@/features/auth/SessionProvider'
 import { I18nProvider } from '@/shared/i18n/I18nProvider'
 import type { Locale } from '@/shared/i18n/messages'
+import { FeedbackProvider } from '@/shared/ui/FeedbackProvider'
 import { AppearanceProvider } from '@/theme/AppearanceProvider'
 import { DEFAULT_APPEARANCE } from '@/theme/appearance'
 
@@ -29,9 +30,11 @@ export function renderWithProviders(ui: ReactElement, options: Options = {}): Re
       <I18nProvider initial={locale}>
         <AppearanceProvider initial={DEFAULT_APPEARANCE} tenantAccent={tenantAccent}>
           <QueryClientProvider client={queryClient}>
-            <SessionProvider initialSession={session}>
-              <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
-            </SessionProvider>
+            <FeedbackProvider>
+              <SessionProvider initialSession={session}>
+                <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+              </SessionProvider>
+            </FeedbackProvider>
           </QueryClientProvider>
         </AppearanceProvider>
       </I18nProvider>

@@ -75,19 +75,57 @@ export interface FakeState {
   functions: Record<string, (body: Record<string, unknown>) => unknown>
   /** Todo lo que se envió a `functions.invoke`, para poder afirmar sobre ello. */
   invocations: Array<{ name: string; body: Record<string, unknown> }>
+  /** Objetos "subidos" por bucket, para afirmar sobre rutas de Storage. */
+  storage: Record<string, Record<string, { size: number; contentType: string }>>
 }
 
 type QueryResult = { data: Row[] | null; error: { message: string } | null }
 
-/** Constructor encadenable mínimo: filtra en memoria y se resuelve como promesa. */
+type Mutation =
+  | { kind: 'select' }
+  | { kind: 'insert'; payload: Row }
+  | { kind: 'update'; patch: Row }
+  | { kind: 'delete' }
+
+let idCounter = 0
+function fakeId(): string {
+  idCounter += 1
+  return `99999999-9999-4999-8999-${String(idCounter).padStart(12, '0')}`
+}
+
+/**
+ * Constructor encadenable mínimo: filtra en memoria y se resuelve como promesa.
+ * Soporta también insert/update/delete porque el catálogo (P04) escribe en
+ * tablas bajo RLS, no solo por Edge Function. Lo que NO simula, a propósito,
+ * es la RLS: eso se prueba contra Postgres real en `supabase/tests`.
+ */
 class FakeQuery implements PromiseLike<QueryResult> {
   private rows: Row[]
+  private mutation: Mutation = { kind: 'select' }
 
-  constructor(rows: Row[]) {
-    this.rows = [...rows]
+  constructor(
+    private readonly state: FakeState,
+    private readonly table: string,
+  ) {
+    this.rows = [...(state.tables[table] ?? [])]
   }
 
   select(): this {
+    return this
+  }
+
+  insert(payload: Row): this {
+    this.mutation = { kind: 'insert', payload }
+    return this
+  }
+
+  update(patch: Row): this {
+    this.mutation = { kind: 'update', patch }
+    return this
+  }
+
+  delete(): this {
+    this.mutation = { kind: 'delete' }
     return this
   }
 
@@ -107,15 +145,45 @@ class FakeQuery implements PromiseLike<QueryResult> {
     return this
   }
 
+  /** Aplica la mutación una sola vez y devuelve las filas afectadas. */
+  private apply(): Row[] {
+    const table = this.state.tables[this.table] ?? (this.state.tables[this.table] = [])
+
+    if (this.mutation.kind === 'insert') {
+      const row = { id: fakeId(), ...this.mutation.payload }
+      table.push(row)
+      this.rows = [row]
+    } else if (this.mutation.kind === 'update') {
+      const patch = this.mutation.patch
+      this.rows = this.rows.map((row) => Object.assign(row, patch))
+    } else if (this.mutation.kind === 'delete') {
+      const doomed = new Set(this.rows)
+      this.state.tables[this.table] = table.filter((row) => !doomed.has(row))
+    }
+    this.mutation = { kind: 'select' }
+    return this.rows
+  }
+
   maybeSingle(): Promise<{ data: Row | null; error: null }> {
-    return Promise.resolve({ data: this.rows[0] ?? null, error: null })
+    return Promise.resolve({ data: this.apply()[0] ?? null, error: null })
+  }
+
+  single(): Promise<{ data: Row | null; error: { message: string; code: string } | null }> {
+    const rows = this.apply()
+    if (!rows[0]) {
+      return Promise.resolve({
+        data: null,
+        error: { message: 'No rows found', code: 'PGRST116' },
+      })
+    }
+    return Promise.resolve({ data: rows[0], error: null })
   }
 
   then<TResult1 = QueryResult, TResult2 = never>(
     onfulfilled?: ((value: QueryResult) => TResult1 | PromiseLike<TResult1>) | null,
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ): PromiseLike<TResult1 | TResult2> {
-    return Promise.resolve({ data: this.rows, error: null }).then(onfulfilled, onrejected)
+    return Promise.resolve({ data: this.apply(), error: null }).then(onfulfilled, onrejected)
   }
 }
 
@@ -136,6 +204,7 @@ export function createFakeSupabase(initial: Partial<FakeState> = {}) {
     rpc: initial.rpc ?? {},
     functions: initial.functions ?? {},
     invocations: [],
+    storage: initial.storage ?? {},
   }
 
   type Listener = (event: string, session: Session | null) => void
@@ -172,13 +241,37 @@ export function createFakeSupabase(initial: Partial<FakeState> = {}) {
       resetPasswordForEmail: () => Promise.resolve({ data: {}, error: null }),
       updateUser: () => Promise.resolve({ data: { user: state.session?.user ?? null }, error: null }),
     },
-    from: (table: string) => new FakeQuery(state.tables[table] ?? []),
+    from: (table: string) => new FakeQuery(state, table),
     rpc: (name: string, args: Record<string, unknown>) => {
       const handler = state.rpc[name]
       if (!handler) {
         return Promise.resolve({ data: null, error: { message: `rpc ${name} no simulada` } })
       }
       return Promise.resolve({ data: handler(args), error: null })
+    },
+    storage: {
+      from: (bucket: string) => {
+        const objects = state.storage[bucket] ?? (state.storage[bucket] = {})
+        return {
+          upload: (path: string, file: File, options?: { contentType?: string }) => {
+            objects[path] = { size: file.size, contentType: options?.contentType ?? file.type }
+            return Promise.resolve({ data: { path }, error: null })
+          },
+          remove: (paths: string[]) => {
+            for (const path of paths) delete objects[path]
+            return Promise.resolve({ data: [], error: null })
+          },
+          createSignedUrls: (paths: string[]) =>
+            Promise.resolve({
+              data: paths.map((path) => ({
+                path,
+                signedUrl: `https://firmado.test/${path}`,
+                error: null,
+              })),
+              error: null,
+            }),
+        }
+      },
     },
     functions: {
       invoke: (name: string, options: { body: Record<string, unknown> }) => {

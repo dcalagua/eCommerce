@@ -1,32 +1,75 @@
-import { useQuery } from '@tanstack/react-query'
-import { tryGetSupabaseClient } from '@/shared/lib/supabase'
-import { PRODUCTS_TABLE, productSchema, type Product } from './types'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  deleteProduct,
+  fetchProductUsage,
+  fetchProducts,
+  saveProduct,
+  setProductStatus,
+  type ProductQuery,
+  type ProductStatusFilter,
+} from './api/products'
+import type { Product, ProductFormValues, ProductStatus, ProductUsage } from './types'
 
-const SELECT = 'id, organization_id, company_id, store_id, sku, name, slug, status, price, currency, stock'
+export const CATALOG_KEY = ['catalog'] as const
 
-/**
- * Productos de la tienda activa. No se envía `organization_id`/`company_id` en
- * la consulta: el aislamiento lo garantiza RLS a partir del JWT (contrato,
- * seguridad bloqueante). `store_id` sí se filtra, pero es alcance de pantalla,
- * no seguridad: una tienda ajena tampoco devolvería filas.
- */
-export async function fetchProducts(search: string, storeId: string | null): Promise<Product[]> {
-  const supabase = tryGetSupabaseClient()
-  if (!supabase || !storeId) return []
+export const productsKey = (storeId: string | null, status: ProductStatusFilter, search: string) =>
+  [...CATALOG_KEY, 'products', storeId, status, search] as const
 
-  let query = supabase.from(PRODUCTS_TABLE).select(SELECT).eq('store_id', storeId).order('name')
-  const term = search.trim()
-  if (term) query = query.or(`name.ilike.%${term}%,sku.ilike.%${term}%`)
+export const productUsageKey = (productId: string | null) =>
+  [...CATALOG_KEY, 'product-usage', productId] as const
 
-  const { data, error } = await query
-  if (error) throw new Error(error.message)
-  return productSchema.array().parse(data ?? [])
+export function useProducts(query: ProductQuery) {
+  return useQuery<Product[]>({
+    queryKey: productsKey(query.storeId, query.status, query.search),
+    queryFn: () => fetchProducts(query),
+    enabled: Boolean(query.storeId),
+    // Mantener la tabla anterior mientras se teclea evita el parpadeo a
+    // esqueleto en cada letra del buscador.
+    placeholderData: (previous) => previous,
+  })
 }
 
-export function useProducts(search: string, storeId: string | null) {
-  return useQuery<Product[]>({
-    queryKey: ['products', storeId, search],
-    queryFn: () => fetchProducts(search, storeId),
-    placeholderData: (previous) => previous,
+/** Uso real del producto, para el diálogo de eliminación segura (contrato §4.2). */
+export function useProductUsage(productId: string | null) {
+  return useQuery<ProductUsage>({
+    queryKey: productUsageKey(productId),
+    queryFn: () => fetchProductUsage(productId as string),
+    enabled: Boolean(productId),
+    retry: false,
+    gcTime: 0,
+  })
+}
+
+/** Invalida TODO el catálogo: el panel de inicio también cuenta productos. */
+function useInvalidateCatalog() {
+  const queryClient = useQueryClient()
+  return () => {
+    void queryClient.invalidateQueries({ queryKey: CATALOG_KEY })
+    void queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] })
+  }
+}
+
+export function useSaveProduct() {
+  const invalidate = useInvalidateCatalog()
+  return useMutation({
+    mutationFn: (input: { productId?: string | null; storeId: string; values: ProductFormValues }) =>
+      saveProduct(input),
+    onSuccess: invalidate,
+  })
+}
+
+export function useSetProductStatus() {
+  const invalidate = useInvalidateCatalog()
+  return useMutation({
+    mutationFn: (input: { productId: string; status: ProductStatus }) => setProductStatus(input),
+    onSuccess: invalidate,
+  })
+}
+
+export function useDeleteProduct() {
+  const invalidate = useInvalidateCatalog()
+  return useMutation({
+    mutationFn: (productId: string) => deleteProduct(productId),
+    onSuccess: invalidate,
   })
 }

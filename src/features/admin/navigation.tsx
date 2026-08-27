@@ -1,3 +1,4 @@
+import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined'
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined'
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
@@ -17,6 +18,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { to: '/app', label: 'nav.dashboard', icon: <SpaceDashboardOutlinedIcon fontSize="small" />, end: true },
   { to: '/app/products', label: 'nav.products', icon: <Inventory2OutlinedIcon fontSize="small" /> },
+  { to: '/app/categories', label: 'nav.categories', icon: <CategoryOutlinedIcon fontSize="small" /> },
   { to: '/app/orders', label: 'nav.orders', icon: <ReceiptLongOutlinedIcon fontSize="small" /> },
   { to: '/app/settings', label: 'nav.settings', icon: <SettingsOutlinedIcon fontSize="small" /> },
 ]

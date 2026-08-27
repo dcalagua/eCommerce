@@ -2,6 +2,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
 import { SessionProvider } from '@/features/auth/SessionProvider'
 import { I18nProvider } from '@/shared/i18n/I18nProvider'
+import { FeedbackProvider } from '@/shared/ui/FeedbackProvider'
 import { AppearanceProvider } from '@/theme/AppearanceProvider'
 import { ErrorBoundary } from './ErrorBoundary'
 import { createQueryClient } from './queryClient'
@@ -21,7 +22,9 @@ export function Providers({ children }: { children: ReactNode }) {
             {/* La sesión es global (login, guards y storefront la consultan),
                 pero el contexto de tenant NO: cuelga de las rutas protegidas
                 para que la vitrina pública no toque tablas del backoffice. */}
-            <SessionProvider>{children}</SessionProvider>
+            <FeedbackProvider>
+              <SessionProvider>{children}</SessionProvider>
+            </FeedbackProvider>
           </QueryClientProvider>
         </AppearanceProvider>
       </I18nProvider>

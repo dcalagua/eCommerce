@@ -34,6 +34,9 @@ const SettingsPage = lazy(() =>
 const ProductsPage = lazy(() =>
   import('@/features/catalog/ProductsPage').then((m) => ({ default: m.ProductsPage })),
 )
+const CategoriesPage = lazy(() =>
+  import('@/features/catalog/CategoriesPage').then((m) => ({ default: m.CategoriesPage })),
+)
 const OrdersPage = lazy(() =>
   import('@/features/orders/OrdersPage').then((m) => ({ default: m.OrdersPage })),
 )
@@ -79,6 +82,7 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: withSuspense(<DashboardPage />) },
           { path: 'products', element: withSuspense(<ProductsPage />) },
+          { path: 'categories', element: withSuspense(<CategoriesPage />) },
           { path: 'orders', element: withSuspense(<OrdersPage />) },
           { path: 'settings', element: withSuspense(<SettingsPage />) },
         ],

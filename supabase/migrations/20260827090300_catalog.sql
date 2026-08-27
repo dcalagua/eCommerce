@@ -29,8 +29,11 @@ create table public.categories (
   constraint categories_store_key unique (id, store_id),
   constraint categories_tenant_key unique (id, organization_id, company_id),
   -- El padre tiene que ser de la MISMA tienda: no hay árboles cruzando tenants.
+  -- `set null (parent_id)`: sin la lista de columnas, Postgres pondria a null
+  -- TODA la clave -- incluido `store_id`, que es NOT NULL -- y borrar una
+  -- categoria con hijas fallaria con un error de constraint.
   constraint categories_parent_fk foreign key (parent_id, store_id)
-    references public.categories (id, store_id) on delete set null
+    references public.categories (id, store_id) on delete set null (parent_id)
 );
 create unique index categories_slug_key  on public.categories (store_id, lower(slug));
 create index categories_tenant_idx       on public.categories (organization_id, company_id);
@@ -76,8 +79,10 @@ create table public.products (
     check (status <> 'published' or published_at is not null),
   constraint products_store_fk foreign key (store_id, organization_id, company_id)
     references public.stores (id, organization_id, company_id) on delete cascade,
+  -- Solo `category_id` se pone a null: la clave tambien lleva `store_id`, que
+  -- es NOT NULL, y un `set null` sin lista lo tumbaria (Postgres 15+).
   constraint products_category_fk foreign key (category_id, store_id)
-    references public.categories (id, store_id) on delete set null,
+    references public.categories (id, store_id) on delete set null (category_id),
   constraint products_store_key  unique (id, store_id),
   constraint products_tenant_key unique (id, organization_id, company_id)
 );

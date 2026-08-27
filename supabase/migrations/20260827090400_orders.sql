@@ -76,8 +76,11 @@ create table public.order_items (
   constraint order_items_qty_positive   check (quantity > 0 and quantity <= 100000),
   constraint order_items_order_fk foreign key (order_id, store_id)
     references public.orders (id, store_id) on delete cascade,
+  -- Al borrar el producto la linea pierde el enlace y conserva su snapshot.
+  -- La lista de columnas es obligatoria aqui: `store_id` forma parte de la
+  -- clave y es NOT NULL, asi que un `set null` a secas impediria el borrado.
   constraint order_items_product_fk foreign key (product_id, store_id)
-    references public.products (id, store_id) on delete set null,
+    references public.products (id, store_id) on delete set null (product_id),
   constraint order_items_store_fk foreign key (store_id, organization_id, company_id)
     references public.stores (id, organization_id, company_id) on delete restrict
 );

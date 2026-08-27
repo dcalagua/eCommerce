@@ -66,7 +66,14 @@ describe('rutas base', () => {
   it('separa las áreas: ninguna ruta del storefront cuelga del backoffice', () => {
     const admin = protectedArea()?.children?.find((route) => route.path === '/app')
     const storefront = routes.find((route) => route.path === '/s/:storeSlug')
-    expect(admin?.children?.length).toBe(4)
+    // P04 anade Categorias al backoffice: panel, productos, categorias, pedidos y configuracion.
+    expect(paths(admin?.children ?? [], '/app').sort()).toEqual([
+      '/app',
+      '/app/categories',
+      '/app/orders',
+      '/app/products',
+      '/app/settings',
+    ])
     expect(storefront?.children?.length).toBe(4)
     expect(paths(admin?.children ?? [], '/app')).not.toContain('/app/cart')
   })
