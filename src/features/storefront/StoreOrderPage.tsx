@@ -1,9 +1,11 @@
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import { Box, Button, Card, Chip, Divider, Stack, Typography } from '@mui/material'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
 import { R, T } from '@/theme/tokens'
+import { fetchOrderByToken } from './api'
 import { orderResultSchema, type OrderResult } from './checkout'
 import { useStorefront } from './hooks'
 
@@ -14,10 +16,13 @@ import { useStorefront } from './hooks'
  * carrito calculó: si la base recalculó algo (precio cambiado, impuesto de la
  * tienda), lo que el comprador lee aquí es lo que realmente se registró.
  *
- * El pedido no se puede volver a consultar: un comprador anónimo no tiene
- * sesión y la RLS de `orders` no le deja leer nada. Por eso, si la pantalla se
- * recarga y se pierde el estado de navegación, se muestra el número —que sí
- * viene de la URL— y se le dice que lo guarde, en vez de fingir un error.
+ * El pedido SÍ se puede volver a consultar (P11). La confirmación lleva en la
+ * URL un token de 256 bits, así que recargar, guardar el enlace o abrirlo en
+ * otro dispositivo funciona. `orders` sigue cerrada a `anon`: quien responde es
+ * `order_by_token`, que exige tienda activa + número + token.
+ *
+ * El estado del router se sigue prefiriendo cuando existe, porque evita un ida
+ * y vuelta al servidor justo después de comprar.
  */
 export function StoreOrderPage() {
   const { t, locale } = useI18n()
@@ -25,10 +30,51 @@ export function StoreOrderPage() {
   const { orderNumber } = useParams<{ orderNumber: string }>()
   const location = useLocation()
 
+  const [search] = useSearchParams()
+  const token = search.get('t') ?? ''
+
   const parsed = orderResultSchema.safeParse(
     (location.state as { order?: unknown } | null)?.order,
   )
-  const order: OrderResult | null = parsed.success ? parsed.data : null
+  const fromState: OrderResult | null = parsed.success ? parsed.data : null
+
+  // Solo se consulta si NO hay estado de navegación: venir de comprar no debe
+  // costar una petición más.
+  const tracked = useQuery({
+    queryKey: ['tracked-order', storeSlug, orderNumber, token],
+    queryFn: () =>
+      fetchOrderByToken({
+        storeSlug: storeSlug as string,
+        orderNumber: orderNumber as string,
+        token,
+      }),
+    enabled: !fromState && Boolean(storeSlug && orderNumber && token),
+    retry: false,
+  })
+
+  const order: OrderResult | null =
+    fromState ??
+    (tracked.data
+      ? {
+          // El pedido recuperado no trae `order_id` ni los ids de producto: la
+          // función los recorta a propósito. Se rellenan con lo que la pantalla
+          // necesita y nada más.
+          order_id: '',
+          order_number: tracked.data.order_number,
+          status: tracked.data.status,
+          currency: tracked.data.currency,
+          subtotal: tracked.data.subtotal,
+          tax_total: tracked.data.tax_total,
+          grand_total: tracked.data.grand_total,
+          items: tracked.data.items.map((item) => ({
+            product_id: '',
+            sku: item.sku,
+            name: item.name,
+            unit_price: item.unit_price,
+            quantity: item.quantity,
+          })),
+        }
+      : null)
 
   return (
     <Stack sx={{ gap: 2, maxWidth: 720, mx: 'auto' }}>

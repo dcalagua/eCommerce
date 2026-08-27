@@ -158,3 +158,44 @@ export function pickRelated(
   const rest = others.filter((item) => !sameCategory.includes(item))
   return [...sameCategory, ...rest].slice(0, limit)
 }
+
+/**
+ * Pedido tal y como lo ve el COMPRADOR con su token.
+ *
+ * No es el mismo objeto que devuelve el checkout: `order_by_token` recorta a
+ * proposito lo que no necesita ver —el token, los ids de tenant, el id interno
+ * del pedido— para que un enlace filtrado no sirva para pivotar a nada mas.
+ */
+export const trackedOrderSchema = z.object({
+  order_number: z.string().min(1),
+  status: z.string().min(1),
+  currency: z.string().length(3),
+  placed_at: z.string(),
+  customer_name: z.string().nullable(),
+  subtotal: z.string(),
+  tax_total: z.string(),
+  grand_total: z.string(),
+  shipping_address: z.record(z.unknown()).default({}),
+  items: z
+    .array(
+      z.object({
+        sku: z.string(),
+        name: z.string(),
+        unit_price: z.string(),
+        quantity: z.union([z.number(), z.string()]).transform((v) => Number(v)),
+      }),
+    )
+    .default([]),
+})
+export type TrackedOrder = z.infer<typeof trackedOrderSchema>
+
+/**
+ * Un pedido no localizable. Deliberadamente SIN detalle: no se distingue si el
+ * numero no existe o si el token es incorrecto, igual que hace la funcion.
+ */
+export class OrderNotFoundError extends Error {
+  constructor() {
+    super('ORDER_NOT_FOUND')
+    this.name = 'OrderNotFoundError'
+  }
+}

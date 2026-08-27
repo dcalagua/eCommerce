@@ -17,6 +17,9 @@ import {
   type PublicCategory,
   type PublicProduct,
   type PublicStore,
+  OrderNotFoundError,
+  trackedOrderSchema,
+  type TrackedOrder,
 } from './types'
 
 /**
@@ -270,4 +273,28 @@ export async function signPaths(paths: string[]): Promise<Record<string, string>
     if (item.path && item.signedUrl) map[item.path] = item.signedUrl
   }
   return map
+}
+
+/**
+ * Recupera un pedido con el token que el comprador lleva en el enlace.
+ *
+ * `orders` NO esta abierta a `anon`: la unica puerta es la funcion
+ * `order_by_token`, que exige tienda activa, numero y token, y que devuelve el
+ * mismo error tanto si el pedido no existe como si el token es incorrecto —los
+ * numeros de pedido son correlativos y mensajes distintos permitirian
+ * enumerarlos—. Por eso aqui tampoco se distinguen los casos.
+ */
+export async function fetchOrderByToken(input: {
+  storeSlug: string
+  orderNumber: string
+  token: string
+}): Promise<TrackedOrder> {
+  const { data, error } = await storefront().rpc('order_by_token', {
+    p_store_slug: input.storeSlug,
+    p_order_number: input.orderNumber,
+    p_token: input.token,
+  })
+
+  if (error) throw new OrderNotFoundError()
+  return trackedOrderSchema.parse(data)
 }

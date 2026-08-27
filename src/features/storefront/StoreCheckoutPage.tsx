@@ -53,7 +53,12 @@ export function StoreCheckoutPage() {
       // vaciara al enviar, un error de red dejaría al comprador sin carrito y
       // sin pedido.
       clear()
-      navigate(`/s/${storeSlug}/order/${order.order_number}`, {
+      // El token va en la URL, no solo en el state del router: es lo que hace
+      // que la confirmacion sobreviva a una recarga y se pueda guardar.
+      const permalink = order.access_token
+        ? `/s/${storeSlug}/order/${order.order_number}?t=${order.access_token}`
+        : `/s/${storeSlug}/order/${order.order_number}`
+      navigate(permalink, {
         replace: true,
         state: { order },
       })

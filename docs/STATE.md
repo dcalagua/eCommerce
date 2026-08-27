@@ -5,6 +5,35 @@ Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md` (11 documentos leídos en la raíz 
 Última actualización: 2026-08-27 (P08)
 
 ## Fase actual
+**P11 — El comprador vuelve a su pedido (COMPLETA para el alcance encargado).** Gate: PASS.
+`typecheck`, `lint`, `test` (**548 / 39**), `test:db` (**282 / 14**) y `build`, verdes. Migraciones 24-25
+aplicadas en DEV/QAS; los 8 pedidos existentes recibieron token, 0 huerfanos.
+
+La confirmacion se pintaba desde `location.state` del router: al recargar, el comprador se quedaba con el
+numero en la URL y nada mas. En una tienda de mueble, con entregas a semanas, eso convierte cada consulta
+en un correo o una llamada.
+
+**No se abrio `orders` a `anon`.** La policy sigue en default deny y la unica puerta es
+`order_by_token`, que exige tienda activa + numero + token de 256 bits. Una policy por numero de pedido
+habria sido mas corta y habria dejado los pedidos de toda la tienda a un bucle de distancia: los numeros
+son correlativos (`EC-fecha-00001`, `00002`...). Por lo mismo, la funcion devuelve el **mismo** error si
+el pedido no existe que si el token es incorrecto, y hay un test que compara ambos mensajes.
+
+**Bug propio que caz&oacute; un test:** el token nacio como columna de `orders` con
+`revoke select (access_token) ... from authenticated`. En Postgres eso **no anula** un `grant select` de
+tabla entera, asi que la columna "privada" era una ilusion. Se rediseno a tabla propia
+(`order_tokens`), que hace el aislamiento estructural en vez de declarativo y ademas evita que cualquier
+columna futura de `orders` obligue a repasar la lista del grant.
+
+El token es secreto frente al **mundo**, no frente al comercio: el backoffice lee los de sus pedidos —ya
+ve el pedido entero, y con el token puede reenviar el enlace a un comprador que lo perdio— pero no puede
+escribirlos, y otro tenant no ve ninguno.
+
+**Pendiente relacionado, no cerrado:** el correo de confirmacion. La pantalla del checkout sigue diciendo
+que se envia y **no se envia**. No es codigo lo que falta sino una decision: que proveedor
+transaccional se usa y con que secretos. Sin eso, montar la cola seria dejar una que nadie drena.
+
+## Fase anterior
 **P10 — Canales y limite de tasa del checkout (COMPLETA para el alcance encargado).** Gate: PASS.
 `typecheck`, `lint`, `test` (**535 / 38 archivos**), `test:db` (**269 / 13**) y `build`, los cinco verdes.
 Migraciones 20-23 aplicadas en DEV/QAS con `supabase db push` y `database.types.ts` regenerado.

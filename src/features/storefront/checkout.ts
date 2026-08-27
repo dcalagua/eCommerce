@@ -45,6 +45,10 @@ export type CheckoutValues = z.infer<typeof checkoutSchema>
 export const orderResultSchema = z.object({
   order_id: z.string().uuid(),
   order_number: z.string().min(1),
+  // Secreto de portador del comprador: es lo unico que le permite volver a su
+  // pedido tras recargar. Opcional para no romper una respuesta anterior al
+  // despliegue de P11, que simplemente no traera enlace permanente.
+  access_token: z.string().length(64).optional(),
   status: z.string().min(1),
   currency: z.string().length(3),
   subtotal: moneyText,
