@@ -1,39 +1,72 @@
-import { useQuery } from '@tanstack/react-query'
-import { tryGetSupabaseClient } from '@/shared/lib/supabase'
-import { ORDERS_TABLE, orderSchema, type Order, type OrderStatus } from './types'
+import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
+import {
+  fetchOrder,
+  fetchOrderEvents,
+  fetchOrderItems,
+  fetchOrders,
+  updateOrderStatus,
+  type UpdateStatusInput,
+} from './api'
+import type { Order, OrderEvent, OrderItem, OrdersFilter } from './types'
 
-const SELECT =
-  'id, organization_id, company_id, store_id, order_number, customer_name, customer_email, status, grand_total, currency, placed_at'
+export const ordersKey = (filter: OrdersFilter) => ['orders', filter] as const
+export const orderKey = (orderId: string) => ['orders', 'detail', orderId] as const
+export const orderItemsKey = (orderId: string) => ['orders', 'items', orderId] as const
+export const orderEventsKey = (orderId: string) => ['orders', 'events', orderId] as const
 
-export interface OrdersFilter {
-  search: string
-  /** Tabs de estado: complementan al buscador general, no lo reemplazan. */
-  status: OrderStatus | 'all'
-  storeId: string | null
-}
-
-export async function fetchOrders({ search, status, storeId }: OrdersFilter): Promise<Order[]> {
-  const supabase = tryGetSupabaseClient()
-  if (!supabase || !storeId) return []
-
-  let query = supabase
-    .from(ORDERS_TABLE)
-    .select(SELECT)
-    .eq('store_id', storeId)
-    .order('placed_at', { ascending: false })
-  if (status !== 'all') query = query.eq('status', status)
-  const term = search.trim()
-  if (term) query = query.or(`order_number.ilike.%${term}%,customer_name.ilike.%${term}%`)
-
-  const { data, error } = await query
-  if (error) throw new Error(error.message)
-  return orderSchema.array().parse(data ?? [])
-}
-
-export function useOrders(filter: OrdersFilter) {
-  return useQuery<Order[]>({
-    queryKey: ['orders', filter.storeId, filter.search, filter.status],
+export function useOrders(filter: OrdersFilter): UseQueryResult<Order[]> {
+  return useQuery({
+    queryKey: ordersKey(filter),
     queryFn: () => fetchOrders(filter),
+    enabled: Boolean(filter.storeId),
+    // Mantener la tabla anterior mientras se teclea evita el parpadeo a
+    // esqueleto en cada letra del buscador.
     placeholderData: (previous) => previous,
+  })
+}
+
+/**
+ * Detalle vivo del pedido. `initialData` es la fila del listado: pinta el panel
+ * al instante y se sustituye en cuanto responde el servidor.
+ */
+export function useOrder(orderId: string | null, initial?: Order): UseQueryResult<Order | null> {
+  return useQuery({
+    queryKey: orderKey(orderId ?? ''),
+    queryFn: () => fetchOrder(orderId),
+    enabled: Boolean(orderId),
+    initialData: initial,
+  })
+}
+
+export function useOrderItems(orderId: string | null): UseQueryResult<OrderItem[]> {
+  return useQuery({
+    queryKey: orderItemsKey(orderId ?? ''),
+    queryFn: () => fetchOrderItems(orderId),
+    enabled: Boolean(orderId),
+  })
+}
+
+export function useOrderEvents(orderId: string | null): UseQueryResult<OrderEvent[]> {
+  return useQuery({
+    queryKey: orderEventsKey(orderId ?? ''),
+    queryFn: () => fetchOrderEvents(orderId),
+    enabled: Boolean(orderId),
+  })
+}
+
+/**
+ * Cambio de estado por Edge Function.
+ *
+ * Al terminar se invalida TODO lo que cuelga de `orders`: el listado (el pedido
+ * cambia de pestaña), el detalle y la bitácora — que acaba de ganar un evento
+ * escrito por el trigger, no por esta mutación.
+ */
+export function useUpdateOrderStatus() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: UpdateStatusInput) => updateOrderStatus(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['orders'] })
+    },
   })
 }

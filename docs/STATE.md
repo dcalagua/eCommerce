@@ -2,9 +2,34 @@
 
 GUIDELINES_STATUS: VERIFIED
 Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md` (11 documentos leídos en la raíz de Drive `EBIM-Plataforma`).
-Última actualización: 2026-08-27 (P06)
+Última actualización: 2026-08-27 (P07)
 
 ## Fase actual
+**P07 — Pedidos y configuración de la tienda (COMPLETA para el alcance encargado).** El backoffice ya
+gestiona lo que la vitrina genera. `/app/orders`: listado con buscador general (número, cliente o correo),
+tabs de estado, filtro de fecha por rangos cerrados y Exportar CSV de lo que se está viendo; el detalle se
+abre en un panel lateral con cliente, entrega (`shipping_address`), líneas del pedido, importes e
+**historial**. El cambio de estado pasa **siempre** por la Edge Function `update-order-status` —la capa de
+datos de pedidos no tiene ni un `update`, y hay un test que lo comprueba sobre el propio código—. Los
+estados siguen siendo los del enum `public.order_status` de P02 (`pending/paid/fulfilled/cancelled/refunded`),
+no los sugeridos en el encargo: la definición EBIM ya existía, con su máquina de estados en trigger
+(decisión 51).
+
+La migración 14 añade `order_status_events`, una **bitácora append-only** que escribe un trigger
+`SECURITY DEFINER` en la misma transacción que el UPDATE: no hay GRANT ni policy de INSERT/UPDATE/DELETE
+para `anon` ni `authenticated`, así que un cambio de estado sin evento (o un evento inventado) son estados
+imposibles, no cosas que vigilar. El actor sale del JWT; en el alta del comprador anónimo queda NULL y la
+pantalla lo lee como «desde la vitrina».
+
+`/app/settings`: nombre comercial, descripción, contacto (correo, teléfono, dirección), color primario,
+logo y banner. Los assets suben al bucket privado `store-assets` en
+`{organization_id}/{store_id}/branding/…` y lo que se guarda es la **ruta**, no una URL firmada —que
+caducaría en una hora—. La migración 15 añade el CHECK `ebim.is_store_asset_ref`: `logo_url`/`banner_url`
+solo admiten `https://` externo (el logo-auto del contrato §4.3) o una ruta del **propio** tenant. La
+vitrina firma esa ruta con el cliente anónimo y refleja los cambios sin tocar una línea de la vitrina.
+Nada desplegado: sigue sin project ref. Siguiente: P08 (quality gate).
+
+## Fase anterior
 **P06 — Carrito y checkout (COMPLETA para el alcance encargado).** Flujo entero del comprador anónimo:
 producto → carrito → checkout → pedido. El carrito vive en `localStorage` **por tienda**
 (`ebim.ecommerce.cart.v1:<store_id>`), suma/resta/quita, calcula el subtotal en céntimos y **no puede
@@ -18,17 +43,7 @@ Migración 12 (`checkout`) añade `create_order_for_slug`: **la tienda la resuel
 publicación/stock/moneda, recalculando subtotal + impuesto + total, generando `order_number` e insertando
 pedido y líneas en la misma transacción. El cuerpo que sale del navegador lleva `store_slug`, `items` y
 contacto; `store_id` ya **no** se acepta (`rejectUnknownFields` lo tumba) y ningún precio viaja. Estado
-inicial `pending` (estándar EBIM, migración 04). Nada desplegado: sigue sin project ref. Siguiente: P07
-(gestión de pedidos y configuración).
-
-## Fase anterior
-**P05 — Storefront público (COMPLETA).** Vitrina responsive en `/s/:storeSlug` sin sesión: la tienda se
-resuelve por el **slug de la URL** contra `public_stores` (que ya filtra `status = 'active'`). Portada con
-banner configurable, categorías, buscador general, filtros simples y orden; rejilla de tarjetas con imagen,
-precio, precio tachado con % de descuento y disponibilidad; ficha con galería, descripción y relacionados
-simples; cabecera con logo y pie con contacto. Seis estados cubiertos. Migración 11 (`storefront_public`)
-añade el branding que faltaba, la columna generada `products.in_stock` y rehace el modelo de lectura
-público. `supabase/seed.sql` deja una tienda demo navegable en local.
+inicial `pending` (estándar EBIM, migración 04). Nada desplegado: sigue sin project ref. Siguiente: P07.
 
 ## Decisiones tomadas
 1. eCommerce entra a la suite EBIM como app propia: **proyecto Supabase propio**, identidad/addons en el hub.
@@ -182,6 +197,52 @@ público. `supabase/seed.sql` deja una tienda demo navegable en local.
     aceptar exactamente dos claves (`address`, `reference`) y rechazar el resto, en vez de guardar lo que
     llegue. La referencia vacía no se guarda como clave hueca.
 
+51. **P07 — los estados del pedido son los de la base, no los del encargo.** El encargo sugería
+    `pending/confirmed/preparing/ready/completed/cancelled` «salvo definición EBIM distinta», y la
+    definición EBIM existe desde P02: el enum `public.order_status` con su máquina de estados en trigger
+    (`ebim.assert_order_transition`), sus policies, `create_order` y sus tests de aislamiento. Cambiarlo
+    sería tocar media base para no ganar nada — mismo criterio que las decisiones 14 (`tenant_id`) y 31
+    (`stock_qty`). La máquina vive en tres copias (trigger, borde Deno, navegador) y un test las compara
+    entre sí y contra el SQL de la migración 04, para que no se separen solas.
+52. **P07 — el historial lo escribe la BASE, no la aplicación.** `order_status_events` la puebla un trigger
+    `SECURITY DEFINER` en la MISMA transacción que el UPDATE que ya validaron la RLS y la máquina de
+    estados. Si lo escribiera la pantalla, un fallo de red entre el cambio y el registro dejaría un pedido
+    movido sin autor, o peor: un historial que cuenta algo distinto de lo que dice la columna `status`.
+53. **P07 — «append-only» no es un COMMENT, es la ausencia de GRANT.** La tabla no da INSERT/UPDATE/DELETE
+    a `anon` ni a `authenticated` y no tiene policy que los habilite; la única escritura es el trigger.
+    Es el mismo patrón que `orders` + `create_order` de P02 y la lección `esupplier-030` (un comentario que
+    promete append-only no impide nada). Hay test de las cuatro puertas: insertar, editar, borrar y llamar
+    a la función del trigger a mano fallan las cuatro.
+54. **P07 — sin JWT no hay autor.** El pedido lo crea un comprador anónimo por `create-order`, así que su
+    primer evento va con `actor_id`/`actor_email` en NULL y la pantalla dice «Desde la vitrina». Rellenarlo
+    con el `service_role` o con el dueño de la tienda sería atribuir el pedido a quien no lo hizo.
+55. **P07 — el cambio de estado NO se hace por PostgREST aunque la policy lo permita.** El GRANT por
+    columna de P02 deja a `authenticated` escribir `status` directamente, y no se puede revocar porque la
+    propia Edge Function actúa con el JWT del usuario. Así que la regla es de aplicación y se defiende
+    donde puede defenderse: `features/orders/api.ts` no contiene ni un `.update(`, y un test lo verifica
+    sobre el código fuente (quitando los comentarios, que nombran la llamada prohibida para explicarla).
+56. **P07 — el filtro de fecha son PRESETS, no un panel.** La regla de suite §8 es un buscador general +
+    tabs de estado y prohíbe los paneles de filtros multi-campo; el encargo pide filtrar por fecha. Un
+    `Select` de rangos cerrados (hoy / 7 / 30 / 90 días) cumple las dos cosas con un solo control. El
+    rango arranca a medianoche e **incluye hoy**: «últimos 7 días» son hoy y los seis anteriores.
+57. **P07 — la descripción de la tienda es `hero_subtitle`; no se añade un `description`.** Es el texto que
+    la vitrina ya pinta bajo el nombre desde P05. Dos campos de descripción se desincronizan y alguien
+    acaba editando el que no se ve (precedente 44, el lector duplicado de branding).
+58. **P07 — el branding guarda la RUTA del objeto, no una URL.** Una URL firmada caduca en una hora y
+    dejaría la tienda sin logo al día siguiente; un bucket público daría lectura a cualquier ruta, incluida
+    la de un borrador. Se guarda la ruta y firma cada lado bajo su propia policy: el backoffice con la
+    sesión del usuario, la vitrina con el cliente anónimo (`ebim_objects_select_public_asset`, solo tienda
+    activa). El CHECK `store_settings_logo_ref` valida la ruta contra las columnas de tenant de la PROPIA
+    fila —igual que `product_images_path_tenant` de P02—, así que apuntar al bucket de otro tenant no es
+    algo que haya que auditar después: no entra.
+59. **P07 — sin SVG en el branding.** Un SVG es un documento que puede llevar `<script>`, y aquí lo sube el
+    tenant y lo sirve el dominio de su vitrina. Se aceptan JPG/PNG/WebP/AVIF y la extensión sale del MIME,
+    no del nombre del archivo (criterio P04 #33). El cliente además descarta cualquier referencia que no
+    sea `https://` o ruta del bucket: un `javascript:` guardado en `logo_url` nunca llega a un `<img src>`.
+60. **P07 — el asset sube ANTES de guardar.** Al revés, un fallo al subir dejaría la fila apuntando a un
+    objeto que no existe, y eso se ve en la vitrina. En este orden lo peor que queda es un objeto huérfano
+    en el bucket si el usuario cancela, que no rompe ninguna pantalla (criterio P04 #36).
+
 ## Pendientes / riesgos abiertos
 - [ ] Confirmar con el operador el **project ref de Supabase** para eCommerce (aún no existe). Bloquea:
       aplicar las migraciones, `npm run db:types` y el despliegue de las 4 Edge Functions.
@@ -281,12 +342,67 @@ público. `supabase/seed.sql` deja una tienda demo navegable en local.
       recalcula totales, `order_number`, pedido + líneas transaccionales, estado `pending`), pantalla de
       confirmación, doble envío bloqueado y errores traducidos. VERIFIED (53 tests nuevos).
       **Fuera de alcance por encargo:** pasarela de pago (addon) y rate limiting — ver pendientes.
-- [ ] **P07 — Pedidos y configuración:** gestión de pedidos en backoffice, estados, notificaciones,
-      configuración por sociedad (branding, moneda, custom fields).
+- [x] **P07 — Pedidos y configuración:** `/app/orders` (listado, buscador general, tabs de estado, filtro
+      de fecha por rangos, Exportar CSV, detalle en drawer con líneas, entrega, importes e historial, cambio
+      de estado **solo** por `update-order-status`) y `/app/settings` (nombre comercial, descripción,
+      contacto, color primario, logo y banner en `store-assets`, reflejados en la vitrina). Migraciones 14
+      (bitácora `order_status_events` append-only por trigger SECURITY DEFINER) y 15 (CHECK de assets de
+      branding por tenant). VERIFIED (59 tests nuevos). **Fuera de alcance por encargo:** facturación,
+      shipping avanzado, pasarela de pago, suscripciones SaaS y dominios propios. **Notificaciones de
+      pedido por correo** (contrato §14) y **custom fields por sociedad** quedan en pendientes: el encargo
+      de esta fase no las pedía y §14 exige secretos M365 que carga el operador.
 - [ ] **P08 — Quality gate:** typecheck + build + lint verdes, Vitest/Playwright, auditoría RLS y de
       secretos (sin `service_role` en el bundle), revisión de accesibilidad AA.
 
-## Verificaciones de esta fase (P06)
+## Verificaciones de esta fase (P07)
+- `npm run typecheck` (`tsc --noEmit`) → verde.
+- `npm run lint` (ESLint 9 flat config) → verde, **0 problemas**.
+- `npm run test` (Vitest 3) → **486 tests / 33 archivos, todos verdes** (427 de P01–P06 + 59 nuevos).
+- `npm run build` (`vite build`) → verde. Se mantiene el aviso de chunk >500 kB del vendor MUI (P01).
+- Sin push, sin PR, **sin deploy remoto**: sigue sin existir project ref; las migraciones 14 y 15 no están
+  aplicadas en ningún proyecto real.
+- Ajuste de infraestructura de test: `testTimeout` de Vitest a 30 s y `asyncUtilTimeout` de Testing Library
+  a 5 s. Con la suite entera en paralelo, el flujo `login → alta → panel` recorre el router real con rutas
+  `React.lazy` y pasaba de los 5 s por defecto: fallaba por lento, no por roto. No se relajó ninguna
+  aserción ni se saltó ningún test.
+
+### Reparación de la corrida (supervisor, 2026-08-27)
+La corrida automatizada de P07 terminó con `Error: Reached max turns (100)`: el agente agotó su
+presupuesto de turnos **después** de dejar el trabajo escrito y **antes** del commit y del marcador de
+fin de fase. No hubo fallo de código. El supervisor volvió a pasar los cuatro gates sobre el árbol tal
+cual (typecheck, lint, 486 tests, build → verdes) y cerró la fase con el commit local
+`feat: add order management and store customization`. No se tocó código de producto ni de test.
+La carpeta `claude-overnight/` (arnés de la corrida y sus logs) se deja sin versionar.
+
+### Qué cubren los 59 tests nuevos
+- `supabase/tests/orders-admin.test.ts` (16, **Postgres real** con PGlite): el alta del pedido deja el
+  primer evento sin autor inventado; un cambio de estado del backoffice queda firmado con el `sub` y el
+  correo del JWT; una transición imposible no cambia el estado **ni** deja evento; tocar solo la nota no
+  inventa un cambio de estado; `authenticated` no puede insertar, editar ni borrar en la bitácora ni
+  invocar el trigger a mano; `anon` no la ve; el tenant A no ve la de B; un `viewer` lee pedidos pero su
+  UPDATE no mueve nada ni genera evento; y en branding, la base acepta la ruta del propio tenant y una URL
+  `https` externa, y **rechaza** la ruta de otro tenant y los esquemas `javascript:`/`http:`/`data:`.
+- `src/features/orders/orders.test.ts` (21): las tres copias de la máquina de estados dicen lo mismo (front
+  ↔ borde Deno ↔ SQL de la migración 04); el dinero del pedido nunca se queda como float; un
+  `shipping_address` con otra forma se lee vacío en vez de romper la pantalla; los rangos de fecha arrancan
+  a medianoche e incluyen hoy; el CSV lleva importes en texto plano y neutraliza una fórmula escondida en
+  el nombre del comprador; y el escáner de código que verifica que `features/orders/api.ts` no escribe por
+  PostgREST y que su cuerpo no lleva tenant ni importes.
+- `src/features/orders/OrdersPage.test.tsx` (9): listado con número, cliente, estado, fecha y total; el
+  buscador y los tabs filtran de verdad; el filtro de fecha deja fuera lo que cae fuera del rango; el panel
+  abre líneas, entrega e historial (incluido «Pedido recibido / Desde la vitrina»); el desplegable solo
+  ofrece las transiciones que la base permite; el cambio de estado invoca `update-order-status` con
+  `order_id`/`status`/`notes` y **sin** tenant ni importes; y un `viewer` ve el pedido con el botón
+  deshabilitado.
+- `src/features/admin/SettingsPage.test.tsx` (11): carga los datos reales; guarda el nombre en `stores` y
+  el resto en `store_settings`; un campo vacío se guarda como NULL y no como cadena vacía; correo y color
+  inválidos se detienen en el cliente; el logo sube a `store-assets` con la ruta
+  `{org}/{store}/branding/logo-…` y lo que se persiste es esa ruta; SVG y >2 MB se rechazan; y un `viewer`
+  no ve el formulario.
+- `src/features/storefront/storefront-ui.test.tsx` (2 nuevos): el logo que subió el tenant se firma y se
+  pinta en la vitrina; una referencia que no es `https` ni ruta del bucket se descarta y cae a iniciales.
+
+## Verificaciones de P06
 - `npm run typecheck` (`tsc --noEmit`) → verde.
 - `npm run lint` (ESLint 9 flat config) → verde, **0 problemas**.
 - `npm run test` (Vitest 3) → **427 tests / 29 archivos, todos verdes** (374 de P01–P05 + 53 nuevos).

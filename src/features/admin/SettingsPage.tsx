@@ -1,22 +1,46 @@
+import LaunchOutlinedIcon from '@mui/icons-material/LaunchOutlined'
 import {
   Alert,
   Box,
   Button,
   Card,
   CardContent,
+  Link as MuiLink,
   Stack,
+  TextField,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
 } from '@mui/material'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useMemo, type ReactNode } from 'react'
+import { Controller, useForm } from 'react-hook-form'
 import { useTenant } from '@/features/tenant/tenant-context'
-import type { ReactNode } from 'react'
 import { useI18n } from '@/shared/i18n/i18n-context'
+import type { MessageKey } from '@/shared/i18n/messages'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { SectionTabs } from '@/shared/ui/SectionTabs'
-import { EmptyState, UnauthorizedState } from '@/shared/ui/states'
+import { useFeedback } from '@/shared/ui/feedback-context'
+import { EmptyState, ErrorState, LoadingState, UnauthorizedState } from '@/shared/ui/states'
 import { useAppearance } from '@/theme/appearance-context'
 import { COLOR_MODES, DENSITIES, type ColorMode, type Density } from '@/theme/tokens'
+import { SettingsError } from './settings/api'
+import { StoreAssetField } from './settings/StoreAssetField'
+import { storeFormSchema, toForm, type StoreFormValues } from './settings/types'
+import {
+  useAssetUrls,
+  useSaveStoreSettings,
+  useStoreSettings,
+} from './settings/useStoreSettings'
+
+function errorKeyOf(error: unknown): MessageKey {
+  return error instanceof SettingsError ? error.key : 'settings.error.generic'
+}
+
+/** El mensaje de zod ES la clave de i18n: nunca se enseña texto en un solo idioma. */
+function fieldError(message: string | undefined, t: (key: MessageKey) => string): string | undefined {
+  return message ? t(message as MessageKey) : undefined
+}
 
 /**
  * Apariencia por usuario: SOLO modo y densidad.
@@ -87,14 +111,97 @@ function ManagedSection({ children }: { children: ReactNode }) {
   return <>{children}</>
 }
 
-/** Pantalla larga → tabs centrados con deep-link `#hash` y barra de Guardar persistente. */
+/**
+ * Personalización de la tienda.
+ *
+ * Un solo formulario para las dos pestañas de contenido (General y Marca) y una
+ * sola barra de Guardar persistente: la regla de suite es tabs centrados +
+ * barra sticky, no un botón por pestaña que deje cambios sin guardar al cambiar
+ * de sección.
+ *
+ * Todo lo que se edita aquí lo lee la vitrina de `public_stores`, así que el
+ * cambio se ve en `/s/:slug` en cuanto react-query revalida.
+ */
 export function SettingsPage() {
   const { t } = useI18n()
-  const { can } = useTenant()
+  const { notify } = useFeedback()
+  const { activeStore, activeCompanyId, tenant, status: tenantStatus, can } = useTenant()
+  const canManage = can('store.manage')
+
+  const storeId = activeStore?.id ?? null
+  const settings = useStoreSettings(canManage ? storeId : null)
+  const save = useSaveStoreSettings()
+
+  // `values` reconstruye el formulario cuando llega la fila de la base. Se
+  // memoriza para no rearmar el objeto en cada tecla.
+  const values = useMemo(
+    () => toForm(activeStore?.name ?? '', settings.data ?? null),
+    [activeStore?.name, settings.data],
+  )
+
+  const form = useForm<StoreFormValues>({ resolver: zodResolver(storeFormSchema), values })
+
+  const logo = form.watch('logo_url')
+  const banner = form.watch('banner_url')
+  const assetUrls = useAssetUrls([logo, banner])
+
+  async function onSubmit(values: StoreFormValues) {
+    if (!storeId || !activeCompanyId || !tenant) return
+    try {
+      await save.mutateAsync({
+        storeId,
+        organizationId: tenant.organization_id,
+        companyId: activeCompanyId,
+        currentName: activeStore?.name ?? '',
+        values,
+      })
+      notify(t('settings.toast.saved'))
+      form.reset(values)
+    } catch (error) {
+      notify(t(errorKeyOf(error)), 'error')
+    }
+  }
+
+  const busy = save.isPending || form.formState.isSubmitting
+  const storeUrl = activeStore ? `/s/${activeStore.slug}` : null
+
+  /**
+   * Estado previo al formulario, calculado UNA vez.
+   *
+   * A propósito no es un componente envolvente: un componente definido dentro
+   * del render se recrea en cada tecla y React remonta su árbol — el campo
+   * perdería el foco a la primera letra.
+   */
+  const gate: ReactNode | null =
+    tenantStatus === 'loading' ? (
+      <LoadingState />
+    ) : !storeId ? (
+      <EmptyState title={t('admin.store.none')} description={t('admin.store.noneBody')} />
+    ) : settings.isError ? (
+      <ErrorState error={settings.error} onRetry={() => void settings.refetch()} />
+    ) : settings.isPending ? (
+      <LoadingState />
+    ) : null
 
   return (
-    <>
-      <PageHeader title={t('admin.settings.title')} />
+    <Box component="form" onSubmit={form.handleSubmit(onSubmit)} noValidate>
+      <PageHeader
+        title={t('admin.settings.title')}
+        actions={
+          storeUrl && (
+            <Button
+              component={MuiLink}
+              href={storeUrl}
+              target="_blank"
+              rel="noreferrer"
+              variant="outlined"
+              endIcon={<LaunchOutlinedIcon fontSize="small" />}
+            >
+              {t('settings.viewStore')}
+            </Button>
+          )
+        }
+      />
       <SectionTabs
         ariaLabel={t('admin.settings.title')}
         items={[
@@ -103,9 +210,67 @@ export function SettingsPage() {
             label: t('admin.settings.tab.general'),
             content: (
               <Card>
-                <ManagedSection>
-                  <EmptyState />
-                </ManagedSection>
+                <CardContent>
+                  <ManagedSection>
+                    {gate ?? (
+                      <Stack spacing={2.5}>
+                        <TextField
+                          label={t('settings.name')}
+                          helperText={
+                            fieldError(form.formState.errors.name?.message, t) ??
+                            t('settings.nameHelp')
+                          }
+                          error={Boolean(form.formState.errors.name)}
+                          disabled={busy}
+                          inputProps={{ maxLength: 200 }}
+                          {...form.register('name')}
+                        />
+                        <TextField
+                          label={t('settings.description')}
+                          helperText={
+                            fieldError(form.formState.errors.hero_subtitle?.message, t) ??
+                            t('settings.descriptionHelp')
+                          }
+                          error={Boolean(form.formState.errors.hero_subtitle)}
+                          disabled={busy}
+                          multiline
+                          minRows={2}
+                          inputProps={{ maxLength: 240 }}
+                          {...form.register('hero_subtitle')}
+                        />
+
+                        <Typography sx={{ fontWeight: 800, fontSize: 14, pt: 1 }}>
+                          {t('settings.contact')}
+                        </Typography>
+                        <TextField
+                          label={t('settings.contactEmail')}
+                          type="email"
+                          helperText={fieldError(form.formState.errors.support_email?.message, t)}
+                          error={Boolean(form.formState.errors.support_email)}
+                          disabled={busy}
+                          inputProps={{ maxLength: 320 }}
+                          {...form.register('support_email')}
+                        />
+                        <TextField
+                          label={t('settings.contactPhone')}
+                          helperText={fieldError(form.formState.errors.contact_phone?.message, t)}
+                          error={Boolean(form.formState.errors.contact_phone)}
+                          disabled={busy}
+                          inputProps={{ maxLength: 40 }}
+                          {...form.register('contact_phone')}
+                        />
+                        <TextField
+                          label={t('settings.contactAddress')}
+                          helperText={fieldError(form.formState.errors.contact_address?.message, t)}
+                          error={Boolean(form.formState.errors.contact_address)}
+                          disabled={busy}
+                          inputProps={{ maxLength: 240 }}
+                          {...form.register('contact_address')}
+                        />
+                      </Stack>
+                    )}
+                  </ManagedSection>
+                </CardContent>
               </Card>
             ),
           },
@@ -114,9 +279,94 @@ export function SettingsPage() {
             label: t('admin.settings.tab.branding'),
             content: (
               <Card>
-                <ManagedSection>
-                  <EmptyState />
-                </ManagedSection>
+                <CardContent>
+                  <ManagedSection>
+                    {gate ?? (
+                      <Stack spacing={3}>
+                        <Controller
+                          control={form.control}
+                          name="accent_color"
+                          render={({ field, fieldState }) => (
+                            <Stack spacing={1}>
+                              <Typography sx={{ fontWeight: 700, fontSize: 14 }}>
+                                {t('settings.accent')}
+                              </Typography>
+                              <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+                                <Box
+                                  component="input"
+                                  type="color"
+                                  aria-label={t('settings.accent')}
+                                  value={field.value}
+                                  disabled={busy}
+                                  onChange={(event) => field.onChange(event.target.value)}
+                                  sx={{
+                                    width: 52,
+                                    height: 40,
+                                    p: 0,
+                                    border: '1px solid var(--border)',
+                                    borderRadius: '8px',
+                                    background: 'none',
+                                    cursor: 'pointer',
+                                  }}
+                                />
+                                <TextField
+                                  size="small"
+                                  value={field.value}
+                                  onChange={(event) => field.onChange(event.target.value)}
+                                  disabled={busy}
+                                  error={Boolean(fieldState.error)}
+                                  helperText={
+                                    fieldError(fieldState.error?.message, t) ?? t('settings.accentHelp')
+                                  }
+                                  inputProps={{ maxLength: 7, 'aria-label': t('settings.accentHex') }}
+                                  sx={{ maxWidth: 220 }}
+                                />
+                              </Stack>
+                            </Stack>
+                          )}
+                        />
+
+                        <Controller
+                          control={form.control}
+                          name="logo_url"
+                          render={({ field }) => (
+                            <StoreAssetField
+                              kind="logo"
+                              ratio="1 / 1"
+                              label={t('settings.logo')}
+                              help={t('settings.logoHelp')}
+                              value={field.value}
+                              previewUrl={field.value ? (assetUrls[field.value] ?? null) : null}
+                              disabled={busy}
+                              organizationId={tenant?.organization_id ?? ''}
+                              storeId={storeId ?? ''}
+                              onChange={field.onChange}
+                            />
+                          )}
+                        />
+
+                        <Controller
+                          control={form.control}
+                          name="banner_url"
+                          render={({ field }) => (
+                            <StoreAssetField
+                              kind="banner"
+                              ratio="16 / 6"
+                              label={t('settings.banner')}
+                              help={t('settings.bannerHelp')}
+                              value={field.value}
+                              previewUrl={field.value ? (assetUrls[field.value] ?? null) : null}
+                              disabled={busy}
+                              organizationId={tenant?.organization_id ?? ''}
+                              storeId={storeId ?? ''}
+                              onChange={field.onChange}
+                            />
+                          )}
+                        />
+                      </Stack>
+                    )}
+                  </ManagedSection>
+                </CardContent>
               </Card>
             ),
           },
@@ -129,20 +379,35 @@ export function SettingsPage() {
       />
       <Box
         sx={{
-          display: can('store.manage') ? 'flex' : 'none',
+          display: canManage ? 'flex' : 'none',
           position: 'sticky',
           bottom: 0,
           mt: 3,
           py: 2,
+          alignItems: 'center',
           justifyContent: 'flex-end',
           gap: 1,
           bgcolor: 'var(--bg)',
           borderTop: '1px solid var(--border)',
         }}
       >
-        <Button variant="text">{t('common.cancel')}</Button>
-        <Button variant="contained">{t('common.save')}</Button>
+        {form.formState.isDirty && (
+          <Typography sx={{ color: 'var(--muted)', fontSize: 13, mr: 'auto' }}>
+            {t('settings.unsaved')}
+          </Typography>
+        )}
+        <Button
+          variant="text"
+          type="button"
+          disabled={busy || !form.formState.isDirty}
+          onClick={() => form.reset()}
+        >
+          {t('common.cancel')}
+        </Button>
+        <Button variant="contained" type="submit" disabled={busy || !storeId}>
+          {t('common.save')}
+        </Button>
       </Box>
-    </>
+    </Box>
   )
 }

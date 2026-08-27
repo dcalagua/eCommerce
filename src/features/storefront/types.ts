@@ -16,13 +16,31 @@ export const PUBLIC_CATEGORIES_VIEW = 'public_categories'
 export const PUBLIC_PRODUCTS_VIEW = 'public_products'
 export const PUBLIC_PRODUCT_IMAGES_VIEW = 'public_product_images'
 
-/** Bucket privado; la vitrina lee por URL firmada, no por URL pública. */
+/** Buckets privados; la vitrina lee por URL firmada, no por URL pública. */
 export const PRODUCT_IMAGES_BUCKET = 'product-images'
+export const STORE_ASSETS_BUCKET = 'store-assets'
 
 /** Hex #RRGGBB o nada. Un valor raro se descarta y se cae al acento de suite. */
 const hexColor = z
   .string()
   .regex(/^#[0-9a-fA-F]{6}$/)
+  .nullable()
+  .catch(null)
+
+/**
+ * Referencia de branding: una URL `https://` externa (el "logo-auto" del
+ * contrato §4.3) o una ruta del bucket privado `store-assets`
+ * (`{organization_id}/{store_id}/branding/...`).
+ *
+ * Cualquier otra cosa se descarta y la vitrina cae al fallback neutral. El
+ * filtro NO es cosmético: sin él, un `javascript:` o un `http://` guardado en
+ * `logo_url` acabaría en el `src` de un `<img>` del dominio de la tienda.
+ */
+const ASSET_PATH_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/i
+
+const assetRef = z
+  .string()
+  .refine((value) => /^https:\/\//i.test(value) || ASSET_PATH_RE.test(value))
   .nullable()
   .catch(null)
 
@@ -37,11 +55,11 @@ export const publicStoreSchema = z.object({
   name: z.string().min(1),
   currency: z.string().length(3),
   accent_color: hexColor,
-  logo_url: z.string().url().nullable().catch(null),
+  logo_url: assetRef,
   white_label: z.boolean().nullable().default(false),
   default_locale: z.string().nullable().default(null),
   support_email: z.string().nullable().default(null),
-  banner_url: z.string().url().nullable().catch(null),
+  banner_url: assetRef,
   hero_title: z.string().nullable().default(null),
   hero_subtitle: z.string().nullable().default(null),
   contact_phone: z.string().nullable().default(null),

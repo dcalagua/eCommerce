@@ -20,3 +20,13 @@ export function formatDate(value: string | Date, locale: Locale = 'es'): string 
   if (Number.isNaN(date.getTime())) return '—'
   return new Intl.DateTimeFormat(LOCALE_TAG[locale], { dateStyle: 'medium' }).format(date)
 }
+
+/** Fecha + hora para la bitácora: un cambio de estado se identifica por minuto. */
+export function formatDateTime(value: string | Date, locale: Locale = 'es'): string {
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return new Intl.DateTimeFormat(LOCALE_TAG[locale], {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date)
+}

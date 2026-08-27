@@ -145,6 +145,15 @@ class FakeQuery implements PromiseLike<QueryResult> {
   }
 
   /**
+   * `gte` sobre texto ISO: es como filtra el listado de pedidos por fecha, y
+   * comparar dos ISO como cadenas ordena igual que compararlos como instantes.
+   */
+  gte(column: string, value: string): this {
+    this.rows = this.rows.filter((row) => String(row[column] ?? '') >= value)
+    return this
+  }
+
+  /**
    * `or=` de PostgREST, en la forma que usa la app: `col.ilike.%texto%`
    * separado por comas. Se implementa de verdad (y no como un no-op) porque el
    * buscador de la vitrina es una de las cosas que estos tests comprueban; un

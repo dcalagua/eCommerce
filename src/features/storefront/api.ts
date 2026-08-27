@@ -3,6 +3,7 @@ import { sanitizeSearchTerm } from '@/shared/lib/search'
 import { tryGetStorefrontClient } from '@/shared/lib/supabase'
 import {
   PRODUCT_IMAGES_BUCKET,
+  STORE_ASSETS_BUCKET,
   PUBLIC_CATEGORIES_VIEW,
   PUBLIC_PRODUCTS_VIEW,
   PUBLIC_PRODUCT_IMAGES_VIEW,
@@ -93,6 +94,48 @@ const PRODUCT_SELECT = [
 
 const IMAGE_SELECT = 'image_id, product_id, storage_path, alt, position, is_primary'
 
+/** Una referencia de branding externa se pinta tal cual; una ruta hay que firmarla. */
+function isExternalAsset(value: string): boolean {
+  return /^https:\/\//i.test(value)
+}
+
+/**
+ * Resuelve `logo_url` y `banner_url` a algo que un `<img>` pueda pintar.
+ *
+ * Desde P07 el tenant sube su logo y su banner al bucket PRIVADO
+ * `store-assets` y lo que se guarda es la RUTA, no una URL: una URL firmada
+ * caduca en una hora y dejaría la vitrina sin marca al día siguiente. Aquí se
+ * firma con el cliente ANÓNIMO, así que quien autoriza es
+ * `ebim_objects_select_public_asset` — solo objetos de tienda ACTIVA.
+ *
+ * El contrato §4.3 también permite un `logo_url` externo (el "logo-auto" de
+ * Clearbit al provisionar): ese no se firma, se devuelve tal cual.
+ */
+async function resolveStoreAssets(store: PublicStore): Promise<PublicStore> {
+  const paths = [store.logo_url, store.banner_url].filter(
+    (value): value is string => Boolean(value) && !isExternalAsset(value as string),
+  )
+  if (paths.length === 0) return store
+
+  const { data, error } = await storefront()
+    .storage.from(STORE_ASSETS_BUCKET)
+    .createSignedUrls([...new Set(paths)], 3600)
+
+  // Una firma que falle no puede dejar la tienda sin vitrina: se cae al
+  // fallback neutral (iniciales del tenant y degradado de tokens).
+  const signed: Record<string, string> = {}
+  if (!error) {
+    for (const item of data ?? []) {
+      if (item.path && item.signedUrl) signed[item.path] = item.signedUrl
+    }
+  }
+
+  const resolve = (value: string | null) =>
+    value === null ? null : isExternalAsset(value) ? value : (signed[value] ?? null)
+
+  return { ...store, logo_url: resolve(store.logo_url), banner_url: resolve(store.banner_url) }
+}
+
 export async function fetchPublicStore(slug: string): Promise<PublicStore> {
   const { data, error } = await storefront()
     .from(PUBLIC_STORES_VIEW)
@@ -102,7 +145,7 @@ export async function fetchPublicStore(slug: string): Promise<PublicStore> {
 
   if (error) throw new Error(error.message)
   if (!data) throw new StorefrontNotFoundError(slug)
-  return publicStoreSchema.parse(data)
+  return resolveStoreAssets(publicStoreSchema.parse(data))
 }
 
 /** Solo categorías activas: la vista `public_categories` ya filtra `is_active`. */

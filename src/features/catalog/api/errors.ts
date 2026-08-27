@@ -1,4 +1,5 @@
 import type { MessageKey } from '@/shared/i18n/messages'
+import { codeFromDbError, type PostgrestLike } from '@/shared/lib/appError'
 import { codeFromInvokeError } from '@/shared/lib/edgeError'
 
 /**
@@ -57,16 +58,11 @@ export async function catalogErrorFromInvoke(error: unknown): Promise<CatalogErr
   return new CatalogError(mapCatalogCode(code), code)
 }
 
-type PostgrestLike = { message?: string; code?: string } | null | undefined
-
 /**
- * Error de PostgREST o de una función de la base. Las funciones de negocio
- * levantan `CODIGO: mensaje` (mismo convenio que P02), así que primero se
- * intenta leer ese código y solo después el `SQLSTATE`.
+ * Error de PostgREST o de una función de la base. La lectura del código vive en
+ * `shared/lib/appError`: la comparten catálogo y pedidos.
  */
 export function catalogErrorFromDb(error: PostgrestLike): CatalogError {
-  const raw = (error?.message ?? '').trim()
-  const business = /(?:^|[:\s])([A-Z][A-Z0-9_]{3,60}):\s/.exec(raw)?.[1]
-  const code = business ?? error?.code ?? 'ERROR_INTERNO'
+  const code = codeFromDbError(error)
   return new CatalogError(mapCatalogCode(code), code)
 }

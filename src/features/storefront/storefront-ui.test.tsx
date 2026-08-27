@@ -38,6 +38,7 @@ const CAT_MESAS = 'bbbb2222-1111-4111-8111-111111111111'
 const P_SILLA = 'cccc1111-1111-4111-8111-111111111111'
 const P_LINO = 'cccc2222-1111-4111-8111-111111111111'
 const P_MESA = 'cccc3333-1111-4111-8111-111111111111'
+const ORG_ID = 'dddd1111-1111-4111-8111-111111111111'
 
 function store(overrides: Record<string, unknown> = {}) {
   return {
@@ -186,6 +187,32 @@ describe('resolución del tenant por slug', () => {
 
   it('sin logo cae a iniciales neutras: no planta el isotipo EBIM como marca del tenant', async () => {
     renderStorefront(backend(), '/s/casa-nordica')
+
+    const header = await screen.findByRole('banner')
+    expect(within(header).getByText('CN')).toBeInTheDocument()
+    expect(within(header).queryByRole('img')).not.toBeInTheDocument()
+  })
+
+  /**
+   * P07: lo que el tenant sube desde `/app/settings` se guarda como RUTA del
+   * bucket privado `store-assets`. La vitrina la firma con el cliente ANÓNIMO
+   * antes de pintarla — una URL guardada caducaría en una hora.
+   */
+  it('el logo que subio el tenant se firma y se pinta', async () => {
+    const path = `${ORG_ID}/${STORE}/branding/logo-abc.png`
+    const fake = backend({ public_stores: [store({ logo_url: path })] })
+    renderStorefront(fake, '/s/casa-nordica')
+
+    const header = await screen.findByRole('banner')
+    expect(within(header).getByRole('img', { name: 'Casa Nórdica' })).toHaveAttribute(
+      'src',
+      `https://firmado.test/${path}`,
+    )
+  })
+
+  it('una referencia de marca que no es https ni ruta del bucket se descarta', async () => {
+    const fake = backend({ public_stores: [store({ logo_url: 'javascript:alert(1)' })] })
+    renderStorefront(fake, '/s/casa-nordica')
 
     const header = await screen.findByRole('banner')
     expect(within(header).getByText('CN')).toBeInTheDocument()
