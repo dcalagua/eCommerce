@@ -48,7 +48,18 @@ Si alguien mete ahí una tabla de negocio para saltarse el RLS, falla.
 **Dependencia reparada:** faltaba `@testing-library/dom` (peer de `@testing-library/react@16`). Con ella
 ausente, `typecheck` daba 29 errores y **los 34 archivos de test no arrancaban**, incluidos los de BD.
 
-Nada desplegado, sin push ni PR. Sigue sin project ref. Siguiente: M1 — canales (`channels`,
+**Cierre de P09 (segunda tanda).** El project ref existe y esta enlazado: `ehxlxbhtlmfgneiagdcj`.
+Migraciones 16-19 aplicadas en DEV/QAS con su historial registrado, `db push` responde *up to date*,
+`config.toml` lleva el ref real y `database.types.ts` existe por primera vez (37 kB, generado).
+PostgREST verificado: expone solo `public` y `ebim` es inalcanzable por REST (404).
+
+**Deriva resuelta:** la BD tenia dos migraciones que el repo no tenia —`dev_demo_auth_hook` y su
+correccion `_strict`, el Custom Access Token Hook de DEV/QAS— aplicadas hoy a las 12:00 y 12:10 por otra
+sesion. Recuperadas de `supabase_migrations.schema_migrations` al repo. Obligan a crear el rol
+`supabase_auth_admin` en el prelude del harness: sin el, las migraciones no aplican en PGlite y el banco
+entero deja de arrancar. Con el rol, 249 tests de BD en verde.
+
+Sin push ni PR. Siguiente: M1 — canales (`channels`,
 `channel_id` en `orders`, `product_channels`) sobre catálogo único.
 
 ## Fase anterior
@@ -314,8 +325,8 @@ inicial `pending` (estándar EBIM, migración 04). Nada desplegado: sigue sin pr
     en el bucket si el usuario cancela, que no rompe ninguna pantalla (criterio P04 #36).
 
 ## Pendientes / riesgos abiertos
-- [ ] Confirmar con el operador el **project ref de Supabase** para eCommerce (aún no existe). Bloquea:
-      aplicar las migraciones, `npm run db:types` y el despliegue de las 4 Edge Functions.
+- [x] ~~Confirmar el **project ref de Supabase**~~ → **cerrado en P09**: `ehxlxbhtlmfgneiagdcj`, enlazado,
+      migraciones 16-19 aplicadas, `db:types` generado y `db push` al dia.
 - [ ] **(P08) Inmutabilidad de migraciones sin candado automático.** El commit `23e7d7b` (P04) modificó
       dos migraciones ya commiteadas (`090300_catalog`, `090400_orders`) para arreglar tres FK compuestas.
       Sin daño —nada aplicado, la carpeta arranca limpia y hay test de reproducibilidad—, pero desde el
@@ -327,8 +338,8 @@ inicial `pending` (estándar EBIM, migración 04). Nada desplegado: sigue sin pr
 - [ ] **(P08) Chunk de entrada de 738 kB (219 kB gzip).** `vite build` avisa. Para una app mobile-first
       conviene partir vendors con `manualChunks` (react, MUI, supabase). Es configuración de build, no
       producto, y quedó fuera del alcance del gate.
-- [ ] Exponer **solo** el esquema `public` por PostgREST al crear el proyecto (`supabase/config.toml`):
-      las funciones de `ebim` son de policy, no de API.
+- [x] ~~Exponer **solo** el esquema `public` por PostgREST~~ → **verificado en P09** contra el proyecto:
+      `db_schema = public`, y `ebim.effective_tax_rate` por REST devuelve 404. Las funciones de
 - [ ] Definir los secretos de las Edge Functions (`EBIM_PROVISIONING_KEY` ≥32 chars, `EBIM_ADMIN_ORIGINS`,
       `SUPABASE_SERVICE_ROLE_KEY`). La clave de aprovisionamiento se entrega por un canal que **no** sea el
       buzón de Drive ni el propio Drive (contrato §2.6: ambos los lee cualquiera con acceso a la carpeta).

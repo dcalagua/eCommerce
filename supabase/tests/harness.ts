@@ -32,6 +32,10 @@ const SUPABASE_PRELUDE = `
   create role anon          nologin noinherit;
   create role authenticated nologin noinherit;
   create role service_role  nologin noinherit bypassrls;
+  -- Rol del servicio de Auth de Supabase. Lo necesita el Custom Access Token
+  -- Hook de DEV/QAS (migracion 20260827120000), que le concede EXECUTE: sin el
+  -- rol, la migracion no aplica y el banco de pruebas no arranca.
+  create role supabase_auth_admin nologin noinherit;
 
   create schema auth;
   create or replace function auth.jwt() returns jsonb

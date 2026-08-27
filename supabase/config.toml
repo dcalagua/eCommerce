@@ -1,6 +1,6 @@
 # Configuracion local de Supabase para eCommerce by EBIM.
-# El project_id real se completa cuando el operador confirme el ref (pendiente P02).
-project_id = "ebim-ecommerce"
+# Proyecto DEV/QAS de eCommerce. Confirmado y enlazado (P09).
+project_id = "ehxlxbhtlmfgneiagdcj"
 
 [api]
 enabled = true
