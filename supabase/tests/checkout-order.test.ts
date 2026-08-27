@@ -294,6 +294,24 @@ describe('el importe lo calcula la base', () => {
     expect(result.tax_total).toBe('5.00')
   })
 
+  it('la categoria marcada por defecto se aplica sin configurar la tienda', async () => {
+    // Nadie toca `store_settings.tax_category_id`: solo se marca is_default.
+    const porDefecto = await taxCategory('iva-pais', '0.1300')
+    await svc(`update public.tax_categories set is_default = true where id = $1`, [porDefecto])
+
+    const jarra = await addProduct(TENANT_A, storeA, {
+      sku: 'JARRA-1L', slug: 'jarra-1l', price: '100.00', stock: 6,
+    })
+
+    const result = await checkout(STORE_A_SLUG, [{ product_id: jarra, quantity: 1 }])
+
+    // 13 % de la categoria por defecto, no el 18 % del `tax_rate` legado.
+    expect(result.tax_total).toBe('13.00')
+    expect(result.grand_total).toBe('113.00')
+
+    await svc(`update public.tax_categories set is_default = false where id = $1`, [porDefecto])
+  })
+
   it('el cliente no puede colar una tasa ni una categoria fiscal en el payload', async () => {
     for (const field of ['tax_rate', 'tax_total', 'tax_category_id']) {
       const message = await expectFailure(() =>

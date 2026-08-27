@@ -69,7 +69,7 @@ export function TaxesSection({ organizationId, companyId, canManage }: Props) {
   const [form, setForm] = useState({ name: '', code: '', rate: '', isDefault: false })
 
   if (categories.isLoading) return <LoadingState />
-  if (categories.isError) return <ErrorState description={t('taxes.error')} />
+  if (categories.isError) return <ErrorState description={t('taxes.loadError')} />
 
   const rows = categories.data ?? []
 
