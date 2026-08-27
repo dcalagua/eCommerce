@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+coverage/
+.env
+.env.*
+!.env.example
+*.local
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+supabase/.temp/
+supabase/.branches/
