@@ -433,6 +433,71 @@ describe('storefront publico (anon)', () => {
     expect(message).toMatch(/permission denied/i)
   })
 
+  /**
+   * El test de arriba cubre un INSERT en `products`. El comprador anónimo
+   * tampoco puede EDITAR ni BORRAR nada del catálogo publicado, ni tocar las
+   * otras tablas que lo componen: sin GRANT no hay policy que valga, así que
+   * las doce puertas se comprueban una por una en vez de darlas por buenas.
+   */
+  it('tampoco edita ni borra el catalogo publicado', async () => {
+    const writes: Array<[string, string, unknown[]]> = [
+      ['products/update precio', `update public.products set price = '0.01' where id = $1`, [publishedA]],
+      ['products/update stock', `update public.products set stock = 9999 where id = $1`, [publishedA]],
+      ['products/publish', `update public.products set status = 'published' where id = $1`, [draftA]],
+      ['products/delete', `delete from public.products where id = $1`, [publishedA]],
+      [
+        'categories/insert',
+        `insert into public.categories (organization_id, company_id, store_id, slug, name)
+         values ($1, $2, $3, 'anon-cat', 'Categoria intrusa')`,
+        [TENANT_A.organizationId, TENANT_A.companyId, storeA],
+      ],
+      ['categories/update', `update public.categories set name = 'Secuestrada'`, []],
+      ['categories/delete', `delete from public.categories`, []],
+      ['stores/update', `update public.stores set slug = 'secuestrada' where id = $1`, [storeA]],
+      ['stores/delete', `delete from public.stores where id = $1`, [storeA]],
+      ['store_settings/update', `update public.store_settings set tax_rate = 0`, []],
+      [
+        'product_images/insert',
+        `insert into public.product_images
+           (organization_id, company_id, store_id, product_id, storage_path)
+         values ($1, $2, $3, $4, $5)`,
+        [
+          TENANT_A.organizationId,
+          TENANT_A.companyId,
+          storeA,
+          publishedA,
+          `${TENANT_A.organizationId}/${storeA}/intrusa.webp`,
+        ],
+      ],
+      ['product_images/delete', `delete from public.product_images`, []],
+    ]
+
+    for (const [label, query, params] of writes) {
+      const message = await asRole(db, 'anon', null, () =>
+        expectFailure(() => sql(query, params)),
+      )
+      expect(message, label).toMatch(/permission denied/i)
+    }
+
+    // Y el catálogo sigue exactamente como estaba.
+    const rows = await asRole(db, 'service_role', null, () =>
+      sql(`select id, price::text as price, stock, status from public.products where id = $1`, [
+        publishedA,
+      ]),
+    )
+    expect(rows[0]).toMatchObject({ price: '199.90', status: 'published' })
+  })
+
+  /** Las vistas públicas son de LECTURA: escribir a través de ellas tampoco. */
+  it('no escribe a traves de las vistas publicas', async () => {
+    for (const view of ['public_products', 'public_stores']) {
+      const message = await asRole(db, 'anon', null, () =>
+        expectFailure(() => sql(`delete from public.${view}`)),
+      )
+      expect(message, view).toMatch(/permission denied|cannot delete|not updatable|no se puede/i)
+    }
+  })
+
   it('la vista publica de tiendas no filtra el tenant', async () => {
     const rows = await asRole(db, 'anon', null, () =>
       sql(`select * from public.public_stores limit 1`),

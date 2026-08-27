@@ -255,4 +255,46 @@ describe('migraciones', () => {
       expect(readMigration(file)).not.toMatch(/sb_secret_|service_role_key|eyJhbGciOi/)
     }
   })
+
+  /**
+   * Reproducibilidad: aplicar la carpeta entera sobre una base virgen tiene que
+   * dar SIEMPRE el mismo esquema. Se compara la huella (tablas, columnas, tipos,
+   * nulabilidad, RLS, policies, funciones) de dos bases levantadas por separado.
+   * Una migración que dependa del reloj, de un `random()` o del orden de lectura
+   * del directorio se separa aquí y no en el primer `db push` del operador.
+   */
+  it('la carpeta de migraciones es reproducible: dos bases virgenes dan el mismo esquema', async () => {
+    const otra = await createTestDatabase()
+    try {
+      expect(await schemaFingerprint(otra)).toEqual(await schemaFingerprint(db))
+    } finally {
+      await otra.close()
+    }
+  }, 120_000)
 })
+
+/** Huella del esquema `public` + funciones `ebim`, estable y ordenada. */
+async function schemaFingerprint(target: PGlite): Promise<Row[]> {
+  const query = `
+    select 'column' as kind,
+           c.table_name || '.' || c.column_name as name,
+           c.data_type || '|' || c.is_nullable || '|' || coalesce(c.column_default, '-') as detail
+      from information_schema.columns c
+      join information_schema.tables t
+        on t.table_schema = c.table_schema and t.table_name = c.table_name
+     where c.table_schema = 'public' and t.table_type = 'BASE TABLE'
+    union all
+    select 'rls', c.relname, c.relrowsecurity || '|' || c.relforcerowsecurity
+      from pg_class c join pg_namespace n on n.oid = c.relnamespace
+     where n.nspname = 'public' and c.relkind = 'r'
+    union all
+    select 'policy', p.tablename || '.' || p.policyname, p.cmd || '|' || coalesce(p.roles::text, '-')
+      from pg_policies p where p.schemaname = 'public'
+    union all
+    select 'function', n.nspname || '.' || p.proname, p.prosecdef::text
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname in ('public', 'ebim')
+     order by 1, 2, 3
+  `
+  return (await target.query<Row>(query)).rows
+}

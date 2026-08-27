@@ -2,9 +2,32 @@
 
 GUIDELINES_STATUS: VERIFIED
 Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md` (11 documentos leídos en la raíz de Drive `EBIM-Plataforma`).
-Última actualización: 2026-08-27 (P07)
+Última actualización: 2026-08-27 (P08)
 
 ## Fase actual
+**P08 — Quality gate (COMPLETA). Resultado: PASS.** Informe corto en `docs/OVERNIGHT_REPORT.md`.
+Los cinco gates verdes sobre un `node_modules` reinstalado desde cero: `npm ci` (exit 0), `npm run lint`
+(0 problemas), `npm run typecheck` (`tsc --noEmit`, sin OOM), `npm run test` (**493 tests / 34 archivos**)
+y `npm run build`. No se tocó una línea de producto: los 7 tests nuevos son de gate y los tres archivos
+modificados son de test.
+
+Lo que el gate **corrigió**, no solo comprobó: el aislamiento del comprador anónimo frente al catálogo
+tenía **una** aserción (no puede insertar en `products`) y ahora tiene doce escrituras probadas una por
+una —precio, stock, publicar un borrador ajeno, borrar, y lo mismo en `categories`, `stores`,
+`store_settings` y `product_images`— más la comprobación de que el catálogo queda intacto tras los doce
+intentos y de que tampoco se escribe a través de las vistas públicas. La reproducibilidad de las
+migraciones pasa de implícita a probada: un test compara la huella completa del esquema (columnas,
+tipos, nulabilidad, defaults, RLS, policies, `security definer`) entre dos bases vírgenes. Y el
+diccionario ES/EN gana paridad probada: `translate` cae al español cuando falta una clave en inglés, así
+que una traducción olvidada no rompía nada y llegaba a pantalla sin ruido.
+
+**Hallazgo abierto:** el commit `23e7d7b` (P04) modificó dos migraciones ya commiteadas. No hay daño —no
+existe project ref, así que ninguna migración se ha aplicado nunca y la carpeta actual arranca limpia—,
+pero la inmutabilidad se vuelve vinculante desde el primer `supabase db push`. Anotado en riesgos.
+Nada desplegado, sin push ni PR. Siguiente: P09, que depende del **project ref** (aplicar migraciones,
+`db:types`, desplegar las 4 Edge Functions) — hasta entonces todo lo demás está bloqueado o es backlog.
+
+## Fase anterior
 **P07 — Pedidos y configuración de la tienda (COMPLETA para el alcance encargado).** El backoffice ya
 gestiona lo que la vitrina genera. `/app/orders`: listado con buscador general (número, cliente o correo),
 tabs de estado, filtro de fecha por rangos cerrados y Exportar CSV de lo que se está viendo; el detalle se
@@ -29,7 +52,7 @@ solo admiten `https://` externo (el logo-auto del contrato §4.3) o una ruta del
 vitrina firma esa ruta con el cliente anónimo y refleja los cambios sin tocar una línea de la vitrina.
 Nada desplegado: sigue sin project ref. Siguiente: P08 (quality gate).
 
-## Fase anterior
+## Dos fases atrás
 **P06 — Carrito y checkout (COMPLETA para el alcance encargado).** Flujo entero del comprador anónimo:
 producto → carrito → checkout → pedido. El carrito vive en `localStorage` **por tienda**
 (`ebim.ecommerce.cart.v1:<store_id>`), suma/resta/quita, calcula el subtotal en céntimos y **no puede
@@ -246,6 +269,17 @@ inicial `pending` (estándar EBIM, migración 04). Nada desplegado: sigue sin pr
 ## Pendientes / riesgos abiertos
 - [ ] Confirmar con el operador el **project ref de Supabase** para eCommerce (aún no existe). Bloquea:
       aplicar las migraciones, `npm run db:types` y el despliegue de las 4 Edge Functions.
+- [ ] **(P08) Inmutabilidad de migraciones sin candado automático.** El commit `23e7d7b` (P04) modificó
+      dos migraciones ya commiteadas (`090300_catalog`, `090400_orders`) para arreglar tres FK compuestas.
+      Sin daño —nada aplicado, la carpeta arranca limpia y hay test de reproducibilidad—, pero desde el
+      primer `supabase db push` los archivos quedan congelados y todo cambio va en migración nueva. Un
+      guard por checksum tiene sentido a partir de ese momento; antes solo daría ruido.
+- [ ] **(P08) Las Edge Functions no se typechequean.** `tsconfig.json` incluye `_shared` (TS plano), pero
+      `_runtime/*` y los cuatro `index.ts` usan globales de Deno y quedan fuera de `tsc`. No hay Deno en
+      la máquina de la corrida; cerrar esto pide añadir `deno check` al gate.
+- [ ] **(P08) Chunk de entrada de 738 kB (219 kB gzip).** `vite build` avisa. Para una app mobile-first
+      conviene partir vendors con `manualChunks` (react, MUI, supabase). Es configuración de build, no
+      producto, y quedó fuera del alcance del gate.
 - [ ] Exponer **solo** el esquema `public` por PostgREST al crear el proyecto (`supabase/config.toml`):
       las funciones de `ebim` son de policy, no de API.
 - [ ] Definir los secretos de las Edge Functions (`EBIM_PROVISIONING_KEY` ≥32 chars, `EBIM_ADMIN_ORIGINS`,
@@ -257,8 +291,11 @@ inicial `pending` (estándar EBIM, migración 04). Nada desplegado: sigue sin pr
       muestra el uuid corto + rol. Se cablea cuando exista el project ref y el proxy responda (P04).
 - [ ] Persistir la apariencia en `profiles.settings.appearance` (hidratación cross-device al login): hoy
       solo `localStorage`. Requiere tabla de perfil, que no existe en este proyecto todavía.
-- [ ] Playwright: el flujo login → alta → panel está cubierto con el router real y un backend falso
-      (`src/app/auth-flow.test.tsx`), pero no en navegador real. Se aborda en el quality gate (P08).
+- [ ] Playwright: **sigue abierto tras P08**. Los cuatro recorridos mínimos (login → alta → panel;
+      producto → imagen → publicar; vitrina → carrito → checkout → pedido; admin → ver pedido) corren con
+      el **router real y un backend falso**, no en navegador. El gate lo verificó así a propósito —añadir
+      Playwright y sus navegadores era instalar dependencia nueva, no verificar— y por tanto siguen sin
+      cubrirse los fallos que solo aparecen en un navegador de verdad. Entra con el project ref.
 - [ ] **Rate limiting de `create-order`** (checkout anónimo servido con `service_role`): P06 entrega el
       flujo pero NO el límite de tasa. Hoy la única barrera es que el pedido no puede falsificar precios
       ni tenant; nada impide crear muchos pedidos basura. Necesita el project ref para elegir mecanismo
@@ -351,10 +388,96 @@ inicial `pending` (estándar EBIM, migración 04). Nada desplegado: sigue sin pr
       shipping avanzado, pasarela de pago, suscripciones SaaS y dominios propios. **Notificaciones de
       pedido por correo** (contrato §14) y **custom fields por sociedad** quedan en pendientes: el encargo
       de esta fase no las pedía y §14 exige secretos M365 que carga el operador.
-- [ ] **P08 — Quality gate:** typecheck + build + lint verdes, Vitest/Playwright, auditoría RLS y de
-      secretos (sin `service_role` en el bundle), revisión de accesibilidad AA.
+- [x] **P08 — Quality gate: PASS.** `npm ci` + lint + typecheck + 493 tests + build verdes; auditoría de
+      RLS/aislamiento A/B, escritura pública del catálogo, Storage, `create-order`, Edge Functions,
+      secretos, rutas, estados y a11y. 7 tests de gate añadidos, cero features. **Playwright sigue sin
+      instalarse** (los cuatro recorridos corren con el router real y backend falso, no en navegador) y
+      **las Edge Functions no se typechequean** (no hay Deno en la máquina): ambos en riesgos.
 
-## Verificaciones de esta fase (P07)
+## PASS/FAIL por fase (cierre del gate P08)
+| Fase | Estado | Evidencia |
+| --- | --- | --- |
+| P00 Lineamientos | PASS | `docs/EBIM_GUIDELINES_TRACE.md`, GUIDELINES_STATUS VERIFIED |
+| P01 Frontend foundation | PASS | rutas, tokens, i18n, scripts; `routes.test.tsx`, `appearance.test.ts` |
+| P02 Supabase multitenant | PASS | 14 migraciones, RLS forzada; `rls-tenant-isolation` (35), `schema-invariants` (16) |
+| P03 Auth y admin | PASS | `auth-flow.test.tsx`, `session.test.ts`, `bootstrap-authorization.test.ts` |
+| P04 Catálogo backoffice | PASS | `ProductsPage`, `CategoriesPage`, `ProductImagesPanel`, `catalog-admin.test.ts` |
+| P05 Storefront público | PASS | `storefront.test.ts`, `storefront-ui.test.tsx`, `storefront-public.test.ts` |
+| P06 Carrito y checkout | PASS | `cart.test.ts`, `checkout-ui.test.tsx` (12), `checkout-order.test.ts` |
+| P07 Pedidos y settings | PASS | `OrdersPage.test.tsx`, `orders-admin.test.ts`, `SettingsPage.test.tsx` |
+| P08 Quality gate | PASS | esta sección + `docs/OVERNIGHT_REPORT.md` |
+
+## Verificaciones de esta fase (P08 — quality gate)
+Node v22.17.0 · npm 10.9.2 · rama `dev` · base `fc382f1`. Sin deploy, sin push, sin PR.
+
+### Comandos ejecutados y resultado
+- `npm ci` → **exit 0**. Install limpio desde `package-lock.json`, sin desviaciones del lockfile.
+- `npm run lint` (ESLint 9 flat) → **0 problemas**.
+- `npm run typecheck` (`tsc --noEmit`) → **verde**, sin OOM (no hizo falta el fallback a `vite build`).
+- `npm run test` (Vitest 3) → **493 tests / 34 archivos, todos verdes** (486/33 antes del gate).
+- `npm run build` (`vite build`) → **verde en 4.1 s**. Único aviso: chunk de entrada de 738 kB
+  (219 kB gzip), que es el aviso estándar de Vite por encima de 500 kB. Ver riesgo 5.
+- Escaneo del bundle recién construido para `service_role`, `sb_secret_` y `eyJhbGciOi…`.
+- `git log --name-status -- supabase/migrations` para la inmutabilidad de las migraciones.
+
+### Auditorías, una por una
+- **Migraciones reproducibles** — PASS. El harness aplica las 14 tal cual, en orden, sobre Postgres real
+  (PGlite) en cada archivo de test. **Nuevo test**: dos bases vírgenes tienen que dar la misma huella de
+  esquema (columnas, tipos, nulabilidad, defaults, RLS, policies, `security definer`). Una migración que
+  dependa del reloj o de `random()` falla ahí y no en el primer `db push` del operador.
+- **Inmutabilidad de las aplicadas** — PASS con hallazgo. El commit `23e7d7b` (P04) modificó
+  `20260827090300_catalog.sql` y `20260827090400_orders.sql` ya commiteadas, para arreglar tres FK
+  compuestas `on delete set null`. Sin daño: **no hay project ref**, ninguna migración se aplicó nunca y
+  la carpeta actual arranca limpia desde cero. La regla se vuelve vinculante en el primer `db push`.
+- **RLS y aislamiento A/B** — PASS. 35 tests con `SET ROLE` + claims en `request.jwt.claims`: A no ve, no
+  inserta declarando el `organization_id` de B, no actualiza (cero filas, no error silencioso) y no borra;
+  el JWT sin membresía activa no vale; membresía revocada y tenant suspendido cierran; sociedad fuera de
+  `companies[]` no da acceso; nadie escala a `owner` desde la app.
+- **El público no modifica el catálogo** — PASS, **cobertura ampliada**. De una aserción a doce escrituras
+  probadas (`products` precio/stock/publicar/borrar, `categories`, `stores`, `store_settings`,
+  `product_images`) + el catálogo intacto después + no se escribe por las vistas públicas.
+- **`service_role` ausente del frontend** — PASS. Las dos apariciones en `dist/` son literales de
+  detección (el prefijo que comprueba `@supabase/supabase-js` y la regex del guard `assertNoServiceKey`),
+  no credenciales. Cero cadenas con forma de JWT. `.env` git-ignored; solo se versiona `.env.example`.
+- **Storage aislado** — PASS. 6 tests de path `{organization_id}/{store_id}/`: A escribe en el suyo y no
+  en el de B, no ve objetos de B, `anon` lee la imagen publicada pero no la del borrador ni sube nada, y
+  los buckets no son públicos.
+- **`create-order` recalcula precios en el servidor** — PASS. `create_order` lee el precio de la fila,
+  bloquea con `for update`, descuenta stock y arma subtotal/impuesto/total en la misma transacción; el SQL
+  y la Edge Function rechazan explícitamente cualquier clave de precio del cliente.
+- **Edge Functions y el tenant del navegador** — PASS. Las cuatro llaman a `assertNoTenantInPayload`
+  (400, no «ignorar»). `create-order` resuelve la tienda por slug **en la base**. `bootstrap-tenant` es la
+  única excepción legítima y está acotada (clave dedicada en cabecera o JWT con firma verificada).
+- **Rutas, responsive y estados** — PASS. `routes.test.tsx` verifica la separación de las tres áreas y los
+  guards; las 19 pantallas usan `LoadingState`/`ErrorState`/`EmptyState`/`TableSkeleton`; `errorElement`
+  en las tres raíces; los 17 `IconButton` con `aria-label` traducido y las 6 imágenes con `alt`.
+- **Sin secretos, mocks productivos ni TODO crítico** — PASS. Cero `any`, `@ts-ignore` y `eslint-disable`.
+  Las cinco coincidencias de «TODO» son la palabra española en comentarios. `src/test/supabaseMock.ts` no
+  lo importa ningún archivo de producción ni aparece en `dist/`. Ninguna URL de Supabase hardcodeada.
+
+### Recorridos mínimos: los cuatro cubiertos
+| Recorrido | Dónde |
+| --- | --- |
+| login → onboarding → admin | `src/app/auth-flow.test.tsx` (router real, backend falso) |
+| producto → imagen → publicar | `ProductsPage.test.tsx` + `ProductImagesPanel.test.tsx` |
+| storefront → producto → carrito → checkout → order | `checkout-ui.test.tsx` (12 tests, flujo entero) |
+| admin → ver orden | `OrdersPage.test.tsx` (detalle con líneas, entrega e historial) |
+
+### Cambios de esta fase (solo tests)
+- `supabase/tests/rls-tenant-isolation.test.ts` — +2 tests (33 → 35).
+- `supabase/tests/schema-invariants.test.ts` — +1 test (15 → 16).
+- `src/shared/i18n/messages.test.ts` — nuevo, 4 tests de paridad ES/EN.
+- `docs/OVERNIGHT_REPORT.md` — nuevo, informe de la corrida.
+- Commit: `chore: complete initial ecommerce quality gate` (local, sin push).
+
+### Siguiente fase
+**P09 depende del project ref de Supabase** y hasta que exista está bloqueada de raíz: aplicar las 14
+migraciones, `npm run db:types` (los tipos de BD siguen sin generar desde P02), desplegar las 4 Edge
+Functions con sus secretos y re-verificar el aislamiento contra el proyecto real. Con el ref en mano
+entran, en este orden: rate limiting de `create-order`, `deno check` en el gate, Playwright en navegador
+y el partido de vendors del bundle.
+
+## Verificaciones de P07
 - `npm run typecheck` (`tsc --noEmit`) → verde.
 - `npm run lint` (ESLint 9 flat config) → verde, **0 problemas**.
 - `npm run test` (Vitest 3) → **486 tests / 33 archivos, todos verdes** (427 de P01–P06 + 59 nuevos).
