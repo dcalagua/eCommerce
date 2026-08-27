@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>eCommerce by EBIM</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <!-- ANTI-FLASH: fija modo/acento/densidad antes del primer paint (contrato EBIM 4.4) -->
+    <script>
+      (function () {
+        try {
+          var s = localStorage.getItem('ecommerce-color-mode');
+          var m = s || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+          document.documentElement.setAttribute('data-theme', m);
+          var a = localStorage.getItem('ecommerce-accent');
+          if (a && a !== 'forest') document.documentElement.setAttribute('data-accent', a);
+          var d = localStorage.getItem('ecommerce-density');
+          if (d && d !== 'equilibrada') document.documentElement.setAttribute('data-density', d);
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

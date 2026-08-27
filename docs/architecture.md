@@ -8,8 +8,8 @@ Compatible con `EBIM-CONTRATO-PLATAFORMA.md` (§0 principios, §1 topología, §
 ```
 Comprador (público) ─┐
                      ├─► App eCommerce (React + TS + Vite + MUI)
-Usuario del tenant ──┘      ├─ /            storefront público (por dominio/slug de tenant)
-                            └─ /admin       backoffice (sesión + membership + active_company)
+Usuario del tenant ──┘      ├─ /s/:storeSlug  storefront público (tenant por slug/dominio)
+                            └─ /app           backoffice (sesión + membership + active_company)
                                    │
                                    ▼
                      Supabase eCommerce (proyecto propio)
@@ -48,13 +48,20 @@ igual que los proveedores externos de eSupplier); los usuarios del tenant llegan
 
 ## Frontend
 
+Estructura real desde P01 (organización por features; storefront y backoffice siguen siendo
+áreas lógicamente separadas — rutas, layouts y guards distintos, design system compartido):
+
 ```
 src/
-  app/         router, providers, theme (tokens de marca), i18n
-  shared/      ui kit (MUI wrappers, SectionTabs, SearchField), hooks, lib/supabase, types
-  storefront/  rutas públicas: home, catálogo, producto, carrito, checkout
-  admin/       backoffice: catálogo, pedidos, inventario, configuración, branding
-  features/    dominios compartidos entre ambas áreas
+  app/                  router, providers, ErrorBoundary, queryClient
+  theme/                tokens (CSS vars + escalas), createEbimTheme, apariencia por usuario
+  shared/               ui kit (EbimMark, SectionTabs, SearchField, estados), i18n ES/EN, lib (env, supabase, format)
+  features/auth/        login (anatomía de suite §4.5), sesión, guard RequireSession
+  features/tenant/      resolución de tenant: branding público por slug + contexto desde el JWT
+  features/admin/       AdminLayout, dashboard, configuración
+  features/catalog/     productos del backoffice
+  features/orders/      pedidos del backoffice
+  features/storefront/  StorefrontLayout + vitrina, ficha, carrito, checkout
 supabase/
   migrations/  SQL versionado (tabla nueva = tabla + RLS + policies en la misma migración)
   functions/   Edge Functions (Deno) + _shared/

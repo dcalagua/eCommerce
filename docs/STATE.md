@@ -5,8 +5,9 @@ Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md` (11 documentos leídos en la raíz 
 Última actualización: 2026-08-27
 
 ## Fase actual
-**P00 — Lineamientos y estándares del repo.** Repo preparado con CLAUDE.md, trazabilidad, estado y
-arquitectura inicial. Sin código de aplicación todavía: P01 (frontend foundation) es lo siguiente.
+**P01 — Frontend foundation (COMPLETA).** App Vite + React + TS + MUI con tokens de marca de suite,
+routing storefront/backoffice separados, i18n ES/EN, ErrorBoundary y estados de carga/error/vacío.
+Sin backend conectado todavía: las pantallas degradan a estado vacío. Siguiente: P02 (Supabase multitenant).
 
 ## Decisiones tomadas
 1. eCommerce entra a la suite EBIM como app propia: **proyecto Supabase propio**, identidad/addons en el hub.
@@ -20,6 +21,13 @@ arquitectura inicial. Sin código de aplicación todavía: P01 (frontend foundat
 8. Addons, sociedades y config efectiva se leen del hub vía Edge Function proxy `platform-context`.
 9. Git: rama de trabajo `dev`, commits locales convencionales; sin push/PR/deploy sin orden del operador.
 10. Verificación por fase: typecheck + build + lint + Vitest (+ Playwright cuando haya flujo E2E) + tests de aislamiento tenant.
+11. **Tokens de marca replicados 1:1** del handoff de design system de eExpense/eSupplier
+    (`coordinacion/respondidos/2026-06-28-esupplier-014`) y el isotipo `EbimMark` del asset de suite
+    (`2026-06-28-eexpense-015`). No se inventó branding: modo (`data-theme`) y acento (`data-accent`)
+    ortogonales, densidad por `data-density`, favicon compartido.
+12. **Rutas base fijadas por el operador (P01):** backoffice en `/app/*` y storefront en `/s/:storeSlug/*`
+    (sustituye el borrador `/admin` + `/` de `architecture.md`).
+13. Sin i18next: diccionario ES/EN tipado propio en `src/shared/i18n` (claves validadas por `MessageKey`).
 
 ## Pendientes / riesgos abiertos
 - [ ] Confirmar con el operador el **project ref de Supabase** para eCommerce (aún no existe).
@@ -34,8 +42,8 @@ arquitectura inicial. Sin código de aplicación todavía: P01 (frontend foundat
 
 ## Checklist P00–P08
 - [x] **P00 — Lineamientos:** Drive leído, CLAUDE.md + trace + state + architecture creados. VERIFIED.
-- [ ] **P01 — Frontend foundation:** Vite + React + TS + MUI, tokens de marca, layout storefront/admin,
-      i18n, router, scripts `typecheck`/`lint`/`build`/`test`.
+- [x] **P01 — Frontend foundation:** Vite + React + TS + MUI, tokens de marca, layout storefront/admin,
+      i18n, router, scripts `typecheck`/`lint`/`build`/`test`. VERIFIED (36 tests verdes).
 - [ ] **P02 — Supabase multitenant:** proyecto, migraciones base (`organizations`/`companies` espejo,
       catálogo, RLS default deny), tipos generados, tests de aislamiento tenant.
 - [ ] **P03 — Auth y admin:** verificación de JWT del hub, `platform-context` proxy, selector de sociedad,
@@ -50,7 +58,18 @@ arquitectura inicial. Sin código de aplicación todavía: P01 (frontend foundat
 - [ ] **P08 — Quality gate:** typecheck + build + lint verdes, Vitest/Playwright, auditoría RLS y de
       secretos (sin `service_role` en el bundle), revisión de accesibilidad AA.
 
-## Verificaciones de esta fase
-- Carpeta de lineamientos accesible y leída (11 fuentes) → OK.
-- Documentos creados dentro de límites de líneas (CLAUDE.md 92, trace 43, state, architecture) → OK.
-- Repo git con commit inicial local, sin push/PR/deploy → OK.
+## Verificaciones de esta fase (P01)
+- `npm run typecheck` (`tsc --noEmit`) → verde, sin errores.
+- `npm run lint` (ESLint 9 flat config, `no-explicit-any` en error) → verde, 0 problemas.
+- `npm run test` (Vitest 3 + Testing Library) → **36 tests / 7 archivos, todos verdes**.
+- `npm run build` (`vite build`) → verde. Aviso de chunk >500 kB del vendor MUI: aceptado en P01,
+  se atiende con `manualChunks` cuando el bundle deje de crecer por scaffolding.
+- Auditoría de secretos sobre `dist/`: la única coincidencia de `service_role` es la **regex del propio
+  guard** `assertNoServiceKey`; no hay claves de servicio en el bundle.
+- Sin push, sin PR, sin deploy remoto (solo commits locales en `dev`).
+
+### Pendientes técnicos que deja P01
+- Hidratar `profiles.settings.appearance` al login (cross-device) — hoy solo persiste `localStorage`.
+- Playwright (E2E) se incorpora cuando exista un flujo real (checkout, P06).
+- Tests de aislamiento tenant: dependen de P02 (aún no hay tablas ni RLS que probar).
+- `SectionTabs`, `SearchField` y estados están creados pero solo cableados a pantallas placeholder.

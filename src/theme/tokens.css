@@ -1,0 +1,211 @@
+/* ===========================================================================
+   eCommerce by EBIM — tokens de suite.
+   Replicados 1:1 del handoff de design system de eExpense/eSupplier
+   (EBIM-Plataforma/coordinacion/respondidos/2026-06-28-esupplier-014).
+   Regla: modo (data-theme) y acento (data-accent) son ORTOGONALES.
+   Un tema cambia SOLO CSS vars; los componentes nunca se tocan.
+   =========================================================================== */
+
+/* ===== Tokens base · light (default) ===== */
+:root,
+[data-theme='light'] {
+  --accent: #5aa97f;
+  --accent-deep: #3f8a66;
+  --accent2: #056769;
+  --accent-soft: #e9f4ee;
+  --bg: #f3f5f5;
+  --card: #ffffff;
+  --border: #e2e8e7;
+  --text: #0f1b1c;
+  --muted: #5c6b6c;
+  --neutral-soft: #eef1f1;
+  --client: #d11f2e;
+  --amber: #946200;
+  --amber-soft: #fdf2d6;
+  --red: #c0392b;
+  --red-soft: #fbe7e7;
+  --blue: #1e5fb0;
+  --blue-soft: #e7f0fb;
+  --hero-grad: linear-gradient(135deg, #0a5a52 0%, #2f8f6b 55%, #3f8a66 100%);
+  --badge-grad: linear-gradient(135deg, #0a5a52, #3f8a66);
+  --sidebar: linear-gradient(180deg, #0a5a52 0%, #2f7a63 55%, #3f8a66 100%);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 16px 40px -12px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 10px 26px -16px rgba(10, 90, 82, 0.4);
+  --shadow-hero: 0 20px 50px -22px rgba(10, 90, 82, 0.55);
+}
+
+/* ===== Tokens base · dark ===== */
+[data-theme='dark'] {
+  --accent: #5aa97f;
+  --accent-deep: #6fd29a;
+  --accent2: #7cc09a;
+  --accent-soft: #1d2c27;
+  --bg: #0f1715;
+  --card: #172320;
+  --border: #27332e;
+  --text: #eaf2ef;
+  --muted: #9aada6;
+  --neutral-soft: #222d28;
+  --client: #e0556a;
+  --amber: #f0c75a;
+  --amber-soft: #3a3115;
+  --red: #f08a82;
+  --red-soft: #3a1d1d;
+  --blue: #7fb2ee;
+  --blue-soft: #16263a;
+  --hero-grad: linear-gradient(135deg, #0a5a52 0%, #2f8f6b 55%, #3f8a66 100%);
+  --badge-grad: linear-gradient(135deg, #0a5a52, #3f8a66);
+  --sidebar: linear-gradient(180deg, #08433e 0%, #1f5648 55%, #2c5d47 100%);
+  --shadow-sm: 0 1px 0 rgba(255, 255, 255, 0.03), 0 2px 10px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 1px 0 rgba(255, 255, 255, 0.04), 0 18px 44px -12px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 30px -14px rgba(0, 0, 0, 0.65);
+  --shadow-hero: 0 20px 50px -22px rgba(0, 0, 0, 0.7);
+}
+
+/* ===== Acentos (data-accent) · multiplican con data-theme.
+   Solo redefinen acento + degradés de marca. bg/card/text/semánticos NO cambian.
+   El usuario NO elige paleta (contrato 4.4): el acento lo fija el tenant. ===== */
+[data-accent='indigo'] {
+  --accent: #6366f1;
+  --accent-deep: #4f46e5;
+  --accent-soft: #eef0fe;
+  --accent2: #4338ca;
+  --hero-grad: linear-gradient(135deg, #312e81 0%, #4f46e5 55%, #6366f1 100%);
+  --badge-grad: linear-gradient(135deg, #312e81, #4f46e5);
+  --sidebar: linear-gradient(180deg, #312e81 0%, #3f37a8 55%, #4f46e5 100%);
+}
+[data-theme='dark'][data-accent='indigo'] {
+  --accent: #818cf8;
+  --accent-deep: #a5b4fc;
+  --accent-soft: #1e1b38;
+  --accent2: #a5b4fc;
+  --sidebar: linear-gradient(180deg, #1e1b38 0%, #2a2560 55%, #3730a3 100%);
+}
+[data-accent='cobalt'] {
+  --accent: #2563eb;
+  --accent-deep: #1d4ed8;
+  --accent-soft: #e8f0fe;
+  --accent2: #1e40af;
+  --hero-grad: linear-gradient(135deg, #172554 0%, #1d4ed8 55%, #2563eb 100%);
+  --badge-grad: linear-gradient(135deg, #172554, #1d4ed8);
+  --sidebar: linear-gradient(180deg, #172554 0%, #1e40af 55%, #1d4ed8 100%);
+}
+[data-theme='dark'][data-accent='cobalt'] {
+  --accent: #3b82f6;
+  --accent-deep: #60a5fa;
+  --accent-soft: #14233f;
+  --accent2: #60a5fa;
+  --sidebar: linear-gradient(180deg, #0f1e3d 0%, #16306a 55%, #1d4ed8 100%);
+}
+[data-accent='teal'] {
+  --accent: #0d9488;
+  --accent-deep: #0f766e;
+  --accent-soft: #e4f4f2;
+  --accent2: #115e59;
+  --hero-grad: linear-gradient(135deg, #134e4a 0%, #0f766e 55%, #0d9488 100%);
+  --badge-grad: linear-gradient(135deg, #134e4a, #0f766e);
+  --sidebar: linear-gradient(180deg, #134e4a 0%, #115e59 55%, #0f766e 100%);
+}
+[data-theme='dark'][data-accent='teal'] {
+  --accent: #2dd4bf;
+  --accent-deep: #5eead4;
+  --accent-soft: #122e2b;
+  --accent2: #5eead4;
+  --sidebar: linear-gradient(180deg, #0c2925 0%, #134e4a 55%, #115e59 100%);
+}
+[data-accent='graphite'] {
+  --accent: #475569;
+  --accent-deep: #334155;
+  --accent-soft: #eef1f5;
+  --accent2: #1e293b;
+  --hero-grad: linear-gradient(135deg, #0f172a 0%, #334155 55%, #475569 100%);
+  --badge-grad: linear-gradient(135deg, #1e293b, #475569);
+  --sidebar: linear-gradient(180deg, #0f172a 0%, #1e293b 55%, #334155 100%);
+}
+[data-theme='dark'][data-accent='graphite'] {
+  --accent: #94a3b8;
+  --accent-deep: #cbd5e1;
+  --accent-soft: #1c232e;
+  --accent2: #cbd5e1;
+  --sidebar: linear-gradient(180deg, #0b0f17 0%, #1c232e 55%, #334155 100%);
+}
+
+/* ===== Densidad (data-density) · tokens comunes de suite. equilibrada = default ===== */
+:root {
+  --control-h: 36px;
+  --row-h: 44px;
+  --pad-y: 9px;
+  --pad-x: 12px;
+}
+[data-density='comoda'] {
+  --control-h: 40px;
+  --row-h: 52px;
+  --pad-y: 12px;
+  --pad-x: 14px;
+}
+[data-density='compacta'] {
+  --control-h: 32px;
+  --row-h: 38px;
+  --pad-y: 6px;
+  --pad-x: 10px;
+}
+
+:root {
+  font-family: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+body {
+  margin: 0;
+  font-family: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+/* números tabulares para montos/KPIs */
+.tnum {
+  font-feature-settings: 'tnum';
+}
+
+/* ===== Foco accesible (teclado) ===== */
+:focus-visible {
+  outline: 2px solid var(--accent-deep) !important;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ===== Sidebar: hover de items (vive sobre el degradé --sidebar) ===== */
+.eb-nav-h {
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.eb-nav-h:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+}
+.eb-nav-h:hover svg {
+  opacity: 1 !important;
+}
+
+/* ===== Logo suite EBIM: gira y para, en bucle ===== */
+.eb-logo-anim {
+  display: inline-flex;
+  transform-origin: center;
+  animation: eb-logo-anim 3.6s cubic-bezier(0.66, 0, 0.2, 1) infinite;
+}
+@keyframes eb-logo-anim {
+  0% {
+    transform: rotate(0);
+  }
+  16% {
+    transform: rotate(360deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .eb-logo-anim {
+    animation: none;
+  }
+}

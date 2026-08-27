@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="#0A5A52" role="img" aria-label="EBIM">
+  <circle cx="100" cy="38" r="26"/>
+  <rect x="127.7" y="43" width="52" height="52" rx="4" transform="rotate(15 153.7 69)"/>
+  <rect x="127.7" y="105" width="52" height="52" rx="14" transform="rotate(-10 153.7 131)"/>
+  <rect x="74" y="136" width="52" height="52" rx="13" transform="rotate(45 100 162)"/>
+  <rect x="20.3" y="105" width="52" height="52" rx="16" transform="rotate(8 46.3 131)"/>
+  <rect x="20.3" y="43" width="52" height="52" rx="23" transform="rotate(-6 46.3 69)"/>
+</svg>
