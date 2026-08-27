@@ -116,9 +116,9 @@ async function seed(): Promise<void> {
       (
         await sql(
           `insert into public.orders
-             (organization_id, company_id, store_id, order_number, customer_email,
+             (organization_id, company_id, store_id, channel_id, order_number, customer_email,
               currency, subtotal, grand_total)
-           values ($1, $2, $3, 'A-0001', 'cliente@correo.com', 'PEN', '199.90', '199.90')
+           values ($1, $2, $3, (select c.id from public.channels c where c.store_id = $3 and c.is_default), 'A-0001', 'cliente@correo.com', 'PEN', '199.90', '199.90')
            returning id`,
           [TENANT_A.organizationId, TENANT_A.companyId, storeA],
         )

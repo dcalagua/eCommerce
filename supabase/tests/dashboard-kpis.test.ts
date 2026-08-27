@@ -94,9 +94,9 @@ async function seedTenant(
   for (const [index, order] of options.orders.entries()) {
     await svc(
       `insert into public.orders
-         (organization_id, company_id, store_id, order_number, status, customer_email,
+         (organization_id, company_id, store_id, channel_id, order_number, status, customer_email,
           currency, subtotal, grand_total)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $8)`,
+       values ($1, $2, $3, (select c.id from public.channels c where c.store_id = $3 and c.is_default), $4, $5, $6, $7, $8, $8)`,
       [
         tenant.organizationId,
         tenant.companyId,
@@ -169,9 +169,9 @@ describe('dashboard_kpis', () => {
   it('con monedas mezcladas no inventa un total: devuelve null', async () => {
     await svc(
       `insert into public.orders
-         (organization_id, company_id, store_id, order_number, status, customer_email,
+         (organization_id, company_id, store_id, channel_id, order_number, status, customer_email,
           currency, subtotal, grand_total)
-       values ($1, $2, $3, 'mixto-1', 'paid', 'cliente@correo.com', 'USD', '20.00', '20.00')`,
+       values ($1, $2, $3, (select c.id from public.channels c where c.store_id = $3 and c.is_default), 'mixto-1', 'paid', 'cliente@correo.com', 'USD', '20.00', '20.00')`,
       [TENANT_B.organizationId, TENANT_B.companyId, storeOf[TENANT_B.slug]!],
     )
     const kpis = await kpisFor(TENANT_B, storeOf[TENANT_B.slug]!)

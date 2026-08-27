@@ -78,6 +78,62 @@ export type Database = {
           },
         ]
       }
+      channels: {
+        Row: {
+          code: string
+          company_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          is_default: boolean
+          kind: Database["public"]["Enums"]["channel_kind"]
+          name: string
+          organization_id: string
+          requires_auth: boolean
+          settings: Json
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          company_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          kind: Database["public"]["Enums"]["channel_kind"]
+          name: string
+          organization_id: string
+          requires_auth?: boolean
+          settings?: Json
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          kind?: Database["public"]["Enums"]["channel_kind"]
+          name?: string
+          organization_id?: string
+          requires_auth?: boolean
+          settings?: Json
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channels_store_fk"
+            columns: ["store_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
       currencies: {
         Row: {
           code: string
@@ -238,6 +294,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          channel_id: string
           company_id: string
           created_at: string
           currency: string
@@ -260,6 +317,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          channel_id: string
           company_id: string
           created_at?: string
           currency: string
@@ -282,6 +340,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          channel_id?: string
           company_id?: string
           created_at?: string
           currency?: string
@@ -305,11 +364,70 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "orders_channel_fk"
+            columns: ["channel_id", "store_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id", "store_id"]
+          },
+          {
             foreignKeyName: "orders_store_fk"
             columns: ["store_id", "organization_id", "company_id"]
             isOneToOne: false
             referencedRelation: "stores"
             referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
+      product_channels: {
+        Row: {
+          channel_id: string
+          company_id: string
+          created_at: string
+          id: string
+          organization_id: string
+          product_id: string
+          store_id: string
+        }
+        Insert: {
+          channel_id: string
+          company_id: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          product_id: string
+          store_id: string
+        }
+        Update: {
+          channel_id?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          product_id?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_channels_channel_fk"
+            columns: ["channel_id", "store_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id", "store_id"]
+          },
+          {
+            foreignKeyName: "product_channels_product_fk"
+            columns: ["product_id", "store_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id", "store_id"]
+          },
+          {
+            foreignKeyName: "product_channels_product_fk"
+            columns: ["product_id", "store_id"]
+            isOneToOne: false
+            referencedRelation: "public_products"
+            referencedColumns: ["product_id", "store_id"]
           },
         ]
       }
@@ -1061,6 +1179,7 @@ export type Database = {
     }
     Enums: {
       app_role: "owner" | "admin" | "catalog" | "orders" | "viewer"
+      channel_kind: "b2c" | "b2b" | "internal"
       member_status: "active" | "invited" | "revoked"
       order_status: "pending" | "paid" | "fulfilled" | "cancelled" | "refunded"
       product_status: "draft" | "published" | "archived"
@@ -1194,6 +1313,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["owner", "admin", "catalog", "orders", "viewer"],
+      channel_kind: ["b2c", "b2b", "internal"],
       member_status: ["active", "invited", "revoked"],
       order_status: ["pending", "paid", "fulfilled", "cancelled", "refunded"],
       product_status: ["draft", "published", "archived"],
