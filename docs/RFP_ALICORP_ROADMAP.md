@@ -14,13 +14,13 @@ complejidad y generación de valor temprano». Este documento es esa propuesta.
 
 | Fase | Requisitos | Cumple hoy | Pendientes | KO abiertos |
 |---|---|---|---|---|
-| **F0 · Cimientos** | 56 | 13 | 43 | 4 |
+| **F0 · Cimientos** | 63 | 15 | 48 | 6 |
 | **F1 · Canal Interno** | 6 | 0 | 6 | 1 |
 | **F2 · Canal B2B** | 16 | 0 | 16 | 0 |
-| **F3 · Canal B2C** | 18 | 0 | 18 | 0 |
+| **F3 · Canal B2C** | 19 | 0 | 19 | 0 |
 | **F4 · Plataforma corporativa** *(en paralelo)* | 39 | 0 | 39 | 13 |
 | **F5 · Diferido por el pliego** | 3 | — | — | 0 |
-| **Total** | **146** | **13** | **122** | **18** |
+| **Total** | **146** | **15** | **128** | **20** |
 
 F4 no es una fase secuencial: arranca con F0 y corre en paralelo a los tres canales. La lleva
 un perfil de infraestructura y seguridad, no el equipo de producto, y su hito es habilitar
@@ -73,7 +73,7 @@ visible para un comprador; todo lo es para el riesgo del proyecto.
 **Salida de fase:** un pedido creado en la plataforma aparece en SAP y vuelve con su número, en
 un entorno de QA, con el simulador y con la CIA real.
 
-**Ya cumplido (13):** catálogo único, cálculo de dinero en servidor, bitácora de auditoría
+**Ya cumplido (15):** catálogo único, cálculo de dinero en servidor, bitácora de auditoría
 (AD003), aislamiento por rol (AD005), sin SQL directo a producción (AD004), responsive y WCAG AA
 (§7.7), TLS 1.3 (AC0014) y personalización por configuración (AA0004).
 
@@ -128,7 +128,7 @@ El precio de referencia sale gratis contrastando el precio de catálogo con la l
 
 ## F4 · Plataforma corporativa *(en paralelo desde F0)*
 
-**Concentra 13 de los 18 criterios KO abiertos.** No es opcional ni es «para el final»: sin esto
+**Concentra 13 de los 20 criterios KO abiertos.** No es opcional ni es «para el final»: sin esto
 no hay producción, y en la propuesta hay que declararlo con plan y fechas.
 
 - **Superficie de integración:** OAuth 2.0 en todas las APIs expuestas (AT0004), broker
@@ -151,30 +151,30 @@ planilla. El pliego los excluye de Fase 1 por no existir BAPI y admite una estim
 
 ---
 
-## Los 18 KO abiertos, y por dónde empezar
+## Los 20 KO abiertos, y por dónde empezar
 
 | Fase | KO abiertos |
 |---|---|
-| F0 | `4.1.4-e` · `AI038` · `AC0002` · `AC0011` |
+| F0 | `4.1.4-e` · `AA0001` · `AI038` · `AC0001` · `AC0002` · `AC0011` |
 | F1 | `4.4.1` |
 | F4 | `4.1.3-g` · `4.1.3-h` · `4.1.3-i` · `4.1.5-b` · `4.1.7-d` · `AA0016` · `AA0026` · `AT0004` · `AT0016` · `AT0017` · `AD002` · `AI005` · `AI010` |
 
 **Lo más rentable antes del 08/09:**
 
 1. **Spike de Entra ID (1 día).** Cierra `AI038` y arrastra `AC0001`, `AC0021`, `AC0002` y `4.4.1`.
-   Cinco requisitos, uno de ellos KO, con un día de trabajo. Y sobre todo: te dice si prometerlo o
+   Cuatro KO de F0 de un golpe (`AI038`, `AC0001`, `AC0002`, y `4.4.1` de F1), con un día de trabajo. Y sobre todo: te dice si prometerlo o
    negociarlo, antes de firmarlo.
 2. **`AC0011` — borrado seguro.** Es un procedimiento documentado, no código. Un KO que se cierra
    escribiendo.
-3. **`AA0001` y `AA0023`** — diagramas de arquitectura y ambientes separados. Baratos y visibles.
-4. **La respuesta a la consulta A.1** (¿Azure obligatorio?). Ocho de los KO de F4 dependen de
+3. **`AA0001`** — diagramas de arquitectura. Es KO y se cierra documentando, no programando.
+4. **La respuesta a la consulta A.1** (¿Azure obligatorio?). Buena parte de los 13 KO de F4 dependen de
    ella. Sin esa respuesta, F4 no se puede dimensionar ni presupuestar.
 
 ---
 
 ## Advertencia sobre este documento
 
-Los estados de cumplimiento de las 13 filas en «Cumple» están respaldados por código y tests. El
+Los estados de cumplimiento de las 15 filas en «Cumple» están respaldados por código y tests. El
 resto —la asignación de fases, los tamaños S/M/L/XL y las dependencias— es criterio profesional,
 no medición. Antes de que nada de esto se convierta en compromiso contractual con fechas, tiene
 que pasar por el equipo que vaya a ejecutarlo.
