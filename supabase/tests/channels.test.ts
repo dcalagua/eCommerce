@@ -11,7 +11,7 @@
  *    por ese canal — que es lo que hace útil el catálogo restringido;
  *  - la migración deja las tiendas y pedidos existentes funcionando.
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { PGlite } from '@electric-sql/pglite'
 import {
   TENANT_A,
@@ -113,6 +113,14 @@ beforeAll(async () => {
   sillaA = await addProduct(TENANT_A, storeA, 'SILLA-1', '100.00')
   exclusivoA = await addProduct(TENANT_A, storeA, 'EXCLU-1', '50.00')
 }, 120_000)
+
+// El limite de tasa del checkout (P10) cuenta por correo y por tienda en una
+// ventana de una hora. Estos tests hacen decenas de pedidos en segundos, que es
+// justo lo que el limite existe para cortar: se reinicia el contador entre
+// tests en vez de subir el techo, que dejaria el guard sin probar en produccion.
+beforeEach(async () => {
+  await svc(`delete from public.checkout_attempts`)
+})
 
 afterAll(async () => {
   await db?.close()

@@ -3,7 +3,7 @@
  * Operaciones de servidor sobre Postgres real: alta atómica de tenant y
  * creación de pedido con precios recalculados en la base.
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { PGlite } from '@electric-sql/pglite'
 import { TENANT_A, asRole, createTestDatabase, expectFailure } from './harness.ts'
 
@@ -47,6 +47,14 @@ async function bootstrap(overrides: Partial<Record<string, unknown>> = {}): Prom
 beforeAll(async () => {
   db = await createTestDatabase()
 }, 120_000)
+
+// El limite de tasa del checkout (P10) cuenta por correo y por tienda en una
+// ventana de una hora. Estos tests hacen decenas de pedidos en segundos, que es
+// justo lo que el limite existe para cortar: se reinicia el contador entre
+// tests en vez de subir el techo, que dejaria el guard sin probar en produccion.
+beforeEach(async () => {
+  await svc(`delete from public.checkout_attempts`)
+})
 
 afterAll(async () => {
   await db?.close()

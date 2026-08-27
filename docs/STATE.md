@@ -5,6 +5,49 @@ Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md` (11 documentos leídos en la raíz 
 Última actualización: 2026-08-27 (P08)
 
 ## Fase actual
+**P10 — Canales y limite de tasa del checkout (COMPLETA para el alcance encargado).** Gate: PASS.
+`typecheck`, `lint`, `test` (**535 / 38 archivos**), `test:db` (**269 / 13**) y `build`, los cinco verdes.
+Migraciones 20-23 aplicadas en DEV/QAS con `supabase db push` y `database.types.ts` regenerado.
+
+**M1 — canales sobre catalogo unico.** El modelo asumia una tienda, un publico y un precio; el RFP de
+Alicorp pide tres canales con catalogos y reglas distintas pero **un solo maestro de productos** (§4.1.2).
+Decision: el canal **no es una tienda**. Modelarlo como `store` salia casi gratis pero obliga a triplicar
+los 3.086 SKUs, que es lo que el pliego prohibe. El canal es una dimension: `channels`,
+`product_channels` (visibilidad) y `orders.channel_id`.
+
+`create_order` decide el canal en **servidor**: `channel_id` entra en la lista negra del payload junto al
+precio y al tenant — un anonimo que pudiera declarar canal compraria por el interno, con sus precios
+preferenciales. Y un producto publicado en la tienda pero no en el canal no se puede comprar por ese
+canal, que es lo que hace util el catalogo restringido del canal interno (§4.4.2).
+
+Dos reglas viven en la base y no en la pantalla: un canal `b2c` no puede exigir sesion ni uno cerrado
+prescindir de ella (CHECK `channels_auth_matches_kind`), y no puede haber dos canales por defecto en la
+misma tienda (indice parcial). **Fallo propio corregido durante la fase:** el backfill de la migracion
+solo alcanza a las tiendas que ya existen, asi que toda alta posterior por `bootstrap_tenant` quedaba sin
+canal y su checkout moria con `CANAL_NO_DISPONIBLE`. Se resolvio con un trigger sobre `stores`, que cubre
+todos los caminos y no solo la funcion de alta. Backfill verificado en DEV/QAS: 3 tiendas con canal, los
+7 pedidos de casa-nordica reasignados, 0 huerfanos.
+
+**Limite de tasa del checkout anonimo.** `create_order` era la unica puerta abierta a internet sin sesion,
+servida con `service_role`, y nada impedia crear pedidos basura en masa —que ademas descuentan stock y
+queman el contador de numero de pedido—. El guard vive en la BASE y no en la Edge Function: la
+transaccion que cuenta el intento es la misma que crea el pedido, asi que no hay ventana entre contar y
+crear. Por defecto 5 pedidos por correo/hora y 20 por tienda/hora, configurables por tienda desde
+`store_settings.config` sin migracion, y `0` desactiva esa dimension de forma explicita. `checkout_attempts`
+es un contador con ventana, no una bitacora: se purga con `purge_checkout_attempts`.
+
+El limite empezo cortando los tests de checkout existentes. Se opto por reiniciar el contador entre tests
+y **no** por subir el techo: un guard con el techo subido para que pasen las pruebas es un guard sin
+probar en produccion.
+
+**RFP Alicorp:** consultas redactadas y listas para enviar en `docs/RFP_ALICORP_CONSULTAS.md`. La ventana
+cierra el 28/08 y las propuestas van hasta el 08/09. Sigue **sin recibirse** el
+`Anexo_Modelo_Scoring_Ecommerce.xlsx`, cuya omision es causal de descalificacion.
+
+Sin push ni PR. Siguiente: framework de integraciones (contrato canonico + adaptador SAP + simulador) y
+pagos, que comparten forma.
+
+## Fase anterior
 **P09 — Monedas e impuestos configurables (COMPLETA para el alcance encargado).** Gate: PASS.
 `typecheck`, `lint`, `test` (**514 tests / 36 archivos**), `test:db` (243) y `build`, los cinco verdes.
 
