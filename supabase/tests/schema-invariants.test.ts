@@ -21,14 +21,16 @@ const TENANT_ANCHOR = ['tenants']
  * Catalogos de referencia GLOBALES del producto: no son datos de tenant, asi
  * que no llevan organization_id/company_id ni PK uuid. `currencies` es ISO 4217:
  * un hecho del mundo, no una preferencia de cliente, y su clave natural es el
- * codigo de 3 letras.
+ * codigo de 3 letras; `integration_providers` es el catalogo de conectores del
+ * producto —que exista un adaptador para SAP R/3 es una capacidad del producto,
+ * no un dato de cliente— y su clave natural es el codigo del conector.
  *
  * La exencion es NOMINAL a proposito (lista de tablas, no un patron): el dia que
  * alguien meta aqui una tabla de negocio, el aislamiento se rompe en silencio.
  * Requisito para entrar: sin columnas de tenant, RLS activada, y sin GRANT de
  * escritura a anon/authenticated.
  */
-const REFERENCE_CATALOG = ['currencies']
+const REFERENCE_CATALOG = ['currencies', 'integration_providers']
 
 beforeAll(async () => {
   db = await createTestDatabase()

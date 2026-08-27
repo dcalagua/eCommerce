@@ -5,6 +5,43 @@ Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md` (11 documentos leídos en la raíz 
 Última actualización: 2026-08-27 (P08)
 
 ## Fase actual
+**P12 — Framework de integraciones (F0 · cimientos del RFP). COMPLETA para el alcance encargado.**
+Gate: PASS. `typecheck`, `lint`, `test` (**569 / 40**), `test:db` (**303 / 15**) y `build`. Migraciones
+26-27 aplicadas en DEV/QAS.
+
+Cubre 4.1.3-a y 4.1.3-b del pliego y sostiene los adaptadores de SAP, pagos, facturacion, logistica y
+mensajeria. La idea que ahorra la mitad del trabajo: **integraciones y pagos son la misma forma**. El
+tenant habilita un proveedor, la plataforma habla un contrato canonico, un adaptador traduce, el outbox
+entrega con reintentos y todo queda auditado. SAP no es un modulo: es un adaptador del contrato `erp`.
+
+Por que importa en la licitacion: **AA0004** exige personalizacion «por configuracion, no modificacion de
+codigo». Con adaptadores la respuesta es «0 % de codigo a medida: SAP es un conector del catalogo
+estandar». Y **4.1.3-b** —preparado para S/4HANA sin reimplementar— se cumple por diseno, porque el
+nombre `BAPI_SALESORDER_CREATEFROMDAT2` no aparece fuera del adaptador.
+
+El transporte vive en la BASE y no en el worker: un worker se cae a mitad, se despliega dos veces o se
+invoca desde otro sitio; una transaccion de Postgres no entrega dos veces el mismo mensaje. Piezas:
+encolado idempotente (la misma clave devuelve el mensaje existente, no uno nuevo ni un error), reclamo
+con `for update skip locked` (varios workers ni se pisan ni se bloquean), backoff exponencial **con
+jitter** —sin el, todo lo que fallo a la vez vuelve a la vez y tumba el destino justo cuando se
+recuperaba—, cola muerta al agotar intentos, disyuntor por proveedor+operacion con enfriado y
+`half_open`, y rescate de mensajes huerfanos de un worker muerto.
+
+Dos decisiones de seguridad: `tenant_integrations.secret_ref` guarda la REFERENCIA al secreto del vault,
+nunca el secreto, y un CHECK rechaza cualquier `config` con claves de aspecto credencial (`password`,
+`api_key`, `client_secret`, `token`) — el error que se comete una vez y se paga durante anos. El
+backoffice **mira** la cola (el monitor de integraciones se consulta a diario) pero no la escribe: la
+escribe la operacion de negocio dentro de su transaccion.
+
+`integration_providers` entra en `REFERENCE_CATALOG` junto a `currencies`: que exista un adaptador para
+SAP R/3 es una capacidad del producto, no un dato de cliente. El guardarrail escrito en P09 verifica que
+cumple las tres condiciones (sin columnas de tenant, RLS activada, sin GRANT de escritura).
+
+Siguiente en F0: adaptador SAP end-to-end de UNA sola operacion (`order.create`) mas el simulador de las
+7 BAPIs criticas. Un solo adaptador antes que siete: es lo que valida si el contrato canonico esta bien
+planteado, y equivocarse con siete ya escritos duele.
+
+## Fase anterior
 **P11 — El comprador vuelve a su pedido (COMPLETA para el alcance encargado).** Gate: PASS.
 `typecheck`, `lint`, `test` (**548 / 39**), `test:db` (**282 / 14**) y `build`, verdes. Migraciones 24-25
 aplicadas en DEV/QAS; los 8 pedidos existentes recibieron token, 0 huerfanos.
