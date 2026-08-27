@@ -12,6 +12,12 @@ import type { PublicStore } from '../types'
  *   · sin `hero_title` → el nombre de la tienda.
  *   · sin `hero_subtitle` → una frase neutra de suite.
  *
+ * El peso visual lo dan capas de color y tipografía, NO colores nuevos: el
+ * acento sigue siendo 100 % del tenant (contrato §4.4). Sobre el degradado se
+ * superpone un halo radial con el mismo acento y una viñeta inferior; sobre una
+ * foto, un degradado vertical en vez de un velo plano, que oscurece donde está
+ * el texto y deja respirar la parte alta de la imagen.
+ *
  * Sin animación de entrada: es lo primero que se ve y un fundido solo retrasa
  * la lectura (y molesta con `prefers-reduced-motion`).
  */
@@ -31,11 +37,12 @@ export function StoreHero({ store }: { store: PublicStore }) {
         overflow: 'hidden',
         border: '1px solid var(--border)',
         background: hasImage ? 'var(--neutral-soft)' : 'var(--hero-grad)',
-        minHeight: { xs: 180, md: 260 },
+        minHeight: { xs: 240, md: 360 },
         display: 'flex',
+        boxShadow: 'var(--shadow-hero)',
       }}
     >
-      {hasImage && (
+      {hasImage ? (
         <>
           <Box
             component="img"
@@ -50,26 +57,78 @@ export function StoreHero({ store }: { store: PublicStore }) {
               objectFit: 'cover',
             }}
           />
-          {/* Velo para que el texto mantenga contraste AA sobre cualquier foto
-              que suba el tenant: no controlamos qué imagen va a poner. */}
-          <Box sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0,0,0,0.45)' }} aria-hidden />
+          {/* Degradado vertical en vez de velo plano: garantiza el contraste AA
+              donde va el texto sin apagar la foto entera. No controlamos qué
+              imagen sube el tenant, así que el suelo es opaco de verdad. */}
+          <Box
+            aria-hidden
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              background:
+                'linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.55) 55%, rgba(0,0,0,0.78) 100%)',
+            }}
+          />
         </>
+      ) : (
+        /* Halo del acento del tenant sobre el degradado de suite. Da profundidad
+           sin introducir un solo color que no sea suyo. */
+        <Box
+          aria-hidden
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            background:
+              'radial-gradient(120% 90% at 85% 15%, color-mix(in srgb, var(--accent) 55%, transparent) 0%, transparent 60%)',
+            mixBlendMode: 'screen',
+            opacity: 0.85,
+          }}
+        />
       )}
 
       <Stack
         sx={{
           position: 'relative',
           justifyContent: 'flex-end',
-          gap: 0.75,
-          p: { xs: 2.5, md: 4 },
-          maxWidth: 640,
+          gap: 1,
+          p: { xs: 3, md: 5 },
+          maxWidth: 680,
           color: hasImage ? '#FFFFFF' : 'var(--text)',
         }}
       >
-        <Typography component="h1" sx={{ fontSize: { xs: 22, md: T.hero }, fontWeight: 800 }}>
+        <Typography
+          sx={{
+            fontSize: T.label,
+            fontWeight: 800,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            opacity: 0.75,
+          }}
+        >
+          {store.name}
+        </Typography>
+        <Typography
+          component="h1"
+          sx={{
+            // Escala fluida: llena la portada en escritorio sin desbordar en
+            // móvil, que es donde compra el canal B2C.
+            fontSize: { xs: 30, md: 46 },
+            fontWeight: 800,
+            letterSpacing: '-0.02em',
+            lineHeight: 1.08,
+            textWrap: 'balance',
+          }}
+        >
           {title}
         </Typography>
-        <Typography sx={{ fontSize: T.bodyStrong, opacity: hasImage ? 0.92 : 1 }}>
+        <Typography
+          sx={{
+            fontSize: { xs: T.bodyStrong, md: 16 },
+            lineHeight: 1.5,
+            maxWidth: 560,
+            opacity: hasImage ? 0.94 : 0.85,
+          }}
+        >
           {subtitle}
         </Typography>
       </Stack>

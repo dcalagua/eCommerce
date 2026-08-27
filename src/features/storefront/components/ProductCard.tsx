@@ -40,11 +40,35 @@ export function ProductCard({
         textDecoration: 'none',
         color: 'inherit',
         borderRadius: `${R.lg}px`,
-        '&:hover': { borderColor: 'var(--accent)' },
+        // El movimiento es la unica senal de que la tarjeta es pulsable, asi
+        // que se anula entero con prefers-reduced-motion en vez de acortarlo.
+        transition: 'transform .18s ease, box-shadow .18s ease, border-color .18s ease',
+        '&:hover': {
+          borderColor: 'var(--accent)',
+          boxShadow: 'var(--shadow-md)',
+          transform: 'translateY(-4px)',
+        },
+        '@media (prefers-reduced-motion: reduce)': {
+          transition: 'none',
+          '&:hover': { transform: 'none' },
+        },
+        '&:hover .eb-card-media img': { transform: 'scale(1.06)' },
         '&:focus-visible': { outline: '2px solid var(--accent)', outlineOffset: 2 },
       }}
     >
-      <Box sx={{ position: 'relative' }}>
+      <Box
+        className="eb-card-media"
+        sx={{
+          position: 'relative',
+          '& img': {
+            transition: 'transform .35s ease',
+            '@media (prefers-reduced-motion: reduce)': { transition: 'none', transform: 'none' },
+          },
+          // Agotado: la foto se apaga para que el estado se lea de un vistazo
+          // en la rejilla, no solo al llegar a la linea de texto.
+          ...(available ? {} : { '& img': { filter: 'grayscale(1)', opacity: 0.55 } }),
+        }}
+      >
         <ProductMedia url={imageUrl} alt={product.primary_image_alt ?? product.name} />
         {discount !== null && (
           <Chip
@@ -58,6 +82,8 @@ export function ProductCard({
               color: '#FFFFFF',
               fontWeight: 800,
               fontSize: T.label,
+              letterSpacing: '0.02em',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.28)',
             }}
           />
         )}
@@ -99,7 +125,7 @@ export function ProductCard({
         direction="row"
         sx={{ alignItems: 'baseline', gap: 0.75, flexWrap: 'wrap', mt: 'auto' }}
       >
-        <Typography sx={{ fontSize: T.bodyStrong, fontWeight: 800 }}>
+        <Typography sx={{ fontSize: T.cardTitle, fontWeight: 800, letterSpacing: '-0.01em' }}>
           {formatMoney(Number(product.price), product.currency, locale)}
         </Typography>
         {discount !== null && product.compare_at_price && (

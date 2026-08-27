@@ -6,11 +6,14 @@ import { useI18n } from '@/shared/i18n/i18n-context'
 /**
  * Selector de tienda.
  *
- * Hoy casi todos los tenants tienen una sola tienda y el selector se
- * autoselecciona y queda deshabilitado — pero existe desde ya, porque el
- * modelo de datos admite varias tiendas por sociedad (`stores.company_id`) y
- * añadir el selector después obligaría a repasar cada consulta del backoffice
- * para meterle el `store_id` que hoy ya viaja.
+ * Con UNA sola tienda no es un selector: es una etiqueta. Un desplegable
+ * deshabilitado de un solo elemento promete una eleccion que no existe, y el
+ * usuario que trabaja siempre en el mismo cliente lo lee como algo roto. Mismo
+ * criterio que `CompanySwitcher`, que ya se ocultaba con una sola sociedad.
+ *
+ * El componente sigue existiendo porque el modelo admite varias tiendas por
+ * sociedad (`stores.company_id`): en cuanto haya una segunda, el selector
+ * aparece solo, sin repasar una consulta del backoffice.
  */
 export function StoreSwitcher() {
   const { stores, activeStore, setActiveStore } = useTenant()
@@ -24,13 +27,28 @@ export function StoreSwitcher() {
     )
   }
 
+  // Una sola tienda: se muestra cual es, sin fingir que se puede cambiar.
+  if (stores.length === 1) {
+    return (
+      <Stack
+        direction="row"
+        spacing={0.75}
+        sx={{ alignItems: 'center', color: 'var(--muted)' }}
+      >
+        <StorefrontOutlinedIcon sx={{ fontSize: 16 }} />
+        <Typography sx={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+          {activeStore?.name ?? stores[0]?.name}
+        </Typography>
+      </Stack>
+    )
+  }
+
   return (
     <TextField
       select
       size="small"
       value={activeStore?.id ?? ''}
       onChange={(event) => setActiveStore(event.target.value)}
-      disabled={stores.length === 1}
       label={t('admin.store.label')}
       sx={{ minWidth: 180, '& .MuiInputBase-root': { fontSize: 13, fontWeight: 700 } }}
     >
