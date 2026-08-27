@@ -92,14 +92,21 @@ export function useGallery(productId: string | null): UseQueryResult<GalleryImag
  * caen al marcador neutral: una foto que no carga no puede dejar sin catálogo.
  */
 export function useThumbnails(products: PublicProduct[]): Record<string, string> {
-  const paths = [
-    ...new Set(products.map((p) => p.primary_image_path).filter((p): p is string => Boolean(p))),
-  ].sort()
+  return useSignedThumbnails(products.map((p) => p.primary_image_path))
+}
+
+/**
+ * Firma un lote de rutas de imagen y devuelve el mapa `ruta -> URL`. Lo usan el
+ * catálogo y el carrito: las rutas se deduplican y se ordenan para que la clave
+ * de caché no cambie por el orden en que llegaron.
+ */
+export function useSignedThumbnails(paths: Array<string | null>): Record<string, string> {
+  const unique = [...new Set(paths.filter((path): path is string => Boolean(path)))].sort()
 
   const { data } = useQuery({
-    queryKey: thumbsKey(paths),
-    queryFn: () => signPaths(paths),
-    enabled: paths.length > 0,
+    queryKey: thumbsKey(unique),
+    queryFn: () => signPaths(unique),
+    enabled: unique.length > 0,
     staleTime: 30 * 60 * 1000,
     retry: false,
   })

@@ -99,3 +99,51 @@ export function normalizeOrderItems(raw: unknown): OrderItemInput[] {
 
   return [...merged.entries()].map(([product_id, quantity]) => ({ product_id, quantity }))
 }
+
+/** Lo único que la vitrina pregunta para la entrega (P06: checkout mínimo). */
+export type ShippingAddress = { address: string; reference?: string }
+
+const SHIPPING_FIELDS = ['address', 'reference']
+
+/**
+ * Dirección de entrega del checkout mínimo: calle obligatoria y referencia
+ * opcional. Nada más — ni coordenadas, ni ciudad, ni país: pedir datos que
+ * nadie usa es tan malo como no pedir los que sí.
+ *
+ * Las claves desconocidas se RECHAZAN en vez de guardarse: `shipping_address`
+ * es un `jsonb` y sin esta puerta se convierte en el vertedero por el que
+ * entra cualquier cosa que se le ocurra al cliente.
+ */
+export function normalizeShippingAddress(raw: unknown): ShippingAddress {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    throw badRequest('CAMPO_INVALIDO', '`shipping_address` debe ser un objeto')
+  }
+
+  const source = raw as Record<string, unknown>
+  const unknown = Object.keys(source).filter((key) => !SHIPPING_FIELDS.includes(key))
+  if (unknown.length > 0) {
+    throw badRequest(
+      'CAMPO_NO_PERMITIDO',
+      `\`shipping_address\` solo admite address y reference. Campos rechazados: ${unknown.join(', ')}`,
+    )
+  }
+
+  const address = typeof source.address === 'string' ? source.address.trim() : ''
+  if (address.length < 3 || address.length > 300) {
+    throw badRequest(
+      'CAMPO_INVALIDO',
+      '`shipping_address.address` debe tener entre 3 y 300 caracteres',
+    )
+  }
+
+  const rawReference = source.reference
+  if (rawReference !== undefined && rawReference !== null && typeof rawReference !== 'string') {
+    throw badRequest('CAMPO_INVALIDO', '`shipping_address.reference` debe ser texto')
+  }
+  const reference = typeof rawReference === 'string' ? rawReference.trim() : ''
+  if (reference.length > 200) {
+    throw badRequest('CAMPO_INVALIDO', '`shipping_address.reference` supera los 200 caracteres')
+  }
+
+  return reference ? { address, reference } : { address }
+}

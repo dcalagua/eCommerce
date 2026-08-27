@@ -1,41 +1,15 @@
-import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined'
 import { Card, Typography } from '@mui/material'
 import { useI18n } from '@/shared/i18n/i18n-context'
-import { PageHeader } from '@/shared/ui/PageHeader'
 import { EmptyState } from '@/shared/ui/states'
 
 /**
- * Pantallas sueltas de la vitrina.
+ * Pantallas sueltas fuera de la vitrina de una tienda.
  *
  * El catálogo y la ficha viven en `StoreHomePage.tsx` y `StoreProductPage.tsx`
- * desde P05. Carrito y pago siguen siendo la estructura de rutas con su estado
- * vacío: son P06 y esta fase no toca pagos.
+ * (P05); el carrito, el checkout y la confirmación en `StoreCartPage.tsx`,
+ * `StoreCheckoutPage.tsx` y `StoreOrderPage.tsx` (P06). Aquí queda solo la
+ * portada del dominio raíz.
  */
-
-export function StoreCartPage() {
-  const { t } = useI18n()
-  return (
-    <>
-      <PageHeader title={t('store.cart.title')} />
-      <Card>
-        <EmptyState title={t('store.cart.empty')} icon={<ShoppingCartOutlinedIcon fontSize="small" />} />
-      </Card>
-    </>
-  )
-}
-
-export function StoreCheckoutPage() {
-  const { t } = useI18n()
-  return (
-    <>
-      <PageHeader title={t('store.checkout.title')} />
-      <Card>
-        <EmptyState />
-      </Card>
-    </>
-  )
-}
-
 export function LandingPage() {
   const { t } = useI18n()
   return (

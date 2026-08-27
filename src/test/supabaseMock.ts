@@ -313,16 +313,21 @@ export function createFakeSupabase(initial: Partial<FakeState> = {}) {
       },
     },
     functions: {
-      invoke: (name: string, options: { body: Record<string, unknown> }) => {
+      /**
+       * `async` a propósito: un handler que devuelve una promesa se espera
+       * aquí, y así un test puede dejar una llamada EN VUELO para comprobar,
+       * por ejemplo, que un segundo envío no crea un segundo pedido.
+       */
+      invoke: async (name: string, options: { body: Record<string, unknown> }) => {
         state.invocations.push({ name, body: options.body })
         const handler = state.functions[name]
         if (!handler) {
-          return Promise.resolve({ data: null, error: new FunctionsHttpErrorLike(500, 'ERROR_INTERNO') })
+          return { data: null, error: new FunctionsHttpErrorLike(500, 'ERROR_INTERNO') }
         }
         try {
-          return Promise.resolve({ data: { data: handler(options.body) }, error: null })
+          return { data: { data: await handler(options.body) }, error: null }
         } catch (error) {
-          return Promise.resolve({ data: null, error })
+          return { data: null, error }
         }
       },
     },

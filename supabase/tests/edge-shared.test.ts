@@ -22,7 +22,12 @@ import {
 } from '../functions/_shared/auth.ts'
 import { corsHeaders, parseAllowedOrigins, resolveAllowedOrigin } from '../functions/_shared/cors.ts'
 import { AppError, fromDatabaseError, toAppError } from '../functions/_shared/errors.ts'
-import { ORDER_TRANSITIONS, canTransition, normalizeOrderItems } from '../functions/_shared/orders.ts'
+import {
+  ORDER_TRANSITIONS,
+  canTransition,
+  normalizeOrderItems,
+  normalizeShippingAddress,
+} from '../functions/_shared/orders.ts'
 import { ROLE_CAPABILITIES, can } from '../functions/_shared/roles.ts'
 import { rejectUnknownFields, requireUuid } from '../functions/_shared/validation.ts'
 
@@ -339,5 +344,48 @@ describe('validacion de payload', () => {
   it('rechaza campos desconocidos en vez de descartarlos', () => {
     expectCode(() => rejectUnknownFields({ a: 1, sorpresa: 2 }, ['a']), 'CAMPO_NO_PERMITIDO')
     expect(() => rejectUnknownFields({ a: 1, sorpresa: 2 }, ['a'])).toThrowError(/sorpresa/)
+  })
+})
+
+describe('direccion de entrega del checkout (P06)', () => {
+  it('acepta la direccion sola y la referencia opcional', () => {
+    expect(normalizeShippingAddress({ address: '  Av. Primavera 120  ' })).toEqual({
+      address: 'Av. Primavera 120',
+    })
+    expect(
+      normalizeShippingAddress({ address: 'Jr. Lima 45', reference: ' Frente al parque ' }),
+    ).toEqual({ address: 'Jr. Lima 45', reference: 'Frente al parque' })
+  })
+
+  it('una referencia vacia no ensucia el pedido con una clave hueca', () => {
+    expect(normalizeShippingAddress({ address: 'Jr. Lima 45', reference: '   ' })).toEqual({
+      address: 'Jr. Lima 45',
+    })
+  })
+
+  it('sin direccion no hay entrega', () => {
+    expectCode(() => normalizeShippingAddress({}), 'CAMPO_INVALIDO')
+    expectCode(() => normalizeShippingAddress({ address: 'ab' }), 'CAMPO_INVALIDO')
+    expectCode(() => normalizeShippingAddress(null), 'CAMPO_INVALIDO')
+    expectCode(() => normalizeShippingAddress('Av. Primavera 120'), 'CAMPO_INVALIDO')
+  })
+
+  it('no es un vertedero: los campos que no son de direccion se rechazan', () => {
+    expectCode(
+      () => normalizeShippingAddress({ address: 'Jr. Lima 45', total: '0.01' }),
+      'CAMPO_NO_PERMITIDO',
+    )
+    expectCode(
+      () => normalizeShippingAddress({ address: 'Jr. Lima 45', organization_id: ORG }),
+      'CAMPO_NO_PERMITIDO',
+    )
+  })
+
+  it('corta los textos desmesurados en vez de guardarlos', () => {
+    expectCode(() => normalizeShippingAddress({ address: 'x'.repeat(301) }), 'CAMPO_INVALIDO')
+    expectCode(
+      () => normalizeShippingAddress({ address: 'Jr. Lima 45', reference: 'x'.repeat(201) }),
+      'CAMPO_INVALIDO',
+    )
   })
 })

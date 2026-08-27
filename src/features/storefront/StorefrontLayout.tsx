@@ -1,5 +1,15 @@
 import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined'
-import { Box, Button, Container, Divider, Link as MuiLink, Stack, Toolbar, Typography } from '@mui/material'
+import {
+  Badge,
+  Box,
+  Button,
+  Container,
+  Divider,
+  Link as MuiLink,
+  Stack,
+  Toolbar,
+  Typography,
+} from '@mui/material'
 import type { ReactNode } from 'react'
 import { Link, Outlet, useParams } from 'react-router-dom'
 import { ErrorBoundary } from '@/app/ErrorBoundary'
@@ -10,6 +20,9 @@ import { AppearanceProvider } from '@/theme/AppearanceProvider'
 import { R, T } from '@/theme/tokens'
 import { StorefrontNotFoundError } from './api'
 import { initials } from './branding'
+import { CartDrawer } from './cart/CartDrawer'
+import { CartProvider } from './cart/CartProvider'
+import { useCart } from './cart/cart-context'
 import { usePublicStore, type StorefrontOutlet } from './hooks'
 import type { PublicStore } from './types'
 
@@ -56,22 +69,28 @@ export function StorefrontLayout() {
   return (
     // El acento de la vitrina es el `accent_color` del tenant, no el de casa.
     <AppearanceProvider tenantAccent={store.accent_color}>
-      <Box sx={{ minHeight: '100dvh', bgcolor: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
-        <StoreHeader store={store} storeSlug={storeSlug as string} />
+      {/* El carrito cuelga de la tienda YA RESUELTA: su `store_id` sale de
+          `public_stores`, nunca de la URL ni de `localStorage`. Al cambiar de
+          tienda, el provider se remonta y carga el carrito de esa tienda. */}
+      <CartProvider storeId={store.store_id} currency={store.currency}>
+        <Box sx={{ minHeight: '100dvh', bgcolor: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+          <StoreHeader store={store} storeSlug={storeSlug as string} />
 
-        <Container
-          component="main"
-          id="contenido"
-          maxWidth="lg"
-          sx={{ flex: 1, py: { xs: 2.5, md: 4 } }}
-        >
-          <ErrorBoundary>
-            <Outlet context={context} />
-          </ErrorBoundary>
-        </Container>
+          <Container
+            component="main"
+            id="contenido"
+            maxWidth="lg"
+            sx={{ flex: 1, py: { xs: 2.5, md: 4 } }}
+          >
+            <ErrorBoundary>
+              <Outlet context={context} />
+            </ErrorBoundary>
+          </Container>
 
-        <StoreFooter store={store} />
-      </Box>
+          <StoreFooter store={store} />
+          <CartDrawer storeSlug={storeSlug as string} />
+        </Box>
+      </CartProvider>
     </AppearanceProvider>
   )
 }
@@ -88,8 +107,6 @@ function Shell({ children }: { children: ReactNode }) {
 }
 
 function StoreHeader({ store, storeSlug }: { store: PublicStore; storeSlug: string }) {
-  const { t } = useI18n()
-
   return (
     <Box
       component="header"
@@ -152,20 +169,37 @@ function StoreHeader({ store, storeSlug }: { store: PublicStore; storeSlug: stri
             </Typography>
           </Box>
 
-          <Button
-            component={Link}
-            to={`/s/${storeSlug}/cart`}
-            startIcon={<ShoppingCartOutlinedIcon />}
-            aria-label={t('store.cart.title')}
-            sx={{ flexShrink: 0 }}
-          >
-            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-              {t('store.cart.title')}
-            </Box>
-          </Button>
+          <CartButton />
         </Toolbar>
       </Container>
     </Box>
+  )
+}
+
+/**
+ * Botón del carrito. Abre el panel lateral en vez de navegar: el comprador ve
+ * lo que lleva sin abandonar la ficha que estaba mirando. La página `/cart`
+ * sigue estando a un clic desde el propio panel.
+ */
+function CartButton() {
+  const { t } = useI18n()
+  const { count, openCart } = useCart()
+
+  return (
+    <Button
+      onClick={openCart}
+      startIcon={
+        <Badge badgeContent={count} color="primary" aria-hidden>
+          <ShoppingCartOutlinedIcon />
+        </Badge>
+      }
+      aria-label={`${t('store.cart.title')} (${count})`}
+      sx={{ flexShrink: 0 }}
+    >
+      <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+        {t('store.cart.title')}
+      </Box>
+    </Button>
   )
 }
 

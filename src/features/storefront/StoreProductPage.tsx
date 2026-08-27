@@ -1,12 +1,17 @@
+import AddIcon from '@mui/icons-material/Add'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import { Box, Button, Card, Chip, Divider, Stack, Typography } from '@mui/material'
-import { useMemo } from 'react'
+import RemoveIcon from '@mui/icons-material/Remove'
+import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined'
+import { Box, Button, Card, Chip, Divider, IconButton, Stack, Typography } from '@mui/material'
+import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/states'
-import { T } from '@/theme/tokens'
+import { R, T } from '@/theme/tokens'
 import { StorefrontNotFoundError } from './api'
+import { MAX_LINE_QUANTITY } from './cart/cart'
+import { useCart } from './cart/cart-context'
 import { ProductGallery } from './components/ProductGallery'
 import { ProductGrid } from './components/ProductGrid'
 import {
@@ -16,15 +21,15 @@ import {
   useStorefront,
   useThumbnails,
 } from './hooks'
-import { discountPercent, pickRelated, type CatalogQuery } from './types'
+import { discountPercent, pickRelated, type CatalogQuery, type PublicProduct } from './types'
 
 /**
- * Ficha de producto: galería, precio, disponibilidad, descripción y
- * relacionados.
+ * Ficha de producto: galería, precio, disponibilidad, descripción, cantidad,
+ * botón de compra y relacionados.
  *
- * No hay botón de compra todavía **a propósito**: el carrito y el pago son P06,
- * y un botón que no lleva a ninguna parte es peor que no ponerlo. Lo que sí
- * está es lo que el comprador necesita para decidir.
+ * El botón añade al carrito de ESTA tienda con el precio que el catálogo acaba
+ * de devolver. Ese precio es de escaparate: el que se cobra lo vuelve a leer la
+ * base al confirmar el pedido.
  */
 export function StoreProductPage() {
   const { t, locale } = useI18n()
@@ -149,6 +154,8 @@ export function StoreProductPage() {
             {available ? t('store.availability.inStock') : t('store.availability.outOfStock')}
           </Typography>
 
+          <AddToCart product={item} available={available} />
+
           <Divider sx={{ my: 1 }} />
 
           <Typography component="h2" sx={{ fontSize: T.cardTitle, fontWeight: 800 }}>
@@ -175,6 +182,68 @@ export function StoreProductPage() {
           <ProductGrid products={related} storeSlug={storeSlug} thumbnails={relatedThumbs} />
         </Box>
       )}
+    </Stack>
+  )
+}
+
+/**
+ * Cantidad + «Agregar al carrito».
+ *
+ * Sin stock no hay botón habilitado: la disponibilidad la manda `in_stock`, que
+ * la vista pública deriva del inventario real. Y aunque alguien lo forzara, la
+ * base vuelve a comprobar el stock al crear el pedido.
+ */
+function AddToCart({ product, available }: { product: PublicProduct; available: boolean }) {
+  const { t } = useI18n()
+  const { add } = useCart()
+  const [quantity, setQuantity] = useState(1)
+
+  return (
+    <Stack direction="row" sx={{ gap: 1.5, alignItems: 'center', flexWrap: 'wrap', mt: 1 }}>
+      <Stack
+        direction="row"
+        sx={{
+          alignItems: 'center',
+          gap: 0.5,
+          border: '1px solid var(--border)',
+          borderRadius: `${R.md}px`,
+          px: 0.5,
+        }}
+      >
+        <IconButton
+          size="small"
+          aria-label={t('store.cart.decrease')}
+          disabled={quantity <= 1}
+          onClick={() => setQuantity((value) => Math.max(1, value - 1))}
+        >
+          <RemoveIcon fontSize="small" />
+        </IconButton>
+        <Typography
+          component="output"
+          aria-live="polite"
+          aria-label={t('store.cart.quantity')}
+          sx={{ minWidth: 28, textAlign: 'center', fontWeight: 800 }}
+        >
+          {quantity}
+        </Typography>
+        <IconButton
+          size="small"
+          aria-label={t('store.cart.increase')}
+          disabled={quantity >= MAX_LINE_QUANTITY}
+          onClick={() => setQuantity((value) => Math.min(MAX_LINE_QUANTITY, value + 1))}
+        >
+          <AddIcon fontSize="small" />
+        </IconButton>
+      </Stack>
+
+      <Button
+        variant="contained"
+        startIcon={<ShoppingCartOutlinedIcon />}
+        disabled={!available}
+        onClick={() => add(product, quantity)}
+      >
+        {t('store.product.addToCart')}
+      </Button>
     </Stack>
   )
 }

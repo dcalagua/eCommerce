@@ -9,7 +9,8 @@ import { RootErrorRoute } from './RootErrorRoute'
  * Dos áreas separadas que comparten design system pero no rutas ni guards:
  *   `/app/*`        backoffice del tenant (sesión + membresía + sociedad activa)
  *   `/onboarding`   alta del espacio para quien tiene sesión y todavía no tiene tenant
- *   `/s/:storeSlug` vitrina pública (tenant resuelto por slug, solo lectura)
+ *   `/s/:storeSlug` vitrina pública (tenant resuelto por slug; el pedido lo
+ *                   crea el servidor, que también resuelve la tienda)
  */
 
 const LoginPage = lazy(() => import('@/features/auth/LoginPage').then((m) => ({ default: m.LoginPage })))
@@ -50,10 +51,13 @@ const StoreProductPage = lazy(() =>
   import('@/features/storefront/StoreProductPage').then((m) => ({ default: m.StoreProductPage })),
 )
 const StoreCartPage = lazy(() =>
-  import('@/features/storefront/pages').then((m) => ({ default: m.StoreCartPage })),
+  import('@/features/storefront/StoreCartPage').then((m) => ({ default: m.StoreCartPage })),
 )
 const StoreCheckoutPage = lazy(() =>
-  import('@/features/storefront/pages').then((m) => ({ default: m.StoreCheckoutPage })),
+  import('@/features/storefront/StoreCheckoutPage').then((m) => ({ default: m.StoreCheckoutPage })),
+)
+const StoreOrderPage = lazy(() =>
+  import('@/features/storefront/StoreOrderPage').then((m) => ({ default: m.StoreOrderPage })),
 )
 const LandingPage = lazy(() =>
   import('@/features/storefront/pages').then((m) => ({ default: m.LandingPage })),
@@ -98,6 +102,10 @@ export const routes: RouteObject[] = [
       { path: 'product/:productSlug', element: withSuspense(<StoreProductPage />) },
       { path: 'cart', element: withSuspense(<StoreCartPage />) },
       { path: 'checkout', element: withSuspense(<StoreCheckoutPage />) },
+      // Confirmación del pedido. El número va en la URL para que el comprador
+      // pueda guardarla o compartirla; el detalle llega por estado de
+      // navegación, porque un comprador anónimo no puede releer el pedido.
+      { path: 'order/:orderNumber', element: withSuspense(<StoreOrderPage />) },
     ],
   },
   { path: '*', element: <NotFoundPage /> },

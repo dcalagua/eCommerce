@@ -74,7 +74,14 @@ describe('rutas base', () => {
       '/app/products',
       '/app/settings',
     ])
-    expect(storefront?.children?.length).toBe(4)
+    // P06 anade la confirmacion: catalogo, ficha, carrito, checkout y pedido.
+    expect(paths(storefront?.children ?? [], '/s/:storeSlug').sort()).toEqual([
+      '/s/:storeSlug',
+      '/s/:storeSlug/cart',
+      '/s/:storeSlug/checkout',
+      '/s/:storeSlug/order/:orderNumber',
+      '/s/:storeSlug/product/:productSlug',
+    ])
     expect(paths(admin?.children ?? [], '/app')).not.toContain('/app/cart')
   })
 })

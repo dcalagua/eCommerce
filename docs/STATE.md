@@ -2,31 +2,33 @@
 
 GUIDELINES_STATUS: VERIFIED
 Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md` (11 documentos leídos en la raíz de Drive `EBIM-Plataforma`).
-Última actualización: 2026-08-27 (P05)
+Última actualización: 2026-08-27 (P06)
 
 ## Fase actual
-**P05 — Storefront público (COMPLETA para el alcance encargado).** Vitrina responsive en `/s/:storeSlug`
-sin sesión: la tienda se resuelve por el **slug de la URL** contra `public_stores` (que ya filtra
-`status = 'active'`), y de ahí sale el `store_id` que usa el resto — nunca un identificador que declare el
-cliente. Portada con banner configurable, categorías, buscador general, filtros simples (categoría y
-disponibilidad) y orden; rejilla de tarjetas con imagen principal, precio, precio tachado con % de
-descuento y disponibilidad; ficha con galería, descripción y relacionados simples; cabecera con logo y pie
-con contacto. Todos los estados cubiertos: esqueleto, error con reintento, vacío, sin resultados, 404 de
-tienda y 404 de producto. Migración 11 (`storefront_public`) añade el branding que faltaba
-(`banner_url`, `hero_title`, `hero_subtitle`, `contact_phone`, `contact_address`), la columna **generada**
-`products.in_stock` (disponibilidad sin filtrar el inventario) y rehace el modelo de lectura público.
-`supabase/seed.sql` deja una tienda demo navegable en local. **Sin pagos**: carrito y checkout siguen
-siendo el placeholder de P01, son P06. Nada desplegado: sigue sin project ref. Siguiente: P06 (carrito y
-checkout).
+**P06 — Carrito y checkout (COMPLETA para el alcance encargado).** Flujo entero del comprador anónimo:
+producto → carrito → checkout → pedido. El carrito vive en `localStorage` **por tienda**
+(`ebim.ecommerce.cart.v1:<store_id>`), suma/resta/quita, calcula el subtotal en céntimos y **no puede
+mezclar tiendas**: la clave lleva el `store_id`, el carrito lo repite dentro, un carrito guardado bajo la
+clave de otra tienda se descarta y añadir un producto ajeno lanza `CartStoreMismatchError`. Panel lateral
+(`CartDrawer`) que se abre al agregar, contador en la cabecera y página `/cart` con las mismas líneas.
+Checkout mínimo (nombre, correo, teléfono, dirección + referencia opcional), **sin pasarela de pago**.
+Confirmación en `/s/:storeSlug/order/:orderNumber` con los importes que devolvió el SERVIDOR.
+Migración 12 (`checkout`) añade `create_order_for_slug`: **la tienda la resuelve la base a partir del slug**
+(solo `status = 'active'`) y delega en `create_order`, que sigue leyendo precios de la BD, validando
+publicación/stock/moneda, recalculando subtotal + impuesto + total, generando `order_number` e insertando
+pedido y líneas en la misma transacción. El cuerpo que sale del navegador lleva `store_slug`, `items` y
+contacto; `store_id` ya **no** se acepta (`rejectUnknownFields` lo tumba) y ningún precio viaja. Estado
+inicial `pending` (estándar EBIM, migración 04). Nada desplegado: sigue sin project ref. Siguiente: P07
+(gestión de pedidos y configuración).
 
 ## Fase anterior
-**P04 — Administración de catálogo (COMPLETA).** Productos con listado MUI, buscador general, tabs de
-estado, alta/edición en panel lateral con validación Zod, publicar/despublicar, archivar y **eliminación
-segura con conteo real de uso** (contrato §4.2); categorías con CRUD mínimo y la misma eliminación segura;
-imágenes múltiples en el bucket privado `product-images` con principal, orden, borrado y validación de
-MIME/tamaño, todo con la clave publicable y bajo RLS. Migración 10 (`catalog_admin`) con las tres
-operaciones que el navegador no puede hacer bien por su cuenta. **Variantes de producto NO entran ahí**:
-no estaban en el encargo de esa fase y no existe tabla; queda anotado en pendientes.
+**P05 — Storefront público (COMPLETA).** Vitrina responsive en `/s/:storeSlug` sin sesión: la tienda se
+resuelve por el **slug de la URL** contra `public_stores` (que ya filtra `status = 'active'`). Portada con
+banner configurable, categorías, buscador general, filtros simples y orden; rejilla de tarjetas con imagen,
+precio, precio tachado con % de descuento y disponibilidad; ficha con galería, descripción y relacionados
+simples; cabecera con logo y pie con contacto. Seis estados cubiertos. Migración 11 (`storefront_public`)
+añade el branding que faltaba, la columna generada `products.in_stock` y rehace el modelo de lectura
+público. `supabase/seed.sql` deja una tienda demo navegable en local.
 
 ## Decisiones tomadas
 1. eCommerce entra a la suite EBIM como app propia: **proyecto Supabase propio**, identidad/addons en el hub.
@@ -159,6 +161,27 @@ no estaban en el encargo de esa fase y no existe tabla; queda anotado en pendien
     backoffice y la vitrina; duplicarlos habría dejado dos reglas de saneado del buscador, que es el campo
     más expuesto de toda la app.
 
+46. **P06 — la tienda del pedido la resuelve el SERVIDOR, no el cuerpo de la petición.** Hasta P05 el
+    checkout habría mandado el `store_id` leído de `public_stores`; funcionaba, pero dejaba un
+    identificador de fila en manos del cliente. `create_order_for_slug` (migración 12) traduce el **slug
+    público** a tienda activa dentro de la misma transacción y delega en `create_order`. La Edge Function
+    dejó de admitir `store_id`: si llega, la petición se cae con `CAMPO_NO_PERMITIDO`.
+47. **P06 — el precio del carrito es de ESCAPARATE, no de cobro.** El carrito guarda nombre y precio para
+    poder pintar la línea, pero al servidor solo viajan `product_id` y `quantity`; el importe lo vuelve a
+    leer la base. Un `localStorage` editado cambia lo que el comprador ve en su pantalla y nada de lo que
+    paga. Hay test de las dos mitades: el cuerpo de la petición no contiene ni la palabra `price`, y la
+    confirmación muestra los números del servidor, no los del carrito.
+48. **P06 — un carrito por tienda, y no se mezclan.** La clave de `localStorage` incluye el `store_id` y el
+    propio carrito lo repite dentro: un carrito copiado a la clave de otra tienda se descarta al leerlo.
+    Los carritos de dos tiendas coexisten sin verse; el `CartProvider` se remonta al cambiar de tienda.
+49. **P06 — el carrito se vacía cuando el servidor confirma, no cuando se pulsa el botón.** Si se vaciara
+    al enviar, un error de red dejaría al comprador sin carrito y sin pedido. Doble candado contra el doble
+    envío: el botón se deshabilita mientras la mutación está en vuelo y el `onSubmit` corta de raíz
+    cualquier envío que se cuele igual.
+50. **P06 — `shipping_address` no es un vertedero.** Es un `jsonb` y lo primero que hace la Edge Function es
+    aceptar exactamente dos claves (`address`, `reference`) y rechazar el resto, en vez de guardar lo que
+    llegue. La referencia vacía no se guarda como clave hueca.
+
 ## Pendientes / riesgos abiertos
 - [ ] Confirmar con el operador el **project ref de Supabase** para eCommerce (aún no existe). Bloquea:
       aplicar las migraciones, `npm run db:types` y el despliegue de las 4 Edge Functions.
@@ -175,9 +198,23 @@ no estaban en el encargo de esa fase y no existe tabla; queda anotado en pendien
       solo `localStorage`. Requiere tabla de perfil, que no existe en este proyecto todavía.
 - [ ] Playwright: el flujo login → alta → panel está cubierto con el router real y un backend falso
       (`src/app/auth-flow.test.tsx`), pero no en navegador real. Se aborda en el quality gate (P08).
-- [ ] Rate limiting de `create-order` (checkout anónimo servido con `service_role`) — se aborda en P06.
-- [ ] `shipping_total` y `discount_total` quedan en 0: las reglas de envío/descuento son de P06. Las
-      columnas existen y el CHECK de cuadre del total ya las contempla.
+- [ ] **Rate limiting de `create-order`** (checkout anónimo servido con `service_role`): P06 entrega el
+      flujo pero NO el límite de tasa. Hoy la única barrera es que el pedido no puede falsificar precios
+      ni tenant; nada impide crear muchos pedidos basura. Necesita el project ref para elegir mecanismo
+      (límite del gateway de Supabase o tabla de intentos). Pasa a P07/P08.
+- [ ] `shipping_total` y `discount_total` **siguen en 0** tras P06: el encargo de la fase era el checkout
+      mínimo, y no hay reglas de envío ni de cupones que aplicar. Las columnas existen y el CHECK de
+      cuadre del total ya las contempla, así que entran sin migración cuando se definan.
+- [ ] **Pagos**: P06 se entrega sin pasarela por encargo explícito. El pedido nace en `pending` y la tienda
+      cobra por su canal. La pasarela es un addon del hub (contrato §4.4) y necesita decidir proveedor.
+- [ ] **El comprador no puede consultar su pedido después**: `orders` no tiene policy para `anon` (decisión
+      de P02), así que la confirmación se muestra con el estado de navegación y, si se recarga, solo queda el
+      número de la URL. Un seguimiento real necesita token de pedido o identidad local del comprador.
+- [ ] **Correo de confirmación al comprador**: la pantalla dice que se envía, pero no hay envío todavía —
+      el buzón por app (contrato §14) no está cableado en eCommerce. Es P07 (notificaciones).
+- [ ] **Reserva de stock**: `create_order` descuenta stock al confirmar, no al añadir al carrito. Dos
+      compradores pueden llevar la última unidad en su carrito y solo uno se la lleva; el segundo recibe
+      `STOCK_INSUFICIENTE` con mensaje claro. Reservar de verdad exige carrito servidor y caducidad.
 - [ ] Alta de `ecommerce` en el hub: `apps`, `workspace_apps`, catálogo de addons propios (requiere GMAO, owner del contrato).
 - [ ] Crear aviso en `coordinacion\pendientes\` declarando entrada de eCommerce a la suite y sus canales de
       integración (§0.5 del contrato) — no se hizo en esta fase por alcance (solo lectura de Drive).
@@ -237,14 +274,56 @@ no estaban en el encargo de esa fase y no existe tabla; queda anotado en pendien
       `supabase/seed.sql` de demo. VERIFIED (55 tests nuevos). **Fuera de alcance de esta ejecución:**
       resolución por dominio (necesita DNS/deploy) y **SEO básico** (meta tags/sitemap: requiere decidir
       prerender o SSR) — ambos anotados en pendientes. Sin pagos: carrito/checkout siguen en P06.
-- [ ] **P06 — Carrito y checkout:** carrito persistente, cálculo de totales/impuestos, orden creada
-      server-side (Edge Function), pagos como addon.
+- [x] **P06 — Carrito y checkout:** carrito persistente por tienda en `localStorage` (agregar/quitar,
+      cantidad, subtotal, Cart Drawer, sin mezclar tiendas), checkout mínimo (nombre, correo, teléfono,
+      dirección + referencia opcional), pedido creado **server-side** por `create-order` →
+      `create_order_for_slug` (resuelve tienda, valida publicación/cantidades/stock, precios de la BD,
+      recalcula totales, `order_number`, pedido + líneas transaccionales, estado `pending`), pantalla de
+      confirmación, doble envío bloqueado y errores traducidos. VERIFIED (53 tests nuevos).
+      **Fuera de alcance por encargo:** pasarela de pago (addon) y rate limiting — ver pendientes.
 - [ ] **P07 — Pedidos y configuración:** gestión de pedidos en backoffice, estados, notificaciones,
       configuración por sociedad (branding, moneda, custom fields).
 - [ ] **P08 — Quality gate:** typecheck + build + lint verdes, Vitest/Playwright, auditoría RLS y de
       secretos (sin `service_role` en el bundle), revisión de accesibilidad AA.
 
-## Verificaciones de esta fase (P05)
+## Verificaciones de esta fase (P06)
+- `npm run typecheck` (`tsc --noEmit`) → verde.
+- `npm run lint` (ESLint 9 flat config) → verde, **0 problemas**.
+- `npm run test` (Vitest 3) → **427 tests / 29 archivos, todos verdes** (374 de P01–P05 + 53 nuevos).
+- `npm run build` (`vite build`) → verde. Se mantiene el aviso de chunk >500 kB del vendor MUI (P01).
+- Sin push, sin PR, **sin deploy remoto**: sigue sin existir project ref; las migraciones 11 y 12 no están
+  aplicadas en ningún proyecto real.
+
+### Qué cubren los 53 tests nuevos
+- `supabase/tests/checkout-order.test.ts` (22, **Postgres real** con PGlite): el slug resuelve la tienda y
+  el pedido queda en el tenant correcto; un slug inventado o una tienda no activa no venden; un producto de
+  OTRA tienda no se cuela aunque se conozca su uuid y no mueve su stock; subtotal/impuesto/total
+  recalculados con los precios vigentes (349.70 + 18 % = 412.65) y guardados como `numeric`; un precio en el
+  payload se RECHAZA; un cambio de precio se refleja en el pedido siguiente; las líneas repetidas se
+  agrupan; borrador y stock insuficiente no venden; cantidad ≤ 0, carrito vacío y correo inválido se
+  paran; un fallo a media compra no deja pedido, ni líneas, ni stock movido; `order_number` correlativo
+  **por tienda**; estado inicial `pending`; dirección y referencia guardadas tal cual; y ni `anon` ni
+  `authenticated` pueden invocar la función ni leer `orders`.
+- `src/features/storefront/checkout-ui.test.tsx` (12, router real + PostgREST falso): agregar abre el panel,
+  la cantidad de la ficha es la que entra, el carrito de otra tienda no se ve, el carrito sobrevive a la
+  recarga y se edita; el cuerpo que sale a `create-order` es exactamente `store_slug` + contacto +
+  `items` y **no contiene** `price`/`total`/`currency`/`store_id`/`organization_id`; la referencia es
+  opcional; un formulario incompleto no envía; un carrito vacío no llega al pago; el doble envío no crea dos
+  pedidos; un error del servidor se explica sin vaciar el carrito; y la confirmación muestra los importes
+  del servidor y deja el carrito vacío.
+- `src/features/storefront/cart.test.ts` (14): sumar la misma línea en vez de duplicarla, fijar cantidad,
+  quitar, topes, subtotal en céntimos (0.10 + 0.20 = 0.30, no 0.30000000000000004), carrito vacío a 0.00,
+  producto de otra tienda rechazado, una clave de `localStorage` por tienda, carrito ajeno descartado, JSON
+  roto y línea manipulada que no se cuelan, y que a servidor solo salen `product_id` y `quantity`.
+- `supabase/tests/edge-shared.test.ts` (5 nuevos): `normalizeShippingAddress` acepta dirección + referencia
+  opcional, no guarda referencias vacías, exige dirección, rechaza claves que no son de dirección
+  (`total`, `organization_id`) y corta los textos desmesurados.
+
+### Un cambio fuera del carrito (y por qué)
+- `src/test/supabaseMock.ts`: `functions.invoke` ahora **espera** al handler. Sin eso no se puede dejar una
+  llamada en vuelo y el test del doble envío no probaría nada. Los 374 tests anteriores siguen verdes.
+
+## Verificaciones de P05
 - `npm run typecheck` (`tsc --noEmit`) → verde.
 - `npm run lint` (ESLint 9 flat config) → verde, **0 problemas** (0 errores, 0 avisos).
 - `npm run test` (Vitest 3) → **374 tests / 26 archivos, todos verdes** (319 de P01–P04 + 55 nuevos).
