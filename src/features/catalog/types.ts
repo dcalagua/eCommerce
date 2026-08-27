@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { moneyText } from '@/shared/lib/money'
 import type { MessageKey } from '@/shared/i18n/messages'
 
 export const PRODUCTS_TABLE = 'products'
@@ -9,17 +10,11 @@ export const PRODUCT_STATUSES = ['draft', 'published', 'archived'] as const
 export type ProductStatus = (typeof PRODUCT_STATUSES)[number]
 
 /**
- * Importe del catálogo.
- *
- * Sale de la base como TEXTO (`price::text` en el `select`) por la decisión
- * P02 #19: un `numeric` en JSON se convierte en float en el primer
- * `JSON.parse` del navegador y los céntimos dejan de cuadrar. El esquema
- * acepta número por si alguna respuesta llega sin castear, pero normaliza
- * siempre a string decimal: la app nunca guarda un importe como `number`.
+ * Importe del catálogo. Vive en `src/shared/lib/money.ts` porque la vitrina
+ * pública lo necesita igual que el backoffice; se reexporta aquí para no
+ * romper a quien ya lo importaba de este módulo.
  */
-export const moneyText = z
-  .union([z.string(), z.number()])
-  .transform((value) => (typeof value === 'number' ? value.toFixed(2) : value.trim()))
+export { moneyText } from '@/shared/lib/money'
 
 /**
  * Producto del catálogo con los nombres de columna reales de

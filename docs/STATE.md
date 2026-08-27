@@ -2,25 +2,31 @@
 
 GUIDELINES_STATUS: VERIFIED
 Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md` (11 documentos leídos en la raíz de Drive `EBIM-Plataforma`).
-Última actualización: 2026-08-27 (P04)
+Última actualización: 2026-08-27 (P05)
 
 ## Fase actual
-**P04 — Administración de catálogo (COMPLETA para el alcance encargado).** Productos con listado MUI,
-buscador general, tabs de estado, alta/edición en panel lateral con validación Zod, publicar/despublicar,
-archivar y **eliminación segura con conteo real de uso** (contrato §4.2); categorías con CRUD mínimo y la
-misma eliminación segura; imágenes múltiples en el bucket privado `product-images` con principal, orden,
-borrado y validación de MIME/tamaño, todo con la clave publicable y bajo RLS. Migración 10
-(`catalog_admin`) con las tres operaciones que el navegador no puede hacer bien por su cuenta.
-**Variantes de producto NO entran aquí**: no estaban en el encargo de esta fase y no existe tabla; queda
-anotado en pendientes. Nada desplegado: sigue sin project ref. Siguiente: P05 (storefront público).
+**P05 — Storefront público (COMPLETA para el alcance encargado).** Vitrina responsive en `/s/:storeSlug`
+sin sesión: la tienda se resuelve por el **slug de la URL** contra `public_stores` (que ya filtra
+`status = 'active'`), y de ahí sale el `store_id` que usa el resto — nunca un identificador que declare el
+cliente. Portada con banner configurable, categorías, buscador general, filtros simples (categoría y
+disponibilidad) y orden; rejilla de tarjetas con imagen principal, precio, precio tachado con % de
+descuento y disponibilidad; ficha con galería, descripción y relacionados simples; cabecera con logo y pie
+con contacto. Todos los estados cubiertos: esqueleto, error con reintento, vacío, sin resultados, 404 de
+tienda y 404 de producto. Migración 11 (`storefront_public`) añade el branding que faltaba
+(`banner_url`, `hero_title`, `hero_subtitle`, `contact_phone`, `contact_address`), la columna **generada**
+`products.in_stock` (disponibilidad sin filtrar el inventario) y rehace el modelo de lectura público.
+`supabase/seed.sql` deja una tienda demo navegable en local. **Sin pagos**: carrito y checkout siguen
+siendo el placeholder de P01, son P06. Nada desplegado: sigue sin project ref. Siguiente: P06 (carrito y
+checkout).
 
 ## Fase anterior
-**P03 — Auth, contexto de tenant y shell administrativo (COMPLETA).** Sesión única de app con recuperación
-al refrescar, login/logout/recuperación de contraseña, `/app/*` protegido por dos guards encadenados
-(sesión → tenant), `TenantProvider` que deriva la jerarquía del JWT y el resto por RLS, alta de espacio de
-sí mismo vía `bootstrap-tenant` con el token del hub VERIFICADO, y backoffice MUI responsive con sidebar/
-drawer, breadcrumb, selector de sociedad, selector de tienda y panel de KPIs reales. Nada desplegado:
-sigue sin project ref. Siguiente: P04 (catálogo en el backoffice).
+**P04 — Administración de catálogo (COMPLETA).** Productos con listado MUI, buscador general, tabs de
+estado, alta/edición en panel lateral con validación Zod, publicar/despublicar, archivar y **eliminación
+segura con conteo real de uso** (contrato §4.2); categorías con CRUD mínimo y la misma eliminación segura;
+imágenes múltiples en el bucket privado `product-images` con principal, orden, borrado y validación de
+MIME/tamaño, todo con la clave publicable y bajo RLS. Migración 10 (`catalog_admin`) con las tres
+operaciones que el navegador no puede hacer bien por su cuenta. **Variantes de producto NO entran ahí**:
+no estaban en el encargo de esa fase y no existe tabla; queda anotado en pendientes.
 
 ## Decisiones tomadas
 1. eCommerce entra a la suite EBIM como app propia: **proyecto Supabase propio**, identidad/addons en el hub.
@@ -124,6 +130,34 @@ sigue sin project ref. Siguiente: P04 (catálogo en el backoffice).
 37. **P04 — mientras el espacio de trabajo se resuelve NO se dice «no tienes tiendas».** Mismo criterio que
     la sesión en P03: no afirmar algo que todavía no se sabe. Las pantallas de catálogo muestran esqueleto
     durante `status === 'loading'`.
+38. **P05 — la disponibilidad se publica, el inventario no.** El comprador necesita saber si puede comprar;
+    cuántas unidades quedan es dato competitivo del tenant y está fuera del GRANT de `anon`. Se resuelve con
+    `products.in_stock`, columna **generada** (`stock > 0`): no se puede escribir a mano, así que no existe
+    el estado «dice disponible y el stock es 0», y `anon` recibe el GRANT sobre ella pero nunca sobre `stock`.
+39. **P05 — un producto de categoría desactivada sigue a la venta, pero sin anunciar la sección.** La
+    categoría entra en `public_products` por LEFT JOIN contra la categoría activa. Con un INNER JOIN, apagar
+    una categoría habría hecho desaparecer del catálogo productos que nadie despublicó — un borrado
+    accidental disfrazado de cambio de menú.
+40. **P05 — los filtros viven en la URL (`?q=&c=&d=&sort=`), no en un `useState` suelto.** Así una búsqueda
+    se comparte, el botón de atrás hace lo que se espera y recargar no borra lo que el comprador eligió. El
+    término entra con `replace: true` y sale con debounce: una entrada de historial por letra no es historial.
+41. **P05 — sin logo, iniciales del tenant; nunca el isotipo EBIM haciendo de su marca.** El fallback tiene
+    que ser NEUTRO (encargo). Lo mismo con el banner: sin `banner_url` se pinta el degradado de tokens, que
+    ya lleva el acento del tenant, y no una foto de archivo. El lockup «by EBIM» solo aparece en el pie, y
+    desaparece si la tienda es white-label.
+42. **P05 — la ficha no lleva botón de compra todavía.** El carrito y el pago son P06 y esta fase no toca
+    pagos. Un botón que no lleva a ninguna parte es peor que no ponerlo.
+43. **P05 — la vitrina usa el cliente ANÓNIMO aunque haya sesión de backoffice abierta.** Las policies
+    públicas son `to anon`: con el cliente autenticado el catálogo se vería vacío. Es la decisión de P02
+    (`getStorefrontClient`), ahora ejercitada por un test que comprueba que la vitrina solo consulta vistas
+    `public_*` y jamás `products` o `stores`.
+44. **P05 — el lector de branding del contrato §4.3 deja de estar duplicado en el cliente.** La vista
+    `public_store_branding` sigue en la base (es la interfaz homologada que consumen las otras apps de la
+    suite), pero el hook `useStoreBranding` se retira: la vitrina resuelve contra `public_stores`, que trae
+    eso y además `store_id`, banner y contacto. Dos lectores del mismo dato se desincronizan.
+45. **P05 — `moneyText` y `sanitizeSearchTerm` suben a `src/shared/lib`.** Los necesitan por igual el
+    backoffice y la vitrina; duplicarlos habría dejado dos reglas de saneado del buscador, que es el campo
+    más expuesto de toda la app.
 
 ## Pendientes / riesgos abiertos
 - [ ] Confirmar con el operador el **project ref de Supabase** para eCommerce (aún no existe). Bloquea:
@@ -161,8 +195,23 @@ sigue sin project ref. Siguiente: P04 (catálogo en el backoffice).
 - [x] ~~`categories` admite jerarquía sin límite de profundidad~~ → **acotado en P04**: el CRUD mínimo no
       ofrece selector de padre, así que por UI el árbol no puede crecer más de un nivel. El límite duro en
       la base se pone cuando exista la pantalla de árbol.
-- [ ] **Alt text de las imágenes**: la columna `alt` existe y hoy se guarda en null (la vista cae al texto
-      genérico «Imagen del producto»). Es un requisito real de WCAG AA; entra con la ficha del storefront.
+- [ ] **Alt text de las imágenes**: la vitrina de P05 ya SIRVE el `alt` (`primary_image_alt` en el catálogo,
+      `alt` en la galería) y cae al nombre del producto cuando viene en null. Lo que falta es el campo en el
+      backoffice para escribirlo: hoy P04 lo guarda siempre en null, así que en la práctica el alt es el
+      nombre del producto. Cierra cuando el panel de imágenes tenga el campo.
+- [ ] **SEO del storefront**: P05 entrega la vitrina navegable, pero no `<title>`/`<meta>` por producto,
+      Open Graph, `sitemap.xml` ni datos estructurados; con Vite es SPA y el HTML llega vacío para un
+      crawler. Es lo que queda del enunciado «SEO básico» de la fase y se aborda con el operador (necesita
+      decidir prerender/SSR o meta tags de cliente).
+- [ ] **Paginación del catálogo público**: hoy se pide la página entera. Con `max_rows = 1000` en PostgREST
+      no revienta, pero una tienda grande manda demasiado al móvil. Entra cuando haya un catálogo real.
+- [ ] **Resolución por DOMINIO**: `stores.domain` existe y la vista lo expone, pero la vitrina solo resuelve
+      por slug de URL. El camino por dominio necesita el despliegue y el DNS, que dependen del project ref.
+- [ ] **Seed de demo sin imágenes**: `supabase/seed.sql` no inserta `product_images` porque el objeto de
+      Storage no existe en un `db reset`; la vitrina demo se ve con el marcador neutral. Para una demo con
+      fotos hay que subirlas al bucket y registrar las filas.
+- [ ] **Mascota de suite `Bebim.jpg` (gmao-032)**: no aplica todavía a eCommerce — no hay asistente, chat ni
+      ícono de soporte con IA en ninguna pantalla. Cuando exista, se usa esa imagen desde el primer commit.
 
 ## Checklist P00–P08
 - [x] **P00 — Lineamientos:** Drive leído, CLAUDE.md + trace + state + architecture creados. VERIFIED.
@@ -180,8 +229,14 @@ sigue sin project ref. Siguiente: P04 (catálogo en el backoffice).
       con Zod, publicar/despublicar, archivar, eliminación segura), categorías con CRUD mínimo, precios,
       stock e imágenes múltiples en Storage con principal y orden. VERIFIED (93 tests nuevos).
       **Variantes de producto quedan fuera**: no estaban en el encargo de la fase (ver pendientes).
-- [ ] **P05 — Storefront público:** resolución de tenant por dominio/slug, listado y ficha de producto,
-      branding por tenant, SEO básico.
+- [x] **P05 — Storefront público:** resolución de tenant por **slug** de URL contra `public_stores`, portada
+      con banner configurable + categorías + buscador + filtros simples + orden, rejilla de tarjetas con
+      imagen/precio/descuento/disponibilidad, ficha con galería y relacionados simples, cabecera con logo y
+      pie con contacto, branding 100% de `store_settings` con fallback neutral, y los seis estados
+      (esqueleto, error, vacío, sin resultados, 404 de tienda, 404 de producto). Migración 11 y
+      `supabase/seed.sql` de demo. VERIFIED (55 tests nuevos). **Fuera de alcance de esta ejecución:**
+      resolución por dominio (necesita DNS/deploy) y **SEO básico** (meta tags/sitemap: requiere decidir
+      prerender o SSR) — ambos anotados en pendientes. Sin pagos: carrito/checkout siguen en P06.
 - [ ] **P06 — Carrito y checkout:** carrito persistente, cálculo de totales/impuestos, orden creada
       server-side (Edge Function), pagos como addon.
 - [ ] **P07 — Pedidos y configuración:** gestión de pedidos en backoffice, estados, notificaciones,
@@ -189,7 +244,39 @@ sigue sin project ref. Siguiente: P04 (catálogo en el backoffice).
 - [ ] **P08 — Quality gate:** typecheck + build + lint verdes, Vitest/Playwright, auditoría RLS y de
       secretos (sin `service_role` en el bundle), revisión de accesibilidad AA.
 
-## Verificaciones de esta fase (P04)
+## Verificaciones de esta fase (P05)
+- `npm run typecheck` (`tsc --noEmit`) → verde.
+- `npm run lint` (ESLint 9 flat config) → verde, **0 problemas** (0 errores, 0 avisos).
+- `npm run test` (Vitest 3) → **374 tests / 26 archivos, todos verdes** (319 de P01–P04 + 55 nuevos).
+- `npm run build` (`vite build`) → verde. Se mantiene el aviso de chunk >500 kB del vendor MUI (P01).
+- Auditoría de secretos sobre `dist/`: las únicas coincidencias de `service_role`/`sb_secret_` siguen siendo
+  la regex del guard `assertNoServiceKey` y el chequeo de prefijo del propio SDK. Sin claves de servicio.
+- Sin push, sin PR, **sin deploy remoto**: sigue sin existir project ref y la migración 11 no está aplicada.
+
+### Qué cubren los 55 tests nuevos
+- `supabase/tests/storefront-public.test.ts` (21, **Postgres real** con PGlite): la tienda inactiva no
+  resuelve (404), la categoría desactivada desaparece del menú, borradores/archivados no salen, una
+  publicación programada a futuro todavía no se ve, `in_stock` dice si hay pero `stock` sigue denegado a
+  `anon`, la columna generada no se puede dejar mintiendo, un producto de categoría apagada sigue a la venta
+  sin etiqueta, las vistas no exponen `sku`/tenant/`status`, la galería de un borrador no se sirve, `anon`
+  no escribe por ninguna vista y el catálogo de A no se mezcla con el de B.
+- `src/features/storefront/storefront-ui.test.tsx` (24, router real + PostgREST falso): resolución por slug,
+  404 de tienda, logo vs iniciales neutras, contacto en el pie, tienda sin branding con fallbacks, catálogo
+  con precio/descuento/disponibilidad, buscador, sin resultados con salida, filtro de categoría y de
+  disponibilidad, deep link con filtros ya puestos, esqueleto, ficha con galería firmada, cambio de foto,
+  descripción ausente, relacionados que nunca incluyen el producto abierto, 404 de producto, y que la
+  vitrina **solo consulta vistas `public_*`** — nunca `products` ni `stores`.
+- `src/features/storefront/storefront.test.ts` (10): el precio se queda en texto, el descuento solo cuenta
+  si el precio tachado es mayor, un `accent_color` o un `logo_url` basura se descartan en vez de romper la
+  vitrina, las iniciales del fallback, los relacionados simples y el saneado del buscador público.
+
+### Dos cosas que cambiaron fuera del storefront (y por qué)
+1. `sanitizeSearchTerm` y `moneyText` se movieron a `src/shared/lib` con reexport desde `features/catalog`:
+   los usan las dos áreas y duplicarlos habría dejado dos reglas distintas para el campo más expuesto.
+2. El mock de Supabase (`src/test/supabaseMock.ts`) ya implementa `or=` y ordena por tipo, en vez de ser un
+   no-op. Los 319 tests anteriores siguen verdes; los que usaban `.or()` simplemente no lo estaban probando.
+
+## Verificaciones de P04
 - `npm run typecheck` (`tsc --noEmit`) → verde.
 - `npm run lint` (ESLint 9 flat config) → verde, **0 problemas** (0 errores, 0 avisos).
 - `npm run test` (Vitest 3) → **319 tests / 23 archivos, todos verdes** (226 de P01–P03 + 93 nuevos).
@@ -260,7 +347,7 @@ ninguna está aplicada todavía. Los dos tests que lo destaparon siguen en el ba
 No se escribió en Drive (la carpeta es de solo lectura para este repo). El aviso de alta de eCommerce en la
 suite y la definición de crew siguen pendientes desde P02/P03.
 
-## Verificaciones de esta fase (P03)
+## Verificaciones de P03
 - `npm run typecheck` (`tsc --noEmit`) → verde.
 - `npm run lint` (ESLint 9 flat config) → verde, **0 problemas** (0 errores, 0 avisos).
 - `npm run test` (Vitest 3) → **226 tests / 18 archivos, todos verdes** (151 de P01+P02 + 75 nuevos).
@@ -338,7 +425,7 @@ Se leyó `coordinacion\BANDEJA.md` y los pendientes relevantes. Cómo queda P03 
 La carpeta de Drive se mantiene de **solo lectura** (regla del repo), así que sigue pendiente el aviso de
 alta de eCommerce en la suite, ya anotado en P02.
 
-## Verificaciones de esta fase (P02)
+## Verificaciones de P02
 - `npm run typecheck` (`tsc --noEmit`) → verde. Ahora incluye `supabase/functions/_shared` y `supabase/tests`.
 - `npm run lint` (ESLint 9 flat config, `no-explicit-any` en error) → verde, 0 problemas.
 - `npm run test` (Vitest 3) → **151 tests / 11 archivos, todos verdes** (36 de P01 + 115 nuevos de P02).

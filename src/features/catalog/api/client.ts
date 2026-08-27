@@ -16,18 +16,8 @@ export function catalogClient(): SupabaseClient {
 }
 
 /**
- * Limpia el término antes de meterlo en un filtro `or=` de PostgREST.
- *
- * Las comas y los paréntesis son separadores de la sintaxis del filtro: un
- * término con `,` no "no encuentra nada", sino que cambia la consulta. Los
- * comodines `%` y `_` se quitan para que el usuario no active un LIKE que no
- * pidió.
+ * Reexporta el saneador compartido (`src/shared/lib/search.ts`): lo usan por
+ * igual el buscador del backoffice y el de la vitrina pública, así que vive
+ * fuera del dominio de catálogo y no en dos copias.
  */
-export function sanitizeSearchTerm(term: string): string {
-  return term
-    .trim()
-    .replace(/[,()%_*\\"']/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 80)
-}
+export { sanitizeSearchTerm } from '@/shared/lib/search'

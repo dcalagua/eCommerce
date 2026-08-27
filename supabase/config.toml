@@ -15,6 +15,12 @@ max_rows = 1000
 port = 54322
 major_version = 15
 
+# Datos de DEMO del storefront (P05). Solo los aplica `supabase db reset` en
+# local: en remoto no corre nada de esto.
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
 [storage]
 enabled = true
 file_size_limit = "10MiB"

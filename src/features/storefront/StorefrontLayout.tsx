@@ -1,81 +1,234 @@
 import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined'
-import { Box, Button, Container, Stack, Toolbar, Typography } from '@mui/material'
+import { Box, Button, Container, Divider, Link as MuiLink, Stack, Toolbar, Typography } from '@mui/material'
+import type { ReactNode } from 'react'
 import { Link, Outlet, useParams } from 'react-router-dom'
 import { ErrorBoundary } from '@/app/ErrorBoundary'
-import { StoreNotFoundError } from '@/features/tenant/api'
-import { useStoreBranding } from '@/features/tenant/useStoreBranding'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { EbimMark } from '@/shared/ui/EbimMark'
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/states'
 import { AppearanceProvider } from '@/theme/AppearanceProvider'
+import { R, T } from '@/theme/tokens'
+import { StorefrontNotFoundError } from './api'
+import { initials } from './branding'
+import { usePublicStore, type StorefrontOutlet } from './hooks'
+import type { PublicStore } from './types'
 
 /**
- * Vitrina pública. El tenant se resuelve por el slug de la URL contra una vista
- * pública de solo lectura — nunca por un parámetro que el cliente declare como
- * confiable. El comprador anónimo solo ve lo publicado.
+ * Vitrina pública.
+ *
+ * El tenant se resuelve por el **slug de la URL** contra `public_stores`, que
+ * solo devuelve tiendas activas — nunca por un parámetro que el cliente declare
+ * confiable, ni por nada guardado en `localStorage`. Si el slug no resuelve, la
+ * respuesta es un 404 de tienda, no una pantalla vacía sin explicar.
+ *
+ * Todo lo de identidad (logo, nombre, acento, banner, contacto) sale de
+ * `store_settings`. Aquí no hay ni un color ni un nombre cableado: lo único de
+ * casa es el lockup "by EBIM" del pie, y desaparece si la tienda es white-label.
  */
 export function StorefrontLayout() {
   const { storeSlug } = useParams<{ storeSlug: string }>()
   const { t } = useI18n()
-  const { data, isPending, isError, error, refetch } = useStoreBranding(storeSlug)
+  const { data: store, isPending, isError, error, refetch } = usePublicStore(storeSlug)
 
-  if (isPending) return <LoadingState />
-
-  if (isError) {
-    if (error instanceof StoreNotFoundError) {
-      return <EmptyState title={t('store.notFound')} description={t('store.notFoundBody')} />
-    }
-    return <ErrorState error={error} onRetry={() => void refetch()} />
+  if (isPending) {
+    return (
+      <Shell>
+        <LoadingState />
+      </Shell>
+    )
   }
 
-  const storeName = data?.name ?? storeSlug ?? ''
+  if (isError || !store) {
+    const notFound = error instanceof StorefrontNotFoundError
+    return (
+      <Shell>
+        {notFound ? (
+          <EmptyState title={t('store.notFound')} description={t('store.notFoundBody')} />
+        ) : (
+          <ErrorState error={error} onRetry={() => void refetch()} />
+        )}
+      </Shell>
+    )
+  }
+
+  const context: StorefrontOutlet = { storeSlug: storeSlug as string, store }
 
   return (
-    // El acento del storefront es el `accent_color` del tenant, no el de casa.
-    <AppearanceProvider tenantAccent={data?.accent_color ?? null}>
+    // El acento de la vitrina es el `accent_color` del tenant, no el de casa.
+    <AppearanceProvider tenantAccent={store.accent_color}>
       <Box sx={{ minHeight: '100dvh', bgcolor: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
-        <Toolbar
-          component="header"
-          sx={{ bgcolor: 'var(--card)', borderBottom: '1px solid var(--border)', gap: 2 }}
+        <StoreHeader store={store} storeSlug={storeSlug as string} />
+
+        <Container
+          component="main"
+          id="contenido"
+          maxWidth="lg"
+          sx={{ flex: 1, py: { xs: 2.5, md: 4 } }}
         >
+          <ErrorBoundary>
+            <Outlet context={context} />
+          </ErrorBoundary>
+        </Container>
+
+        <StoreFooter store={store} />
+      </Box>
+    </AppearanceProvider>
+  )
+}
+
+/** Marco neutro para los estados en los que todavía no hay tienda que pintar. */
+function Shell({ children }: { children: ReactNode }) {
+  return (
+    <AppearanceProvider>
+      <Box sx={{ minHeight: '100dvh', bgcolor: 'var(--bg)', display: 'grid', placeItems: 'center' }}>
+        <Container maxWidth="sm">{children}</Container>
+      </Box>
+    </AppearanceProvider>
+  )
+}
+
+function StoreHeader({ store, storeSlug }: { store: PublicStore; storeSlug: string }) {
+  const { t } = useI18n()
+
+  return (
+    <Box
+      component="header"
+      sx={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 2,
+        bgcolor: 'var(--card)',
+        borderBottom: '1px solid var(--border)',
+      }}
+    >
+      <Container maxWidth="lg" disableGutters>
+        <Toolbar sx={{ gap: 1.5, px: { xs: 2, md: 3 } }}>
           <Box
             component={Link}
             to={`/s/${storeSlug}`}
-            sx={{ display: 'flex', alignItems: 'center', gap: 1.25, textDecoration: 'none', color: 'inherit', flex: 1 }}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              textDecoration: 'none',
+              color: 'inherit',
+              flex: 1,
+              minWidth: 0,
+            }}
           >
-            {data?.logo_url ? (
-              <Box component="img" src={data.logo_url} alt={storeName} sx={{ height: 28 }} />
+            {store.logo_url ? (
+              <Box
+                component="img"
+                src={store.logo_url}
+                alt={store.name}
+                sx={{ height: 30, maxWidth: 160, objectFit: 'contain' }}
+              />
             ) : (
-              <EbimMark size={26} />
+              // Sin logo: iniciales sobre el acento del tenant. Neutro y suyo,
+              // en vez de plantar el isotipo EBIM como si fuera su marca.
+              <Box
+                aria-hidden
+                sx={{
+                  width: 30,
+                  height: 30,
+                  flexShrink: 0,
+                  display: 'grid',
+                  placeItems: 'center',
+                  borderRadius: `${R.sm}px`,
+                  bgcolor: 'var(--accent-soft)',
+                  color: 'var(--accent-deep)',
+                  fontWeight: 800,
+                  fontSize: T.label,
+                }}
+              >
+                {initials(store.name)}
+              </Box>
             )}
-            <Typography sx={{ fontWeight: 800, fontSize: 15 }}>{storeName}</Typography>
+            <Typography
+              component="span"
+              sx={{ fontWeight: 800, fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+            >
+              {store.name}
+            </Typography>
           </Box>
+
           <Button
             component={Link}
             to={`/s/${storeSlug}/cart`}
             startIcon={<ShoppingCartOutlinedIcon />}
             aria-label={t('store.cart.title')}
+            sx={{ flexShrink: 0 }}
           >
-            {t('store.cart.title')}
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+              {t('store.cart.title')}
+            </Box>
           </Button>
         </Toolbar>
+      </Container>
+    </Box>
+  )
+}
 
-        <Container component="main" maxWidth="lg" sx={{ flex: 1, py: { xs: 3, md: 5 } }}>
-          <ErrorBoundary>
-            <Outlet context={{ storeSlug, branding: data }} />
-          </ErrorBoundary>
-        </Container>
+function StoreFooter({ store }: { store: PublicStore }) {
+  const { t } = useI18n()
+  const hasContact = Boolean(store.contact_phone || store.support_email || store.contact_address)
 
-        {/* El lockup "by EBIM" acompaña también a la vitrina, salvo white-label. */}
-        <Box component="footer" sx={{ borderTop: '1px solid var(--border)', py: 2.5 }}>
-          <Stack direction="row" spacing={1} sx={{ justifyContent: 'center', alignItems: 'center' }}>
-            {!data?.white_label && <EbimMark size={14} />}
-            <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: 'var(--muted)' }}>
-              {data?.white_label ? storeName : 'eCommerce by EBIM'}
+  return (
+    <Box component="footer" sx={{ borderTop: '1px solid var(--border)', bgcolor: 'var(--card)', mt: 4 }}>
+      <Container maxWidth="lg" sx={{ py: { xs: 3, md: 4 } }}>
+        {hasContact && (
+          <>
+            <Typography component="h2" sx={{ fontSize: T.label, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase', color: 'var(--muted)', mb: 1 }}>
+              {t('store.contact.title')}
             </Typography>
-          </Stack>
-        </Box>
-      </Box>
-    </AppearanceProvider>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              sx={{ gap: { xs: 0.75, sm: 3 }, flexWrap: 'wrap', fontSize: T.body }}
+            >
+              {store.support_email && (
+                <MuiLink
+                  href={`mailto:${store.support_email}`}
+                  sx={{ color: 'var(--accent-deep)', fontWeight: 700, fontSize: T.body }}
+                >
+                  {store.support_email}
+                </MuiLink>
+              )}
+              {store.contact_phone && (
+                <MuiLink
+                  href={`tel:${store.contact_phone.replace(/\s+/g, '')}`}
+                  sx={{ color: 'var(--accent-deep)', fontWeight: 700, fontSize: T.body }}
+                >
+                  {store.contact_phone}
+                </MuiLink>
+              )}
+              {store.contact_address && (
+                <Typography sx={{ color: 'var(--muted)', fontSize: T.body }}>
+                  {store.contact_address}
+                </Typography>
+              )}
+            </Stack>
+            <Divider sx={{ my: 2.5 }} />
+          </>
+        )}
+
+        <Stack
+          direction="row"
+          sx={{ justifyContent: 'space-between', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}
+        >
+          <Typography sx={{ fontSize: T.label, fontWeight: 700, color: 'var(--muted)' }}>
+            © {store.name}
+          </Typography>
+          {/* El lockup de suite acompaña a la vitrina salvo white-label. */}
+          {!store.white_label && (
+            <Stack direction="row" sx={{ gap: 0.75, alignItems: 'center' }}>
+              <EbimMark size={14} />
+              <Typography sx={{ fontSize: T.label, fontWeight: 700, color: 'var(--muted)' }}>
+                eCommerce by EBIM
+              </Typography>
+            </Stack>
+          )}
+        </Stack>
+      </Container>
+    </Box>
   )
 }

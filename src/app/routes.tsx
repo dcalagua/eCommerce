@@ -44,10 +44,10 @@ const StorefrontLayout = lazy(() =>
   import('@/features/storefront/StorefrontLayout').then((m) => ({ default: m.StorefrontLayout })),
 )
 const StoreHomePage = lazy(() =>
-  import('@/features/storefront/pages').then((m) => ({ default: m.StoreHomePage })),
+  import('@/features/storefront/StoreHomePage').then((m) => ({ default: m.StoreHomePage })),
 )
 const StoreProductPage = lazy(() =>
-  import('@/features/storefront/pages').then((m) => ({ default: m.StoreProductPage })),
+  import('@/features/storefront/StoreProductPage').then((m) => ({ default: m.StoreProductPage })),
 )
 const StoreCartPage = lazy(() =>
   import('@/features/storefront/pages').then((m) => ({ default: m.StoreCartPage })),

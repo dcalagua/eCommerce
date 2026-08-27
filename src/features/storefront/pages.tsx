@@ -1,38 +1,16 @@
 import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined'
 import { Card, Typography } from '@mui/material'
-import { useParams } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { EmptyState } from '@/shared/ui/states'
 
 /**
- * Pantallas de la vitrina. En P01 son la estructura de rutas con sus estados;
- * el catálogo real llega con el backend (P05/P06).
+ * Pantallas sueltas de la vitrina.
+ *
+ * El catálogo y la ficha viven en `StoreHomePage.tsx` y `StoreProductPage.tsx`
+ * desde P05. Carrito y pago siguen siendo la estructura de rutas con su estado
+ * vacío: son P06 y esta fase no toca pagos.
  */
-
-export function StoreHomePage() {
-  const { t } = useI18n()
-  return (
-    <>
-      <PageHeader title={t('store.home.title')} />
-      <Card>
-        <EmptyState />
-      </Card>
-    </>
-  )
-}
-
-export function StoreProductPage() {
-  const { productSlug } = useParams<{ productSlug: string }>()
-  return (
-    <>
-      <PageHeader title={productSlug ?? ''} />
-      <Card>
-        <EmptyState />
-      </Card>
-    </>
-  )
-}
 
 export function StoreCartPage() {
   const { t } = useI18n()

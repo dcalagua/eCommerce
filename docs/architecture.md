@@ -49,7 +49,9 @@ tenants (PK = organization_id del hub)
 - **Dinero en `numeric(14,2)`**, nunca float; los importes salen de la API como string decimal.
 - Storefront público: policies `to anon` limitadas a tienda activa + producto publicado, con **GRANT por
   columna** (RLS filtra filas, nunca columnas) y vistas `security_invoker` encima
-  (`public_stores`, `public_categories`, `public_products`, `public_store_branding` — §4.3).
+  (`public_stores`, `public_categories`, `public_products`, `public_product_images` y
+  `public_store_branding` — §4.3). La disponibilidad se publica como `products.in_stock`, columna
+  **generada** (`stock > 0`): `anon` la lee, pero nunca lee `stock` (P05).
 - Sin forks de schema por cliente: diferencias por `store_settings.config` + `products.custom_fields` (JSONB).
 - Pendiente de fases siguientes: `product_variants`, `price_lists`, `customers`, `carts`, `payments`, `audit_log`.
 
@@ -87,11 +89,11 @@ src/
   theme/                tokens (CSS vars + escalas), createEbimTheme, apariencia por usuario
   shared/               ui kit (EbimMark, SectionTabs, SearchField, estados), i18n ES/EN, lib (env, supabase, format)
   features/auth/        login (anatomía de suite §4.5), sesión, guard RequireSession
-  features/tenant/      resolución de tenant: branding público por slug + contexto desde el JWT
+  features/tenant/      contexto de tenant del backoffice, derivado del JWT
   features/admin/       AdminLayout, dashboard, configuración
   features/catalog/     productos del backoffice
   features/orders/      pedidos del backoffice
-  features/storefront/  StorefrontLayout + vitrina, ficha, carrito, checkout
+  features/storefront/  vitrina pública: resolución por slug, catálogo, ficha, carrito/checkout (P06)
 supabase/
   migrations/  SQL versionado (tabla nueva = tabla + RLS + policies en la misma migración)
   functions/   Edge Functions (Deno) + _shared/

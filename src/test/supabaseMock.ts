@@ -87,6 +87,16 @@ type Mutation =
   | { kind: 'update'; patch: Row }
   | { kind: 'delete' }
 
+function compareCells(a: unknown, b: unknown): number {
+  if (typeof a === 'boolean' || typeof b === 'boolean') {
+    return Number(Boolean(a)) - Number(Boolean(b))
+  }
+  const numA = typeof a === 'number' ? a : Number(a)
+  const numB = typeof b === 'number' ? b : Number(b)
+  if (Number.isFinite(numA) && Number.isFinite(numB)) return numA - numB
+  return String(a ?? '').localeCompare(String(b ?? ''))
+}
+
 let idCounter = 0
 function fakeId(): string {
   idCounter += 1
@@ -134,13 +144,42 @@ class FakeQuery implements PromiseLike<QueryResult> {
     return this
   }
 
-  or(): this {
+  /**
+   * `or=` de PostgREST, en la forma que usa la app: `col.ilike.%texto%`
+   * separado por comas. Se implementa de verdad (y no como un no-op) porque el
+   * buscador de la vitrina es una de las cosas que estos tests comprueban; un
+   * filtro que no filtra daría por bueno cualquier consulta.
+   */
+  or(filters: string): this {
+    const clauses = filters.split(',').map((clause) => clause.trim()).filter(Boolean)
+    if (clauses.length === 0) return this
+
+    this.rows = this.rows.filter((row) =>
+      clauses.some((clause) => {
+        const [column, operator, ...rest] = clause.split('.')
+        if (!column || !operator) return false
+        const value = rest.join('.')
+        const cell = row[column]
+        if (cell === null || cell === undefined) return false
+        if (operator === 'ilike') {
+          const needle = value.replace(/^%|%$/g, '').toLowerCase()
+          return String(cell).toLowerCase().includes(needle)
+        }
+        return String(cell) === value
+      }),
+    )
     return this
   }
 
+  limit(count: number): this {
+    this.rows = this.rows.slice(0, count)
+    return this
+  }
+
+  /** Ordena por tipo: los booleanos y los números no se comparan como texto. */
   order(column: string, options?: { ascending?: boolean }): this {
     const ascending = options?.ascending ?? true
-    this.rows.sort((a, b) => String(a[column]).localeCompare(String(b[column])))
+    this.rows.sort((a, b) => compareCells(a[column], b[column]))
     if (!ascending) this.rows.reverse()
     return this
   }

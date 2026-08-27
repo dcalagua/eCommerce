@@ -1,0 +1,142 @@
+import { z } from 'zod'
+import { moneyText } from '@/shared/lib/money'
+
+/**
+ * Vitrina pública. Todo lo que hay aquí sale de las vistas
+ * `public_*` de `20260827090500` + `20260827091200`: solo columnas publicables,
+ * solo tienda activa, categoría activa y producto publicado.
+ *
+ * Nada de esto lleva `organization_id` ni `company_id`, y no por descuido: el
+ * comprador anónimo no tiene por qué saber a qué cuenta del hub pertenece la
+ * tienda que está mirando, y la vista tampoco se lo sirve.
+ */
+
+export const PUBLIC_STORES_VIEW = 'public_stores'
+export const PUBLIC_CATEGORIES_VIEW = 'public_categories'
+export const PUBLIC_PRODUCTS_VIEW = 'public_products'
+export const PUBLIC_PRODUCT_IMAGES_VIEW = 'public_product_images'
+
+/** Bucket privado; la vitrina lee por URL firmada, no por URL pública. */
+export const PRODUCT_IMAGES_BUCKET = 'product-images'
+
+/** Hex #RRGGBB o nada. Un valor raro se descarta y se cae al acento de suite. */
+const hexColor = z
+  .string()
+  .regex(/^#[0-9a-fA-F]{6}$/)
+  .nullable()
+  .catch(null)
+
+/**
+ * Identidad de la tienda. TODO campo es opcional salvo el nombre y el slug: una
+ * tienda recién creada no tiene logo ni banner y la vitrina tiene que verse
+ * bien igual, con el fallback neutral de los tokens de suite.
+ */
+export const publicStoreSchema = z.object({
+  store_id: z.string().uuid(),
+  slug: z.string().min(1),
+  name: z.string().min(1),
+  currency: z.string().length(3),
+  accent_color: hexColor,
+  logo_url: z.string().url().nullable().catch(null),
+  white_label: z.boolean().nullable().default(false),
+  default_locale: z.string().nullable().default(null),
+  support_email: z.string().nullable().default(null),
+  banner_url: z.string().url().nullable().catch(null),
+  hero_title: z.string().nullable().default(null),
+  hero_subtitle: z.string().nullable().default(null),
+  contact_phone: z.string().nullable().default(null),
+  contact_address: z.string().nullable().default(null),
+})
+export type PublicStore = z.infer<typeof publicStoreSchema>
+
+export const publicCategorySchema = z.object({
+  category_id: z.string().uuid(),
+  store_id: z.string().uuid(),
+  slug: z.string().min(1),
+  name: z.string().min(1),
+  position: z.number().int(),
+})
+export type PublicCategory = z.infer<typeof publicCategorySchema>
+
+/**
+ * Producto del catálogo público.
+ *
+ * `in_stock` es un booleano derivado en la base (`stock > 0`), no la cantidad:
+ * el comprador ve si puede comprar, no cuántas unidades quedan — eso es dato
+ * de negocio del tenant y está fuera del GRANT de `anon`.
+ */
+export const publicProductSchema = z.object({
+  product_id: z.string().uuid(),
+  store_id: z.string().uuid(),
+  category_id: z.string().uuid().nullable().default(null),
+  slug: z.string().min(1),
+  name: z.string().min(1),
+  description: z.string().nullable().default(null),
+  price: moneyText,
+  compare_at_price: moneyText.nullable().default(null),
+  currency: z.string().length(3),
+  published_at: z.string().nullable().default(null),
+  in_stock: z.boolean().nullable().default(false),
+  category_slug: z.string().nullable().default(null),
+  category_name: z.string().nullable().default(null),
+  primary_image_path: z.string().nullable().default(null),
+  primary_image_alt: z.string().nullable().default(null),
+})
+export type PublicProduct = z.infer<typeof publicProductSchema>
+
+export const publicProductImageSchema = z.object({
+  image_id: z.string().uuid(),
+  product_id: z.string().uuid(),
+  storage_path: z.string().min(1),
+  alt: z.string().nullable().default(null),
+  position: z.number().int(),
+  is_primary: z.boolean().nullable().default(false),
+})
+export type PublicProductImage = z.infer<typeof publicProductImageSchema>
+
+/** Imagen ya resuelta a algo que un `<img>` puede pintar. */
+export interface GalleryImage extends PublicProductImage {
+  url: string | null
+}
+
+/** Filtros del catálogo: uno de categoría y uno de disponibilidad. Nada más. */
+export const AVAILABILITY_FILTERS = ['all', 'in-stock'] as const
+export type AvailabilityFilter = (typeof AVAILABILITY_FILTERS)[number]
+
+export const PRODUCT_SORTS = ['recent', 'price-asc', 'price-desc', 'name'] as const
+export type ProductSort = (typeof PRODUCT_SORTS)[number]
+
+export interface CatalogQuery {
+  storeId: string | null
+  search: string
+  categorySlug: string | null
+  availability: AvailabilityFilter
+  sort: ProductSort
+}
+
+/** Descuento en % entero, o `null` si el precio tachado no es mayor que el real. */
+export function discountPercent(product: PublicProduct): number | null {
+  if (!product.compare_at_price) return null
+  const before = Number(product.compare_at_price)
+  const now = Number(product.price)
+  if (!Number.isFinite(before) || !Number.isFinite(now) || before <= now || before <= 0) return null
+  return Math.round(((before - now) / before) * 100)
+}
+
+/**
+ * Relacionados «simples»: misma categoría, sin el propio producto, y si la
+ * categoría no da para llenar la fila se completa con el resto del catálogo.
+ * No hay motor de recomendación detrás y no se pretende que lo haya.
+ */
+export function pickRelated(
+  all: PublicProduct[],
+  current: PublicProduct,
+  limit = 4,
+): PublicProduct[] {
+  const others = all.filter((item) => item.product_id !== current.product_id)
+  const sameCategory = current.category_id
+    ? others.filter((item) => item.category_id === current.category_id)
+    : []
+  const rest = others.filter((item) => !sameCategory.includes(item))
+  return [...sameCategory, ...rest].slice(0, limit)
+}
