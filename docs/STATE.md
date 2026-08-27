@@ -1,10 +1,90 @@
 # Estado del proyecto — eCommerce by EBIM
 
-GUIDELINES_STATUS: VERIFIED
+GUIDELINES_STATUS: VERIFIED (por traza, no por lectura directa en esta sesión — ver P00-SaaS)
 Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md` (11 documentos leídos en la raíz de Drive `EBIM-Plataforma`).
-Última actualización: 2026-08-27 (P08)
+Última actualización: 2026-08-27 (P00 de productización SaaS)
+
+> **Dos numeraciones de fase.** Lo que sigue como «P00…P12» es el trabajo histórico de este repo. A
+> partir del 2026-08-27 arranca un segundo recorrido, **P00–P17 de productización SaaS**
+> (`claude-saas-opus/config/phases.json`), que se identifica siempre como «P0x-SaaS». No son la misma
+> serie: el P12 histórico es el framework de integraciones; el P12-SaaS será fulfillment y devoluciones.
 
 ## Fase actual
+**P00-SaaS — Auditoría y baseline verificable. COMPLETA. Gate: PASS.**
+Fase de solo lectura: **no se tocó producto, ni migraciones, ni tests, ni `package.json`**. Los únicos
+archivos nuevos o modificados son `docs/SAAS_BASELINE.md`, `docs/SAAS_KEEP_REFACTOR_BUILD.md`,
+`docs/SAAS_ROADMAP.md` y este `docs/STATE.md`.
+
+### Comandos ejecutados y resultado (2026-08-27, HEAD `6e66080`)
+
+| Comando | Resultado |
+|---|---|
+| `npm run typecheck` (`tsc --noEmit`) | **PASS**, exit 0. **Sin OOM**: no hizo falta el recurso a `vite build` del precedente eSupplier |
+| `npm run lint` (`eslint .`) | **PASS**, exit 0, 0 problemas |
+| `npm run test` (`vitest run`) | **PASS** — **569 tests / 40 archivos**, 52,6 s |
+| `npm run test:db` (`vitest run supabase/tests`) | **PASS** — **303 tests / 15 archivos**, 13,6 s |
+| `npm run build` (`vite build`) | **PASS**, exit 0, 7,33 s, con el aviso de chunk >500 kB |
+
+Baseline material: 28 migraciones (5.034 líneas SQL), **24 tablas**, 4 Edge Functions desplegables,
+146 archivos y 17.600 líneas en `src/`. Chunk de entrada **742,10 kB / 219,93 kB gzip** (era 738 kB en
+P08 histórico); el code-splitting por ruta funciona —19 chunks— y lo que pesa es el vendor sin
+`manualChunks`.
+
+Comprobaciones de seguridad sobre el baseline: **sin `service_role` real en el bundle** (las dos
+coincidencias en `dist/` son el propio guard `assertNoServiceKey`), `.env` no versionado, **sin nombre
+de cliente cableado en el core** (`alicorp`/`casa-nordica` solo en fixtures de test), `ebim` no expuesto
+por PostgREST.
+
+### Lo que la auditoría encontró y no sabíamos con este detalle
+
+**Dos capacidades construidas y sin un solo consumidor.** Los canales (`channels`, `product_channels`,
+`orders.channel_id`, mig. 20-21, 12 tests) no tienen superficie: `grep -ri channel src/` devuelve
+**cero**. El outbox de integraciones (mig. 26-27, 21 tests) tampoco: `integration_enqueue` solo lo
+llaman los tests. Las dos están bien hechas y las dos llevan fases enteras sin ejercitarse, que es como
+un modelo se desincroniza de la realidad sin que nadie lo note.
+
+**El checkout no es idempotente frente a la red.** `create_order` no acepta clave de idempotencia; el
+doble envío se frena en el navegador (botón deshabilitado + corte en `onSubmit`), y eso no cubre el
+reintento de una petición cuya respuesta se perdió. Móvil en 3G: el POST llega, la respuesta no, el
+reintento crea un segundo pedido **con el stock descontado dos veces**. Cierra en P07-SaaS.
+
+**Un pedido no puede reconstruir su impuesto por línea.** La migración 17 calcula la tasa por línea y
+agrupa por tasa, pero `order_items` no guarda impuesto ni descuento: solo quedan `orders.tax_total` y
+`orders.discount_total`. Con dos tipos impositivos en el mismo carrito, el desglose que sostiene una
+factura electrónica existe únicamente en el JSON de respuesta de la Edge Function. Es un fallo de
+snapshot, no de cálculo, y lo necesita cualquier integración de facturación.
+
+**`docs/architecture.md` describe dos Edge Functions que no existen.** `platform-context` y `sso` están
+en el diagrama; en `supabase/functions/` hay cuatro funciones y ninguna es esas. La identidad efectiva
+de DEV/QAS es Supabase Auth + `ebim.demo_access_token_hook`. El hook está bien acotado y su retirada
+documentada; lo que no se ha ejercitado nunca es el camino real de identidad contra el hub.
+
+**No hay `audit_log` transversal**, pese a que `CLAUDE.md` lo exige. Existen dos bitácoras específicas y
+correctas (`order_status_events`, `integration_messages`) y ninguna general: un cambio de precio, de
+branding o de rol no deja rastro.
+
+### Bloqueo declarado (no resuelto en esta fase, por diseño)
+
+`H:\.shortcut-targets-by-id\18EpkGLYe5uFBNbzY0CkamAMxv9ycP9g4\EBIM-Plataforma\` **no es accesible en
+esta sesión**: la unidad `H:` no está montada. La auditoría trabajó con las reglas ya destiladas en
+`docs/EBIM_GUIDELINES_TRACE.md` (11 fuentes, leídas el 2026-08-27). Para P00 no es bloqueante —no se
+toca identidad, multitenant ni arquitectura de plataforma— pero **P02-SaaS (entitlements) y P16-SaaS
+(seguridad/identidad) no deben ejecutarse sin remontar la unidad**: el contrato manda sobre el código y
+sus §2, §3 y §5 son la fuente. `coordinacion\BANDEJA.md` queda igualmente sin leer esta sesión.
+
+### Documentos producidos
+
+- `docs/SAAS_BASELINE.md` — baseline ejecutado, arquitectura tal como está, inventario de **22 dominios**
+  con madurez (completo / parcial / placeholder / inexistente), **10 riesgos con evidencia**,
+  duplicaciones y límites del modelo.
+- `docs/SAAS_KEEP_REFACTOR_BUILD.md` — **37 piezas** clasificadas KEEP / EXTEND / REFACTOR / BUILD, cada
+  una con su justificación y su archivo o migración.
+- `docs/SAAS_ROADMAP.md` — grafo de dependencias P01–P17, **cinco carriles paralelizables**, lo que
+  explícitamente NO se paraleliza, mapa riesgo→fase y los **seis bloqueos que dependen de una persona**.
+
+Siguiente: **P01-SaaS** — fronteras de dominio y ports, sin migración masiva cosmética.
+
+## Fase anterior
 **P12 — Framework de integraciones (F0 · cimientos del RFP). COMPLETA para el alcance encargado.**
 Gate: PASS. `typecheck`, `lint`, `test` (**569 / 40**), `test:db` (**303 / 15**) y `build`. Migraciones
 26-27 aplicadas en DEV/QAS.
@@ -434,6 +514,33 @@ inicial `pending` (estándar EBIM, migración 04). Nada desplegado: sigue sin pr
     en el bucket si el usuario cancela, que no rompe ninguna pantalla (criterio P04 #36).
 
 ## Pendientes / riesgos abiertos
+
+### Abiertos por la auditoría P00-SaaS (2026-08-27)
+Detalle y evidencia en `docs/SAAS_BASELINE.md` §4; asignación de fase en `docs/SAAS_ROADMAP.md` §4.
+- [ ] **R1 — Sin entitlements ni capacidades.** Cero referencias a `addon` en `src/`. Bloqueante para
+      vender el mismo producto con módulos distintos. → **P02-SaaS**.
+- [ ] **R2 — Canales sin superficie.** `channels`/`product_channels`/`orders.channel_id` completos y
+      probados; `grep -ri channel src/` = 0. Un tenant no puede crear ni administrar un canal. → **P02/P03-SaaS**.
+- [ ] **R3 — Outbox sin consumidor.** `integration_enqueue` solo lo invocan los tests: el transporte
+      nunca ha entregado un mensaje real, así que el contrato canónico está escrito pero no validado.
+      → primer consumidor en **P07/P08-SaaS**, superficie enterprise en **P14-SaaS**.
+- [ ] **R4 — Checkout no idempotente frente a la red.** `create_order` sin clave de idempotencia; la
+      defensa contra el doble envío es solo del navegador. → **P07-SaaS**.
+- [ ] **R5 — Sin impuesto ni descuento por línea en `order_items`.** El desglose fiscal de un carrito con
+      dos tasas no es reconstruible desde la base. Prerrequisito de facturación. → **P08-SaaS**.
+- [ ] **R6 — Identidad del hub sin ejercitar.** `platform-context` y `sso` están en
+      `docs/architecture.md` y no existen en `supabase/functions/`. **Requiere decisión del operador**
+      (Modo A vs B) y retirada del `demo_access_token_hook`. → **P02/P16-SaaS**.
+- [ ] **R7 — Sin `audit_log` transversal**, pese a exigirlo `CLAUDE.md`. → **P13-SaaS**, adelantable.
+- [ ] **R10 — `H:\…\EBIM-Plataforma\` no montada en esta sesión.** Remontar **antes de P02-SaaS y
+      P16-SaaS**; `coordinacion\BANDEJA.md` sigue sin leerse.
+- [ ] **Alinear `CLAUDE.md` con la estructura real de `src/`** (`src/features/*` en vez de
+      `src/storefront` + `src/admin`). La divergencia está declarada en `docs/architecture.md` y respeta
+      lo que la regla protege, pero el texto normativo debería decir lo que el repo hace.
+- [ ] **Nota de higiene:** la entrada «Rate limiting de `create-order`» que aparece más abajo quedó
+      **cerrada en P10** (mig. 22-23, `checkout-rate-limit.test.ts`) y su casilla no se marcó.
+
+### Anteriores
 - [x] ~~Confirmar el **project ref de Supabase**~~ → **cerrado en P09**: `ehxlxbhtlmfgneiagdcj`, enlazado,
       migraciones 16-19 aplicadas, `db:types` generado y `db push` al dia.
 - [ ] **(P08) Inmutabilidad de migraciones sin candado automático.** El commit `23e7d7b` (P04) modificó
