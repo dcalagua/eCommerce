@@ -1,6 +1,6 @@
 # SAAS_ROADMAP — P01 a P17
 
-Corte: **2026-08-27**, HEAD `6e66080`. Punto de partida: [`SAAS_BASELINE.md`](SAAS_BASELINE.md).
+Corte: **2026-08-27**, HEAD `77df9a3`. Punto de partida: [`SAAS_BASELINE.md`](SAAS_BASELINE.md).
 Clasificación por dominio: [`SAAS_KEEP_REFACTOR_BUILD.md`](SAAS_KEEP_REFACTOR_BUILD.md).
 
 Objetivo del recorrido: llegar a `Core Commerce → Add-ons → Ports → Adapters → Tenant Configuration`
@@ -61,8 +61,8 @@ compromiso en otro sitio.
 
 | Fase | Depende de | Por qué esa dependencia es real | Habilita |
 |---|---|---|---|
-| **P01** Fronteras y ports | P00 | Necesita el inventario de dominios para no refactorizar a ciegas | todo lo demás |
-| **P02** Entitlements | P01 · **contrato EBIM accesible** | Las capacidades se resuelven contra la fuente autorizada del hub; duplicar su catálogo sería violar el principio 1 | gating de P03–P14 |
+| **P01** Fronteras y ports | P00 | Necesita el inventario de dominios para no refactorizar a ciegas. Arrastra además R11 (`database.types.ts` vacío) y R13 (`governance.ts` documentado e inexistente): son la frontera de tipos y el nombre del guard, justo lo que P01 fija | todo lo demás |
+| **P02** Entitlements | P01 · **`ecommerce` dado de alta en la suite (§5.1)** | Las capacidades se resuelven contra el catálogo del hub (§5/§6) y el hub no conoce a esta app: sin el alta, P02 solo puede duplicar catálogo, que es lo que el principio 2 prohíbe. Además hay que decidir el vocabulario: `Capability` ya está tomada por los permisos de rol | gating de P03–P14 |
 | **P03** PIM | P01 · (blando) P02 | Variantes y atributos son la unidad sobre la que P04 y P06 trabajan; sin ellos el precio y el stock siguen colgando del producto | P04, P06, P11 |
 | **P04** Pricing | P03 · P01 (`PricingPort`) · (blando) P05 | El precio se resuelve por variante/UoM y por segmento; el prompt de P04 exige **pricing base antes que promociones** | P07, P10 |
 | **P05** Customers/B2B | P01 | Cliente ≠ usuario autenticado: es un dominio propio y no depende del catálogo | P04 (segmentos), P07, P08, P10 |
@@ -136,7 +136,10 @@ CMS, y su ADR (SPA + prerender vs SSR separado) conviene escribirlo temprano por
 | R7 · sin `audit_log` | **P13**, adelantable a P01/P02 | lo exige `CLAUDE.md` |
 | R8 · Edge Functions sin typecheck | **P17**, adelantable | necesita Deno en la máquina |
 | R9 · bundle de 742 kB | **P15**, adelantable | configuración de build, no producto |
-| R10 · lineamientos EBIM no montados | **antes de P02** | ver §5 |
+| ~~R10 · lineamientos EBIM no montados~~ | **cerrado en P00** | eran accesibles en `G:`, no en `H:`; queda corregir la ruta documentada |
+| R11 · `database.types.ts` vacío en HEAD | **P01** | regenerar es lo fácil; lo que hay que arreglar es que `>` no pueda volver a truncarlo y que algo consuma el archivo |
+| R12 · `ecommerce` no está en el contrato ni en el buzón | **antes de P02** | **bloqueante y no resoluble desde el repo**; ver §5.1 |
+| R13 · `_shared/governance.ts` documentado y inexistente | **P01** | una línea en `CLAUDE.md` y otra en `architecture.md` |
 
 ---
 
@@ -144,9 +147,40 @@ CMS, y su ADR (SPA + prerender vs SSR separado) conviene escribirlo temprano por
 
 Ninguno impide arrancar P01. Todos tienen que estar resueltos antes de la fase que se indica.
 
-1. **Remontar `H:\…\EBIM-Plataforma\`** — en esta sesión la unidad no existe. **Antes de P02 y P16**: el
-   contrato manda sobre el código y sus §2 (claims), §3 (jerarquía) y §5 (Platform Context API) son la
-   fuente de los entitlements. También queda sin leer `coordinacion\BANDEJA.md`.
+### 5.1 El único que puede parar P02 en seco
+
+**Dar de alta `ecommerce` en la suite.** Verificado por lectura directa del contrato v1.15, del
+`PROTOCOLO.md` y de `BANDEJA.md` entera: la app **no aparece en ninguno de los tres**, ni en el crew
+roster, ni tiene `EBIM-ESTADO-eCommerce.md`. No hay un solo mensaje de o hacia `ecommerce` en la
+historia del buzón (R12 del baseline).
+
+Por qué esto es P02 y no papeleo: §5 y §6 del contrato dicen que **los addons se leen del hub** y que
+ninguna app define su catálogo local. Sin fila de la app `ecommerce` en el hub y sin `catalog_items`
+con código `ecommerce_*`, un control plane de entitlements construido ahora tendría que inventarse un
+catálogo local — que es exactamente lo que el contrato prohíbe y lo que después habría que deshacer.
+
+Secuencia mínima, en este orden:
+
+1. **El operador** da de alta `ecommerce` como app de la suite: contrato (cabecera + §4.5/§4.6 si aplica),
+   `PROTOCOLO.md` (agentes válidos) y `platform.apps` / `workspace_apps` en el hub. Lo edita GMAO, que es
+   el owner; **este repo no puede tocar la carpeta de lineamientos, es de solo lectura**.
+2. **eCommerce** envía su mensaje de alta al buzón declarando canales de integración (§0.5), como ya
+   hicieron eSupplier, eExpense y eChange en el hilo `gmao-033`. Material que ya tiene para ese mensaje:
+   cumple §3.2 en la base (`ADMIN_EMAIL_REQUERIDO` sin parámetro opcional), tiene marco de integraciones
+   con outbox/inbox/circuito, y su comprador anónimo es identidad **local** por §2.5 — no federable.
+3. **Se define el catálogo de addons de eCommerce** en el hub. Recién entonces P02 tiene contra qué
+   resolver capacidades.
+
+También quedan sin acusar cuatro mensajes `to: all` que obligan a toda la suite: `esupplier-031`
+(anatomía de login), `gmao-032` (mascota Bebim, hoy pausada por el operador), `gmao-037` (contraseña de
+demo) y `gmao-038` (usuario en varios tenants). Se responden con el mensaje de alta, no antes: hoy
+`ecommerce` no es siquiera un `from` válido del protocolo.
+
+### 5.2 Los demás
+
+1. ~~**Remontar `H:\…\EBIM-Plataforma\`**~~ — **resuelto en P00.** La unidad montada es `G:`, y el destino
+   se resuelve por `G:\Mi unidad\EBIM-Plataforma.lnk`. El contrato, el protocolo y el buzón se leyeron
+   en esta sesión. Queda pendiente que la ruta documentada deje de apuntar a una unidad que no existe.
 2. **Modo de identidad: A (JWKS del hub) o B (handoff `/sso?token=`)** — y con ello la retirada del
    `demo_access_token_hook`. Cambio breaking según el contrato: propuesta al buzón antes de codificar.
    **Antes de P16**, idealmente ejercitado en P02.
@@ -156,8 +190,8 @@ Ninguno impide arrancar P01. Todos tienen que estar resueltos antes de la fase q
    que envía un correo y **no lo envía**. Entra con P07 (notificación asíncrona del pipeline).
 5. **Alcance B2B real** (aprobaciones, estado de cuenta, crédito) — **antes de P05**, para no modelar de
    más ni de menos.
-6. **Alta de `ecommerce` en el hub** (`apps`, `workspace_apps`, addons propios) — requiere a GMAO, dueño
-   del contrato. **Antes de P02**.
+6. **Alta de `ecommerce` en la suite** — promovido a §5.1: no es un bloqueo más de la lista, es el que
+   condiciona la fase que sostiene la venta por módulos.
 
 ---
 

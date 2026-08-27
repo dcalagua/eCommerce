@@ -76,7 +76,7 @@ con especificador `npm:` y solo existe dentro de Deno.
 - `SECURITY DEFINER` únicamente con autorización explícita dentro de la función y `REVOKE EXECUTE` a
   `anon`/`authenticated`/`public`.
 - `audit_log` no legible ni borrable por `anon`; se escribe solo vía función validada.
-- Rol operador/super-admin no asignable desde UI y con guard 403 en servidor (`_shared/governance.ts`).
+- Rol operador/super-admin no asignable desde UI y con guard 403 en servidor (`_shared/roles.ts`).
 
 ## Frontend
 

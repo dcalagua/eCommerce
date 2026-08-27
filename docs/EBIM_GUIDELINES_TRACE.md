@@ -1,9 +1,17 @@
 # Trazabilidad de lineamientos EBIM
 
-Raíz de lineamientos (solo lectura, Drive montado):
-`H:\.shortcut-targets-by-id\18EpkGLYe5uFBNbzY0CkamAMxv9ycP9g4\EBIM-Plataforma\`
+Raíz de lineamientos (**solo lectura**, Drive montado). La letra de unidad **varía por máquina**: en la
+sesión original era `H:`, hoy es `G:`. No fijar la letra; resolver siempre por el acceso directo:
+
+```
+G:\Mi unidad\EBIM-Plataforma.lnk   →  <unidad>:\.shortcut-targets-by-id\18EpkGLYe5uFBNbzY0CkamAMxv9ycP9g4\EBIM-Plataforma
+```
+
+En PowerShell: `(New-Object -ComObject WScript.Shell).CreateShortcut("G:\Mi unidad\EBIM-Plataforma.lnk").TargetPath`.
 
 Fecha de lectura: 2026-08-27 · Estado: **VERIFIED** (fuentes accesibles y leídas)
+Relectura directa: 2026-08-27 (P00-SaaS) — contrato v1.15, `PROTOCOLO.md`, `BANDEJA.md` y
+`EBIM-CREW-ROSTER.md` leídos desde la fuente, no por traza.
 
 ## Fuentes leídas
 
@@ -38,6 +46,15 @@ Fecha de lectura: 2026-08-27 · Estado: **VERIFIED** (fuentes accesibles y leíd
 13. **Verificación por fase**: typecheck + build + lint verdes; Vitest/Playwright; pruebas de aislamiento tenant.
 14. **Git**: rama `dev`, commits locales convencionales, sin push/PR/deploy sin orden del operador.
 15. **Buzón obligatorio**: leer `coordinacion\` cada sesión; eCommerce debe declarar sus canales de integración con la suite.
+
+## Hallazgo de la relectura directa (2026-08-27, P00-SaaS)
+
+**`ecommerce` no figura en ninguna de las fuentes.** No está en el contrato v1.15 (cabecera «Apps»:
+`gmao`, `eexpense`, `esupplier`, `echange`, `wms`, + `odoo` futuro), no es un `from`/`to` válido del
+`PROTOCOLO.md`, no tiene una sola fila en `BANDEJA.md`, no aparece en `EBIM-CREW-ROSTER.md` y no existe
+`Estado de Suite\EBIM-ESTADO-eCommerce.md`. La regla 15 de arriba sigue sin cumplirse, y hoy **no puede**
+cumplirse: el alta la hace GMAO (owner del contrato) por decisión del operador. Detalle y secuencia en
+`SAAS_BASELINE.md` (R12) y `SAAS_ROADMAP.md` §5.1.
 
 ## Nota
 No se copió contenido extenso de las fuentes. Este repo solo referencia rutas; los documentos permanecen en Drive.

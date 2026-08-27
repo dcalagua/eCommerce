@@ -1,8 +1,9 @@
 # Estado del proyecto — eCommerce by EBIM
 
-GUIDELINES_STATUS: VERIFIED (por traza, no por lectura directa en esta sesión — ver P00-SaaS)
-Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md` (11 documentos leídos en la raíz de Drive `EBIM-Plataforma`).
-Última actualización: 2026-08-27 (P00 de productización SaaS)
+GUIDELINES_STATUS: VERIFIED (**por lectura directa** en la 2ª pasada de P00-SaaS: contrato v1.15,
+`PROTOCOLO.md`, `BANDEJA.md` y `EBIM-CREW-ROSTER.md`). La unidad montada es `G:`, no `H:`.
+Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
+Última actualización: 2026-08-27 (P00 de productización SaaS, 2ª pasada)
 
 > **Dos numeraciones de fase.** Lo que sigue como «P00…P12» es el trabajo histórico de este repo. A
 > partir del 2026-08-27 arranca un segundo recorrido, **P00–P17 de productización SaaS**
@@ -10,20 +11,27 @@ Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md` (11 documentos leídos en la raíz 
 > serie: el P12 histórico es el framework de integraciones; el P12-SaaS será fulfillment y devoluciones.
 
 ## Fase actual
-**P00-SaaS — Auditoría y baseline verificable. COMPLETA. Gate: PASS.**
-Fase de solo lectura: **no se tocó producto, ni migraciones, ni tests, ni `package.json`**. Los únicos
-archivos nuevos o modificados son `docs/SAAS_BASELINE.md`, `docs/SAAS_KEEP_REFACTOR_BUILD.md`,
-`docs/SAAS_ROADMAP.md` y este `docs/STATE.md`.
+**P00-SaaS — Auditoría y baseline verificable. COMPLETA (2ª pasada). Gate: PASS.**
+Fase de solo lectura en producto: **no se tocó una línea de `src/`, ni una migración, ni un test, ni
+`package.json`**. Archivos nuevos o modificados: `docs/SAAS_BASELINE.md`,
+`docs/SAAS_KEEP_REFACTOR_BUILD.md`, `docs/SAAS_ROADMAP.md`, `docs/EBIM_GUIDELINES_TRACE.md`, este
+`docs/STATE.md`, y dos correcciones de referencia rota en `CLAUDE.md` y `docs/architecture.md`
+(`_shared/governance.ts` → `_shared/roles.ts`, más la nota de que la letra de unidad del Drive varía).
 
-### Comandos ejecutados y resultado (2026-08-27, HEAD `6e66080`)
+### Comandos ejecutados y resultado (2ª pasada, 2026-08-27, HEAD `77df9a3`)
+
+Los cinco gates se volvieron a ejecutar completos, con los scripts que ya existían y sin modificar ninguno.
 
 | Comando | Resultado |
 |---|---|
 | `npm run typecheck` (`tsc --noEmit`) | **PASS**, exit 0. **Sin OOM**: no hizo falta el recurso a `vite build` del precedente eSupplier |
 | `npm run lint` (`eslint .`) | **PASS**, exit 0, 0 problemas |
-| `npm run test` (`vitest run`) | **PASS** — **569 tests / 40 archivos**, 52,6 s |
-| `npm run test:db` (`vitest run supabase/tests`) | **PASS** — **303 tests / 15 archivos**, 13,6 s |
-| `npm run build` (`vite build`) | **PASS**, exit 0, 7,33 s, con el aviso de chunk >500 kB |
+| `npm run test` (`vitest run`) | **PASS** — **569 tests / 40 archivos**, 37,1 s |
+| `npm run test:db` (`vitest run supabase/tests`) | **PASS** — **303 tests / 15 archivos**, 13,4 s |
+| `npm run build` (`vite build`) | **PASS**, exit 0, 4,25 s, con el aviso de chunk >500 kB (742,10 kB / 219,93 kB gzip) |
+
+Entre `6e66080` y `77df9a3` no cambió producto —el commit intermedio es solo documentación—, así que los
+conteos y el bundle coinciden con la primera pasada; los tiempos bajaron por caché caliente.
 
 Baseline material: 28 migraciones (5.034 líneas SQL), **24 tablas**, 4 Edge Functions desplegables,
 146 archivos y 17.600 líneas en `src/`. Chunk de entrada **742,10 kB / 219,93 kB gzip** (era 738 kB en
@@ -63,26 +71,65 @@ documentada; lo que no se ha ejercitado nunca es el camino real de identidad con
 correctas (`order_status_events`, `integration_messages`) y ninguna general: un cambio de precio, de
 branding o de rol no deja rastro.
 
-### Bloqueo declarado (no resuelto en esta fase, por diseño)
+### Lo que añadió la 2ª pasada
 
-`H:\.shortcut-targets-by-id\18EpkGLYe5uFBNbzY0CkamAMxv9ycP9g4\EBIM-Plataforma\` **no es accesible en
-esta sesión**: la unidad `H:` no está montada. La auditoría trabajó con las reglas ya destiladas en
-`docs/EBIM_GUIDELINES_TRACE.md` (11 fuentes, leídas el 2026-08-27). Para P00 no es bloqueante —no se
-toca identidad, multitenant ni arquitectura de plataforma— pero **P02-SaaS (entitlements) y P16-SaaS
-(seguridad/identidad) no deben ejecutarse sin remontar la unidad**: el contrato manda sobre el código y
-sus §2, §3 y §5 son la fuente. `coordinacion\BANDEJA.md` queda igualmente sin leer esta sesión.
+**El bloqueo de lineamientos era falso: la fuente sí es accesible.** `H:` no existe en esta máquina,
+pero Google Drive está montado en `G:` y el destino se resuelve por el acceso directo
+`G:\Mi unidad\EBIM-Plataforma.lnk`. Se leyeron directamente el contrato (v1.15), `PROTOCOLO.md`,
+`BANDEJA.md` completa y `EBIM-CREW-ROSTER.md`. **La letra de unidad varía por máquina**: se documentó
+el método de resolución en `CLAUDE.md` y en la traza, en vez de cambiar `H:` por `G:` y repetir el
+error dentro de un mes. R10 queda cerrado y **P02/P16 ya no están bloqueadas por acceso**.
+
+**`ecommerce` no existe para la suite (R12) — bloqueante de P02-SaaS.** De esa lectura directa: la app
+no aparece ni una vez en las 59 kB del contrato v1.15 (apps registradas: `gmao`, `eexpense`,
+`esupplier`, `echange`, `wms`, + `odoo` futuro), no es un `from`/`to` válido del `PROTOCOLO.md`, no
+tiene **una sola fila** en `BANDEJA.md`, falta en el crew roster y no hay
+`Estado de Suite\EBIM-ESTADO-eCommerce.md`. Importa técnicamente porque §5 y §6 mandan que los addons
+**se lean del hub** y que ninguna app defina catálogo local: sin alta, P02 solo podría duplicar
+catálogo, justo lo que el contrato prohíbe. **No se resuelve desde aquí** —el contrato lo edita GMAO y
+`CLAUDE.md` declara la carpeta de lineamientos de solo lectura—, así que se documentó el bloqueo
+(regla 14 del contrato de ejecución) y **no se escribió nada en el Drive**. Secuencia en
+`SAAS_ROADMAP.md` §5.1. Quedan también sin acusar cuatro mensajes `to: all` (`esupplier-031`,
+`gmao-032`, `gmao-037`, `gmao-038`), que se responden con el mensaje de alta y no antes.
+
+**`database.types.ts` está commiteado en 0 bytes (R11).** Eran 37.071 B en `990010d` y 40.648 B en
+`e927262`; se vació en `6e66080`. La causa es que `supabase gen types … > archivo` **trunca el archivo
+antes de ejecutar el comando**, así que un fallo del CLI deja cero bytes y un exit code que nadie mira.
+Pasó inadvertido porque **ningún módulo importa `database.types`**: los tipos de las pantallas son los
+de dominio escritos a mano. Es decir, la convención «tipos generados, no a mano» hoy no se cumple y la
+evidencia de que se cumplía está borrada. Se deja así a propósito —regenerar exige el proyecto enlazado
+y sería un cambio funcional en una fase de auditoría— y **cierra en P01-SaaS**, arreglando el pipeline
+(generar a temporal, mover solo con exit 0) y dándole un consumidor.
+
+**Dos referencias documentadas que no existen.** `CLAUDE.md` y `docs/architecture.md` mandaban usar
+`supabase/functions/_shared/governance.ts` para los guards de rol; el módulo real es `_shared/roles.ts`.
+Corregido en ambos: una regla normativa que apunta a un archivo inexistente termina en un segundo
+módulo de guards.
+
+**Una colisión de vocabulario que conviene resolver antes de P02.** `Capability` ya está tomada en
+`src/shared/lib/roles.ts` para los permisos **de rol**, con test que la iguala a la del borde. El
+contrato §6 llama capacidad a lo que el tenant **contrató**. Son ejes ortogonales; si P02 no renombra,
+`can(...)` queda ambiguo.
+
+**Un dato a favor, de la misma lectura.** eCommerce **cumple** el §3.2 del contrato —admin obligatorio
+al crear un tenant— y lo cumple donde el contrato pide, en la base:
+`20260827090700_server_operations.sql:45-48` levanta `ADMIN_EMAIL_REQUERIDO` sin parámetro opcional.
+eSupplier y eExpense lo tienen como deuda abierta en el buzón. Es material para el mensaje de alta.
 
 ### Documentos producidos
 
-- `docs/SAAS_BASELINE.md` — baseline ejecutado, arquitectura tal como está, inventario de **22 dominios**
-  con madurez (completo / parcial / placeholder / inexistente), **10 riesgos con evidencia**,
-  duplicaciones y límites del modelo.
-- `docs/SAAS_KEEP_REFACTOR_BUILD.md` — **37 piezas** clasificadas KEEP / EXTEND / REFACTOR / BUILD, cada
+- `docs/SAAS_BASELINE.md` — baseline ejecutado, verificación de acceso a los lineamientos (§1.3),
+  arquitectura tal como está, inventario de **22 dominios** con madurez (completo / parcial /
+  placeholder / inexistente), **13 riesgos con evidencia** (R11–R13 nuevos, R10 cerrado), duplicaciones,
+  límites del modelo y la colisión de vocabulario de `Capability` (§5.3).
+- `docs/SAAS_KEEP_REFACTOR_BUILD.md` — **40 piezas** clasificadas KEEP / EXTEND / REFACTOR / BUILD, cada
   una con su justificación y su archivo o migración.
 - `docs/SAAS_ROADMAP.md` — grafo de dependencias P01–P17, **cinco carriles paralelizables**, lo que
-  explícitamente NO se paraleliza, mapa riesgo→fase y los **seis bloqueos que dependen de una persona**.
+  explícitamente NO se paraleliza, mapa riesgo→fase, y los bloqueos humanos con el alta de `ecommerce`
+  en la suite promovida a §5.1 por ser la única que condiciona P02.
 
-Siguiente: **P01-SaaS** — fronteras de dominio y ports, sin migración masiva cosmética.
+Siguiente: **P01-SaaS** — fronteras de dominio y ports, sin migración masiva cosmética. Arrastra R11
+(pipeline de tipos generados) y R13, que son exactamente la frontera de tipos y el nombre del guard.
 
 ## Fase anterior
 **P12 — Framework de integraciones (F0 · cimientos del RFP). COMPLETA para el alcance encargado.**

@@ -3,7 +3,9 @@
 App SaaS multitenant de la suite EBIM (GMAO · eExpense · eSupplier · eChange · WMS · eCommerce).
 
 ## Plataforma EBIM — LEER SIEMPRE (fuente de verdad, manda sobre este archivo y sobre el código)
-Ruta local montada: `H:\.shortcut-targets-by-id\18EpkGLYe5uFBNbzY0CkamAMxv9ycP9g4\EBIM-Plataforma\`
+Ruta local montada: `<unidad>:\.shortcut-targets-by-id\18EpkGLYe5uFBNbzY0CkamAMxv9ycP9g4\EBIM-Plataforma\`
+La **letra de unidad varía por máquina** (fue `H:`, hoy es `G:`). Si la ruta falla, no concluir que no hay
+contrato: resolver el acceso directo `<Drive>:\Mi unidad\EBIM-Plataforma.lnk` → `TargetPath`.
 Antes de tocar identidad/auth, multitenant, sociedades, personalización, addons o arquitectura, lee:
 - `EBIM-CONTRATO-PLATAFORMA.md` (contrato/interfaces)
 - `EBIM-DISENO-HUB-IDENTIDAD.md` (DDL hub, effective_config, platform-context, sso-issue, RLS)
@@ -71,7 +73,7 @@ antes de codificar. Solo GMAO (owner) edita el contrato.
 - Estructura: `src/app` (router/providers), `src/features/<dominio>`, `src/shared` (ui kit, hooks, lib),
   `src/storefront`, `src/admin`; `supabase/migrations`, `supabase/functions`.
 - Migraciones versionadas en `supabase/migrations`; toda tabla nueva nace con RLS + policies en la misma migración.
-- Edge Functions: validan el JWT y derivan el tenant del token; `_shared/governance.ts` para guards de rol.
+- Edge Functions: validan el JWT y derivan el tenant del token; `_shared/roles.ts` para guards de rol.
 
 ## Testing y verificación (antes de declarar una fase completa)
 - `npm run typecheck` (`tsc --noEmit`) + `npm run build` (`vite build`) verdes. Si `tsc --noEmit` da OOM,

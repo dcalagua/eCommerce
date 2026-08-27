@@ -1,6 +1,6 @@
 # SAAS_KEEP / EXTEND / REFACTOR / BUILD
 
-Corte: **2026-08-27**, HEAD `6e66080`. Base de evidencia: [`SAAS_BASELINE.md`](SAAS_BASELINE.md).
+Corte: **2026-08-27**, HEAD `77df9a3`. Base de evidencia: [`SAAS_BASELINE.md`](SAAS_BASELINE.md).
 Numeración de fases = productización SaaS (P01–P17 de `claude-saas-opus`), no la histórica de
 `docs/STATE.md`.
 
@@ -56,6 +56,9 @@ Numeración de fases = productización SaaS (P01–P17 de `claude-saas-opus`), n
 | 35 | Adaptador ERP + simulador de BAPIs | **BUILD** | P14 | El contrato canónico está definido en `integration_providers.capabilities` y no hay ni un adaptador que lo implemente; un solo adaptador end-to-end es lo que valida el contrato. |
 | 36 | E2E en navegador (Playwright) | **BUILD** | P17 | Los cuatro recorridos mínimos corren con router real y backend falso, no en navegador; abierto desde P08 histórico. |
 | 37 | `deno check` en el gate | **BUILD** | P17 | `_runtime/*` y los cuatro `index.ts` quedan fuera de `tsc`; sin esto un error de tipos en el borde solo aparece al desplegar. |
+| 38 | Tipos de BD generados (`db:types` + `database.types.ts`) | **REFACTOR** | P01 | El archivo está commiteado en **0 bytes** —eran 40.648 B en `e927262`— porque `supabase gen types … > archivo` trunca antes de ejecutar, y nadie lo notó porque ningún módulo lo importa (R11); se arregla el pipeline (temporal + `mv` con exit 0) y se le da un consumidor, no se cambia de generador. |
+| 39 | Pertenencia de `ecommerce` a la suite (contrato, protocolo, buzón, hub) | **BUILD** *(bloqueado por el operador)* | pre-P02 | La app no aparece en el contrato v1.15, ni entre los agentes válidos del `PROTOCOLO.md`, ni en un solo mensaje de `BANDEJA.md` (R12); es prerrequisito de §5/§6 —los addons se leen del hub— y **no se puede construir desde este repo**: la carpeta de lineamientos es de solo lectura y el contrato lo edita GMAO. |
+| 40 | Vocabulario de `Capability` (rol vs addon contratado) | **REFACTOR** | P02 | `shared/lib/roles.ts` ya usa `Capability` para permisos de rol, con test que la iguala a la del borde; P02 necesita otra palabra para lo que el tenant contrató o `can(...)` pasará a ser ambiguo en los dos ejes (§5.3 del baseline). |
 
 ---
 
@@ -73,5 +76,10 @@ estado y capa de datos. Todos con transición compatible: ninguna migración apl
 columna en uso se borra antes de tiempo.
 
 **Lo que no existe (BUILD):** entitlements, puertos, pricing, clientes, pagos, promociones, fulfillment,
-CMS, auditoría, adaptador ERP y los dos gates que faltan. Es la mayor parte del trabajo y el orden en
-que se acomete está en [`SAAS_ROADMAP.md`](SAAS_ROADMAP.md).
+CMS, auditoría, adaptador ERP, los dos gates que faltan y —lo único que no depende de escribir código—
+el alta de `ecommerce` en la suite. Es la mayor parte del trabajo y el orden en que se acomete está en
+[`SAAS_ROADMAP.md`](SAAS_ROADMAP.md).
+
+**Una nota sobre la fila 39.** Es la única de las 40 que este repo no puede mover por sí mismo, y está
+aguas arriba de P02, que es la fase que sostiene la venta por módulos. Conviene tratarla como lo que es:
+un elemento de camino crítico que se destraba con una conversación, no con una migración.
