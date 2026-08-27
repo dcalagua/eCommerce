@@ -1,17 +1,27 @@
 import { lazy, Suspense, type ReactNode } from 'react'
 import { createBrowserRouter, type RouteObject } from 'react-router-dom'
-import { RequireSession } from '@/features/auth/RequireSession'
+import { ProtectedArea } from '@/features/auth/ProtectedArea'
 import { LoadingState } from '@/shared/ui/states'
 import { NotFoundPage } from './NotFoundPage'
 import { RootErrorRoute } from './RootErrorRoute'
 
 /**
  * Dos áreas separadas que comparten design system pero no rutas ni guards:
- *   `/app/*`        backoffice del tenant (sesión + membership + sociedad activa)
+ *   `/app/*`        backoffice del tenant (sesión + membresía + sociedad activa)
+ *   `/onboarding`   alta del espacio para quien tiene sesión y todavía no tiene tenant
  *   `/s/:storeSlug` vitrina pública (tenant resuelto por slug, solo lectura)
  */
 
 const LoginPage = lazy(() => import('@/features/auth/LoginPage').then((m) => ({ default: m.LoginPage })))
+const ForgotPasswordPage = lazy(() =>
+  import('@/features/auth/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })),
+)
+const ResetPasswordPage = lazy(() =>
+  import('@/features/auth/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })),
+)
+const OnboardingPage = lazy(() =>
+  import('@/features/onboarding/OnboardingPage').then((m) => ({ default: m.OnboardingPage })),
+)
 const AdminLayout = lazy(() =>
   import('@/features/admin/AdminLayout').then((m) => ({ default: m.AdminLayout })),
 )
@@ -53,15 +63,26 @@ function withSuspense(node: ReactNode): ReactNode {
 export const routes: RouteObject[] = [
   { path: '/', element: withSuspense(<LandingPage />), errorElement: <RootErrorRoute /> },
   { path: '/login', element: withSuspense(<LoginPage />), errorElement: <RootErrorRoute /> },
+  { path: '/recuperar', element: withSuspense(<ForgotPasswordPage />), errorElement: <RootErrorRoute /> },
+  { path: '/nueva-clave', element: withSuspense(<ResetPasswordPage />), errorElement: <RootErrorRoute /> },
   {
-    path: '/app',
-    element: <RequireSession>{withSuspense(<AdminLayout />)}</RequireSession>,
+    // Ruta sin path: agrupa TODO lo que exige sesión bajo un mismo guard y un
+    // mismo `TenantProvider`, para que el alta de espacio y el backoffice
+    // compartan el estado de tenant en vez de resolverlo dos veces.
+    element: <ProtectedArea />,
     errorElement: <RootErrorRoute />,
     children: [
-      { index: true, element: withSuspense(<DashboardPage />) },
-      { path: 'products', element: withSuspense(<ProductsPage />) },
-      { path: 'orders', element: withSuspense(<OrdersPage />) },
-      { path: 'settings', element: withSuspense(<SettingsPage />) },
+      { path: '/onboarding', element: withSuspense(<OnboardingPage />) },
+      {
+        path: '/app',
+        element: withSuspense(<AdminLayout />),
+        children: [
+          { index: true, element: withSuspense(<DashboardPage />) },
+          { path: 'products', element: withSuspense(<ProductsPage />) },
+          { path: 'orders', element: withSuspense(<OrdersPage />) },
+          { path: 'settings', element: withSuspense(<SettingsPage />) },
+        ],
+      },
     ],
   },
   {

@@ -9,10 +9,12 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@mui/material'
+import { useTenant } from '@/features/tenant/tenant-context'
+import type { ReactNode } from 'react'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { SectionTabs } from '@/shared/ui/SectionTabs'
-import { EmptyState } from '@/shared/ui/states'
+import { EmptyState, UnauthorizedState } from '@/shared/ui/states'
 import { useAppearance } from '@/theme/appearance-context'
 import { COLOR_MODES, DENSITIES, type ColorMode, type Density } from '@/theme/tokens'
 
@@ -71,9 +73,24 @@ function AppearanceSection() {
   )
 }
 
+/**
+ * Sección que solo el propietario o un administrador pueden tocar. La UI lo
+ * oculta y la RLS lo impide: son dos capas del mismo requisito, no una sola
+ * repetida (contrato §13, doble enforcement).
+ */
+function ManagedSection({ children }: { children: ReactNode }) {
+  const { can } = useTenant()
+  const { t } = useI18n()
+  if (!can('store.manage')) {
+    return <UnauthorizedState description={t('admin.settings.unauthorized')} />
+  }
+  return <>{children}</>
+}
+
 /** Pantalla larga → tabs centrados con deep-link `#hash` y barra de Guardar persistente. */
 export function SettingsPage() {
   const { t } = useI18n()
+  const { can } = useTenant()
 
   return (
     <>
@@ -86,7 +103,9 @@ export function SettingsPage() {
             label: t('admin.settings.tab.general'),
             content: (
               <Card>
-                <EmptyState />
+                <ManagedSection>
+                  <EmptyState />
+                </ManagedSection>
               </Card>
             ),
           },
@@ -95,7 +114,9 @@ export function SettingsPage() {
             label: t('admin.settings.tab.branding'),
             content: (
               <Card>
-                <EmptyState />
+                <ManagedSection>
+                  <EmptyState />
+                </ManagedSection>
               </Card>
             ),
           },
@@ -108,11 +129,11 @@ export function SettingsPage() {
       />
       <Box
         sx={{
+          display: can('store.manage') ? 'flex' : 'none',
           position: 'sticky',
           bottom: 0,
           mt: 3,
           py: 2,
-          display: 'flex',
           justifyContent: 'flex-end',
           gap: 1,
           bgcolor: 'var(--bg)',

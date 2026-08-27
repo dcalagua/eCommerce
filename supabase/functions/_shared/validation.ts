@@ -72,6 +72,25 @@ export function optionalText(
   return trimmed
 }
 
+/**
+ * Moneda ISO-4217. Ausente → 'PEN' (default de la base). Presente pero mal
+ * escrita → error: un `currency: "soles"` que se degrada en silencio a PEN
+ * acaba en un catálogo con precios en la moneda equivocada.
+ */
+export function optionalCurrency(
+  body: Record<string, unknown>,
+  field: string,
+  fallback = 'PEN',
+): string {
+  const value = body[field]
+  if (value === undefined || value === null || value === '') return fallback
+  const normalized = typeof value === 'string' ? value.trim().toUpperCase() : ''
+  if (!/^[A-Z]{3}$/.test(normalized)) {
+    throw badRequest('CAMPO_INVALIDO', `\`${field}\` debe ser un codigo ISO-4217 de 3 letras`)
+  }
+  return normalized
+}
+
 export function requireEnum<T extends string>(
   body: Record<string, unknown>,
   field: string,

@@ -24,8 +24,12 @@ enabled = true
 
 # --- Edge Functions ---------------------------------------------------------
 # `verify_jwt = false` en las dos publicas/servidor porque su autorizacion no es
-# un JWT de usuario: `create-order` lo llama un comprador anonimo y
-# `bootstrap-tenant` se autentica con la clave de aprovisionamiento en cabecera.
+# SIEMPRE un JWT de usuario: `create-order` lo llama un comprador anonimo y
+# `bootstrap-tenant` admite ademas la clave de aprovisionamiento en cabecera
+# (alta desde el operador, cuando todavia no hay usuario).
+# En el camino de alta de si mismo (P03) `bootstrap-tenant` verifica la firma
+# del token a mano (`_runtime/verify.ts`) antes de usar `service_role`: el flag
+# de la plataforma no puede quedarse como unica defensa de ese camino.
 [functions.bootstrap-tenant]
 verify_jwt = false
 

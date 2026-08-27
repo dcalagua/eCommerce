@@ -13,6 +13,7 @@ import {
   Tabs,
 } from '@mui/material'
 import { useState } from 'react'
+import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatDate, formatMoney } from '@/shared/lib/format'
 import { PageHeader } from '@/shared/ui/PageHeader'
@@ -28,7 +29,9 @@ export function OrdersPage() {
   const { t, locale } = useI18n()
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<OrderStatus | 'all'>('all')
-  const { data, isPending, isError, error, refetch } = useOrders({ search, status })
+  const { activeStore } = useTenant()
+  const storeId = activeStore?.id ?? null
+  const { data, isPending, isError, error, refetch } = useOrders({ search, status, storeId })
 
   return (
     <>
@@ -68,16 +71,16 @@ export function OrdersPage() {
               <TableBody>
                 {data?.map((order) => (
                   <TableRow key={order.id} hover>
-                    <TableCell sx={{ fontWeight: 700 }}>{order.number}</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>{order.order_number}</TableCell>
                     <TableCell>
                       <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                        <span>{order.customer_name}</span>
+                        <span>{order.customer_name ?? order.customer_email}</span>
                         <Chip size="small" label={order.status} />
                       </Stack>
                     </TableCell>
-                    <TableCell>{formatDate(order.created_at, locale)}</TableCell>
+                    <TableCell>{formatDate(order.placed_at, locale)}</TableCell>
                     <TableCell align="right" className="tnum">
-                      {formatMoney(order.total, order.currency, locale)}
+                      {formatMoney(order.grand_total, order.currency, locale)}
                     </TableCell>
                   </TableRow>
                 ))}

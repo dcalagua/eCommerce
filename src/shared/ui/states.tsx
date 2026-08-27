@@ -1,3 +1,4 @@
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import { Box, Button, CircularProgress, Stack, Typography } from '@mui/material'
 import type { ReactNode } from 'react'
 import { useT } from '@/shared/i18n/i18n-context'
@@ -72,6 +73,48 @@ export function ErrorState({
           {t('common.retry')}
         </Button>
       )}
+    </Box>
+  )
+}
+
+/**
+ * Sin permiso. Distinto de error y de vacío: la operación se entendió, hay
+ * datos, y esta cuenta no puede verlos. Decirlo así evita el clásico "recarga a
+ * ver si aparece" cuando lo que falta es un rol.
+ */
+export function UnauthorizedState({
+  title,
+  description,
+  action,
+}: {
+  title?: string
+  description?: string
+  action?: ReactNode
+}) {
+  const t = useT()
+  return (
+    <Box sx={SHELL_SX} role="status">
+      <Box
+        sx={{
+          width: 44,
+          height: 44,
+          display: 'grid',
+          placeItems: 'center',
+          borderRadius: `${R.md}px`,
+          bgcolor: 'var(--neutral-soft)',
+          color: 'var(--muted)',
+        }}
+        aria-hidden
+      >
+        <LockOutlinedIcon fontSize="small" />
+      </Box>
+      <Typography component="h2" sx={{ fontSize: 16, fontWeight: 800 }}>
+        {title ?? t('common.unauthorized.title')}
+      </Typography>
+      <Typography sx={{ color: 'var(--muted)', maxWidth: 440 }}>
+        {description ?? t('common.unauthorized.body')}
+      </Typography>
+      {action && <Stack sx={{ mt: 1 }}>{action}</Stack>}
     </Box>
   )
 }

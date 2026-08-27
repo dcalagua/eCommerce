@@ -11,6 +11,7 @@ import {
   TableRow,
 } from '@mui/material'
 import { useState } from 'react'
+import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { SearchField } from '@/shared/ui/SearchField'
@@ -25,7 +26,8 @@ import { useProducts } from './useProducts'
 export function ProductsPage() {
   const { t, locale } = useI18n()
   const [search, setSearch] = useState('')
-  const { data, isPending, isError, error, refetch } = useProducts(search)
+  const { activeStore } = useTenant()
+  const { data, isPending, isError, error, refetch } = useProducts(search, activeStore?.id ?? null)
 
   return (
     <>

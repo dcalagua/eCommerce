@@ -2,13 +2,15 @@
 
 GUIDELINES_STATUS: VERIFIED
 Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md` (11 documentos leídos en la raíz de Drive `EBIM-Plataforma`).
-Última actualización: 2026-08-27
+Última actualización: 2026-08-27 (P03)
 
 ## Fase actual
-**P02 — Supabase multitenant (COMPLETA).** 8 migraciones versionadas con las 9 tablas del modelo mínimo,
-RLS default deny + forzada en todas, modelo de lectura pública para el storefront, Storage con aislamiento
-por path y 4 Edge Functions sobre una capa compartida de auth/CORS/errores. Nada desplegado: no hay project
-ref todavía. Siguiente: P03 (auth contra el hub y guards de rol en el backoffice).
+**P03 — Auth, contexto de tenant y shell administrativo (COMPLETA).** Sesión única de app con recuperación
+al refrescar, login/logout/recuperación de contraseña, `/app/*` protegido por dos guards encadenados
+(sesión → tenant), `TenantProvider` que deriva la jerarquía del JWT y el resto por RLS, alta de espacio de
+sí mismo vía `bootstrap-tenant` con el token del hub VERIFICADO, y backoffice MUI responsive con sidebar/
+drawer, breadcrumb, selector de sociedad, selector de tienda y panel de KPIs reales. Nada desplegado:
+sigue sin project ref. Siguiente: P04 (catálogo en el backoffice).
 
 ## Decisiones tomadas
 1. eCommerce entra a la suite EBIM como app propia: **proyecto Supabase propio**, identidad/addons en el hub.
@@ -52,6 +54,31 @@ ref todavía. Siguiente: P03 (auth contra el hub y guards de rol en el backoffic
     un número JSON se convertiría en float en el primer `JSON.parse` del navegador.
 20. **P02 — alta de tenant y alta de pedido son operaciones de servidor.** Únicos dos usos de `service_role`,
     siempre delegando en una función SECURITY DEFINER de la base con `EXECUTE` revocado a `anon`/`authenticated`.
+21. **P03 — `bootstrap-tenant` tiene dos credenciales, no dos funciones.** El operador sigue entrando con la
+    clave de aprovisionamiento (y ahí los uuid vienen en el cuerpo, porque el tenant aún no existe); el
+    usuario que crea su propio espacio entra con su JWT del hub y el tenant sale de los claims. Un
+    `organization_id` en el cuerpo de ese segundo camino se rechaza con 400, no se ignora.
+22. **P03 — el token del alta se verifica de verdad.** El camino de alta de sí mismo termina llamando a
+    `service_role`, que salta RLS: leer los claims sin comprobar la firma dejaría crear un espacio a nombre
+    de cualquiera. `_runtime/verify.ts` valida el token contra el servidor de auth (que en Modo A lo valida
+    contra el JWKS del hub) y exige que el `sub` verificado coincida con el del payload.
+23. **P03 — sin `org_id` en el token NO es un usuario nuevo.** Es un token que no sirve para esta app, así
+    que el estado es `unauthorized` (con cerrar sesión como salida) y no `onboarding`. Mandarlo al alta le
+    haría crear un espacio que su hub no reconoce.
+24. **P03 — la sociedad activa no se persiste en el navegador.** Es parte de la jerarquía del token
+    (contrato §3); guardarla en `localStorage` la haría sobrevivir a un cambio de permisos en el hub. El
+    selector vive en memoria y solo ofrece sociedades con membresía devuelta por RLS.
+25. **P03 — sin switcher de tenant.** El contrato §2.2 modela un usuario = un `org_id`, y `gmao-038`
+    (multi-tenant por persona) sigue **pendiente de decisión del operador**. eCommerce implementa el
+    selector de **sociedad** que el contrato sí prevé, y muestra el nombre del espacio en el sidebar —que es
+    lo que GMAO recomendó mientras tanto—, pero no inventa un cambio de cuenta.
+26. **P03 — los KPIs se calculan en la base con `SECURITY INVOKER`.** `public.dashboard_kpis` cuenta bajo la
+    RLS del que pregunta. Un panel que agrega es el sitio más fácil para filtrar datos entre tenants sin que
+    se note (nadie ve filas ajenas, solo un total más alto), y una función DEFINER aquí sería justo eso.
+27. **P03 — el panel no inventa cifras.** Si los pedidos visibles mezclan monedas, o no hay ninguno, la base
+    devuelve `sales`/`currency` en null y la pantalla muestra un guion. Un cero en un panel se lee como dato.
+28. **P03 — el espacio y su primera tienda comparten slug.** Son tablas con unicidad propia, y pedirle dos
+    direcciones a quien está dando de alta su negocio es pedirle que decida algo que todavía no sabe.
 
 ## Pendientes / riesgos abiertos
 - [ ] Confirmar con el operador el **project ref de Supabase** para eCommerce (aún no existe). Bloquea:
@@ -61,8 +88,14 @@ ref todavía. Siguiente: P03 (auth contra el hub y guards de rol en el backoffic
 - [ ] Definir los secretos de las Edge Functions (`EBIM_PROVISIONING_KEY` ≥32 chars, `EBIM_ADMIN_ORIGINS`,
       `SUPABASE_SERVICE_ROLE_KEY`). La clave de aprovisionamiento se entrega por un canal que **no** sea el
       buzón de Drive ni el propio Drive (contrato §2.6: ambos los lee cualquiera con acceso a la carpeta).
-- [ ] `bootstrap-tenant` se autoriza hoy con la clave de aprovisionamiento en cabecera, no con el JWT del
-      hub: la verificación contra el JWKS llega en P03. Documentado, no olvidado.
+- [x] ~~`bootstrap-tenant` se autoriza solo con la clave de aprovisionamiento~~ → **cerrado en P03**: admite
+      además el JWT del hub con la firma verificada (`_runtime/verify.ts`) para el alta de sí mismo.
+- [ ] `platform-context` todavía no alimenta el **nombre de las sociedades**: el selector de sociedad
+      muestra el uuid corto + rol. Se cablea cuando exista el project ref y el proxy responda (P04).
+- [ ] Persistir la apariencia en `profiles.settings.appearance` (hidratación cross-device al login): hoy
+      solo `localStorage`. Requiere tabla de perfil, que no existe en este proyecto todavía.
+- [ ] Playwright: el flujo login → alta → panel está cubierto con el router real y un backend falso
+      (`src/app/auth-flow.test.tsx`), pero no en navegador real. Se aborda en el quality gate (P08).
 - [ ] Rate limiting de `create-order` (checkout anónimo servido con `service_role`) — se aborda en P06.
 - [ ] `shipping_total` y `discount_total` quedan en 0: las reglas de envío/descuento son de P06. Las
       columnas existen y el CHECK de cuadre del total ya las contempla.
@@ -83,8 +116,10 @@ ref todavía. Siguiente: P03 (auth contra el hub y guards de rol en el backoffic
       `store_settings`, `categories`, `products`, `product_images`, `orders`, `order_items`), RLS default
       deny + forzada, vistas públicas, Storage por tenant, 4 Edge Functions. VERIFIED (115 tests nuevos
       sobre Postgres real). **Tipos generados pendientes**: requieren el project ref (`npm run db:types`).
-- [ ] **P03 — Auth y admin:** verificación de JWT del hub, `platform-context` proxy, selector de sociedad,
-      guards de rol + governance (super admin único).
+- [x] **P03 — Auth y admin:** sesión única con recuperación, login/logout/recuperación de clave, guards
+      `/app/*` (sesión → tenant), `TenantProvider` sin tenant cableado, alta de espacio de sí mismo con JWT
+      verificado, shell MUI responsive (sidebar/drawer, header, breadcrumb, selectores) y panel de KPIs
+      reales. VERIFIED (75 tests nuevos).
 - [ ] **P04 — Catálogo (backoffice):** productos, variantes, categorías, precios, stock, imágenes en Storage.
 - [ ] **P05 — Storefront público:** resolución de tenant por dominio/slug, listado y ficha de producto,
       branding por tenant, SEO básico.
@@ -94,6 +129,84 @@ ref todavía. Siguiente: P03 (auth contra el hub y guards de rol en el backoffic
       configuración por sociedad (branding, moneda, custom fields).
 - [ ] **P08 — Quality gate:** typecheck + build + lint verdes, Vitest/Playwright, auditoría RLS y de
       secretos (sin `service_role` en el bundle), revisión de accesibilidad AA.
+
+## Verificaciones de esta fase (P03)
+- `npm run typecheck` (`tsc --noEmit`) → verde.
+- `npm run lint` (ESLint 9 flat config) → verde, **0 problemas** (0 errores, 0 avisos).
+- `npm run test` (Vitest 3) → **226 tests / 18 archivos, todos verdes** (151 de P01+P02 + 75 nuevos).
+- `npm run build` (`vite build`) → verde. Se mantiene el aviso de chunk >500 kB del vendor MUI (P01).
+- Auditoría de secretos sobre `dist/`: las únicas coincidencias de `service_role`/`sb_secret_` siguen
+  siendo la regex del guard `assertNoServiceKey` y el chequeo de prefijo del propio SDK. Sin claves de servicio.
+- Sin push, sin PR, **sin deploy remoto**: sigue sin existir project ref.
+
+### Qué se construyó
+- **Sesión** (`features/auth`): `SessionProvider` con una única suscripción a Supabase Auth; `getSession()`
+  recupera la sesión persistida, y mientras esa lectura está en curso el estado es `loading` y no
+  `anonymous` —dar por anónimo a quien sí tiene sesión lo expulsaría al login en cada F5—. La sesión de
+  `PASSWORD_RECOVERY` es un estado propio: sirve para poner la clave nueva y no abre el backoffice.
+- **Login / recuperación** (`AuthShell`): la anatomía de suite (§4.5, `esupplier-031`) se extrajo a un
+  componente y ahora la comparten login, `/recuperar` y `/nueva-clave` — que es justo lo que pide el punto 7
+  de la regla. El correo de recuperación responde igual exista o no la cuenta: lo contrario es un
+  enumerador de usuarios del cliente.
+- **Contexto de tenant** (`features/tenant`): `resolveTenantSelection` es una función pura con las reglas
+  de resolución (claims → membresías → sociedad → tienda) y `TenantProvider` solo la alimenta. Ninguna de
+  las tres consultas (`tenants`, `tenant_members`, `stores`) lleva filtro de tenant: lo pone la RLS.
+- **Alta mínima** (`features/onboarding`): tres campos —nombre del negocio, dirección de la tienda, moneda—
+  y ni uno más. Quién eres, a qué cuenta perteneces y con qué correo NO se preguntan: salen del token. El
+  correo de administrador que exige `echange-005`/§3.2 es el de la propia sesión.
+- **Shell administrativo**: sidebar fijo en escritorio y `Drawer` en móvil, topbar con breadcrumb derivado
+  de la navegación, selector de sociedad (solo si hay más de una), selector de tienda (autoselección con
+  una sola, preparado para varias), menú de cuenta con rol y cierre de sesión, y el nombre del espacio
+  siempre visible en el sidebar.
+- **Panel**: `public.dashboard_kpis` (migración 09) devuelve productos, publicados, pedidos y ventas.
+
+### Estados cubiertos, uno por uno
+| Estado | Dónde | Qué se ve |
+|---|---|---|
+| Cargando | sesión, workspace, KPIs | `LoadingState` con `role="status"` |
+| Error | workspace, KPIs, sesión | `ErrorState` con reintento y el detalle técnico aparte del mensaje humano |
+| Vacío | tenant sin tiendas, panel sin catálogo | `EmptyState` con acción, no un cero suelto |
+| Sin permiso | token sin `org_id`, Configuración sin rol | `UnauthorizedState` (nuevo) con salida clara |
+| Sin espacio | usuario nuevo | redirección a `/onboarding` |
+
+### Tests nuevos (75)
+- `src/features/tenant/workspace.test.ts` (15) — resolución de tenant: sin claims → `unauthorized`; sin
+  membresía → `onboarding`; autoselección con una sociedad/tienda; `active_company` del JWT con varias;
+  membresía viva para una sociedad que el token ya no otorga; tenant de otra organización; selectores que
+  solo admiten lo que la RLS devolvió.
+- `supabase/tests/bootstrap-authorization.test.ts` (22) — las dos credenciales del alta: la clave manda
+  sobre la sesión, sin credencial es 401, el camino de usuario rechaza `organization_id`/`company_id`/
+  `tenant_id`/`org_id`/`owner_user_id`/`admin_email` en el cuerpo, `@ebim.pe` no puede crearse un tenant,
+  y una moneda mal escrita falla en vez de degradarse a PEN en silencio.
+- `supabase/tests/dashboard-kpis.test.ts` (8) — sobre Postgres real: cada tenant cuenta lo suyo, pedir la
+  tienda del otro por id devuelve ceros, un JWT con el `org_id` ajeno no cuenta nada, las ventas excluyen
+  anulados, el dinero sale como texto, con monedas mezcladas devuelve null, y `anon` no puede ejecutarla.
+- `src/app/auth-flow.test.tsx` (6) — el flujo completo contra el router real: `/app` sin sesión manda al
+  login; login → alta → panel; quien ya tiene espacio va directo; ventas en guion cuando no hay cifra;
+  token sin jerarquía → `unauthorized`; cerrar sesión vuelve al login.
+- `src/shared/lib/roles.test.ts` (6) — la matriz de capacidades del front y la del borde son copias
+  separadas (bundle vs Deno) y este test es lo que impide que se separen.
+- `src/features/onboarding/bootstrapTenant.test.ts` (8) y `src/features/auth/authApi.test.ts` (7).
+- `src/app/routes.test.tsx` (+3) — actualizado: ahora afirma que `/app` y `/onboarding` cuelgan del guard y que
+  login, recuperación y storefront quedan fuera.
+
+### Un defecto de P01 que este trabajo destapó
+Las pantallas de Productos y Pedidos consultaban columnas que **no existen** en las migraciones de P02:
+`products.image_url`, `orders.number`, `orders.total`, `orders.created_at`. Venían de los tipos de dominio
+que P01 escribió antes de que existiera el esquema, y nadie lo notó porque sin project ref ninguna consulta
+llegó a correr. Como el panel cuenta esas mismas tablas, se corrigieron aquí: los tipos ahora usan
+`order_number`, `grand_total`, `placed_at` y `stock`, y las dos pantallas se acotan a la tienda activa.
+
+### Coordinación (buzón leído, sin escribir en Drive)
+Se leyó `coordinacion\BANDEJA.md` y los pendientes relevantes. Cómo queda P03 frente a ellos:
+- `esupplier-031` (anatomía única de login) — **cumplido y extendido**: la anatomía es ahora un componente
+  compartido por las tres pantallas de auth, como pide su punto 7.
+- `echange-005` (correo de administrador obligatorio al crear tenant) — **cumplido en la base** desde P02;
+  P03 no añade una vía que lo esquive: el alta de sí mismo toma el correo del token y falla sin él.
+- `gmao-038` (multi-tenant por persona) — **sin implementar a propósito**, está pendiente de decisión del
+  operador. Se adoptó su recomendación provisional: mostrar el nombre del espacio en el que estás.
+La carpeta de Drive se mantiene de **solo lectura** (regla del repo), así que sigue pendiente el aviso de
+alta de eCommerce en la suite, ya anotado en P02.
 
 ## Verificaciones de esta fase (P02)
 - `npm run typecheck` (`tsc --noEmit`) → verde. Ahora incluye `supabase/functions/_shared` y `supabase/tests`.

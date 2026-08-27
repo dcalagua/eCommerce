@@ -12,6 +12,11 @@ function paths(list: RouteObject[], prefix = ''): string[] {
   })
 }
 
+/** La rama sin `path` es la que agrupa todo lo que exige sesión. */
+function protectedArea(): RouteObject | undefined {
+  return routes.find((route) => !route.path && Boolean(route.children))
+}
+
 describe('rutas base', () => {
   const all = paths(routes)
 
@@ -32,12 +37,34 @@ describe('rutas base', () => {
     )
   })
 
-  it('tiene raíz, login y catch-all', () => {
-    expect(all).toEqual(expect.arrayContaining(['/', '/login', '/*']))
+  it('tiene raíz, login, recuperación de clave y catch-all', () => {
+    expect(all).toEqual(
+      expect.arrayContaining(['/', '/login', '/recuperar', '/nueva-clave', '/*']),
+    )
+  })
+
+  it('el backoffice y el alta de espacio cuelgan del guard de sesión', () => {
+    const area = protectedArea()
+    const children = area?.children ?? []
+    expect(children.map((child) => child.path).sort()).toEqual(['/app', '/onboarding'])
+  })
+
+  it('login y recuperación quedan FUERA del guard: si no, no habría forma de entrar', () => {
+    const area = protectedArea()
+    const guarded = paths(area?.children ?? [])
+    expect(guarded).not.toContain('/login')
+    expect(guarded).not.toContain('/recuperar')
+    expect(guarded).not.toContain('/nueva-clave')
+  })
+
+  it('el storefront público no cuelga del guard de sesión', () => {
+    const area = protectedArea()
+    const guarded = paths(area?.children ?? [])
+    expect(guarded.some((path) => path.startsWith('/s/'))).toBe(false)
   })
 
   it('separa las áreas: ninguna ruta del storefront cuelga del backoffice', () => {
-    const admin = routes.find((route) => route.path === '/app')
+    const admin = protectedArea()?.children?.find((route) => route.path === '/app')
     const storefront = routes.find((route) => route.path === '/s/:storeSlug')
     expect(admin?.children?.length).toBe(4)
     expect(storefront?.children?.length).toBe(4)
