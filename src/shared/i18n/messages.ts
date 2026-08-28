@@ -171,6 +171,38 @@ export const MESSAGES = {
     'store.checkout.error.emptyCart': 'Tu carrito está vacío.',
     'store.checkout.error.invalid':
       'Revisa los datos del formulario: algo no tiene el formato esperado.',
+    // --- Checkout como pipeline (P07-SaaS) ---------------------------------
+    'store.checkout.error.stockUnknown':
+      'Ahora mismo no podemos confirmar la existencia de algo de tu carrito. No es que no haya: el sistema de la tienda no ha respondido. Vuelve a intentarlo en un momento.',
+    'store.checkout.error.priceChanged':
+      'El precio de algo de tu carrito cambió mientras completabas tus datos. Revisa el resumen y confirma de nuevo.',
+    'store.checkout.error.channel':
+      'Algo de tu carrito ya no está a la venta en esta tienda. Quítalo y vuelve a intentarlo.',
+    'store.checkout.error.channelAuth': 'Para comprar aquí necesitas iniciar sesión.',
+    'store.checkout.error.spendingLimit':
+      'El importe supera tu límite de autorización. Pídele a quien administra tu cuenta que lo revise.',
+    'store.checkout.error.payment': 'El pago no se pudo autorizar. Prueba con otro medio.',
+    'store.checkout.error.delivery': 'No podemos entregar en esa dirección.',
+    'store.checkout.error.rateLimit':
+      'Se registraron demasiados pedidos en poco tiempo. Espera un momento y vuelve a intentarlo.',
+    'store.checkout.error.inFlight':
+      'Tu pedido anterior todavía se está procesando. Espera unos segundos antes de reintentar.',
+    'store.checkout.error.idempotency':
+      'Esos datos no coinciden con el intento de compra anterior. Vuelve a cargar la página.',
+    'store.checkout.stage.prices': 'al calcular los precios',
+    'store.checkout.stage.stock': 'al apartar el stock',
+    'store.checkout.stage.delivery': 'al comprobar la entrega',
+    'store.checkout.stage.payment': 'al autorizar el pago',
+    'store.checkout.stage.order': 'al registrar el pedido',
+    'store.checkout.resumeTitle': 'Tenías una compra a medias',
+    'store.checkout.resumeBody':
+      'Si vuelves a enviarla no se duplicará: reconocemos el mismo intento y te devolvemos el pedido que ya existía.',
+    'store.checkout.acceptPrices': 'Confirmar con el precio nuevo',
+    'store.checkout.retry': 'Reintentar',
+    'store.checkout.itemsTitle': 'Lo que vas a comprar',
+    'store.cart.priceChanged': 'El precio cambió',
+    'store.cart.outOfStock': 'Sin stock suficiente',
+    'store.cart.stockUnknown': 'Disponibilidad sin confirmar',
     'store.checkout.error.generic':
       'No pudimos registrar el pedido. Vuelve a intentarlo en un momento.',
     'store.order.title': 'Pedido registrado',
@@ -1274,6 +1306,38 @@ export const MESSAGES = {
     'store.checkout.error.store': 'This store is not taking orders right now.',
     'store.checkout.error.emptyCart': 'Your cart is empty.',
     'store.checkout.error.invalid': 'Check the form: something does not match the expected format.',
+    // --- Checkout as a pipeline (P07-SaaS) ---------------------------------
+    'store.checkout.error.stockUnknown':
+      'We cannot confirm stock for something in your cart right now. It is not that there is none: the store system has not answered. Try again in a moment.',
+    'store.checkout.error.priceChanged':
+      'The price of something in your cart changed while you were filling in your details. Check the summary and confirm again.',
+    'store.checkout.error.channel':
+      'Something in your cart is no longer on sale in this store. Remove it and try again.',
+    'store.checkout.error.channelAuth': 'You need to sign in to buy here.',
+    'store.checkout.error.spendingLimit':
+      'The amount is over your approval limit. Ask whoever manages your account to review it.',
+    'store.checkout.error.payment': 'The payment could not be authorised. Try another method.',
+    'store.checkout.error.delivery': 'We cannot deliver to that address.',
+    'store.checkout.error.rateLimit':
+      'Too many orders were placed in a short time. Wait a moment and try again.',
+    'store.checkout.error.inFlight':
+      'Your previous order is still being processed. Wait a few seconds before retrying.',
+    'store.checkout.error.idempotency':
+      'Those details do not match the previous checkout attempt. Reload the page.',
+    'store.checkout.stage.prices': 'while working out the prices',
+    'store.checkout.stage.stock': 'while holding the stock',
+    'store.checkout.stage.delivery': 'while checking delivery',
+    'store.checkout.stage.payment': 'while authorising payment',
+    'store.checkout.stage.order': 'while recording the order',
+    'store.checkout.resumeTitle': 'You had a checkout half done',
+    'store.checkout.resumeBody':
+      'Sending it again will not duplicate it: we recognise the same attempt and hand back the order that already existed.',
+    'store.checkout.acceptPrices': 'Confirm with the new price',
+    'store.checkout.retry': 'Try again',
+    'store.checkout.itemsTitle': 'What you are buying',
+    'store.cart.priceChanged': 'Price changed',
+    'store.cart.outOfStock': 'Not enough stock',
+    'store.cart.stockUnknown': 'Availability unconfirmed',
     'store.checkout.error.generic':
       'We could not place the order. Please try again in a moment.',
     'store.order.title': 'Order placed',

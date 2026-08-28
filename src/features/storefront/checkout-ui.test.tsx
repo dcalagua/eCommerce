@@ -8,14 +8,16 @@ import { createFakeSupabase, FunctionsHttpErrorLike, type FakeSupabase } from '@
 /**
  * Flujo completo del comprador: ficha → carrito → checkout → confirmación.
  *
- * Lo que estos tests defienden es el encargo de P06:
+ * Lo que estos tests defienden es el encargo de P06 y, desde P07, el del
+ * pipeline:
  *  - el carrito suma, resta y quita, y su subtotal cuadra;
  *  - vive en `localStorage` por tienda y no mezcla catálogos;
- *  - al confirmar, el cuerpo que sale hacia `create-order` lleva el SLUG de la
- *    tienda, los productos y las cantidades — y ni un precio;
+ *  - al confirmar, el cuerpo que sale hacia `checkout` lleva el SLUG de la
+ *    tienda, los productos, las cantidades y una clave de idempotencia — y ni
+ *    un solo importe;
  *  - los importes de la confirmación son los que devolvió el servidor;
- *  - un doble clic no crea dos pedidos y un fallo se explica sin perder el
- *    carrito.
+ *  - un doble clic no crea dos pedidos, un reintento reusa la MISMA clave, y un
+ *    fallo se explica —con su etapa y con el foco puesto— sin perder el carrito.
  */
 
 const holder = vi.hoisted(() => ({ client: null as unknown }))
@@ -33,12 +35,14 @@ const { StoreProductPage } = await import('./StoreProductPage')
 const { StoreCartPage } = await import('./StoreCartPage')
 const { StoreCheckoutPage } = await import('./StoreCheckoutPage')
 const { StoreOrderPage } = await import('./StoreOrderPage')
-const { CREATE_ORDER_FUNCTION } = await import('./checkout')
+const { CHECKOUT_FUNCTION, attemptStorageKey } = await import('./checkout')
+const { cartTokenStorageKey } = await import('./cart/serverCart')
 
 const STORE = 'aaaa1111-1111-4111-8111-111111111111'
 const OTRA_STORE = 'aaaa2222-1111-4111-8111-111111111111'
 const P_SILLA = 'cccc1111-1111-4111-8111-111111111111'
 const P_MESA = 'cccc3333-1111-4111-8111-111111111111'
+const CART_TOKEN = 'a'.repeat(64)
 
 function store(overrides: Record<string, unknown> = {}) {
   return {
@@ -81,7 +85,7 @@ function producto(overrides: Record<string, unknown> = {}) {
   }
 }
 
-/** Respuesta de `create-order`: el dinero llega como texto, ya recalculado. */
+/** Respuesta de `checkout`: el dinero llega como texto, ya recalculado. */
 function respuestaPedido(body: Record<string, unknown>) {
   return {
     order_id: 'eeee1111-1111-4111-8111-111111111111',
@@ -98,10 +102,28 @@ function respuestaPedido(body: Record<string, unknown>) {
       unit_price: '100.00',
       quantity: item.quantity,
     })),
+    replay: false,
   }
 }
 
-function backend(options: { onCreateOrder?: (body: Record<string, unknown>) => unknown } = {}) {
+/** El carrito de servidor devuelve su secreto y nada más que haga falta aquí. */
+function carritoServidor(lines: Array<Record<string, unknown>> = []) {
+  return {
+    cart_id: 'dddd1111-1111-4111-8111-111111111111',
+    token: CART_TOKEN,
+    status: 'active',
+    channel: 'b2c',
+    currency: 'PEN',
+    owned: false,
+    expires_at: null,
+    order_id: null,
+    lines,
+    quote: null,
+    quote_error: null,
+  }
+}
+
+function backend(options: { onCheckout?: (body: Record<string, unknown>) => unknown } = {}) {
   return createFakeSupabase({
     tables: {
       public_stores: [store()],
@@ -112,8 +134,13 @@ function backend(options: { onCreateOrder?: (body: Record<string, unknown>) => u
       ],
       public_product_images: [],
     },
+    rpc: {
+      cart_open: () => carritoServidor(),
+      cart_replace_lines: () => ({ ...carritoServidor(), token: null }),
+      cart_abandon: () => ({ ...carritoServidor(), token: null, status: 'abandoned' }),
+    },
     functions: {
-      [CREATE_ORDER_FUNCTION]: options.onCreateOrder ?? respuestaPedido,
+      [CHECKOUT_FUNCTION]: options.onCheckout ?? respuestaPedido,
     },
   })
 }
@@ -152,9 +179,58 @@ const LINEA_SILLA = {
   quantity: 2,
 }
 
+/**
+ * Claves que jamás pueden aparecer en el cuerpo de la compra, a cualquier
+ * profundidad.
+ *
+ * Antes esto se comprobaba buscando subcadenas en el JSON serializado, y dejó
+ * de servir en cuanto el cuerpo ganó un campo llamado `accept_price_changes`:
+ * la palabra «price» aparece dentro del NOMBRE de una bandera booleana. Mirar
+ * las claves de verdad es más estricto, no menos — un `{"nota": "el price
+ * es..."}` ya no daría un falso positivo, y un `{"unit_price": 1}` anidado tres
+ * niveles sí lo detecta, cosa que la subcadena hacía por accidente.
+ */
+const CLAVES_PROHIBIDAS = [
+  'price',
+  'unit_price',
+  'line_total',
+  'subtotal',
+  'total',
+  'currency',
+  'discount',
+  'store_id',
+  'organization_id',
+  'company_id',
+  'tenant_id',
+  'channel_id',
+  'user_id',
+  'segment_id',
+  'customer_id',
+  'price_list_id',
+  'warehouse_id',
+]
+
+function todasLasClaves(value: unknown, out: string[] = []): string[] {
+  if (Array.isArray(value)) {
+    for (const item of value) todasLasClaves(item, out)
+    return out
+  }
+  if (value && typeof value === 'object') {
+    for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+      out.push(key)
+      todasLasClaves(item, out)
+    }
+  }
+  return out
+}
+
 beforeEach(() => {
   holder.client = null
   localStorage.clear()
+  // El intento pendiente vive en `sessionStorage` y sobrevive entre tests si no
+  // se limpia: sin esto, el aviso de «tenías una compra a medias» aparecería en
+  // pantallas que nunca enviaron nada.
+  sessionStorage.clear()
 })
 
 describe('de la ficha al carrito', () => {
@@ -209,6 +285,20 @@ describe('de la ficha al carrito', () => {
     expect(await screen.findByText('Tu carrito está vacío')).toBeInTheDocument()
     expect(localStorage.getItem(`ebim.ecommerce.cart.v1:${STORE}`)).toBeNull()
   })
+
+  /**
+   * El carrito de servidor es una COMODIDAD (P07-SaaS): entrega el secreto con
+   * el que se ata la compra a un carrito. Que exista no puede cambiar lo que el
+   * comprador ve, y que falle no puede impedirle comprar — eso se prueba abajo.
+   */
+  it('el token del carrito de servidor se guarda al abrir la vitrina', async () => {
+    sembrarCarrito([LINEA_SILLA])
+    renderStorefront(backend(), '/s/casa-nordica/cart')
+
+    await waitFor(() =>
+      expect(localStorage.getItem(cartTokenStorageKey(STORE))).toBe(CART_TOKEN),
+    )
+  })
 })
 
 describe('checkout', () => {
@@ -219,7 +309,7 @@ describe('checkout', () => {
     await user.type(screen.getByLabelText(/Dirección de entrega/), 'Av. Primavera 120')
   }
 
-  it('manda tienda, productos y cantidades — y ningún precio', async () => {
+  it('manda tienda, productos y cantidades — y ningún importe', async () => {
     const user = userEvent.setup()
     const fake = backend()
     sembrarCarrito([LINEA_SILLA])
@@ -232,30 +322,39 @@ describe('checkout', () => {
     await waitFor(() => expect(fake.state.invocations).toHaveLength(1))
     const { name, body } = fake.state.invocations[0]!
 
-    expect(name).toBe(CREATE_ORDER_FUNCTION)
-    expect(body).toEqual({
-      store_slug: 'casa-nordica',
-      customer_name: 'Ana Pérez',
-      customer_email: 'ana@compradora.com',
-      customer_phone: '+51 999 888 777',
-      shipping_address: { address: 'Av. Primavera 120', reference: 'Portón verde' },
-      items: [{ product_id: P_SILLA, quantity: 2 }],
+    expect(name).toBe(CHECKOUT_FUNCTION)
+    expect(body.store_slug).toBe('casa-nordica')
+    expect(body.customer_name).toBe('Ana Pérez')
+    expect(body.customer_email).toBe('ana@compradora.com')
+    expect(body.customer_phone).toBe('+51 999 888 777')
+    expect(body.shipping_address).toEqual({
+      address: 'Av. Primavera 120',
+      reference: 'Portón verde',
     })
+    expect(body.items).toEqual([{ product_id: P_SILLA, quantity: 2 }])
+    expect(body.accept_price_changes).toBe(false)
 
-    // Ni el tenant ni el dinero salen del navegador.
-    const plano = JSON.stringify(body)
-    for (const prohibido of [
-      'price',
-      'unit_price',
-      'subtotal',
-      'total',
-      'currency',
-      'store_id',
-      'organization_id',
-      'company_id',
-    ]) {
-      expect(plano).not.toContain(prohibido)
+    // Ni el tenant ni el dinero salen del navegador. Se miran las CLAVES, a
+    // cualquier profundidad: es la forma exacta de la regla.
+    const claves = todasLasClaves(body)
+    for (const prohibida of CLAVES_PROHIBIDAS) {
+      expect(claves, `clave prohibida en el cuerpo: ${prohibida}`).not.toContain(prohibida)
     }
+  })
+
+  it('la clave de idempotencia viaja en el cuerpo y es de alta entropía', async () => {
+    const user = userEvent.setup()
+    const fake = backend()
+    sembrarCarrito([LINEA_SILLA])
+    renderStorefront(fake, '/s/casa-nordica/checkout')
+
+    await rellenar(user)
+    await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+
+    await waitFor(() => expect(fake.state.invocations).toHaveLength(1))
+    // 32 bytes en hexadecimal. Es lo que impide que dos pestañas abiertas en el
+    // mismo milisegundo compartan clave — y con ella, pedido.
+    expect(fake.state.invocations[0]?.body.idempotency_key).toMatch(/^[a-f0-9]{64}$/)
   })
 
   it('la referencia es opcional: sin ella, no viaja el campo', async () => {
@@ -298,7 +397,7 @@ describe('checkout', () => {
     const user = userEvent.setup()
     const pendiente: { responder: (() => void) | null } = { responder: null }
     const fake = backend({
-      onCreateOrder: (body) => {
+      onCheckout: (body) => {
         // La primera llamada se queda en vuelo: es el hueco por el que se
         // colaría el segundo clic si el botón no se bloqueara.
         return new Promise((resolve) => {
@@ -325,11 +424,44 @@ describe('checkout', () => {
     expect(fake.state.invocations).toHaveLength(1)
   })
 
-  it('un error del servidor se explica y no vacía el carrito', async () => {
+  /**
+   * El bloqueo del botón es cortesía; la garantía es la clave. Este test compra
+   * la propiedad que de verdad importa: dos envíos del MISMO intento de compra
+   * llevan la MISMA clave, así que el servidor devuelve el mismo pedido en vez
+   * de crear el segundo.
+   */
+  it('reintentar tras un fallo reusa la misma clave de idempotencia', async () => {
+    const user = userEvent.setup()
+    let intentos = 0
+    const fake = backend({
+      onCheckout: (body) => {
+        intentos += 1
+        if (intentos === 1) throw new FunctionsHttpErrorLike(503, 'DISPONIBILIDAD_DESCONOCIDA')
+        return respuestaPedido(body)
+      },
+    })
+    sembrarCarrito([LINEA_SILLA])
+    renderStorefront(fake, '/s/casa-nordica/checkout')
+
+    await rellenar(user)
+    await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+    await screen.findByRole('alert')
+
+    await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+    await waitFor(() => expect(fake.state.invocations).toHaveLength(2))
+
+    const [primera, segunda] = fake.state.invocations
+    expect(primera?.body.idempotency_key).toBe(segunda?.body.idempotency_key)
+  })
+
+  it('un error del servidor se explica, dice la etapa, recibe el foco y no vacía el carrito', async () => {
     const user = userEvent.setup()
     const fake = backend({
-      onCreateOrder: () => {
-        throw new FunctionsHttpErrorLike(409, 'STOCK_INSUFICIENTE')
+      onCheckout: () => {
+        throw new FunctionsHttpErrorLike(409, 'STOCK_INSUFICIENTE', {
+          stage: 'reserve_inventory',
+          retryable: false,
+        })
       },
     })
     sembrarCarrito([LINEA_SILLA])
@@ -338,9 +470,96 @@ describe('checkout', () => {
     await rellenar(user)
     await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/unidades disponibles/i)
+    const alerta = await screen.findByRole('alert')
+    expect(alerta).toHaveTextContent(/unidades disponibles/i)
+    // La etapa: «al apartar el stock» es lo que convierte «algo salió mal» en
+    // algo que el comprador puede entender.
+    expect(alerta).toHaveTextContent('al apartar el stock')
+    // Y el foco, sin el cual quien usa lector de pantalla no se entera de nada.
+    await waitFor(() => expect(alerta).toHaveFocus())
+
     expect(localStorage.getItem(`ebim.ecommerce.cart.v1:${STORE}`)).not.toBeNull()
     expect(screen.getByRole('button', { name: 'Confirmar pedido' })).toBeEnabled()
+  })
+
+  it('un cambio de precio se puede confirmar, y el segundo envío lo dice', async () => {
+    const user = userEvent.setup()
+    let intentos = 0
+    const fake = backend({
+      onCheckout: (body) => {
+        intentos += 1
+        if (intentos === 1) {
+          throw new FunctionsHttpErrorLike(409, 'PRECIO_CAMBIADO', {
+            stage: 'resolve_prices',
+            retryable: false,
+          })
+        }
+        return respuestaPedido(body)
+      },
+    })
+    sembrarCarrito([LINEA_SILLA])
+    renderStorefront(fake, '/s/casa-nordica/checkout')
+
+    await rellenar(user)
+    await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/precio de algo de tu carrito/i)
+    await user.click(await screen.findByRole('button', { name: 'Confirmar con el precio nuevo' }))
+
+    await waitFor(() => expect(fake.state.invocations).toHaveLength(2))
+    expect(fake.state.invocations[1]?.body.accept_price_changes).toBe(true)
+    // Misma compra, misma clave: aceptar el precio nuevo no puede crear un
+    // segundo pedido.
+    expect(fake.state.invocations[1]?.body.idempotency_key).toBe(
+      fake.state.invocations[0]?.body.idempotency_key,
+    )
+  })
+
+  /**
+   * Recarga a mitad de compra. El comprador no sabe si su pedido llegó a
+   * existir; lo que la pantalla hace es recuperar la clave del intento y
+   * decírselo, para que reenviar sea seguro en vez de una apuesta.
+   */
+  it('tras recargar, se avisa del intento pendiente y se reusa su clave', async () => {
+    const user = userEvent.setup()
+    const CLAVE = 'b'.repeat(64)
+    sessionStorage.setItem(
+      attemptStorageKey('casa-nordica'),
+      JSON.stringify({ key: CLAVE, startedAt: Date.now() }),
+    )
+    const fake = backend()
+    sembrarCarrito([LINEA_SILLA])
+    renderStorefront(fake, '/s/casa-nordica/checkout')
+
+    expect(await screen.findByText('Tenías una compra a medias')).toBeInTheDocument()
+
+    await rellenar(user)
+    await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+
+    await waitFor(() => expect(fake.state.invocations).toHaveLength(1))
+    expect(fake.state.invocations[0]?.body.idempotency_key).toBe(CLAVE)
+  })
+
+  /**
+   * El carrito de servidor no puede ser un punto único de fallo: si su RPC no
+   * responde, el comprador tiene que poder comprar igual — sin `cart_token`,
+   * que es lo único que se pierde.
+   */
+  it('si el carrito de servidor falla, la compra sigue', async () => {
+    const user = userEvent.setup()
+    const fake = backend()
+    fake.state.rpc.cart_open = () => {
+      throw new Error('CARRITO_NO_ENCONTRADO: no hay ningun carrito con esos datos')
+    }
+    sembrarCarrito([LINEA_SILLA])
+    renderStorefront(fake, '/s/casa-nordica/checkout')
+
+    await rellenar(user)
+    await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+
+    await waitFor(() => expect(fake.state.invocations).toHaveLength(1))
+    expect(fake.state.invocations[0]?.body.cart_token).toBeNull()
+    expect(await screen.findByText('EC-20260827-00001')).toBeInTheDocument()
   })
 })
 
@@ -368,6 +587,9 @@ describe('confirmación', () => {
     await waitFor(() =>
       expect(localStorage.getItem(`ebim.ecommerce.cart.v1:${STORE}`)).toBeNull(),
     )
+    // El intento se cierra: si quedara, la próxima compra reusaría su clave y
+    // el servidor devolvería el pedido anterior.
+    expect(sessionStorage.getItem(attemptStorageKey('casa-nordica'))).toBeNull()
   })
 
   it('sin estado de navegación sigue mostrando el número de la URL', async () => {

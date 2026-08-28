@@ -291,3 +291,64 @@ export function toOrderItems(
       : { product_id: line.product_id, quantity: line.quantity },
   )
 }
+
+/**
+ * Lo que devuelve el carrito del servidor, visto desde aquí.
+ *
+ * Se declara de forma estructural y no importando el tipo de `serverCart.ts`
+ * para que este archivo siga sin depender de la capa de datos: `cart.ts` es
+ * lógica pura y sus tests no levantan nada.
+ */
+export interface ServerLine {
+  product_id: string
+  variant_id: string | null
+  quantity: number
+  slug: string
+  name: string
+  unit_price: string | null
+  unit_price_snapshot: string | null
+}
+
+/**
+ * Aplica al carrito local lo que dice el servidor DESPUÉS de una fusión.
+ *
+ * El servidor manda en QUÉ hay y CUÁNTO —es él quien fusionó, quien conoce el
+ * carrito del otro dispositivo y quien validó contra el catálogo—; lo local que
+ * se conserva es solo presentación: la miniatura que ya estaba descargada y la
+ * moneda. Si una línea del servidor no estaba en local, entra con lo que el
+ * servidor sabe de ella, y su imagen se resolverá en el siguiente render.
+ *
+ * El precio que se guarda es el VIGENTE del servidor (`unit_price`) y no el
+ * snapshot: el snapshot es lo que valía cuando se guardó, y pintar eso sería
+ * enseñar un precio viejo al lado de un botón de comprar. Si el servidor no
+ * pudo cotizar, se conserva el que hubiera en local — que es de escaparate y
+ * está declarado como tal desde el principio de este archivo.
+ *
+ * **Presentaciones (UoM).** Hoy la vitrina no vende por presentación: no hay
+ * selector y ninguna línea sale de aquí con `uom_code`. El modelo del servidor
+ * sí la admite porque comparte la terna con `create_order`. El día que la
+ * vitrina venda cajas, esta función es donde se añade — y hasta entonces no se
+ * inventa un campo que ninguna pantalla puede producir ni mostrar.
+ */
+export function applyServerLines(cart: Cart, lines: readonly ServerLine[], fallbackCurrency: string): Cart {
+  const locals = new Map(cart.lines.map((line) => [lineKey(line), line]))
+
+  return {
+    ...cart,
+    lines: lines.map((line): CartLine => {
+      const key = lineKey({ product_id: line.product_id, variant_id: line.variant_id })
+      const local = locals.get(key)
+      return {
+        product_id: line.product_id,
+        variant_id: line.variant_id,
+        variant_name: local?.variant_name ?? null,
+        slug: line.slug,
+        name: line.name,
+        unit_price: line.unit_price ?? local?.unit_price ?? '0.00',
+        currency: local?.currency ?? fallbackCurrency,
+        image_path: local?.image_path ?? null,
+        quantity: clampQuantity(line.quantity),
+      }
+    }),
+  }
+}

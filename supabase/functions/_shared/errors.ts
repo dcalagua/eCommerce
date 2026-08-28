@@ -11,8 +11,14 @@
  * (P02-SaaS): «el hub no esta configurado» y «el hub no contesta» no son
  * errores de esta app, y devolverlos como 500 haria que el cliente reintentara
  * contra un problema que no se arregla reintentando.
+ *
+ * `402` entra con el pipeline de checkout (P07-SaaS): «el pago no se autorizo»
+ * no es ni un error del cliente (400) ni una falta de permiso (403) ni un fallo
+ * de esta app (500). Es el unico codigo que dice lo que de verdad paso, y de el
+ * depende que la pantalla ofrezca otro medio de pago en vez de reintentar.
  */
-export type ErrorStatus = 400 | 401 | 403 | 404 | 405 | 409 | 422 | 429 | 500 | 502 | 503
+export type ErrorStatus =
+  | 400 | 401 | 402 | 403 | 404 | 405 | 409 | 422 | 429 | 500 | 502 | 503
 
 export class AppError extends Error {
   readonly code: string

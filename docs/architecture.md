@@ -17,7 +17,8 @@ Usuario del tenant ──┘      ├─ /s/:storeSlug  storefront público (ten
                        ├─ Storage (imágenes de producto, path por tenant)
                        └─ Edge Functions (Deno)
                             ├─ bootstrap-tenant   (alta de tenant, clave de aprovisionamiento)
-                            ├─ create-order       (checkout anónimo, service_role, solo servidor)
+                            ├─ checkout           (pipeline de 11 etapas, idempotente — P07-SaaS)
+                            ├─ create-order       (la puerta de P02-P06; sigue viva)
                             ├─ catalog-product    (alta/edición con el JWT del usuario)
                             └─ update-order-status (transiciones con el JWT del usuario)
 
@@ -40,7 +41,7 @@ El **hub EBIM** es el emisor de identidad y dueño del catálogo/billing. eComme
 escribe en él. La identidad del comprador final del storefront es **local** a este proyecto (patrón §2.5,
 igual que los proveedores externos de eSupplier); los usuarios del tenant llegan por SSO del hub.
 
-## Modelo de datos (implementado hasta P06-SaaS)
+## Modelo de datos (implementado hasta P07-SaaS)
 
 Nueve tablas en `supabase/migrations`, todas con `organization_id uuid` + `company_id uuid` (uuids del hub),
 `created_at`/`updated_at`, PK uuid y RLS default deny **forzada**:
@@ -69,8 +70,8 @@ tenants (PK = organization_id del hub)
   **generada** (`stock > 0`): `anon` la lee, pero nunca lee `stock` (P05). Desde P06 la vista
   publica un booleano calculado por ATP, y la cifra exacta sigue sin salir a `anon`.
 - Sin forks de schema por cliente: diferencias por `store_settings.config` + `products.custom_fields` (JSONB).
-- Pendiente de fases siguientes: `carts`, `payments`, `audit_log`. (`customers` llegó en P05-SaaS;
-  los almacenes y las reservas, en P06-SaaS.)
+- Pendiente de fases siguientes: `payments`, `audit_log`. (`customers` llegó en P05-SaaS; los
+  almacenes y las reservas, en P06-SaaS; `carts`, `checkout_intents` y `domain_events`, en P07-SaaS.)
 
 ### PIM: variantes, atributos, unidades y kits (P03-SaaS)
 
@@ -256,6 +257,45 @@ LO COMPROMETIDO
 - `InventoryPort` gana **dos** implementaciones —backoffice (con cifra) y vitrina (solo semáforo)—,
   que es exactamente lo que justificaba el puerto desde P01.
 
+### Carrito persistente y pipeline de checkout (P07-SaaS)
+
+Cuatro tablas más, migraciones `20260828100000`-`20260828100400`. Decisiones completas en
+[`adr/007-cart-checkout-pipeline.md`](adr/007-cart-checkout-pipeline.md).
+
+```
+EL CARRITO (de una tienda y de UN canal)
+  carts ──── cart_items      dueño = sesion O secreto de 256 bits, nunca un id declarado
+                             unit_price_snapshot: INFORMATIVO, jamas autoridad de cobro
+
+EL INTENTO DE COMPRA
+  checkout_intents           (store_id, idempotency_key) unico + resumen de la peticion
+
+LOS HECHOS
+  domain_events              outbox de DOMINIO, sin proveedor: publica aunque el tenant
+                             no tenga ni una integracion contratada
+```
+
+- **El ancla de la idempotencia es una fila, no el botón deshabilitado.** `checkout_begin` devuelve
+  `replay: true` con la respuesta guardada; repetir la misma petición devuelve el MISMO pedido.
+  `request_hash` ata la clave a lo que se pidió: adivinar la clave no basta.
+- **El orquestador es TypeScript puro** (`supabase/functions/_shared/checkout/pipeline.ts`), once
+  etapas en orden, con pila de compensaciones y errores tipados por etapa. Vive en el borde y no en
+  PL/pgSQL porque la etapa de cobro es una llamada de red: dentro de una transacción de la base
+  bloquearía las filas de existencia mientras un tercero contesta.
+- **Las etapas 10 y 11 no ejecutan nada, y eso es la propiedad**: los hechos se escriben DENTRO de la
+  transacción del pedido (`checkout_place_order`), así que no existe «pedido creado, nadie enterado».
+- **Tres ganchos vacíos con el elemento neutro** —promociones (P10), entrega (P12) y cobro (P09)—,
+  para que esas fases sean sustituir un adaptador y no abrir el orquestador. Ningún nombre de
+  pasarela, transportista ni ERP aparece en el directorio.
+- **La fusión invitado → usuario toma el MÁXIMO, no la suma**, solo absorbe carritos sin dueño y
+  exige mismo canal.
+- **En la petición de compra no viaja ni un céntimo**: el aviso de cambio de precio lo produce
+  `cart_price_drift` comparando la cotización vigente contra el snapshot del propio motor.
+- **`domain_events` no es `integration_outbox`**: aquella exige un proveedor ACTIVO y entrega a un
+  sistema; esta publica un hecho y funciona en un tenant sin conectores.
+- **Ni `anon` ni `authenticated` escriben una sola fila** de las cuatro tablas; el `token` del
+  carrito y el `reservation_token` del intento quedan fuera del GRANT por columna del backoffice.
+
 ### Capacidades y entitlements (P02-SaaS)
 
 Cuatro tablas más, migración `20260827160000`. Decisiones completas en
@@ -283,7 +323,8 @@ tenant_feature_flags      interruptores técnicos del tenant. Solo restan; nunca
 | Función | Autoriza | Cliente | Por qué |
 |---|---|---|---|
 | `bootstrap-tenant` | clave en cabecera `x-ebim-provisioning-key` | `service_role` | crea el tenant: no hay todavía un token del que derivarlo |
-| `create-order` | ninguna (comprador anónimo) | `service_role` | el pedido no puede insertarse desde el navegador |
+| `checkout` | ninguna para el pipeline (comprador anónimo); el JWT del llamante **solo** para resolver su cuenta B2B | `service_role` **y** clave publicable + `Authorization` | `my_business_accounts()` no acepta argumentos: sin la sesión del llamante esa pregunta no tiene respuesta |
+| `create-order` | ninguna (comprador anónimo) | `service_role` | el pedido no puede insertarse desde el navegador; sigue viva para los clientes de P02-P06 |
 | `catalog-product` | JWT del usuario | clave publicable + `Authorization` | **decide la RLS**, no la función |
 | `update-order-status` | JWT del usuario | clave publicable + `Authorization` | idem, más el trigger de transiciones |
 | `platform-context` | JWT del usuario **o** clave de aprovisionamiento | `service_role` | es la única que tiene la credencial del hub; el navegador nunca habla con el hub |
@@ -357,7 +398,9 @@ src/
   features/inventory/   almacenes, existencias por almacen, libro mayor, reservas y
                         alertas (P06-SaaS), mas los dos adaptadores de `InventoryPort`
   features/orders/      pedidos del backoffice
-  features/storefront/  vitrina pública: resolución por slug, catálogo, ficha, carrito/checkout (P06)
+  features/storefront/  vitrina pública: resolución por slug, catálogo, ficha, carrito/checkout
+                        (P07-SaaS: carrito de servidor con fusión al iniciar sesión y
+                         checkout idempotente con etapas)
                         + StoreAccountPage: área de cuenta del comprador B2B (P05-SaaS),
                           resuelta por `my_business_accounts()` y no por la URL
   architecture.test.ts  las reglas de frontera, comprobadas sobre el codigo real

@@ -1,26 +1,44 @@
 import { z } from 'zod'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { UiError } from '@/shared/lib/appError'
-import { CREATE_ORDER_FUNCTION } from '@/shared/lib/db-schema'
-import { codeFromInvokeError } from '@/shared/lib/edgeError'
+import { CHECKOUT_FUNCTION, CREATE_ORDER_FUNCTION } from '@/shared/lib/db-schema'
+import { failureFromInvokeError } from '@/shared/lib/edgeError'
 import { moneyText } from '@/shared/lib/money'
-import { tryGetStorefrontClient } from '@/shared/lib/supabase'
+import { tryGetStorefrontClient, tryGetSupabaseClient } from '@/shared/lib/supabase'
 import { toOrderItems, type Cart } from './cart/cart'
 
-export { CREATE_ORDER_FUNCTION }
+export { CREATE_ORDER_FUNCTION, CHECKOUT_FUNCTION }
 
 /**
- * Checkout mínimo (P06).
+ * Checkout del storefront (P07-SaaS).
  *
  * Cuatro datos obligatorios —nombre, correo, teléfono y dirección— y una
- * referencia opcional. No hay pasarela de pago todavía: el pedido nace en
+ * referencia opcional. Sigue sin haber pasarela de pago: el pedido nace en
  * `pending` y la tienda lo cobra por su canal.
  *
  * Lo que NO viaja en esta petición es tan importante como lo que viaja: ni
- * precios, ni subtotal, ni total, ni moneda, ni `store_id`, ni `organization_id`.
- * El servidor resuelve la tienda por el slug de la URL y vuelve a leer los
- * precios de la base. El carrito del navegador es una lista de deseos, no una
- * factura.
+ * precios de cobro, ni subtotal, ni total, ni moneda, ni `store_id`, ni
+ * `organization_id`. El servidor resuelve la tienda por el slug de la URL y
+ * vuelve a leer los precios de la base. El carrito del navegador es una lista
+ * de deseos, no una factura.
+ *
+ * ## Lo que cambia respecto de P06, y es toda la fase
+ *
+ * **Cada intento lleva una clave de idempotencia.** La genera el navegador con
+ * el generador de números aleatorios criptográfico y viaja en el cuerpo; el
+ * servidor la ancla en `checkout_intents`. Repetir la misma petición —porque se
+ * perdió la respuesta, porque alguien hizo doble clic, porque el móvil cambió
+ * de red a mitad— devuelve **el mismo pedido**, no uno nuevo.
+ *
+ * El botón deshabilitado sigue estando, pero como cortesía: no es seguridad y
+ * no se confía en él. Quien mande la petición dos veces desde una consola
+ * obtiene exactamente el mismo pedido.
+ *
+ * **Y sigue sin salir ni un céntimo del navegador.** El aviso de «el precio
+ * cambió» no lo produce una lista de precios esperados dentro de la petición:
+ * lo produce el servidor comparando la cotización vigente con el snapshot que
+ * el propio motor escribió en el carrito. Por eso el cuerpo del checkout no
+ * lleva ningún importe, y hay un test que lo comprueba sobre el cuerpo entero.
  */
 export const checkoutSchema = z.object({
   customerName: z.string().trim().min(2, 'store.checkout.error.name').max(200, 'store.checkout.error.name'),
@@ -43,14 +61,14 @@ export const checkoutSchema = z.object({
 })
 export type CheckoutValues = z.infer<typeof checkoutSchema>
 
-/** Respuesta de `create-order`. Todo el dinero llega como texto decimal. */
+/** Respuesta del pipeline. Todo el dinero llega como texto decimal. */
 export const orderResultSchema = z.object({
   order_id: z.string().uuid(),
   order_number: z.string().min(1),
   // Secreto de portador del comprador: es lo unico que le permite volver a su
   // pedido tras recargar. Opcional para no romper una respuesta anterior al
   // despliegue de P11, que simplemente no traera enlace permanente.
-  access_token: z.string().length(64).optional(),
+  access_token: z.string().length(64).nullable().optional(),
   status: z.string().min(1),
   currency: z.string().length(3),
   subtotal: moneyText,
@@ -67,23 +85,91 @@ export const orderResultSchema = z.object({
       }),
     )
     .default([]),
+  /** `true` = esta petición no creó nada: devolvió el pedido que ya existía. */
+  replay: z.boolean().default(false),
+  intent_id: z.string().uuid().optional(),
+  payment_status: z.string().optional(),
 })
 export type OrderResult = z.infer<typeof orderResultSchema>
 
+/**
+ * Las once etapas, tal y como las nombra el servidor.
+ *
+ * Es una copia del enum `public.checkout_stage`, igual que la del orquestador
+ * del borde. Aquí solo se usa para elegir un texto: `mapCheckoutStage` traduce
+ * la etapa a «qué se estaba haciendo cuando falló», que es la diferencia entre
+ * «algo salió mal» y «no pudimos apartar el stock».
+ */
+export const CHECKOUT_STAGES = [
+  'resolve_context',
+  'validate_account',
+  'resolve_prices',
+  'resolve_promotions',
+  'calculate_taxes',
+  'reserve_inventory',
+  'validate_delivery',
+  'authorize_payment',
+  'create_order',
+  'publish_events',
+  'notify',
+] as const
+export type CheckoutStage = (typeof CHECKOUT_STAGES)[number]
+
 export class CheckoutError extends UiError {
-  constructor(key: MessageKey, code: string) {
+  /** En qué etapa del pipeline murió, si el servidor lo dijo. */
+  readonly stage: CheckoutStage | null
+  /**
+   * Si el SERVIDOR aconseja reintentar. No se llama `retryable` porque
+   * `AppError` ya expone uno derivado del `kind`, y dos propiedades con el
+   * mismo nombre y distinto origen es como se acaba leyendo la que no era.
+   */
+  readonly retryAdvised: boolean
+
+  constructor(
+    key: MessageKey,
+    code: string,
+    options: { stage?: string | null; retryable?: boolean } = {},
+  ) {
     super({ boundary: 'checkout', key, code })
     this.name = 'CheckoutError'
+    this.stage = isStage(options.stage) ? options.stage : null
+    this.retryAdvised = options.retryable ?? false
   }
 }
 
-/** Códigos de la Edge Function traducidos a algo que el comprador pueda hacer. */
+function isStage(value: string | null | undefined): value is CheckoutStage {
+  return typeof value === 'string' && (CHECKOUT_STAGES as readonly string[]).includes(value)
+}
+
+/** Códigos del servidor traducidos a algo que el comprador pueda hacer. */
 export function mapCheckoutCode(code: string): MessageKey {
   switch (code) {
     case 'STOCK_INSUFICIENTE':
       return 'store.checkout.error.stock'
+    case 'DISPONIBILIDAD_DESCONOCIDA':
+      return 'store.checkout.error.stockUnknown'
+    case 'PRECIO_CAMBIADO':
+      return 'store.checkout.error.priceChanged'
     case 'PRODUCTO_NO_DISPONIBLE':
+    case 'VARIANTE_NO_DISPONIBLE':
       return 'store.checkout.error.product'
+    case 'PRODUCTO_FUERA_DE_CANAL':
+      return 'store.checkout.error.channel'
+    case 'CANAL_EXIGE_SESION':
+    case 'CANAL_NO_PUBLICO':
+      return 'store.checkout.error.channelAuth'
+    case 'LIMITE_DE_AUTORIZACION':
+      return 'store.checkout.error.spendingLimit'
+    case 'PAGO_RECHAZADO':
+      return 'store.checkout.error.payment'
+    case 'DIRECCION_NO_ENTREGABLE':
+      return 'store.checkout.error.delivery'
+    case 'LIMITE_DE_PEDIDOS':
+      return 'store.checkout.error.rateLimit'
+    case 'CHECKOUT_EN_CURSO':
+      return 'store.checkout.error.inFlight'
+    case 'IDEMPOTENCIA_EN_CONFLICTO':
+      return 'store.checkout.error.idempotency'
     case 'TIENDA_NO_DISPONIBLE':
       return 'store.checkout.error.store'
     case 'ITEMS_REQUERIDOS':
@@ -93,20 +179,68 @@ export function mapCheckoutCode(code: string): MessageKey {
     case 'CAMPO_NO_PERMITIDO':
     case 'TENANT_NO_ADMITIDO':
     case 'CANTIDAD_INVALIDA':
+    case 'IDEMPOTENCIA_INVALIDA':
       return 'store.checkout.error.invalid'
     default:
       return 'store.checkout.error.generic'
   }
 }
 
-export interface CreateOrderInput extends CheckoutValues {
+/** Qué se estaba haciendo. Es la mitad del mensaje que un comprador entiende. */
+export function mapCheckoutStage(stage: CheckoutStage | null): MessageKey | null {
+  switch (stage) {
+    case 'resolve_prices':
+    case 'calculate_taxes':
+      return 'store.checkout.stage.prices'
+    case 'reserve_inventory':
+      return 'store.checkout.stage.stock'
+    case 'validate_delivery':
+      return 'store.checkout.stage.delivery'
+    case 'authorize_payment':
+      return 'store.checkout.stage.payment'
+    case 'create_order':
+      return 'store.checkout.stage.order'
+    default:
+      return null
+  }
+}
+
+/**
+ * Clave de idempotencia: 32 bytes del generador CRIPTOGRÁFICO del navegador,
+ * en hexadecimal.
+ *
+ * `Math.random()` no vale y no es purismo: dos pestañas abiertas en el mismo
+ * milisegundo pueden producir la misma secuencia, y una colisión aquí no es un
+ * duplicado — es que la segunda compra recibiría el pedido de la primera. El
+ * servidor exige además que el resumen de la petición coincida, así que una
+ * colisión daría `IDEMPOTENCIA_EN_CONFLICTO` en vez de un pedido cruzado; aun
+ * así, la clave se genera bien desde el principio.
+ */
+export function newIdempotencyKey(): string {
+  const bytes = new Uint8Array(32)
+  globalThis.crypto.getRandomValues(bytes)
+  return [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
+export interface StartCheckoutInput extends CheckoutValues {
   /** Slug de la URL pública. La tienda la resuelve el servidor a partir de él. */
   storeSlug: string
   cart: Cart
+  /** La misma en cada reintento del MISMO intento de compra. */
+  idempotencyKey: string
+  /** Carrito del servidor que se convierte en pedido, si lo hay. */
+  cartToken?: string | null
+  /** El comprador ya vio el precio nuevo y sigue adelante. */
+  acceptPriceChanges?: boolean
+  /** Con sesión, la petición viaja con el JWT para poder resolver su cuenta B2B. */
+  authenticated?: boolean
 }
 
-export async function createOrder(input: CreateOrderInput): Promise<OrderResult> {
-  const supabase = tryGetStorefrontClient()
+export async function startCheckout(input: StartCheckoutInput): Promise<OrderResult> {
+  // Con sesión hace falta el cliente que la lleva: es lo único que permite al
+  // servidor resolver la cuenta B2B del comprador (`my_business_accounts()`).
+  // Sin sesión, el cliente anónimo de la vitrina, como todo lo demás.
+  const supabase = input.authenticated ? tryGetSupabaseClient() : tryGetStorefrontClient()
   if (!supabase) throw new CheckoutError('store.checkout.error.generic', 'CONFIG_INCOMPLETA')
 
   const items = toOrderItems(input.cart)
@@ -114,25 +248,28 @@ export async function createOrder(input: CreateOrderInput): Promise<OrderResult>
     throw new CheckoutError('store.checkout.error.emptyCart', 'ITEMS_REQUERIDOS')
   }
 
-  const { data, error } = await supabase.functions.invoke<{ data: unknown }>(
-    CREATE_ORDER_FUNCTION,
-    {
-      body: {
-        store_slug: input.storeSlug,
-        customer_name: input.customerName,
-        customer_email: input.customerEmail,
-        customer_phone: input.customerPhone,
-        shipping_address: input.reference
-          ? { address: input.address, reference: input.reference }
-          : { address: input.address },
-        items,
-      },
+  const { data, error } = await supabase.functions.invoke<{ data: unknown }>(CHECKOUT_FUNCTION, {
+    body: {
+      store_slug: input.storeSlug,
+      idempotency_key: input.idempotencyKey,
+      cart_token: input.cartToken ?? null,
+      customer_name: input.customerName,
+      customer_email: input.customerEmail,
+      customer_phone: input.customerPhone,
+      shipping_address: input.reference
+        ? { address: input.address, reference: input.reference }
+        : { address: input.address },
+      items,
+      accept_price_changes: input.acceptPriceChanges === true,
     },
-  )
+  })
 
   if (error) {
-    const code = await codeFromInvokeError(error)
-    throw new CheckoutError(mapCheckoutCode(code), code)
+    const failure = await failureFromInvokeError(error)
+    throw new CheckoutError(mapCheckoutCode(failure.code), failure.code, {
+      stage: failure.stage,
+      retryable: failure.retryable,
+    })
   }
 
   const parsed = orderResultSchema.safeParse(data?.data)
@@ -140,4 +277,84 @@ export async function createOrder(input: CreateOrderInput): Promise<OrderResult>
     throw new CheckoutError('store.checkout.error.generic', 'RESPUESTA_INVALIDA')
   }
   return parsed.data
+}
+
+// ---------------------------------------------------------------------------
+// Recuperación tras una recarga
+// ---------------------------------------------------------------------------
+
+const ATTEMPT_PREFIX = 'ebim.ecommerce.checkout-attempt.v1'
+
+export interface PendingAttempt {
+  key: string
+  startedAt: number
+}
+
+/**
+ * El intento en curso, en `sessionStorage`.
+ *
+ * **Solo la clave y la hora.** Ni el nombre, ni el correo, ni el teléfono, ni
+ * la dirección: guardar los datos de contacto para poder reenviar solos sería
+ * dejar datos personales en el navegador para ahorrarle al comprador rellenar
+ * un formulario que ya tiene delante.
+ *
+ * Lo que esto compra es lo importante: si el comprador recarga sin saber si su
+ * pedido llegó a existir, al reenviar se usa **la misma clave** y el servidor
+ * devuelve el pedido que ya había en vez de crear el segundo. La pantalla se lo
+ * dice antes, para que no tenga que adivinarlo.
+ *
+ * `sessionStorage` y no `localStorage`: el intento muere con la pestaña, que es
+ * exactamente lo que dura.
+ */
+function attemptStorage(): Storage | null {
+  try {
+    return typeof window === 'undefined' ? null : window.sessionStorage
+  } catch {
+    return null
+  }
+}
+
+export function attemptStorageKey(storeSlug: string): string {
+  return `${ATTEMPT_PREFIX}:${storeSlug}`
+}
+
+/** Un intento deja de ser recuperable pasada media hora. */
+const ATTEMPT_TTL_MS = 30 * 60 * 1000
+
+export function readPendingAttempt(storeSlug: string): PendingAttempt | null {
+  const store = attemptStorage()
+  if (!store) return null
+  try {
+    const raw = store.getItem(attemptStorageKey(storeSlug))
+    if (!raw) return null
+    const parsed: unknown = JSON.parse(raw)
+    const result = z
+      .object({ key: z.string().regex(/^[a-f0-9]{64}$/), startedAt: z.number() })
+      .safeParse(parsed)
+    if (!result.success) return null
+    if (Date.now() - result.data.startedAt > ATTEMPT_TTL_MS) return null
+    return result.data
+  } catch {
+    return null
+  }
+}
+
+export function writePendingAttempt(storeSlug: string, attempt: PendingAttempt): void {
+  const store = attemptStorage()
+  if (!store) return
+  try {
+    store.setItem(attemptStorageKey(storeSlug), JSON.stringify(attempt))
+  } catch {
+    /* almacenamiento bloqueado: se pierde la recuperación, no la compra */
+  }
+}
+
+export function clearPendingAttempt(storeSlug: string): void {
+  const store = attemptStorage()
+  if (!store) return
+  try {
+    store.removeItem(attemptStorageKey(storeSlug))
+  } catch {
+    /* nada que hacer */
+  }
 }

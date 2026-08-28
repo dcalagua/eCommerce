@@ -354,10 +354,19 @@ export function makePlatformContext(
 export class FunctionsHttpErrorLike extends Error {
   readonly context: Response
 
-  constructor(status: number, code: string) {
+  /**
+   * `extra` lleva lo que una funcion concreta añade al sobre del error. El
+   * pipeline de checkout (P07-SaaS) manda `stage` y `retryable` junto al
+   * codigo, y sin poder simularlo no se podria comprobar que la pantalla dice
+   * en que etapa fallo la compra.
+   */
+  constructor(status: number, code: string, extra: Record<string, unknown> = {}) {
     super('Edge Function returned a non-2xx status code')
     this.name = 'FunctionsHttpError'
-    this.context = new Response(JSON.stringify({ error: { code, message: code } }), { status })
+    this.context = new Response(
+      JSON.stringify({ error: { code, message: code, ...extra } }),
+      { status },
+    )
   }
 }
 

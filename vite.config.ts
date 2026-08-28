@@ -18,5 +18,12 @@ export default defineConfig({
     // fallaria por lento, no por roto. El margen no oculta nada: una asercion
     // que no se cumple sigue fallando igual.
     testTimeout: 30_000,
+    // Y el mismo margen para los HOOKS. El `beforeAll` de los bancos de prueba
+    // de base aplica las 49 migraciones sobre una Postgres en WASM; con la
+    // suite entera en paralelo eso pasa de los 10 s por defecto y el archivo
+    // falla antes de ejecutar una sola asercion — un falso negativo que depende
+    // del hardware, no del codigo. Subirlo no oculta nada: un hook que de
+    // verdad se cuelgue sigue fallando, solo que treinta segundos despues.
+    hookTimeout: 30_000,
   },
 })

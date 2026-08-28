@@ -3,7 +3,7 @@
 GUIDELINES_STATUS: VERIFIED (**por lectura directa** en la 2ª pasada de P00-SaaS: contrato v1.15,
 `PROTOCOLO.md`, `BANDEJA.md` y `EBIM-CREW-ROSTER.md`). La unidad montada es `G:`, no `H:`.
 Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
-Última actualización: 2026-08-28 (P06 de productización SaaS)
+Última actualización: 2026-08-28 (P07 de productización SaaS)
 
 > **Dos numeraciones de fase.** Lo que sigue como «P00…P12» es el trabajo histórico de este repo. A
 > partir del 2026-08-27 arranca un segundo recorrido, **P00–P17 de productización SaaS**
@@ -11,6 +11,214 @@ Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
 > serie: el P12 histórico es el framework de integraciones; el P12-SaaS será fulfillment y devoluciones.
 
 ## Fase actual
+**P07-SaaS — Carrito persistente y checkout como pipeline idempotente. COMPLETA. Gate: PASS.**
+Decisiones completas en [`docs/adr/007-cart-checkout-pipeline.md`](adr/007-cart-checkout-pipeline.md).
+
+### Gates (2026-08-28, partiendo de `70b7af4`)
+
+| Comando | Antes de P07 | Después |
+|---|---|---|
+| `npm run typecheck` | PASS | **PASS** |
+| `npm run lint` | PASS, 0 problemas | **PASS**, 0 problemas |
+| `npm run test` | 1182 / 64 archivos | **1289 / 67 archivos** |
+| `npm run test:db` | 680 / 24 | **781 / 27** |
+| `npm run build` | 833,60 kB (246,81 gzip) | **PASS**, 838,45 kB (248,14 gzip) |
+
+107 tests nuevos: 78 contra Postgres real (carrito, fusión, aislamiento, idempotencia del intento,
+la transacción que cierra la compra, el outbox y las autorizaciones), 23 del orquestador con puertos
+falsos y 6 de la vitrina. **Ningún test existente se borró ni se debilitó**; uno se reescribió y se
+explica abajo.
+
+### El criterio de aceptación, comprobado
+
+> «PASS si el checkout es una operación server-authoritative, idempotente y extensible mediante
+> pasos/ports sin nombres de proveedores concretos.»
+
+Las tres mitades tienen test propio, y no son afirmaciones de documento:
+
+- `llamarla dos veces NO crea dos pedidos` — el mismo intento pasa dos veces por la función que crea
+  el pedido; la segunda devuelve el primero, con `replay: true`, y el conteo de pedidos sigue en uno.
+- `la misma clave con otra peticion es un error, no una compra` — `IDEMPOTENCIA_EN_CONFLICTO`, nunca
+  una segunda compra silenciosa.
+- `manda tienda, productos y cantidades — y ningún importe` — el test recorre **las claves del cuerpo
+  entero, a cualquier profundidad**, y ninguna es un importe ni un identificador de tenant.
+- `recorre las once etapas en el orden declarado` y `el enum de la base dice exactamente lo mismo` —
+  el pipeline existe como lista ordenada y su vocabulario no se puede desincronizar del de Postgres.
+- Y **ningún nombre de pasarela, transportista o ERP** aparece en `supabase/functions/_shared/checkout`.
+
+### La decisión que ordena la fase: el ancla no es el botón
+
+El bloqueo del botón sigue ahí, pero como cortesía. La garantía es una fila:
+`checkout_intents (store_id, idempotency_key)` con índice único, más el **resumen de la petición**.
+
+La clave sola diría «esta es la misma petición»; el hash lo *comprueba*. Sin él, quien adivinara una
+clave ajena obtendría el resultado guardado — que lleva dentro el token de acceso al pedido. Con él,
+hacen falta las dos cosas. Y el resumen es **canónico** (claves y líneas ordenadas), porque el
+reintento del navegador reserializa el JSON: con otro orden se leería como otra petición y crearía
+exactamente el segundo pedido que todo esto evita.
+
+Un intento vivo no se atiende dos veces (`CHECKOUT_EN_CURSO`), y solo se retoma pasados dos minutos
+sin progreso — **soltando antes la reserva del intento anterior**, porque si no el reintento
+competiría contra su propia reserva y diría «no hay stock» sobre unidades que ya eran suyas.
+
+### Once etapas, y las dos que no hacen nada a propósito
+
+```
+1 resolve_context  2 validate_account  3 resolve_prices  4 resolve_promotions
+5 calculate_taxes  6 reserve_inventory 7 validate_delivery 8 authorize_payment
+9 create_order    10 publish_events   11 notify
+```
+
+Las etapas **10 y 11 no ejecutan nada, y eso es la propiedad**: los dos hechos se escriben DENTRO de
+la transacción de la 9, así que no existe el estado «pedido creado, nadie enterado»; y el aviso lo
+entrega el consumidor del outbox, porque bloquear la respuesta del comprador hasta que un proveedor
+de mensajería conteste sería regalarle la disponibilidad de la tienda a un tercero.
+
+El orquestador es **TypeScript puro** y vive en el borde, no en PL/pgSQL, por una razón concreta: la
+etapa 8 autoriza un cobro, que es una llamada de red. Dentro de una función de la base ocurriría con
+las filas de existencia ya bloqueadas, y una caída ajena de quince segundos sería una tienda parada.
+
+### Los tres ganchos VACÍOS, y por qué existen vacíos
+
+Promociones (P10), entrega (P12) y cobro (P09) devuelven **el elemento neutro** —cero descuentos,
+entregable, `not_required`— con la forma completa. La alternativa era omitirlos y abrir el
+orquestador el día que llegaran, recolocando las compensaciones. Así, esas fases son *sustituir un
+adaptador*. `not_required` es un estado de primera clase y no un `null`: «esta tienda todavía no
+cobra en línea» es una decisión del comercio, no la ausencia de un dato.
+
+### Compensaciones: declaradas donde se produce el efecto
+
+Cada etapa que deja rastro empuja su deshacer a una pila; el fallo la vacía **en orden inverso** y
+cada una en su propio `try` —si soltar la reserva falla, anular el cobro se intenta igual— y ninguna
+puede reemplazar al error original. Lo compensado se escribe en `checkout_intents.error_detail`, no
+en un log que nadie mira. **Creado el pedido, la pila se vacía**: deshacerlo no es soltar una
+reserva, es cancelar una venta, y eso lo decide una persona (P08).
+
+### El carrito: nace cuando hace falta, no por visita
+
+`carts` + `cart_items`. El invitado **sigue comprando desde `localStorage`**; la fila nace al iniciar
+sesión (el carrito tiene que viajar con la persona) o al empezar el checkout (hace falta un ancla
+para la reserva y para marcar el carrito convertido). Un carrito de servidor por visita sería una
+tabla de basura y un dato personal más que custodiar: el vacío de un invitado dura **dos horas**, y
+solo al recibir líneas pasa a una semana.
+
+- **El dueño es una sesión O un secreto, nunca un id declarado.** Un carrito CON dueño exige la
+  sesión de ese dueño **además** del token.
+- **De UNA tienda y de UN canal**, con FK compuesta. Mezclar canales cambiaría el precio sin que
+  nadie lo decidiera.
+- **Ni `anon` ni `authenticated` tienen un solo GRANT de escritura** sobre las dos tablas.
+- **El token fuera del GRANT del backoffice**, por columna: un `revoke select (columna)` no anula un
+  `grant select` de tabla entera (lección de 140000).
+
+**La fusión al iniciar sesión toma el MÁXIMO, no la suma.** Quien puso 2 unidades en el móvil y 2 en
+el portátil no pidió 4: sumar inventa unidades que nadie eligió y se descubre en la caja.
+
+### El aviso de «el precio cambió» no lleva ni un céntimo en la petición
+
+Se descartó aceptar del cliente una lista de precios esperados: aunque no se cobrara con ella, sería
+el primer campo con un importe dentro de la petición de compra, y el día que alguien añadiera el
+segundo ya no habría una regla que citar. `cart_price_drift` compara la cotización vigente contra el
+**snapshot que escribió el propio motor** en `cart_items.unit_price_snapshot` — una columna que se
+llama así para que nadie la sume.
+
+### `domain_events`, y por qué NO se reusó el outbox que ya había
+
+`public.integration_enqueue` (150100) **exige un `provider_code` con la integración ACTIVA** en esa
+sociedad. Correcto para entregar a un sistema concreto; imposible para un hecho de dominio: «se creó
+el pedido EC-…» tiene que quedar registrado en un tenant sin ni un conector contratado. Encolándolo
+ahí, la primera tienda sin integraciones vería fallar su checkout con `INTEGRACION_NO_ACTIVA` — o
+alguien pondría un `exception when others then null` y el evento se perdería en silencio. Hay un test
+que publica con cero filas en `tenant_integrations`.
+
+La mecánica es la ya probada: `for update skip locked`, backoff con jitter, cola muerta y rescate de
+huérfanos.
+
+### Dos clientes en la Edge Function, y no es un descuido
+
+`service_role` para lo que el comprador anónimo no puede hacer (reclamar el intento, reservar, crear
+el pedido) y **el cliente del llamante** para la única pregunta que depende de su sesión: de qué
+cuenta B2B es miembro. `my_business_accounts()` no acepta argumentos desde P05 justamente para eso, y
+con `service_role` no tendría respuesta posible. Si el portal B2B no contesta, la compra sigue.
+
+### El límite de gasto se comprueba en la etapa 8, no en la 2
+
+«¿Puede esta persona comprometer este importe?» necesita el total, que no existe hasta después de
+precios e impuestos. La etapa 2 hace lo que sí puede sin total: rechazar un canal que exige sesión
+con `CANAL_EXIGE_SESION`, que dice qué hacer —entrar— en vez del `CANAL_NO_PUBLICO` de la base, que
+solo dice que no se puede.
+
+### La vitrina
+
+- **Resumen previo completo**: qué, cuántas, a cuánto la unidad y cuánto suma la línea. Un resumen
+  que solo enseña el total obliga a confiar; este se puede comprobar.
+- **Estado de la cotización siempre visible y distinguible**: «confirmando precios…», «precio
+  confirmado» o «no pudimos confirmarlo». Nunca el vacío.
+- **El error dice la etapa** —«al apartar el stock» en vez de «algo salió mal»— y **recibe el foco**:
+  sin eso, quien navega con lector de pantalla pulsa comprar y no se entera de que no pasó nada.
+- **Recuperación tras recargar**: se guarda **solo la clave y la hora** en `sessionStorage` —ni
+  nombre, ni correo, ni dirección— y se avisa de que reenviar no duplica.
+- **Cambio de precio**: se detiene una vez y ofrece «Confirmar con el precio nuevo», que reintenta
+  con la **misma clave**.
+- **Todo el carrito de servidor es de mejor esfuerzo**: si su RPC falla, el comprador compra igual
+  desde `localStorage` y hay un test que lo compra.
+
+### El test existente que se reescribió (y por qué no es debilitarlo)
+
+- `checkout-ui.test.tsx`: pasa de `create-order` a `checkout` y de una igualdad literal del cuerpo a
+  aserciones campo a campo más cinco casos nuevos (clave de idempotencia, reintento con la misma
+  clave, etapa + foco del error, aceptar el precio nuevo, recuperación tras recargar y carrito de
+  servidor caído). La comprobación de «ningún importe sale del navegador» pasa de **buscar
+  subcadenas en el JSON** a **recorrer las claves a cualquier profundidad**: dejó de servir en cuanto
+  el cuerpo ganó una bandera llamada `accept_price_changes` —la palabra «price» está dentro del
+  NOMBRE de un booleano—, y mirar las claves de verdad es más estricto, no menos.
+
+### El ajuste de configuración de tests
+
+`vite.config.ts` gana `hookTimeout: 30_000`, el mismo margen que ya tenía `testTimeout`. El
+`beforeAll` de los bancos de base aplica las 49 migraciones sobre Postgres en WASM y, con la suite
+entera en paralelo, pasaba de los 10 s por defecto: el archivo fallaba **antes de ejecutar una sola
+aserción**, por hardware y no por código. No oculta nada — un hook colgado sigue fallando.
+
+### Coordinación (buzón leído, sin escribir en Drive)
+
+Se leyeron `coordinacion\BANDEJA.md` y los 22 pendientes. **No hay ningún mensaje `to: ecommerce`**
+—ni una sola línea del índice menciona a esta app— y ninguno de los `to: all` abiertos exige acción
+de esta fase: `2026-08-18-gmao-037` (contraseña única de demo) es identidad y toca P16, y
+`2026-08-18-gmao-038` (usuario en varios tenants) es una propuesta de cambio a la jerarquía del
+contrato §3, que es **breaking** y la responde GMAO como owner, no una fase de checkout. Nada que
+declarar; sigue pendiente del operador el alta de eCommerce en la suite.
+
+### Lo que P07 NO resuelve, dicho claramente
+
+- **Sigue sin haber pasarela de pago.** El pedido nace en `pending`. Lo que cambia es que esa
+  decisión tiene nombre (`not_required`) y puerto. P09.
+- **No hay motor de promociones ni reglas de entrega.** Los dos ganchos devuelven el neutro, y
+  `calculate_taxes` **se para** si el de promociones devolviera un importe sin que el impuesto sepa
+  recalcular la base. P10 y P12.
+- **No hay consumidor del outbox desplegado.** Las cuatro funciones de la cola están escritas y
+  probadas; el trabajador que las llame es del framework de integraciones (P14) o de notificaciones.
+  Hasta entonces los hechos se acumulan `pending`, que es el estado correcto: existen y esperan.
+- **`create-order` no se retira.** Sigue desplegada y sus tests siguen pasando: es la puerta de
+  P02–P06 y ningún cliente antiguo se rompe. Retirarla es de una fase que pueda comprobar que nadie
+  la llama.
+- **No hay pantalla de carritos abandonados.** La tabla ya se lee con RLS y con el token fuera del
+  grant; la recuperación de venta es contenido de marketing (P11).
+- **El carrito de la vitrina no vende por presentación (UoM).** No hay selector, y el modelo del
+  servidor la admite porque comparte la terna con `create_order`. Está dicho en `applyServerLines`.
+- **El comprador del storefront sigue sin identidad propia** (P16): la sesión que el carrito
+  aprovecha es la del usuario B2B de P05.
+- **`database.types.ts` sin regenerar.** Las cuatro tablas y las funciones nuevas van sin
+  `satisfies`, por la misma razón que las de P02–P06: el archivo se genera contra el proyecto
+  ENLAZADO y estas migraciones no están aplicadas allí (esta fase no despliega). La red mientras
+  tanto son `supabase/tests/carts.test.ts` y `checkout-pipeline.test.ts`, que comprueban estos mismos
+  nombres contra el esquema real. Al aplicar: `npm run db:types` y añadir el `satisfies`.
+
+Siguiente: **P08-SaaS** (OMS: el pedido después de existir), que es quien consume los hechos que este
+pipeline empieza a publicar.
+
+---
+
+## Fase anterior
 **P06-SaaS — Inventario multi-almacén, ATP, movimientos y reservas. COMPLETA. Gate: PASS.**
 Decisiones completas en [`docs/adr/006-inventory-atp-reservations.md`](adr/006-inventory-atp-reservations.md).
 
@@ -223,6 +431,7 @@ para el aviso de alta de eCommerce en la suite, que sigue pendiente del operador
   con `service_role` desde servidor; el conector que la llame es del framework de integraciones (P14).
 
 Siguiente: **P07-SaaS** (carrito y checkout), que es quien conecta la reserva con la compra.
+*Hecho: ver la fase actual. La puerta anónima `reserve_inventory_for_slug` ya la llama el pipeline.*
 
 ---
 

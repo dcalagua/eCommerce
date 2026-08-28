@@ -73,6 +73,9 @@ export function StoreOrderPage() {
             unit_price: item.unit_price,
             quantity: item.quantity,
           })),
+          // Recuperar un pedido por su enlace no es un reintento del checkout:
+          // no hubo intento y no hubo repetición. `false` es el dato correcto.
+          replay: false,
         }
       : null)
 

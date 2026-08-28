@@ -141,14 +141,23 @@ export const BOUNDARIES: readonly Boundary[] = [
     kind: 'domain',
     state: 'implemented',
     responsibility:
-      'Del carrito al pedido: intención de compra, datos de contacto y la llamada que la convierte en pedido.',
+      'Del carrito al pedido: carrito persistente, intención de compra idempotente y el pipeline server-side que la convierte en pedido.',
     paths: [
       'features/storefront/cart',
       'features/storefront/checkout.ts',
       'features/storefront/StoreCartPage.tsx',
       'features/storefront/StoreCheckoutPage.tsx',
     ],
-    serverSide: ['supabase/functions/create-order', 'create_order (091300, 130300)'],
+    serverSide: [
+      'supabase/functions/checkout — el pipeline de once etapas (P07-SaaS)',
+      'supabase/functions/_shared/checkout — orquestador puro, puertos y ganchos',
+      'supabase/functions/create-order — la puerta de P02-P06, que sigue viva',
+      'carts + cart_items, y la fusion invitado -> usuario (100000, 100100)',
+      'checkout_intents — una compra por clave de idempotencia y tienda (100300)',
+      'checkout_place_order — pedido + intento + carrito + hechos, en UNA transaccion (100400)',
+      'domain_events — el outbox de dominio, sin proveedor (100200)',
+      'create_order (091300, 130300, 180200, 200400)',
+    ],
   },
   {
     id: 'orders',

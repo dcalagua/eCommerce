@@ -16,6 +16,23 @@ export interface CartApi {
   currency: string
   isOpen: boolean
   /**
+   * Secreto del carrito de SERVIDOR, cuando existe (P07-SaaS). Es lo que ata la
+   * compra a un carrito concreto: sin él el checkout funciona igual, pero el
+   * carrito no se marca como convertido y no hay snapshot con el que detectar
+   * un cambio de precio.
+   *
+   * `null` mientras no se haya podido sincronizar. La vitrina NO se bloquea por
+   * eso: un comprador con el almacenamiento lleno o una red que falló sigue
+   * comprando desde `localStorage`.
+   */
+  cartToken: string | null
+  /**
+   * `true` cuando ya se intentó reconciliar con el servidor —con éxito o sin
+   * él—. Lo usa el checkout para no salir corriendo con un carrito que todavía
+   * puede cambiar por una fusión.
+   */
+  synced: boolean
+  /**
    * `variant` es opcional y `null` para el producto simple. La identidad de una
    * línea es producto MÁS variante desde P03: sin ella, la talla M y la L
    * acabarían en la misma línea.

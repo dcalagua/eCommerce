@@ -120,6 +120,17 @@ export const INVENTORY_RESERVATIONS_TABLE = 'inventory_reservations'
 export const INVENTORY_RESERVATION_ITEMS_TABLE = 'inventory_reservation_items'
 export const INVENTORY_ALERTS_VIEW = 'inventory_alerts'
 
+// --- Carrito, intentos de compra y hechos (P07-SaaS, migraciones 100000-100400)
+// Sin `satisfies` por la misma razón que las anteriores: `database.types.ts` se
+// genera contra el proyecto ENLAZADO y estas migraciones todavía no están
+// aplicadas allí. La red mientras tanto es `supabase/tests/carts.test.ts` y
+// `checkout-pipeline.test.ts`, que comprueban estos nombres contra el esquema
+// construido desde las migraciones. Al aplicar: `npm run db:types` y `satisfies`.
+export const CARTS_TABLE = 'carts'
+export const CART_ITEMS_TABLE = 'cart_items'
+export const CHECKOUT_INTENTS_TABLE = 'checkout_intents'
+export const DOMAIN_EVENTS_TABLE = 'domain_events'
+
 // --- Vistas del modelo de lectura público ----------------------------------
 // `security_invoker` sobre policies `to anon`: filtran filas, y el GRANT por
 // columna es lo que evita que `anon` vea `stock` o `config` (P02, §4.3).
@@ -175,9 +186,23 @@ export const ADJUST_INVENTORY_RPC = 'adjust_inventory'
 export const SET_INVENTORY_POLICY_RPC = 'set_inventory_policy'
 export const SEED_INVENTORY_RPC = 'seed_inventory_from_catalog'
 
+// Carrito del servidor (P07-SaaS). Las tres son del COMPRADOR —anónimo o con
+// sesión— y su autorización vive dentro: o el token de 256 bits, o la sesión
+// del dueño. Las del pipeline (`checkout_begin`, `checkout_place_order`,
+// `checkout_mark_stage`, `checkout_fail`) NO están aquí a propósito: solo se
+// pueden llamar con `service_role` desde la Edge Function, y listarlas
+// invitaría a intentarlo desde el bundle.
+export const CART_OPEN_RPC = 'cart_open'
+export const CART_REPLACE_LINES_RPC = 'cart_replace_lines'
+export const CART_ABANDON_RPC = 'cart_abandon'
+
 // --- Edge Functions --------------------------------------------------------
 export const BOOTSTRAP_FUNCTION = 'bootstrap-tenant'
 export const CATALOG_PRODUCT_FUNCTION = 'catalog-product'
+// `create-order` sigue desplegada y sigue funcionando: es la puerta de P02 a
+// P06 y ningún cliente antiguo se rompe. Lo que usa la vitrina desde P07 es
+// `checkout`, que es la misma operación con clave de idempotencia delante.
 export const CREATE_ORDER_FUNCTION = 'create-order'
+export const CHECKOUT_FUNCTION = 'checkout'
 export const UPDATE_ORDER_STATUS_FUNCTION = 'update-order-status'
 export const PLATFORM_CONTEXT_FUNCTION = 'platform-context'

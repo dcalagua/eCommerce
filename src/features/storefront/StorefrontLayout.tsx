@@ -44,6 +44,10 @@ export function StorefrontLayout() {
   const { storeSlug } = useParams<{ storeSlug: string }>()
   const { t } = useI18n()
   const { data: store, isPending, isError, error, refetch } = usePublicStore(storeSlug)
+  // La sesión no cambia NADA de lo que se ve del catálogo —la vitrina se lee
+  // siempre con el cliente anónimo— pero sí decide de quién es el carrito: con
+  // sesión, el del comprador; sin ella, el del token del navegador.
+  const { status: sessionStatus } = useSessionContext()
 
   if (isPending) {
     return (
@@ -74,7 +78,12 @@ export function StorefrontLayout() {
       {/* El carrito cuelga de la tienda YA RESUELTA: su `store_id` sale de
           `public_stores`, nunca de la URL ni de `localStorage`. Al cambiar de
           tienda, el provider se remonta y carga el carrito de esa tienda. */}
-      <CartProvider storeId={store.store_id} currency={store.currency}>
+      <CartProvider
+        storeId={store.store_id}
+        storeSlug={storeSlug as string}
+        currency={store.currency}
+        authenticated={sessionStatus === 'authenticated'}
+      >
         <Box sx={{ minHeight: '100dvh', bgcolor: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
           <StoreHeader store={store} storeSlug={storeSlug as string} />
 
