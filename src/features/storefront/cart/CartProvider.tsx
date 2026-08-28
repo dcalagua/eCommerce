@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import type { PublicProduct } from '../types'
+import type { PublicProduct, PublicVariant } from '../types'
 import {
   addToCart,
   cartCount,
@@ -12,6 +12,7 @@ import {
   setLineQuantity,
   writeCart,
   CartStoreMismatchError,
+  CartVariantMismatchError,
 } from './cart'
 import { CartContext, type CartApi } from './cart-context'
 
@@ -48,15 +49,16 @@ export function CartProvider({
   }, [cart, storeId])
 
   const add = useCallback(
-    (product: PublicProduct, quantity = 1) => {
+    (product: PublicProduct, quantity = 1, variant: PublicVariant | null = null) => {
       setCart((current) => {
         try {
-          return addToCart(current, product, quantity)
+          return addToCart(current, product, quantity, variant)
         } catch (error) {
-          // Producto de otra tienda: se ignora en vez de tumbar la vitrina, pero
-          // queda dicho en consola porque significa que algo está mal arriba.
-          if (error instanceof CartStoreMismatchError) {
-            console.error('[carrito] producto de otra tienda descartado', error)
+          // Producto de otra tienda o variante que no es de ese producto: se
+          // ignora en vez de tumbar la vitrina, pero queda dicho en consola
+          // porque significa que algo está mal arriba.
+          if (error instanceof CartStoreMismatchError || error instanceof CartVariantMismatchError) {
+            console.error('[carrito] línea descartada', error)
             return current
           }
           throw error
@@ -67,12 +69,15 @@ export function CartProvider({
     [],
   )
 
-  const setQuantity = useCallback((productId: string, quantity: number) => {
-    setCart((current) => setLineQuantity(current, productId, quantity))
-  }, [])
+  const setQuantity = useCallback(
+    (productId: string, quantity: number, variantId: string | null = null) => {
+      setCart((current) => setLineQuantity(current, productId, quantity, variantId))
+    },
+    [],
+  )
 
-  const remove = useCallback((productId: string) => {
-    setCart((current) => removeFromCart(current, productId))
+  const remove = useCallback((productId: string, variantId: string | null = null) => {
+    setCart((current) => removeFromCart(current, productId, variantId))
   }, [])
 
   const clear = useCallback(() => {

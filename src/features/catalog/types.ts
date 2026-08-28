@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { moneyText } from '@/shared/lib/money'
 import type { MessageKey } from '@/shared/i18n/messages'
+import { PRODUCT_KINDS as PIM_PRODUCT_KINDS } from './pim/types'
 
 /** Nombres reales de las tablas. Fuente unica: `shared/lib/db-schema.ts`. */
 export {
@@ -11,6 +12,12 @@ export {
 
 export const PRODUCT_STATUSES = ['draft', 'published', 'archived'] as const
 export type ProductStatus = (typeof PRODUCT_STATUSES)[number]
+
+/**
+ * Tipo de producto (P03-SaaS). Reexportado desde el vocabulario del PIM para
+ * que exista un solo sitio donde está escrito el enum de la base.
+ */
+export { PRODUCT_KINDS, type ProductKind } from './pim/types'
 
 /**
  * Importe del catálogo. Vive en `src/shared/lib/money.ts` porque la vitrina
@@ -46,6 +53,14 @@ export const productSchema = z.object({
   stock: z.number().int(),
   published_at: z.string().nullable().default(null),
   updated_at: z.string(),
+  /**
+   * PIM (P03-SaaS). `default` y no `optional` a propósito: una fila que llegue
+   * de una respuesta anterior al despliegue del PIM se lee como el producto
+   * simple que era, y ninguna pantalla tiene que comprobar `undefined`.
+   */
+  kind: z.enum(PIM_PRODUCT_KINDS).default('simple'),
+  brand_id: z.string().uuid().nullable().default(null),
+  family_id: z.string().uuid().nullable().default(null),
 })
 export type Product = z.infer<typeof productSchema>
 
@@ -76,6 +91,15 @@ export const productUsageSchema = z.object({
   name: z.string(),
   order_lines: z.number().int().nonnegative(),
   images: z.number().int().nonnegative(),
+  /**
+   * PIM (P03-SaaS). `bundles` no es informativo: la FK del componente es
+   * `restrict`, así que si es mayor que cero el borrado FALLA. Enseñarlo antes
+   * es la diferencia entre entender por qué y comerse un error de integridad.
+   * Con `default(0)` una respuesta anterior al despliegue del PIM sigue
+   * pintando el diálogo en vez de romperlo al validar.
+   */
+  variants: z.number().int().nonnegative().default(0),
+  bundles: z.number().int().nonnegative().default(0),
 })
 export type ProductUsage = z.infer<typeof productUsageSchema>
 
@@ -118,6 +142,10 @@ export const productFormSchema = z.object({
     .trim()
     .regex(/^\d{1,9}$/, errorKey('catalog.error.stock')),
   status: z.enum(PRODUCT_STATUSES),
+  kind: z.enum(PIM_PRODUCT_KINDS),
+  /** Cadena vacía = sin marca. El `null` lo pone la capa de datos. */
+  brand_id: z.string(),
+  family_id: z.string(),
 })
 export type ProductFormValues = z.infer<typeof productFormSchema>
 
@@ -143,6 +171,9 @@ export function productToForm(product: Product | null): ProductFormValues {
     price: product?.price ?? '',
     stock: String(product?.stock ?? 0),
     status: product?.status ?? 'draft',
+    kind: product?.kind ?? 'simple',
+    brand_id: product?.brand_id ?? '',
+    family_id: product?.family_id ?? '',
   }
 }
 

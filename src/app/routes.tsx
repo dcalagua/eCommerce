@@ -40,6 +40,9 @@ const ProductsPage = lazy(() =>
 const CategoriesPage = lazy(() =>
   import('@/features/catalog/CategoriesPage').then((m) => ({ default: m.CategoriesPage })),
 )
+const PimPage = lazy(() =>
+  import('@/features/catalog/pim/PimPage').then((m) => ({ default: m.PimPage })),
+)
 const OrdersPage = lazy(() =>
   import('@/features/orders/OrdersPage').then((m) => ({ default: m.OrdersPage })),
 )
@@ -104,6 +107,8 @@ export const routes: RouteObject[] = [
           { index: true, element: gated('analytics.basic', <DashboardPage />) },
           { path: 'products', element: gated('catalog', <ProductsPage />) },
           { path: 'categories', element: gated('catalog', <CategoriesPage />) },
+          // El vocabulario del PIM es del módulo vendible, no del baseline.
+          { path: 'pim', element: gated('catalog.advanced', <PimPage />) },
           { path: 'orders', element: gated('orders', <OrdersPage />) },
           // Ajustes y diagnóstico NO se gatean por capacidad: son la salida de
           // un tenant sin nada contratado y el sitio donde se ve por qué.

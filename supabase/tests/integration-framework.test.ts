@@ -192,8 +192,25 @@ describe('resultado del intento', () => {
       [id],
     )
     expect(tras2?.attempts).toBe(2)
-    // 2^2 con jitter [0.5, 1.5) siempre supera al minimo de 2^1.
-    expect(Number(tras2?.espera)).toBeGreaterThan(Number(tras1?.espera))
+
+    // El backoff es `2^intento * (0.5 + random())`, asi que la espera del
+    // intento n cae en `[2^n * 0.5, 2^n * 1.5)`. Las dos bandas SE SOLAPAN
+    // —[1, 3) para el primer intento y [2, 6) para el segundo—, asi que
+    // comparar una espera contra la otra falla cuando el sorteo del jitter sale
+    // alto la primera vez y bajo la segunda: 2,70 s y luego 2,14 s es un
+    // resultado perfectamente correcto del algoritmo. Ese era el fallo
+    // intermitente del banco de pruebas, no un fallo del backoff.
+    //
+    // Lo que SI es cierto siempre es que cada espera cae en SU banda, que es
+    // exactamente lo que significa "el backoff crece". El margen de 50 ms es el
+    // viaje entre el `integration_fail` y este `select`: `now()` se evalua otra
+    // vez y la espera observada es algo menor que la calculada.
+    const espera1 = Number(tras1?.espera)
+    const espera2 = Number(tras2?.espera)
+    expect(espera1).toBeGreaterThan(2 ** 1 * 0.5 - 0.05)
+    expect(espera1).toBeLessThan(2 ** 1 * 1.5)
+    expect(espera2).toBeGreaterThan(2 ** 2 * 0.5 - 0.05)
+    expect(espera2).toBeLessThan(2 ** 2 * 1.5)
   })
 
   it('agotados los intentos, el mensaje va a la cola muerta y deja de servirse', async () => {

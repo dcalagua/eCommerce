@@ -456,3 +456,131 @@ describe('ficha de producto', () => {
     ).toBeInTheDocument()
   })
 })
+
+/**
+ * Producto con variantes en la vitrina (P03-SaaS).
+ *
+ * Un maestro de variantes NO se vende: se vende una de sus filas. Lo que se
+ * comprueba aquí es que la ficha lo refleja —precio "desde", selector, precio de
+ * la elegida— y que lo que se manda al carrito lleva la variante. Que la base
+ * rechace un pedido sin variante está probado contra Postgres en
+ * `supabase/tests/pim-orders.test.ts`.
+ */
+const P_CAMISETA = 'cccc4444-1111-4111-8111-111111111111'
+const V_ROJA = 'eeee1111-1111-4111-8111-111111111111'
+const V_AZUL = 'eeee2222-1111-4111-8111-111111111111'
+
+function camiseta() {
+  return {
+    product_id: P_CAMISETA,
+    store_id: STORE,
+    category_id: CAT_SILLAS,
+    slug: 'camiseta',
+    name: 'Camiseta',
+    description: null,
+    price: '60.00',
+    compare_at_price: null,
+    currency: 'PEN',
+    published_at: '2026-08-21T00:00:00.000Z',
+    in_stock: true,
+    category_slug: 'sillas',
+    category_name: 'Sillas',
+    primary_image_path: null,
+    primary_image_alt: null,
+    kind: 'variant',
+    brand_name: 'Aurora',
+    variant_count: 2,
+    price_from: '60.00',
+  }
+}
+
+function variantes() {
+  return [
+    {
+      variant_id: V_ROJA,
+      product_id: P_CAMISETA,
+      store_id: STORE,
+      name: 'Roja',
+      position: 0,
+      is_default: true,
+      in_stock: true,
+      price: '60.00',
+      compare_at_price: null,
+      currency: 'PEN',
+    },
+    {
+      variant_id: V_AZUL,
+      product_id: P_CAMISETA,
+      store_id: STORE,
+      name: 'Azul',
+      position: 1,
+      is_default: false,
+      in_stock: false,
+      price: '69.90',
+      compare_at_price: null,
+      currency: 'PEN',
+    },
+  ]
+}
+
+function backendConVariantes() {
+  return backend({
+    public_products: [...catalogo(), camiseta()],
+    public_product_variants: variantes(),
+  })
+}
+
+describe('ficha de un producto con variantes', () => {
+  it('anuncia el precio "desde" y ofrece elegir', async () => {
+    renderStorefront(backendConVariantes(), '/s/casa-nordica/product/camiseta')
+
+    expect(await screen.findByRole('heading', { name: 'Camiseta', level: 1 })).toBeInTheDocument()
+    expect(screen.getByText('Desde')).toBeInTheDocument()
+    expect(await screen.findByLabelText('Elige una opción')).toBeInTheDocument()
+  })
+
+  it('preselecciona la variante por defecto y enseña SU precio', async () => {
+    renderStorefront(backendConVariantes(), '/s/casa-nordica/product/camiseta')
+
+    const selector = await screen.findByLabelText('Elige una opción')
+    await waitFor(() => expect(selector).toHaveTextContent('Roja'))
+  })
+
+  it('una variante sin stock no se puede elegir', async () => {
+    const user = userEvent.setup()
+    renderStorefront(backendConVariantes(), '/s/casa-nordica/product/camiseta')
+
+    await user.click(await screen.findByLabelText('Elige una opción'))
+    const opciones = await screen.findAllByRole('option')
+    const azul = opciones.find((option) => option.textContent?.includes('Azul'))
+    expect(azul).toHaveAttribute('aria-disabled', 'true')
+    expect(azul?.textContent).toContain('sin stock')
+  })
+
+  it('agregar al carrito manda la variante elegida, no el maestro', async () => {
+    const user = userEvent.setup()
+    renderStorefront(backendConVariantes(), '/s/casa-nordica/product/camiseta')
+
+    await screen.findByLabelText('Elige una opción')
+    await user.click(await screen.findByRole('button', { name: /Agregar al carrito/ }))
+
+    // El panel se abre solo al añadir. El nombre de la variante va en su propia
+    // línea: es lo que distingue dos líneas del mismo producto en el carrito.
+    expect(await screen.findByRole('heading', { name: /Carrito/ })).toBeInTheDocument()
+    await waitFor(() => {
+      const guardado = localStorage.getItem(`ebim.ecommerce.cart.v1:${STORE}`)
+      expect(guardado).toContain(V_ROJA)
+      expect(guardado).toContain('"variant_name":"Roja"')
+    })
+  })
+
+  it('un producto simple no pide elegir nada: la vitrina de siempre', async () => {
+    renderStorefront(backendConVariantes(), '/s/casa-nordica/product/silla-roble')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Silla de roble', level: 1 }),
+    ).toBeInTheDocument()
+    expect(screen.queryByLabelText('Elige una opción')).not.toBeInTheDocument()
+    expect(screen.queryByText('Desde')).not.toBeInTheDocument()
+  })
+})

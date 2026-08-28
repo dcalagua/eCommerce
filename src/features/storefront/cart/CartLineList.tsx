@@ -8,7 +8,7 @@ import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
 import { R, T } from '@/theme/tokens'
 import { useSignedThumbnails } from '../hooks'
-import { MAX_LINE_QUANTITY, lineTotalCents, type Cart, type CartLine } from './cart'
+import { MAX_LINE_QUANTITY, lineKey, lineTotalCents, type Cart, type CartLine } from './cart'
 import { useCart } from './cart-context'
 
 /**
@@ -34,7 +34,7 @@ export function CartLineList({
     <Stack component="ul" sx={{ listStyle: 'none', m: 0, p: 0, gap: compact ? 1.5 : 2 }}>
       {cart.lines.map((line) => (
         <CartLineRow
-          key={line.product_id}
+          key={lineKey(line)}
           line={line}
           storeSlug={storeSlug}
           imageUrl={line.image_path ? (thumbs[line.image_path] ?? null) : null}
@@ -110,6 +110,13 @@ function CartLineRow({
           <Typography sx={{ fontSize: T.cardTitle, fontWeight: 700, lineHeight: 1.35 }}>
             {line.name}
           </Typography>
+          {/* La variante va en su propia linea y no pegada al nombre: es lo que
+              distingue dos lineas del mismo producto en el carrito. */}
+          {line.variant_name && (
+            <Typography sx={{ fontSize: T.label, color: 'var(--muted)', fontWeight: 700 }}>
+              {line.variant_name}
+            </Typography>
+          )}
         </Box>
         <Typography sx={{ fontSize: T.label, color: 'var(--muted)', fontWeight: 600 }}>
           {formatMoney(Number(line.unit_price), line.currency, locale)} · {t('store.cart.each')}
@@ -118,7 +125,7 @@ function CartLineRow({
         <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5, mt: 0.25 }}>
           <QuantityButton
             label={t('store.cart.decrease')}
-            onClick={() => setQuantity(line.product_id, line.quantity - 1)}
+            onClick={() => setQuantity(line.product_id, line.quantity - 1, line.variant_id)}
           >
             <RemoveIcon fontSize="inherit" />
           </QuantityButton>
@@ -135,15 +142,15 @@ function CartLineRow({
           <QuantityButton
             label={t('store.cart.increase')}
             disabled={line.quantity >= MAX_LINE_QUANTITY}
-            onClick={() => setQuantity(line.product_id, line.quantity + 1)}
+            onClick={() => setQuantity(line.product_id, line.quantity + 1, line.variant_id)}
           >
             <AddIcon fontSize="inherit" />
           </QuantityButton>
 
           <IconButton
             size="small"
-            aria-label={`${t('store.cart.remove')}: ${line.name}`}
-            onClick={() => remove(line.product_id)}
+            aria-label={`${t('store.cart.remove')}: ${line.name}${line.variant_name ? ` ${line.variant_name}` : ''}`}
+            onClick={() => remove(line.product_id, line.variant_id)}
             sx={{ ml: 0.5, color: 'var(--muted)' }}
           >
             <DeleteOutlineIcon fontSize="small" />

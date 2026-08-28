@@ -14,10 +14,11 @@ import {
   TableBody,
   TableCell,
   TableHead,
+  TablePagination,
   TableRow,
   Tabs,
 } from '@mui/material'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
@@ -28,11 +29,11 @@ import { SearchField } from '@/shared/ui/SearchField'
 import { TableSkeleton } from '@/shared/ui/TableSkeleton'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import { EmptyState, ErrorState } from '@/shared/ui/states'
-import type { ProductStatusFilter } from './api/products'
+import { PRODUCTS_PAGE_SIZE, type ProductStatusFilter } from './api/products'
 import { CatalogError } from './api/errors'
 import { ProductDrawer } from './ProductDrawer'
 import { downloadCsv, productsToCsv } from './exportCsv'
-import type { Product, ProductStatus } from './types'
+import type { Product, ProductKind, ProductStatus } from './types'
 import { useCategories } from './useCategories'
 import { useDeleteProduct, useProductUsage, useProducts, useSetProductStatus } from './useProducts'
 
@@ -46,6 +47,12 @@ const STATUS_COLOR: Record<ProductStatus, 'default' | 'success' | 'warning'> = {
   draft: 'warning',
   published: 'success',
   archived: 'default',
+}
+
+const KIND_LABEL: Record<ProductKind, MessageKey> = {
+  simple: 'catalog.kind.simple',
+  variant: 'catalog.kind.variant',
+  bundle: 'catalog.kind.bundle',
 }
 
 const TABS: Array<{ value: ProductStatusFilter; label: MessageKey }> = [
@@ -74,6 +81,7 @@ export function ProductsPage() {
 
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<ProductStatusFilter>('all')
+  const [page, setPage] = useState(0)
   const [drawer, setDrawer] = useState<{ open: boolean; product: Product | null }>({
     open: false,
     product: null,
@@ -82,7 +90,15 @@ export function ProductsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null)
 
   const storeId = activeStore?.id ?? null
-  const products = useProducts({ storeId, search, status })
+
+  // Cambiar el filtro tiene que volver a la primera página: quedarse en la
+  // página 4 de un resultado que ahora tiene una sola es una tabla vacía que se
+  // lee como "no hay nada".
+  useEffect(() => {
+    setPage(0)
+  }, [search, status, storeId])
+
+  const products = useProducts({ storeId, search, status, page })
   const categories = useCategories(storeId)
   const usage = useProductUsage(deleteTarget?.id ?? null)
   const changeStatus = useSetProductStatus()
@@ -142,7 +158,8 @@ export function ProductsPage() {
     }
   }
 
-  const list = products.data ?? []
+  const list = products.data?.rows ?? []
+  const total = products.data?.total ?? 0
   const isEmpty = !products.isPending && !products.isError && list.length === 0
 
   return (
@@ -232,7 +249,20 @@ export function ProductsPage() {
                 {list.map((product) => (
                   <TableRow key={product.id} hover>
                     <TableCell sx={{ fontWeight: 700 }}>{product.sku}</TableCell>
-                    <TableCell>{product.name}</TableCell>
+                    <TableCell>
+                      {product.name}
+                      {/* El tipo solo se anuncia cuando NO es simple: una
+                          etiqueta en cada fila de un catálogo que casi todo es
+                          simple deja de leerse a la tercera pantalla. */}
+                      {product.kind !== 'simple' && (
+                        <Chip
+                          size="small"
+                          variant="outlined"
+                          sx={{ ml: 1 }}
+                          label={t(KIND_LABEL[product.kind])}
+                        />
+                      )}
+                    </TableCell>
                     <TableCell sx={{ color: 'var(--muted)' }}>
                       {product.category_id
                         ? (categoryName.get(product.category_id) ?? t('common.none'))
@@ -242,7 +272,9 @@ export function ProductsPage() {
                       {formatMoney(Number(product.price), product.currency, locale)}
                     </TableCell>
                     <TableCell align="right" className="tnum">
-                      {product.stock}
+                      {/* Un maestro de variantes y un kit no llevan existencia
+                          propia: enseñar su cero sería afirmar que no hay. */}
+                      {product.kind === 'simple' ? product.stock : '—'}
                     </TableCell>
                     <TableCell>
                       <Chip
@@ -264,6 +296,22 @@ export function ProductsPage() {
                 ))}
               </TableBody>
             </Table>
+          )}
+
+          {!products.isError && total > 0 && (
+            <TablePagination
+              component="div"
+              count={total}
+              page={page}
+              onPageChange={(_, next) => setPage(next)}
+              rowsPerPage={PRODUCTS_PAGE_SIZE}
+              rowsPerPageOptions={[PRODUCTS_PAGE_SIZE]}
+              labelRowsPerPage={t('common.rowsPerPage')}
+              labelDisplayedRows={({ from, to, count }) =>
+                `${t('common.showing')} ${from}–${to} / ${count}`
+              }
+              getItemAriaLabel={(type) => `${t('common.showing')}: ${type}`}
+            />
           )}
         </Card>
       </Stack>
@@ -321,6 +369,9 @@ export function ProductsPage() {
         open={drawer.open}
         product={drawer.product}
         categories={categories.data ?? []}
+        // El catálogo de la página en curso: es lo que las pestañas de kit y de
+        // relacionados ofrecen como candidatos, sin una segunda consulta.
+        products={list}
         organizationId={tenant.organization_id}
         companyId={activeCompanyId}
         storeId={storeId}
@@ -338,6 +389,8 @@ export function ProductsPage() {
         usage={[
           { label: t('catalog.delete.usage.orderLines'), count: usage.data?.order_lines ?? 0 },
           { label: t('catalog.delete.usage.images'), count: usage.data?.images ?? 0 },
+          { label: t('catalog.delete.usage.variants'), count: usage.data?.variants ?? 0 },
+          { label: t('catalog.delete.usage.bundles'), count: usage.data?.bundles ?? 0 },
         ]}
         safeActionLabel={
           deleteTarget?.status === 'archived' ? undefined : t('catalog.action.archive')

@@ -75,9 +75,13 @@ export const BOUNDARIES: readonly Boundary[] = [
     kind: 'domain',
     state: 'implemented',
     responsibility:
-      'Qué se vende: producto, categoría, imágenes y su publicación. No decide precio ni disponibilidad.',
+      'Qué se vende y qué ES: producto, variantes, atributos, unidades de venta, kits, categoría, imágenes y su publicación. No decide precio ni disponibilidad.',
     paths: ['features/catalog'],
-    serverSide: ['supabase/functions/catalog-product', 'migraciones 090300, 091100, 091200'],
+    serverSide: [
+      'supabase/functions/catalog-product',
+      'migraciones 090300, 091100, 091200',
+      'PIM: 170000 (once tablas), 170100 (lectura pública), 170300 (P03-SaaS)',
+    ],
   },
   {
     id: 'pricing',

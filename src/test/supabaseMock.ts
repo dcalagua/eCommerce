@@ -80,7 +80,7 @@ export interface FakeState {
   storage: Record<string, Record<string, { size: number; contentType: string }>>
 }
 
-type QueryResult = { data: Row[] | null; error: { message: string } | null }
+type QueryResult = { data: Row[] | null; error: { message: string } | null; count?: number | null }
 
 type Mutation =
   | { kind: 'select' }
@@ -114,6 +114,10 @@ function fakeId(): string {
 class FakeQuery implements PromiseLike<QueryResult> {
   private rows: Row[]
   private mutation: Mutation = { kind: 'select' }
+  /** `select(..., { count: 'exact' })`: hay que devolver el total, no la página. */
+  private wantsCount = false
+  /** Rango de `range(from, to)`, aplicado DESPUÉS de contar. */
+  private range_: { from: number; to: number } | null = null
 
   constructor(
     private readonly state: FakeState,
@@ -122,7 +126,8 @@ class FakeQuery implements PromiseLike<QueryResult> {
     this.rows = [...(state.tables[table] ?? [])]
   }
 
-  select(): this {
+  select(_columns?: string, options?: { count?: 'exact' | 'planned' | 'estimated' }): this {
+    if (options?.count) this.wantsCount = true
     return this
   }
 
@@ -194,8 +199,27 @@ class FakeQuery implements PromiseLike<QueryResult> {
     return this
   }
 
+  /** `in('col', [...])`: lo usan las lecturas de hijos por lote del PIM. */
+  in(column: string, values: unknown[]): this {
+    const wanted = new Set(values)
+    this.rows = this.rows.filter((row) => wanted.has(row[column]))
+    return this
+  }
+
   limit(count: number): this {
     this.rows = this.rows.slice(0, count)
+    return this
+  }
+
+  /**
+   * Paginación de PostgREST: `range` es inclusivo en los dos extremos y se
+   * aplica al final, después de filtrar y ordenar. Se guarda en vez de recortar
+   * aquí porque `count: 'exact'` tiene que devolver el TOTAL del filtro, no el
+   * tamaño de la página — un doble que recortara antes de contar daría por
+   * bueno un paginador que siempre dice "1 página".
+   */
+  range(from: number, to: number): this {
+    this.range_ = { from, to }
     return this
   }
 
@@ -258,7 +282,14 @@ class FakeQuery implements PromiseLike<QueryResult> {
     onfulfilled?: ((value: QueryResult) => TResult1 | PromiseLike<TResult1>) | null,
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ): PromiseLike<TResult1 | TResult2> {
-    return Promise.resolve({ data: this.apply(), error: null }).then(onfulfilled, onrejected)
+    const rows = this.apply()
+    const total = rows.length
+    const page = this.range_ ? rows.slice(this.range_.from, this.range_.to + 1) : rows
+    return Promise.resolve({
+      data: page,
+      error: null,
+      count: this.wantsCount ? total : null,
+    }).then(onfulfilled, onrejected)
   }
 }
 

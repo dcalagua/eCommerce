@@ -132,8 +132,11 @@ export const CAPABILITIES: readonly Capability[] = [
     id: 'catalog.advanced',
     boundary: 'catalog',
     entitlement: `${ENTITLEMENT_PREFIX}catalog.advanced`,
-    state: 'declared',
-    grants: 'Variantes, atributos y unidades de medida por producto (P03).',
+    // La primera vendible que deja de ser `declared` (P03-SaaS): tiene esquema,
+    // pantalla y pedido detras. El `state` dice la verdad sobre el producto HOY,
+    // y un test de paridad lo compara contra la fila de `app_capabilities`.
+    state: 'implemented',
+    grants: 'Variantes, atributos, unidades de venta y kits sobre un producto maestro unico.',
   },
   {
     id: 'pricing.lists',

@@ -295,11 +295,21 @@ describe('orden de las imagenes', () => {
 })
 
 describe('eliminacion segura (contrato §4.2)', () => {
-  it('el conteo de uso del producto es el real: lineas de pedido e imagenes', async () => {
+  // P03-SaaS amplia el conteo con `variants` y `bundles`: el segundo NO es
+  // informativo —la FK del componente es `restrict` y decide si el borrado
+  // puede ocurrir—. Se sigue comparando el objeto ENTERO para que una clave
+  // nueva no entre sin que nadie la mire.
+  it('el conteo de uso del producto es el real: lineas, imagenes, variantes y kits', async () => {
     const rows = await asRole(db, 'authenticated', claimsFor(TENANT_A), () =>
       sql(`select public.product_deletion_usage($1) as usage`, [productA]),
     )
-    expect(rows[0]?.usage).toEqual({ name: 'Silla A', order_lines: 1, images: 3 })
+    expect(rows[0]?.usage).toEqual({
+      name: 'Silla A',
+      order_lines: 1,
+      images: 3,
+      variants: 0,
+      bundles: 0,
+    })
   })
 
   it('el tenant de al lado no obtiene el conteo del producto ajeno', async () => {

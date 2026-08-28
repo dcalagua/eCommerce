@@ -40,7 +40,7 @@ El **hub EBIM** es el emisor de identidad y dueño del catálogo/billing. eComme
 escribe en él. La identidad del comprador final del storefront es **local** a este proyecto (patrón §2.5,
 igual que los proveedores externos de eSupplier); los usuarios del tenant llegan por SSO del hub.
 
-## Modelo de datos (implementado en P02)
+## Modelo de datos (implementado hasta P03-SaaS)
 
 Nueve tablas en `supabase/migrations`, todas con `organization_id uuid` + `company_id uuid` (uuids del hub),
 `created_at`/`updated_at`, PK uuid y RLS default deny **forzada**:
@@ -68,7 +68,47 @@ tenants (PK = organization_id del hub)
   `public_store_branding` — §4.3). La disponibilidad se publica como `products.in_stock`, columna
   **generada** (`stock > 0`): `anon` la lee, pero nunca lee `stock` (P05).
 - Sin forks de schema por cliente: diferencias por `store_settings.config` + `products.custom_fields` (JSONB).
-- Pendiente de fases siguientes: `product_variants`, `price_lists`, `customers`, `carts`, `payments`, `audit_log`.
+- Pendiente de fases siguientes: `price_lists`, `customers`, `carts`, `payments`, `audit_log`.
+
+### PIM: variantes, atributos, unidades y kits (P03-SaaS)
+
+Once tablas más, migraciones `20260827170000`–`20260827170300`. Decisiones completas en
+[`adr/003-pim-variantes-uom-kits.md`](adr/003-pim-variantes-uom-kits.md).
+
+```
+VOCABULARIO DE LA SOCIEDAD (sin store_id: se reusa en todas sus tiendas)
+  brands · product_families · units_of_measure
+  attributes ──── attribute_values          (dominio cerrado de los de tipo lista)
+
+EL PRODUCTO CRECE
+  products + kind (simple | variant | bundle) + brand_id + family_id
+
+LO QUE CUELGA DEL PRODUCTO (con store_id: el producto es de una tienda)
+  product_variants ──── variant_attribute_values   (la combinación que ES cada variante)
+  product_attribute_values                          (ficha técnica, una columna por tipo)
+  product_uoms                                      (factor de conversión a unidad base)
+  bundle_items                                      (receta del kit; NO hay tabla `bundles`)
+  product_relations                                 (accesorio, sustituto, venta cruzada)
+```
+
+- **El producto sigue siendo el maestro único.** Un kit ES un producto con `kind = 'bundle'`; darle
+  tabla propia habría duplicado SKU, precio, imágenes y publicación. Un maestro de variantes **no se
+  vende**: se vende una de sus filas de `product_variants`.
+- **Cuatro reglas del modelo se impiden con FK, no con triggers**: columna denormalizada + CHECK +
+  FK a una clave de apoyo del padre con `on update cascade`. Es lo que permite que un CHECK mire otra
+  tabla — variante solo bajo un `kind='variant'`, valor solo bajo un atributo de lista, eje solo si
+  está declarado eje, y ningún kit dentro de otro kit.
+- **Un solo espacio de nombres de SKU por tienda** entre `products` y `product_variants`, con el
+  trigger `ebim.assert_sku_unique_in_store`. Es lo único que ningún índice puede expresar.
+- **`factor` en `numeric(18,6)`**, nunca float: multiplicado por miles de líneas, el redondeo binario
+  es descuadre de inventario. Una conversión que no da unidades base enteras se rechaza.
+- **`products.price` y `products.stock` NO se retiran** (cinco consumidores vivos); lo que cambia es
+  su significado por tipo, escrito en `comment on column`. Retirar `stock` es trabajo de P06.
+- **Disponibilidad pública por tipo**: `public_products.in_stock` es la columna generada para el
+  simple, `bool_or` de variantes para el maestro, y `ebim.bundle_is_available` para el kit — única
+  función `SECURITY DEFINER` nueva, con su autorización dentro y limitada a kits ya públicos.
+- Vista nueva `public_product_variants` (precio heredado ya resuelto, sin SKU ni existencia exacta).
+  La composición del kit y los atributos **no** salen a `anon` en esta fase.
 
 ### Capacidades y entitlements (P02-SaaS)
 
@@ -139,6 +179,8 @@ src/
   features/capabilities/ que modulos tiene la sociedad: provider, gate, diagnostico
   features/admin/       AdminLayout, dashboard, configuración
   features/catalog/     productos del backoffice
+    pim/                  PIM (P03-SaaS): marcas, familias, atributos, unidades,
+                          variantes, UoM de producto, componentes de kit y relaciones
   features/orders/      pedidos del backoffice
   features/storefront/  vitrina pública: resolución por slug, catálogo, ficha, carrito/checkout (P06)
   architecture.test.ts  las reglas de frontera, comprobadas sobre el codigo real

@@ -37,36 +37,73 @@ const PRODUCT_SELECT = [
   'stock',
   'published_at',
   'updated_at',
+  'kind',
+  'brand_id',
+  'family_id',
 ].join(', ')
 
 export type ProductStatusFilter = ProductStatus | 'all'
+
+/** Tamaño de página del listado del backoffice. */
+export const PRODUCTS_PAGE_SIZE = 25
 
 export interface ProductQuery {
   storeId: string | null
   search: string
   status: ProductStatusFilter
+  /** Página empezando en 0. */
+  page: number
+}
+
+export interface ProductPage {
+  rows: Product[]
+  /** Total de filas que cumplen el filtro, no las de esta página. */
+  total: number
 }
 
 /**
- * Productos de la tienda activa.
+ * Productos de la tienda activa, PAGINADOS EN EL SERVIDOR (P03-SaaS).
+ *
+ * Hasta P02 el listado traía la tabla entera y la pintaba: correcto con
+ * cincuenta productos, insostenible con los miles que el PIM hace normales. El
+ * filtro, el orden y el corte los hace Postgres; el navegador recibe una página.
+ * `count: 'exact'` viaja en la misma petición, así que la paginación no cuesta
+ * un viaje extra.
  *
  * No se envía `organization_id`/`company_id`: el aislamiento lo garantiza la
  * RLS a partir del JWT. `store_id` sí se filtra, pero es alcance de pantalla y
  * no seguridad — una tienda ajena tampoco devolvería filas.
  */
-export async function fetchProducts({ storeId, search, status }: ProductQuery): Promise<Product[]> {
-  if (!storeId) return []
+export async function fetchProducts({
+  storeId,
+  search,
+  status,
+  page,
+}: ProductQuery): Promise<ProductPage> {
+  if (!storeId) return { rows: [], total: 0 }
   const supabase = catalogClient()
 
-  let query = supabase.from(PRODUCTS_TABLE).select(PRODUCT_SELECT).eq('store_id', storeId)
+  let query = supabase
+    .from(PRODUCTS_TABLE)
+    .select(PRODUCT_SELECT, { count: 'exact' })
+    .eq('store_id', storeId)
   if (status !== 'all') query = query.eq('status', status)
 
   const filter = buildTextSearchFilter(search, ['name', 'sku', 'slug'])
   if (filter) query = query.or(filter)
 
-  const { data, error } = await query.order('name')
+  const from = Math.max(0, page) * PRODUCTS_PAGE_SIZE
+  const { data, error, count } = await query
+    .order('name')
+    .range(from, from + PRODUCTS_PAGE_SIZE - 1)
+
   if (error) throw catalogErrorFromDb(error)
-  return productSchema.array().parse(data ?? [])
+  return {
+    rows: productSchema.array().parse(data ?? []),
+    // `count` puede faltar si el backend no lo devuelve; caer al tamaño de la
+    // página deja la paginación consistente en vez de anunciar cero filas.
+    total: typeof count === 'number' ? count : (data?.length ?? 0),
+  }
 }
 
 interface CatalogProductResponse {
@@ -96,6 +133,9 @@ export async function saveProduct(input: {
     stock: Number(values.stock),
     status: values.status,
     category_id: values.category_id || null,
+    kind: values.kind,
+    brand_id: values.brand_id || null,
+    family_id: values.family_id || null,
   }
 
   const body = input.productId

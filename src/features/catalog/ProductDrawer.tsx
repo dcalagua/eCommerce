@@ -3,14 +3,16 @@ import {
   Alert,
   Box,
   Button,
-  Divider,
   InputAdornment,
   MenuItem,
   Stack,
+  Tab,
+  Tabs,
   TextField,
 } from '@mui/material'
-import { useEffect, useState, type ChangeEvent } from 'react'
+import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import { useForm } from 'react-hook-form'
+import { useCapabilities } from '@/features/capabilities/capabilities-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { slugify } from '@/shared/lib/slug'
@@ -18,13 +20,21 @@ import { FormDrawer } from '@/shared/ui/FormDrawer'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import { CatalogError } from './api/errors'
 import { ProductImagesPanel } from './ProductImagesPanel'
+import { BundlePanel } from './pim/BundlePanel'
+import { ProductAttributesPanel } from './pim/ProductAttributesPanel'
+import { RelationsPanel } from './pim/RelationsPanel'
+import { UomsPanel } from './pim/UomsPanel'
+import { VariantsPanel } from './pim/VariantsPanel'
+import { useBrands, useFamilies } from './pim/hooks'
 import {
+  PRODUCT_KINDS,
   PRODUCT_STATUSES,
   productFormSchema,
   productToForm,
   type Category,
   type Product,
   type ProductFormValues,
+  type ProductKind,
   type ProductStatus,
 } from './types'
 import { useSaveProduct } from './useProducts'
@@ -35,20 +45,35 @@ const STATUS_LABEL: Record<ProductStatus, MessageKey> = {
   archived: 'catalog.status.archived',
 }
 
+const KIND_LABEL: Record<ProductKind, MessageKey> = {
+  simple: 'catalog.kind.simple',
+  variant: 'catalog.kind.variant',
+  bundle: 'catalog.kind.bundle',
+}
+
 /**
  * Alta y edición de producto en panel lateral.
  *
- * El drawer no contradice ningún lineamiento: la regla de tabs centrados es
- * para pantallas largas y densas, y esto son ocho campos. Lo que sí respeta es
- * la barra de guardar persistente al pie, que sale de la misma regla.
+ * Hasta P02 esto eran ocho campos en una columna y el drawer no necesitaba
+ * tabs. Con el PIM son seis asuntos distintos —datos, imágenes, variantes,
+ * unidades, ficha técnica, componentes y relacionados— y un formulario
+ * monolítico obligaría a bajar cuatro pantallas para llegar a lo que se vino a
+ * cambiar. Se parte en pestañas (regla de suite §8; aquí sin deep-link `#hash`
+ * porque el cajón vive DENTRO del listado y el hash ya es del listado).
  *
- * Las imágenes solo aparecen al editar: la ruta de Storage lleva el id del
- * producto, así que antes de existir no hay dónde guardarlas.
+ * La barra de Guardar es persistente y guarda SOLO la pestaña General: las
+ * demás escriben su propia fila al confirmar cada acción, porque una variante y
+ * un producto son dos filas distintas y guardarlas juntas obligaría a inventar
+ * una transacción en el cliente.
+ *
+ * Las tres pestañas del PIM se gatean por `catalog.advanced` (P02-SaaS). Es
+ * cortesía, no seguridad: la autoridad son las policies.
  */
 export function ProductDrawer({
   open,
   product,
   categories,
+  products,
   organizationId,
   companyId,
   storeId,
@@ -60,6 +85,8 @@ export function ProductDrawer({
   /** Null = alta. */
   product: Product | null
   categories: Category[]
+  /** Catálogo cargado por el listado: candidatos de kit y de relacionados. */
+  products: Product[]
   organizationId: string
   companyId: string
   storeId: string
@@ -70,8 +97,15 @@ export function ProductDrawer({
   const { t } = useI18n()
   const { notify } = useFeedback()
   const save = useSaveProduct()
+  const { has } = useCapabilities()
+  const advanced = has('catalog.advanced')
+
   const [serverError, setServerError] = useState<MessageKey | null>(null)
   const [slugEdited, setSlugEdited] = useState(false)
+  const [tab, setTab] = useState('general')
+
+  const brands = useBrands(open && advanced)
+  const families = useFamilies(open && advanced)
 
   const {
     register,
@@ -92,6 +126,7 @@ export function ProductDrawer({
     reset(productToForm(product))
     setSlugEdited(Boolean(product))
     setServerError(null)
+    setTab('general')
   }, [open, product, reset])
 
   async function onSubmit(values: ProductFormValues) {
@@ -112,6 +147,32 @@ export function ProductDrawer({
   }
 
   const busy = isSubmitting || save.isPending
+  const kind = watch('kind')
+
+  const tabs = useMemo(() => {
+    const items: Array<{ id: string; label: string }> = [
+      { id: 'general', label: t('catalog.tab.general') },
+      { id: 'imagenes', label: t('catalog.tab.images') },
+    ]
+    if (advanced) {
+      // Variantes y Componentes son excluyentes y dependen del tipo: enseñar
+      // las dos siempre obligaría a explicar en cada una por qué está vacía.
+      if (kind === 'variant') items.push({ id: 'variantes', label: t('catalog.tab.variants') })
+      if (kind === 'bundle') items.push({ id: 'componentes', label: t('catalog.tab.bundle') })
+      items.push(
+        { id: 'unidades', label: t('catalog.tab.uoms') },
+        { id: 'ficha', label: t('catalog.tab.attributes') },
+        { id: 'relacionados', label: t('catalog.tab.related') },
+      )
+    }
+    return items
+  }, [advanced, kind, t])
+
+  // Cambiar el tipo puede quitar la pestaña abierta (de kit a simple, por
+  // ejemplo). Volver a General es preferible a dejar un panel en blanco.
+  const active = tabs.some((item) => item.id === tab) ? tab : 'general'
+
+  const scope = { organizationId, companyId, storeId, canWrite }
 
   return (
     <FormDrawer
@@ -120,6 +181,7 @@ export function ProductDrawer({
       subtitle={product?.sku}
       onClose={onClose}
       busy={busy}
+      width={640}
       actions={
         <>
           <Button onClick={onClose} disabled={busy}>
@@ -136,7 +198,33 @@ export function ProductDrawer({
         </>
       }
     >
-      <Box component="form" id="product-form" onSubmit={handleSubmit(onSubmit)} noValidate>
+      <Tabs
+        value={active}
+        onChange={(_, value: string) => setTab(value)}
+        variant="scrollable"
+        scrollButtons="auto"
+        aria-label={t('admin.products.title')}
+        sx={{
+          borderBottom: '1px solid var(--border)',
+          mb: 3,
+          '& .MuiTab-root': { fontWeight: 700, textTransform: 'none', minHeight: 44 },
+        }}
+      >
+        {tabs.map((item) => (
+          <Tab key={item.id} value={item.id} label={item.label} />
+        ))}
+      </Tabs>
+
+      {/* El formulario se MONTA siempre, aunque su pestaña no esté activa: si se
+          desmontara, cambiar de pestaña perdería lo escrito sin avisar. Lo que
+          cambia es su visibilidad. */}
+      <Box
+        component="form"
+        id="product-form"
+        onSubmit={handleSubmit(onSubmit)}
+        noValidate
+        hidden={active !== 'general'}
+      >
         <Stack spacing={2.5}>
           {!canWrite && <Alert severity="info">{t('catalog.products.unauthorized')}</Alert>}
           {serverError && <Alert severity="error">{t(serverError)}</Alert>}
@@ -144,7 +232,6 @@ export function ProductDrawer({
           <TextField
             label={t('catalog.field.name')}
             fullWidth
-            autoFocus
             disabled={!canWrite}
             error={Boolean(errors.name)}
             helperText={fieldError('name')}
@@ -205,6 +292,65 @@ export function ProductDrawer({
             ))}
           </TextField>
 
+          {advanced && (
+            <>
+              <TextField
+                select
+                label={t('catalog.field.kind')}
+                fullWidth
+                disabled={!canWrite}
+                value={kind}
+                error={Boolean(errors.kind)}
+                helperText={fieldError('kind') ?? t('catalog.kind.help')}
+                {...register('kind')}
+              >
+                {PRODUCT_KINDS.map((value) => (
+                  <MenuItem key={value} value={value}>
+                    {t(KIND_LABEL[value])}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField
+                  select
+                  label={t('catalog.field.brand')}
+                  fullWidth
+                  disabled={!canWrite}
+                  value={watch('brand_id')}
+                  {...register('brand_id')}
+                >
+                  <MenuItem value="">{t('common.none')}</MenuItem>
+                  {(brands.data ?? [])
+                    .filter((brand) => brand.is_active)
+                    .map((brand) => (
+                      <MenuItem key={brand.id} value={brand.id}>
+                        {brand.name}
+                      </MenuItem>
+                    ))}
+                </TextField>
+
+                <TextField
+                  select
+                  label={t('catalog.field.family')}
+                  fullWidth
+                  disabled={!canWrite}
+                  value={watch('family_id')}
+                  {...register('family_id')}
+                >
+                  <MenuItem value="">{t('common.none')}</MenuItem>
+                  {(families.data ?? [])
+                    .filter((family) => family.is_active)
+                    .map((family) => (
+                      <MenuItem key={family.id} value={family.id}>
+                        {family.name}
+                      </MenuItem>
+                    ))}
+                </TextField>
+              </Stack>
+            </>
+          )}
+
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <TextField
               label={t('catalog.field.price')}
@@ -221,9 +367,18 @@ export function ProductDrawer({
             <TextField
               label={t('catalog.field.stock')}
               fullWidth
-              disabled={!canWrite}
+              // Un maestro de variantes y un kit no llevan existencia propia:
+              // el campo se bloquea en vez de aceptar un número que no decide
+              // nada y que el operario del almacén leería como verdad.
+              disabled={!canWrite || kind !== 'simple'}
               error={Boolean(errors.stock)}
-              helperText={fieldError('stock')}
+              helperText={
+                kind === 'simple'
+                  ? fieldError('stock')
+                  : kind === 'variant'
+                    ? t('pim.variants.help')
+                    : t('pim.bundle.help')
+              }
               inputProps={{ inputMode: 'numeric' }}
               {...register('stock')}
             />
@@ -248,15 +403,25 @@ export function ProductDrawer({
         </Stack>
       </Box>
 
-      <Divider sx={{ my: 3 }} />
+      {active === 'imagenes' && (
+        <ProductImagesPanel
+          organizationId={organizationId}
+          companyId={companyId}
+          storeId={storeId}
+          productId={product?.id ?? null}
+          canWrite={canWrite}
+        />
+      )}
 
-      <ProductImagesPanel
-        organizationId={organizationId}
-        companyId={companyId}
-        storeId={storeId}
-        productId={product?.id ?? null}
-        canWrite={canWrite}
-      />
+      {active === 'variantes' && <VariantsPanel product={product} {...scope} />}
+      {active === 'componentes' && (
+        <BundlePanel product={product} products={products} {...scope} />
+      )}
+      {active === 'unidades' && <UomsPanel product={product} {...scope} />}
+      {active === 'ficha' && <ProductAttributesPanel product={product} {...scope} />}
+      {active === 'relacionados' && (
+        <RelationsPanel product={product} products={products} {...scope} />
+      )}
     </FormDrawer>
   )
 }

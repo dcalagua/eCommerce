@@ -207,6 +207,83 @@ describe('carrito: el precio lo decide el servidor', () => {
   })
 })
 
+/**
+ * P03-SaaS. La linea del carrito gana dos campos y NO gana ninguno mas: el
+ * factor de conversion —lo que traduce "2 cajas" a existencia descontada— sigue
+ * siendo del servidor, igual que el precio.
+ */
+describe('carrito con variantes y unidades', () => {
+  it.each(['uom_id', 'uom_factor', 'factor', 'base_quantity', 'sku', 'variant_sku'])(
+    'rechaza `%s` dentro de una linea',
+    (field) => {
+      expectCode(
+        () => normalizeOrderItems([{ product_id: ORG, quantity: 1, [field]: '12' }]),
+        'CAMPO_NO_PERMITIDO',
+        400,
+      )
+    },
+  )
+
+  it('la linea de un producto simple viaja EXACTAMENTE igual que antes del PIM', () => {
+    // Las claves opcionales solo aparecen si tienen valor. Mandar
+    // `variant_id: null` habria cambiado el cuerpo de todas las peticiones del
+    // catalogo simple sin que nada lo necesitara.
+    const [item] = normalizeOrderItems([{ product_id: ORG, quantity: 1 }])
+    expect(Object.keys(item ?? {}).sort()).toEqual(['product_id', 'quantity'])
+  })
+
+  it('la variante y la unidad sobreviven, y el codigo de unidad se normaliza', () => {
+    expect(
+      normalizeOrderItems([
+        { product_id: ORG, quantity: 2, variant_id: COMPANY, uom_code: ' caja ' },
+      ]),
+    ).toEqual([{ product_id: ORG, quantity: 2, variant_id: COMPANY, uom_code: 'CAJA' }])
+  })
+
+  it('la clave de agrupacion es producto + variante + unidad', () => {
+    const items = normalizeOrderItems([
+      { product_id: ORG, quantity: 1, variant_id: COMPANY },
+      { product_id: ORG, quantity: 2, variant_id: COMPANY },
+      { product_id: ORG, quantity: 1, variant_id: OTHER_COMPANY },
+      { product_id: ORG, quantity: 1, uom_code: 'CAJA' },
+      { product_id: ORG, quantity: 1 },
+    ])
+    expect(items).toEqual([
+      { product_id: ORG, quantity: 3, variant_id: COMPANY },
+      { product_id: ORG, quantity: 1, variant_id: OTHER_COMPANY },
+      { product_id: ORG, quantity: 1, uom_code: 'CAJA' },
+      { product_id: ORG, quantity: 1 },
+    ])
+  })
+
+  it('una variante que no es un uuid no pasa', () => {
+    expectCode(
+      () => normalizeOrderItems([{ product_id: ORG, quantity: 1, variant_id: 'la-roja' }]),
+      'ITEM_INVALIDO',
+      400,
+    )
+  })
+
+  it('un codigo de unidad con formato ajeno al de la base no pasa', () => {
+    expectCode(
+      () => normalizeOrderItems([{ product_id: ORG, quantity: 1, uom_code: 'CAJA GRANDE' }]),
+      'ITEM_INVALIDO',
+      400,
+    )
+    expectCode(
+      () => normalizeOrderItems([{ product_id: ORG, quantity: 1, uom_code: 'A'.repeat(17) }]),
+      'ITEM_INVALIDO',
+      400,
+    )
+  })
+
+  it('una variante vacia o nula se lee como "sin variante", no como error', () => {
+    expect(
+      normalizeOrderItems([{ product_id: ORG, quantity: 1, variant_id: '', uom_code: null }]),
+    ).toEqual([{ product_id: ORG, quantity: 1 }])
+  })
+})
+
 describe('maquina de estados del pedido', () => {
   it('coincide exactamente con el trigger de la base', () => {
     const sql = readFileSync(

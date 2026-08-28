@@ -6,6 +6,7 @@ import {
   cartStorageKey,
   cartSubtotal,
   CartStoreMismatchError,
+  CartVariantMismatchError,
   emptyCart,
   parseCart,
   readCart,
@@ -14,7 +15,12 @@ import {
   toOrderItems,
   writeCart,
 } from './cart/cart'
-import { publicProductSchema, type PublicProduct } from './types'
+import {
+  publicProductSchema,
+  publicVariantSchema,
+  type PublicProduct,
+  type PublicVariant,
+} from './types'
 
 /**
  * Reglas del carrito, sin React de por medio.
@@ -169,5 +175,121 @@ describe('lo que viaja al servidor', () => {
     for (const item of items) {
       expect(Object.keys(item).sort()).toEqual(['product_id', 'quantity'])
     }
+  })
+})
+
+/**
+ * Variantes en el carrito (P03-SaaS).
+ *
+ * La identidad de una línea deja de ser el producto y pasa a ser el producto MÁS
+ * la variante. Es el cambio que impide el fallo más caro del PIM en una vitrina:
+ * agrupar la talla M con la L en una sola línea y despachar la que no era.
+ */
+const VARIANTE_M = 'dddd1111-1111-4111-8111-111111111111'
+const VARIANTE_L = 'dddd2222-1111-4111-8111-111111111111'
+
+function variant(overrides: Partial<PublicVariant> = {}): PublicVariant {
+  return publicVariantSchema.parse({
+    variant_id: VARIANTE_M,
+    product_id: SILLA,
+    store_id: STORE_A,
+    name: 'Talla M',
+    position: 0,
+    is_default: true,
+    in_stock: true,
+    price: '389.90',
+    compare_at_price: null,
+    currency: 'PEN',
+    ...overrides,
+  })
+}
+
+describe('variantes en el carrito', () => {
+  it('dos variantes del mismo producto son dos líneas', () => {
+    const base = product({ kind: 'variant' })
+    let cart = addToCart(emptyCart(STORE_A), base, 1, variant())
+    cart = addToCart(cart, base, 2, variant({ variant_id: VARIANTE_L, name: 'Talla L' }))
+
+    expect(cart.lines).toHaveLength(2)
+    expect(cart.lines.map((line) => line.variant_name)).toEqual(['Talla M', 'Talla L'])
+    expect(cartCount(cart)).toBe(3)
+  })
+
+  it('la misma variante repetida sí suma en una línea', () => {
+    const base = product({ kind: 'variant' })
+    let cart = addToCart(emptyCart(STORE_A), base, 1, variant())
+    cart = addToCart(cart, base, 2, variant())
+
+    expect(cart.lines).toHaveLength(1)
+    expect(cart.lines[0]?.quantity).toBe(3)
+  })
+
+  it('el precio de la línea es el de la variante, no el del maestro', () => {
+    const base = product({ kind: 'variant', price: '389.90' })
+    const cart = addToCart(emptyCart(STORE_A), base, 1, variant({ price: '429.00' }))
+    expect(cart.lines[0]?.unit_price).toBe('429.00')
+  })
+
+  it('cambiar la cantidad de una variante no toca la otra', () => {
+    const base = product({ kind: 'variant' })
+    let cart = addToCart(emptyCart(STORE_A), base, 2, variant())
+    cart = addToCart(cart, base, 2, variant({ variant_id: VARIANTE_L, name: 'Talla L' }))
+
+    cart = setLineQuantity(cart, SILLA, 5, VARIANTE_M)
+    expect(cart.lines.map((line) => line.quantity)).toEqual([5, 2])
+
+    cart = removeFromCart(cart, SILLA, VARIANTE_L)
+    expect(cart.lines).toHaveLength(1)
+    expect(cart.lines[0]?.variant_id).toBe(VARIANTE_M)
+  })
+
+  it('quitar sin decir la variante no borra una línea con variante', () => {
+    // Es deliberado: `removeFromCart(cart, id)` significa "la línea SIN
+    // variante de ese producto". Si borrase la primera que encuentre, el botón
+    // de una línea quitaría la de al lado.
+    const base = product({ kind: 'variant' })
+    const cart = addToCart(emptyCart(STORE_A), base, 1, variant())
+    expect(removeFromCart(cart, SILLA).lines).toHaveLength(1)
+  })
+
+  it('una variante de OTRO producto no entra en el carrito', () => {
+    const base = product({ kind: 'variant' })
+    expect(() =>
+      addToCart(emptyCart(STORE_A), base, 1, variant({ product_id: MESA })),
+    ).toThrow(CartVariantMismatchError)
+  })
+
+  it('al servidor viaja `variant_id`, y solo cuando la línea tiene variante', () => {
+    const base = product({ kind: 'variant' })
+    let cart = addToCart(emptyCart(STORE_A), base, 1, variant())
+    cart = addToCart(cart, product({ product_id: MESA, slug: 'mesa', name: 'Mesa' }), 1)
+
+    expect(toOrderItems(cart)).toEqual([
+      { product_id: SILLA, quantity: 1, variant_id: VARIANTE_M },
+      { product_id: MESA, quantity: 1 },
+    ])
+  })
+
+  it('un carrito guardado antes del PIM se sigue leyendo, sin variante', () => {
+    // Compatibilidad: `localStorage` puede tener líneas de ayer. La línea sin
+    // `variant_id` es exactamente el producto simple que era.
+    const legacy = JSON.stringify({
+      store_id: STORE_A,
+      lines: [
+        {
+          product_id: SILLA,
+          slug: 'silla-roble',
+          name: 'Silla de roble',
+          unit_price: '389.90',
+          currency: 'PEN',
+          image_path: null,
+          quantity: 2,
+        },
+      ],
+    })
+    const cart = parseCart(STORE_A, legacy)
+    expect(cart.lines).toHaveLength(1)
+    expect(cart.lines[0]?.variant_id).toBeNull()
+    expect(toOrderItems(cart)).toEqual([{ product_id: SILLA, quantity: 2 }])
   })
 })

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { moneyText } from '@/shared/lib/money'
-import type { PublicProduct } from '../types'
+import type { PublicProduct, PublicVariant } from '../types'
 
 /**
  * Carrito del comprador anónimo.
@@ -27,6 +27,13 @@ export const MAX_LINE_QUANTITY = 99
 
 export const cartLineSchema = z.object({
   product_id: z.string().uuid(),
+  /**
+   * Variante elegida (P03-SaaS). `null` para el producto simple y para el kit,
+   * que se venden ellos mismos. Es parte de la IDENTIDAD de la línea: "camiseta
+   * roja" y "camiseta azul" son dos líneas del mismo producto.
+   */
+  variant_id: z.string().uuid().nullable().default(null),
+  variant_name: z.string().nullable().default(null),
   slug: z.string().min(1),
   name: z.string().min(1),
   /** Decimal como texto: el céntimo no pasa por el float del navegador. */
@@ -36,6 +43,18 @@ export const cartLineSchema = z.object({
   quantity: z.number().int().min(1).max(MAX_LINE_QUANTITY),
 })
 export type CartLine = z.infer<typeof cartLineSchema>
+
+/**
+ * Identidad de una línea: producto MÁS variante.
+ *
+ * Antes del PIM bastaba el `product_id` y las funciones del carrito lo usaban
+ * como clave. Con variantes eso agruparía la talla M con la L en una sola línea
+ * y el comprador recibiría la que no era. Se saca a una función para que las
+ * cuatro operaciones del carrito compartan exactamente la misma definición.
+ */
+export function lineKey(line: Pick<CartLine, 'product_id' | 'variant_id'>): string {
+  return `${line.product_id}|${line.variant_id ?? ''}`
+}
 
 export const cartSchema = z.object({
   store_id: z.string().uuid(),
@@ -48,6 +67,19 @@ export class CartStoreMismatchError extends Error {
   constructor() {
     super('Ese producto es de otra tienda: no se puede mezclar en el mismo carrito.')
     this.name = 'CartStoreMismatchError'
+  }
+}
+
+/**
+ * Se intentó añadir una variante que no es de ese producto. No debería ocurrir
+ * —la ficha solo ofrece las suyas—, y por eso si ocurre hay que verlo: el
+ * servidor lo rechazaría igualmente con `VARIANTE_NO_DISPONIBLE`, pero mucho
+ * más tarde y sin decir dónde se cruzaron los datos.
+ */
+export class CartVariantMismatchError extends Error {
+  constructor() {
+    super('Esa variante no pertenece a ese producto.')
+    this.name = 'CartVariantMismatchError'
   }
 }
 
@@ -130,62 +162,93 @@ function clampQuantity(quantity: number): number {
   return Math.min(MAX_LINE_QUANTITY, Math.max(1, Math.trunc(quantity)))
 }
 
-/** Línea nueva a partir del producto publicado. Sin totales: se derivan. */
-function lineFrom(product: PublicProduct, quantity: number): CartLine {
+/**
+ * Línea nueva a partir del producto publicado y —si la hay— de la variante
+ * elegida. Sin totales: se derivan.
+ *
+ * El precio sale de la VARIANTE cuando hay variante. La vista pública ya
+ * resolvió la herencia, así que aquí no se decide nada de precio; y de todas
+ * formas es precio de escaparate: quien cobra es `create_order`.
+ */
+function lineFrom(product: PublicProduct, variant: PublicVariant | null, quantity: number): CartLine {
   return {
     product_id: product.product_id,
+    variant_id: variant?.variant_id ?? null,
+    variant_name: variant?.name ?? null,
     slug: product.slug,
     name: product.name,
-    unit_price: product.price,
-    currency: product.currency,
+    unit_price: variant?.price ?? product.price,
+    currency: variant?.currency ?? product.currency,
     image_path: product.primary_image_path,
     quantity: clampQuantity(quantity),
   }
 }
 
 /**
- * Añade unidades. Si el producto ya estaba, SUMA en vez de duplicar la línea:
- * dos veces "1 silla" es "2 sillas", que es lo que espera cualquiera.
+ * Añade unidades. Si esa misma combinación producto+variante ya estaba, SUMA en
+ * vez de duplicar la línea: dos veces "1 silla" es "2 sillas", que es lo que
+ * espera cualquiera. Dos variantes distintas del mismo producto siguen siendo
+ * dos líneas, que también es lo que espera cualquiera.
  *
  * Un producto de otra tienda no entra: lanza `CartStoreMismatchError`. La
  * vitrina no debería llegar a ese caso (cada tienda tiene su carrito), y
  * justamente por eso, si llega, es que algo está mal y hay que verlo.
  */
-export function addToCart(cart: Cart, product: PublicProduct, quantity = 1): Cart {
+export function addToCart(
+  cart: Cart,
+  product: PublicProduct,
+  quantity = 1,
+  variant: PublicVariant | null = null,
+): Cart {
   if (product.store_id !== cart.store_id) throw new CartStoreMismatchError()
+  if (variant && variant.product_id !== product.product_id) throw new CartVariantMismatchError()
 
-  const existing = cart.lines.find((line) => line.product_id === product.product_id)
+  const next = lineFrom(product, variant, quantity)
+  const key = lineKey(next)
+  const existing = cart.lines.find((line) => lineKey(line) === key)
+
   if (!existing) {
-    return { ...cart, lines: [...cart.lines, lineFrom(product, quantity)] }
+    return { ...cart, lines: [...cart.lines, next] }
   }
 
   return {
     ...cart,
     lines: cart.lines.map((line) =>
-      line.product_id === product.product_id
+      lineKey(line) === key
         ? // El precio se refresca al del catálogo: si cambió mientras el
           // carrito dormía, el comprador ve el vigente y no el de ayer.
-          lineFrom(product, line.quantity + quantity)
+          lineFrom(product, variant, line.quantity + quantity)
         : line,
     ),
   }
 }
 
 /** Cantidad exacta. Cero o menos quita la línea: es lo que significa. */
-export function setLineQuantity(cart: Cart, productId: string, quantity: number): Cart {
+export function setLineQuantity(
+  cart: Cart,
+  productId: string,
+  quantity: number,
+  variantId: string | null = null,
+): Cart {
   if (!Number.isFinite(quantity) || Math.trunc(quantity) <= 0) {
-    return removeFromCart(cart, productId)
+    return removeFromCart(cart, productId, variantId)
   }
+  const key = lineKey({ product_id: productId, variant_id: variantId })
   return {
     ...cart,
     lines: cart.lines.map((line) =>
-      line.product_id === productId ? { ...line, quantity: clampQuantity(quantity) } : line,
+      lineKey(line) === key ? { ...line, quantity: clampQuantity(quantity) } : line,
     ),
   }
 }
 
-export function removeFromCart(cart: Cart, productId: string): Cart {
-  return { ...cart, lines: cart.lines.filter((line) => line.product_id !== productId) }
+export function removeFromCart(
+  cart: Cart,
+  productId: string,
+  variantId: string | null = null,
+): Cart {
+  const key = lineKey({ product_id: productId, variant_id: variantId })
+  return { ...cart, lines: cart.lines.filter((line) => lineKey(line) !== key) }
 }
 
 export function cartCount(cart: Cart): number {
@@ -214,9 +277,17 @@ export function cartCurrency(cart: Cart, fallback: string): string {
 }
 
 /**
- * Lo ÚNICO que viaja al servidor. Ni precio, ni moneda, ni total, ni tienda:
- * el importe lo pone la base y la tienda sale del slug de la URL.
+ * Lo ÚNICO que viaja al servidor. Ni precio, ni moneda, ni total, ni tienda, ni
+ * factor de conversión: el importe lo pone la base y la tienda sale del slug de
+ * la URL. `variant_id` sí viaja porque es QUÉ se compra, no cuánto cuesta —y el
+ * servidor comprueba que esa variante es de ese producto y está activa.
  */
-export function toOrderItems(cart: Cart): Array<{ product_id: string; quantity: number }> {
-  return cart.lines.map((line) => ({ product_id: line.product_id, quantity: line.quantity }))
+export function toOrderItems(
+  cart: Cart,
+): Array<{ product_id: string; quantity: number; variant_id?: string }> {
+  return cart.lines.map((line) =>
+    line.variant_id
+      ? { product_id: line.product_id, quantity: line.quantity, variant_id: line.variant_id }
+      : { product_id: line.product_id, quantity: line.quantity },
+  )
 }

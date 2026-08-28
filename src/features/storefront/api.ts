@@ -10,16 +10,19 @@ import {
   PUBLIC_CATEGORIES_VIEW,
   PUBLIC_PRODUCTS_VIEW,
   PUBLIC_PRODUCT_IMAGES_VIEW,
+  PUBLIC_PRODUCT_VARIANTS_VIEW,
   PUBLIC_STORES_VIEW,
   publicCategorySchema,
   publicProductImageSchema,
   publicProductSchema,
   publicStoreSchema,
+  publicVariantSchema,
   type CatalogQuery,
   type GalleryImage,
   type PublicCategory,
   type PublicProduct,
   type PublicStore,
+  type PublicVariant,
   OrderNotFoundError,
   trackedOrderSchema,
   type TrackedOrder,
@@ -120,9 +123,26 @@ const PRODUCT_SELECT = [
   'category_name',
   'primary_image_path',
   'primary_image_alt',
+  'kind',
+  'brand_name',
+  'variant_count',
+  'price_from::text',
 ].join(', ')
 
 const IMAGE_SELECT = 'image_id, product_id, storage_path, alt, position, is_primary'
+
+const VARIANT_SELECT = [
+  'variant_id',
+  'product_id',
+  'store_id',
+  'name',
+  'position',
+  'is_default',
+  'in_stock',
+  'price::text',
+  'compare_at_price::text',
+  'currency',
+].join(', ')
 
 /** Una referencia de branding externa se pinta tal cual; una ruta hay que firmarla. */
 function isExternalAsset(value: string): boolean {
@@ -249,6 +269,27 @@ export async function fetchPublicProduct(input: {
   if (error) throw new StorefrontError(error)
   if (!data) throw new StorefrontNotFoundError(input.slug)
   return publicProductSchema.parse(data)
+}
+
+/**
+ * Variantes publicadas de un producto (P03-SaaS).
+ *
+ * La vista `public_product_variants` solo devuelve variantes activas de un
+ * producto publicado en tienda activa, y ya trae el precio heredado resuelto.
+ * Como el resto de la vitrina, se consulta con el cliente ANÓNIMO.
+ */
+export async function fetchPublicVariants(productId: string | null): Promise<PublicVariant[]> {
+  if (!productId) return []
+
+  const { data, error } = await storefront()
+    .from(PUBLIC_PRODUCT_VARIANTS_VIEW)
+    .select(VARIANT_SELECT)
+    .eq('product_id', productId)
+    .order('position')
+    .order('name')
+
+  if (error) throw new StorefrontError(error)
+  return publicVariantSchema.array().parse(data ?? [])
 }
 
 /**

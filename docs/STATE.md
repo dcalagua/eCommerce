@@ -3,7 +3,7 @@
 GUIDELINES_STATUS: VERIFIED (**por lectura directa** en la 2ª pasada de P00-SaaS: contrato v1.15,
 `PROTOCOLO.md`, `BANDEJA.md` y `EBIM-CREW-ROSTER.md`). La unidad montada es `G:`, no `H:`.
 Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
-Última actualización: 2026-08-27 (P02 de productización SaaS)
+Última actualización: 2026-08-27 (P03 de productización SaaS)
 
 > **Dos numeraciones de fase.** Lo que sigue como «P00…P12» es el trabajo histórico de este repo. A
 > partir del 2026-08-27 arranca un segundo recorrido, **P00–P17 de productización SaaS**
@@ -11,6 +11,195 @@ Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
 > serie: el P12 histórico es el framework de integraciones; el P12-SaaS será fulfillment y devoluciones.
 
 ## Fase actual
+**P03-SaaS — PIM: catálogo avanzado, variantes, atributos, UoM y kits. COMPLETA. Gate: PASS.**
+Decisiones completas en [`docs/adr/003-pim-variantes-uom-kits.md`](adr/003-pim-variantes-uom-kits.md).
+
+### Gates (2026-08-27, partiendo de `0c5a5ab`)
+
+| Comando | Antes de P03 | Después |
+|---|---|---|
+| `npm run typecheck` | PASS | **PASS** |
+| `npm run lint` | PASS, 0 problemas | **PASS**, 0 problemas |
+| `npm run test` | 702 / 49 archivos | **837 / 53 archivos** |
+| `npm run test:db` | 360 / 18 | **445 / 20** |
+| `npm run build` | 764,32 kB (227,62 gzip) | **PASS**, 778,24 kB (231,39 gzip) |
+
+135 tests nuevos: 85 contra Postgres real (44 del modelo, 28 de compra con variantes/unidades/kits,
+13 del borde) y 50 en el cliente (26 de reglas puras, 10 de UI del PIM, 8 del carrito con variantes,
+5 de la ficha pública, 1 de estructura del cajón). **Ningún test existente se borró ni se debilitó**;
+cinco se ajustaron y se explican abajo, y uno FUERA del alcance de la fase se arregló y se explica
+también (era intermitente y hacía el gate no determinista).
+
+### La primera capacidad vendible que deja de ser `declared`
+
+P02 dejó once capacidades gateando módulos que no existían. `catalog.advanced` es la primera que
+pasa a tener superficie, y con ello la primera validación real de aquel diseño: la ruta `/app/pim` y
+las pestañas del PIM aparecen y desaparecen con el entitlement, y sin él **el catálogo simple se
+comporta exactamente como antes** — hay un test que lo fija.
+
+### Once tablas, y la que NO se creó
+
+`brands` · `product_families` · `attributes` · `attribute_values` · `units_of_measure` ·
+`product_variants` · `variant_attribute_values` · `product_attribute_values` · `product_uoms` ·
+`bundle_items` · `product_relations`.
+
+**No hay tabla `bundles`.** Un kit ES un producto (`products.kind = 'bundle'`) con su SKU, su
+precio, sus imágenes y su publicación; darle tabla propia habría duplicado la identidad del producto,
+que es justo lo que prohíbe «producto maestro único, el canal no duplica el SKU». Lo que sí hay es
+`bundle_items`: la receta.
+
+Y el reparto de alcance no es uniforme a propósito (regla 8 de la fase): marcas, familias, atributos
+y unidades son **vocabulario de la sociedad** y no llevan `store_id` —se reusan en todas sus
+tiendas—; variantes, UoM de producto, componentes y relaciones cuelgan del producto, que sí es de una
+tienda, y por eso lo llevan.
+
+### Cuatro reglas del modelo que la base hace imposibles, sin un solo trigger
+
+Todas con la misma técnica: una columna **denormalizada** con CHECK, amarrada por FK a una clave de
+apoyo del padre y con `on update cascade`. Es lo que consigue que un CHECK mire una fila de otra
+tabla.
+
+| Regla | Estado que evita |
+|---|---|
+| Una variante solo cuelga de un `kind = 'variant'`, y ese producto no baja a simple mientras tenga variantes | «El producto dice simple y tiene cuatro variantes»: el pedido vendería el maestro y descontaría una existencia que nadie lleva |
+| Un valor solo cuelga de un atributo de lista, y un atributo con valores en uso no se convierte en texto | Valores huérfanos de un dominio que ya no existe |
+| Solo un atributo declarado **eje** define variantes | «Material» partiendo el catálogo en filas cuando es descriptivo |
+| No hay kits dentro de kits, ni se convierte en kit lo que ya es componente | El cálculo de existencia por componentes deja de ser finito |
+
+La quinta sí es un trigger, porque ningún índice puede expresarla:
+`ebim.assert_sku_unique_in_store` mantiene **un solo espacio de nombres de SKU por tienda** entre
+producto y variante. Un simple y una variante con el mismo SKU es una ambigüedad que termina en el
+almacén, no en la pantalla.
+
+### El pedido aprende tres cosas, y no afloja ninguna de las que ya tenía
+
+`create_order` se rehizo entero (migración 170200). Lo que cambia:
+
+1. **El maestro de variantes no se vende.** Sin `variant_id` → `VARIANTE_REQUERIDA`. Lo contrario
+   habría sido «elegir la primera», que es como se despacha la talla que no era.
+2. **La unidad de venta la valida el servidor** contra `product_uoms`: que exista para ESE producto,
+   que sea vendible, y cuánto entrega. El precio sale de `product_uoms.price` o del base por el
+   factor. Una conversión que no da unidades base enteras se **rechaza** en vez de redondear:
+   `stock` es entero y aproximar sería regalar media unidad en cada pedido.
+3. **Un kit descuenta sus componentes**, con las filas bloqueadas y en la misma transacción. Nunca
+   su propia existencia: un kit no tiene almacén, tiene receta.
+
+Lo que NO cambia: precio, impuesto, canal y tenant los sigue decidiendo la base. La lista negra del
+payload crece con `uom_id`, `uom_factor`, `factor`, `base_quantity` y `sku`, en el borde y en la
+base — aceptar un factor del cliente sería dejar que el comprador decida cuánto se le descuenta del
+almacén.
+
+`order_items` gana `variant_id`, `uom_code`, `uom_factor` y `base_quantity` GENERATED. `uom_code` es
+texto y no uuid a propósito: es snapshot. Si mañana el tenant renombra la unidad, el pedido tiene que
+seguir diciendo que se vendieron 2 CAJA.
+
+### La disponibilidad pública deja de ser una columna y pasa a ser una pregunta
+
+`products.in_stock` (`stock > 0`) es correcta para el simple y **falsa para los otros dos tipos**.
+`public_products.in_stock` se calcula ahora por tipo: el simple por su columna, el maestro por sus
+variantes, el kit por `ebim.bundle_is_available`. Con la columna generada, el filtro «solo
+disponibles» habría escondido camisetas que hay en almacén y anunciado packs que no se pueden armar.
+
+`ebim.bundle_is_available` es la **única** pieza `SECURITY DEFINER` nueva, y tiene un motivo
+concreto: los componentes de un pack no suelen estar publicados por su cuenta, así que una vista
+`security_invoker` los vería como «sin componentes» y **todos** los kits saldrían no disponibles.
+Lleva su autorización dentro (lección esupplier-030): solo responde por un kit ya público.
+
+### `products.price` y `products.stock` siguen ahí — y por qué
+
+La regla 13 pedía documentar su migración sin eliminarlos. **No se eliminan: tienen cinco
+consumidores vivos** (`create_order`, `public_products`, `dashboard_kpis`, la columna generada
+`in_stock` con su índice parcial, y la herencia de precio de la variante). Lo que cambia es su
+SIGNIFICADO por tipo, y está escrito en `comment on column` dentro de la propia base:
+
+- `simple` — sin cambios;
+- `variant` — `price` es el precio base que heredan las variantes sin precio propio; **`stock` no
+  significa nada** y la UI lo bloquea, porque un número que no decide nada lo lee el almacén como
+  verdad;
+- `bundle` — `price` es el del kit; `stock` no se usa.
+
+Retirar `stock` de `products` exige antes **P06** (inventario por almacén), que es quien se lleva la
+existencia a su propia tabla. Hacerlo aquí habría reescrito `create_order`, la vista pública, los KPI
+y el índice parcial en la misma fase que introduce el PIM.
+
+### Backoffice: una ruta gateada, un cajón por pestañas y paginación de verdad
+
+- **`/app/pim`** «Catálogo avanzado» — marcas, familias, atributos y unidades en tabs centrados con
+  deep-link `#hash` (§8), un buscador único por pestaña y estados de carga/error/vacío. Gateada por
+  `catalog.advanced`.
+- **Cajón de producto** — de ocho campos en columna a pestañas: General · Imágenes ·
+  Variantes/Componentes · Unidades · Ficha técnica · Relacionados. Variantes y Componentes son
+  excluyentes según el tipo. La barra de Guardar guarda **solo General**: una variante y un producto
+  son dos filas distintas y guardarlas juntas obligaría a inventar una transacción en el cliente.
+- **Listado paginado en el servidor**: `range` + `count: 'exact'`, 25 por página. Traer la tabla
+  entera es correcto con cincuenta productos e insostenible con los miles que el PIM hace normales.
+- **El conteo previo al borrado** suma `variants` y `bundles`. El segundo no es informativo: la FK
+  del componente es `restrict`, así que decide si el borrado puede ocurrir. Sin él, el usuario pulsa
+  Eliminar y recibe un error de integridad sin explicación (contrato §4.2).
+
+### La vitrina puede comprar una variante
+
+La ficha resuelve «desde» con `price_from`, ofrece el selector, preselecciona la variante por defecto
+y **exige elegir**: el botón no compra «la primera» en silencio. La identidad de una línea del
+carrito pasa a ser producto **más** variante — sin eso, la talla M y la L acabarían en la misma línea
+y se despacharía la que no era. Un carrito guardado en `localStorage` antes del PIM se sigue leyendo
+como el producto simple que era, y hay un test que lo fija.
+
+La composición del kit **no** se publica: se escribió y se retiró, porque sus componentes no están
+publicados y una vista invoker los habría dejado fuera, anunciando el pack vacío. Los atributos
+tampoco salen a `anon`: filtrar por faceta necesita UI de facetas y es P11. El modelo ya queda
+indexado para ello.
+
+### Los cinco tests existentes que se ajustaron (y por qué no es debilitarlos)
+
+- `catalog-admin.test.ts`: `product_deletion_usage` devuelve dos claves más. Se sigue comparando el
+  objeto **entero**, para que una clave nueva no entre sin que nadie la mire.
+- `ProductsPage.test.tsx`: monta el `CapabilitiesProvider` —el cajón pregunta por
+  `catalog.advanced`— y abre la pestaña de Imágenes antes de buscar su aviso. Se le suma un test que
+  fija que sin el módulo el cajón tiene exactamente dos pestañas.
+- `routes.test.tsx`: suma `/app/pim` a la lista exacta de rutas del backoffice.
+- `catalog.test.ts`: las fixturas de producto declaran `kind`, `brand_id` y `family_id`.
+- `supabaseMock.ts` (doble, no test): aprende `range`, `in` y `count: 'exact'`. El `count` devuelve
+  el TOTAL del filtro y no el tamaño de la página, para que un paginador roto no pase por bueno.
+
+### Un arreglo FUERA del alcance de P03, y por qué se hizo igual
+
+`integration-framework.test.ts` › «el fallo reprograma con backoff creciente» fallaba **una de cada
+cinco corridas**, y se cazó al repetir el gate. No lo introdujo esta fase —el archivo no se tocó—:
+el test comparaba la espera del segundo intento contra la del primero dando por hecho que «2² con
+jitter siempre supera al mínimo de 2¹», y eso es falso. El backoff es
+`2^intento × (0.5 + random())`, así que las bandas **se solapan**: `[1, 3)` y `[2, 6)`. Una espera de
+2,70 s seguida de 2,14 s es un resultado correcto del algoritmo, y el test lo llamaba error.
+
+Se cambió por la afirmación que sí es cierta siempre: cada espera cae en **su** banda. Es una
+aserción más fuerte, no más débil —comprueba las dos cotas de cada intento en vez de una comparación
+relativa— y no toca una línea de producción.
+
+Se hizo aunque la regla 13 pide no meterse en lo ajeno, porque un gate que pasa cuatro de cada cinco
+veces no es un gate: la alternativa era declarar PASS con una moneda al aire y dejarle el problema a
+P04. Queda dicho aquí para que la revisión lo vea y no lo confunda con parte del PIM.
+
+### Lo que P03 NO resuelve, dicho claramente
+
+- **Vender fracciones de la unidad de venta.** `order_items.quantity` sigue siendo entero; lo que es
+  exacto es la conversión (`base_quantity` es `numeric(18,6)` GENERATED). Cambiar el tipo tocaría el
+  contrato del pedido —`line_total` generada, `order_by_token`, exportaciones— y va con la fase de
+  inventario y precio por peso.
+- **Filtro por atributo en la vitrina.** Modelo listo e indexado; la faceta es P11.
+- **UoM por variante.** Hoy cuelgan del producto: las tallas de una camiseta se despachan en la
+  misma caja. Si hace falta, es una columna `variant_id` nullable, no otra tabla.
+- **`database.types.ts` sin regenerar.** Las once tablas y la vista nueva van sin `satisfies`, por la
+  misma razón que las cuatro de P02. Al aplicar: `npm run db:types` y añadir el `satisfies`.
+- **R2 (canales sin superficie) sigue abierto.** P02 lo pasó a P03 y P03 no lo cierra: un canal no es
+  vocabulario de catálogo, es una dimensión de venta con precios y reglas propias, y su pantalla
+  pertenece a la fase de precios por canal. Lo que P03 sí garantiza es la regla que el canal
+  necesitaba: **el canal no duplica ni un SKU** —`product_channels` referencia `products` y las
+  variantes heredan el canal de su maestro—.
+
+Siguiente: **P04-SaaS** (precios: listas, escalas y precio por canal), que ya tiene contra qué
+aplicarlas — variantes y unidades de venta.
+
+## Fase anterior
 **P02-SaaS — Módulos, entitlements, feature flags y control plane. COMPLETA. Gate: PASS.**
 Decisiones completas en [`docs/adr/002-capabilities-entitlements.md`](adr/002-capabilities-entitlements.md).
 
@@ -819,6 +1008,76 @@ inicial `pending` (estándar EBIM, migración 04). Nada desplegado: sigue sin pr
     objeto que no existe, y eso se ve en la vitrina. En este orden lo peor que queda es un objeto huérfano
     en el bucket si el usuario cancela, que no rompe ninguna pantalla (criterio P04 #36).
 
+61. **P03-SaaS — no hay tabla `bundles`: el kit ES el producto.** Un kit se vende con su SKU, su
+    precio, sus imágenes y su publicación; darle tabla propia habría duplicado la identidad del
+    producto —dos sitios con un SKU, dos publicaciones que sincronizar— y eso es exactamente lo que
+    prohíbe «producto maestro único, el canal no duplica el SKU». Lo que sí existe es `bundle_items`:
+    la receta. Mismo criterio que la decisión de P10 histórico de no modelar cada canal como tienda.
+62. **P03-SaaS — el vocabulario es de la SOCIEDAD; lo que cuelga del producto, de la TIENDA.**
+    Marcas, familias, atributos, valores y unidades no llevan `store_id`: se reusan en todas las
+    tiendas de la sociedad, y duplicarlos por tienda obliga a mantener «Talla M» en N sitios y a que
+    un día el logo de una marca cambie en una y no en la otra. Variantes, UoM de producto,
+    componentes y relaciones sí lo llevan, porque cuelgan de un producto y el producto es de una
+    tienda. Es la regla 8 de la fase leída literalmente: `store_id` solo si la entidad pertenece de
+    verdad a una tienda.
+63. **P03-SaaS — los atributos son relacionales, no JSONB.** `custom_fields` sigue existiendo para
+    extensiones no críticas del tenant, pero lo que tiene que filtrar, agrupar y definir variantes
+    necesita índice, dominio cerrado e integridad referencial. Un `jsonb` con `"color": "rojo"` en un
+    sitio y `"Rojo"` en otro no filtra: agrupa mal y nadie se entera hasta que el catálogo tiene tres
+    mil SKUs. Lo que **no** se hizo es convertir el modelo a EAV: precio, existencia, SKU, estado y
+    publicación siguen siendo columnas, con sus CHECK de dinero intactos.
+64. **P03-SaaS — cuatro reglas del modelo se impiden con FK denormalizada, no con triggers.** Columna
+    con CHECK + FK a una clave de apoyo del padre + `on update cascade`: es lo que consigue que un
+    CHECK mire una fila de otra tabla. Cubre variante-bajo-maestro, valor-bajo-atributo-de-lista,
+    eje-declarado y no-kits-dentro-de-kits. El precio son cinco columnas denormalizadas, todas
+    comentadas; la ganancia es que un trigger se puede desactivar y no aparece en el plan del
+    esquema, y una FK sí. La quinta regla —un solo espacio de nombres de SKU por tienda entre
+    producto y variante— sí es trigger, porque ningún índice puede expresar un cruce entre tablas.
+65. **P03-SaaS — el maestro de variantes no se vende.** `create_order` rechaza con
+    `VARIANTE_REQUERIDA` un pedido sobre un `kind = 'variant'` sin variante. La alternativa cómoda
+    —elegir la primera— es exactamente cómo se despacha la talla que no era. Y la vitrina tampoco
+    elige en silencio: preselecciona, pero el botón exige que haya una elegida.
+66. **P03-SaaS — el factor de conversión lo decide el servidor, igual que el precio.** `uom_id`,
+    `uom_factor`, `factor`, `base_quantity` y `sku` entran en la lista negra del payload, en el borde
+    y en la base. Aceptar un factor del cliente sería dejar que el comprador decida cuánto se le
+    descuenta del almacén. Y una conversión que no da unidades base **enteras** se rechaza en vez de
+    redondear: `stock` es entero y aproximar sería regalar media unidad en cada pedido.
+67. **P03-SaaS — un kit descuenta componentes, nunca su propia existencia.** No tiene almacén, tiene
+    receta. Las filas se bloquean (`for update`) y todo ocurre en la misma transacción, así que un
+    componente que no alcanza no deja ni pedido, ni línea, ni existencia movida.
+68. **P03-SaaS — `products.price` y `products.stock` NO se retiran; cambia su significado.** Tienen
+    cinco consumidores vivos (`create_order`, `public_products`, `dashboard_kpis`, la columna
+    generada `in_stock` con su índice parcial, y la herencia de precio de la variante). Lo que cambia
+    está escrito en `comment on column`: en `variant` el precio es la base heredable y el stock no
+    significa nada —la UI lo bloquea, porque un número que no decide nada lo lee el almacén como
+    verdad—; en `bundle` el precio es el del kit y el stock no se usa. Retirar `stock` es trabajo de
+    P06, que se lleva la existencia a su propia tabla.
+69. **P03-SaaS — la disponibilidad pública se calcula por tipo, no por columna.** Dejar
+    `products.in_stock` como verdad habría escondido camisetas que hay en almacén y anunciado packs
+    que no se pueden armar. `ebim.bundle_is_available` es la única `SECURITY DEFINER` nueva y existe
+    por un motivo concreto: los componentes de un pack no suelen estar publicados, así que una vista
+    invoker los vería como «sin componentes» y todos los kits saldrían no disponibles. Lleva su
+    autorización dentro y solo responde por kits ya públicos (lección `esupplier-030`).
+70. **P03-SaaS — el cajón de producto pasa a pestañas, y eso revisa la decisión 29.** Aquella decía
+    que el drawer no necesitaba tabs porque eran ocho campos; con el PIM son seis asuntos distintos y
+    un formulario monolítico obliga a bajar cuatro pantallas para llegar a lo que se vino a cambiar.
+    Lo que se conserva de la 29 es la barra de Guardar persistente, y guarda **solo General**: una
+    variante y un producto son dos filas distintas, y guardarlas juntas obligaría a inventar una
+    transacción en el cliente.
+71. **P03-SaaS — el listado de productos pagina en el SERVIDOR.** `range` + `count: 'exact'`, 25 por
+    página, en una sola petición. Traer la tabla entera era correcto con cincuenta productos e
+    insostenible con los miles que el PIM hace normales. El doble de Supabase aprendió `range` y
+    `count`, y su `count` devuelve el total del filtro y no el tamaño de la página — si devolviera lo
+    segundo, un paginador roto pasaría por bueno.
+72. **P03-SaaS — la identidad de una línea del carrito es producto MÁS variante.** Sin eso, la talla
+    M y la L se agrupan en una línea y se despacha la que no era. La clave está escrita una sola vez
+    (`lineKey`) y la comparten las cuatro operaciones del carrito y la agrupación del borde. Un
+    carrito guardado antes del PIM se sigue leyendo como el producto simple que era.
+73. **P03-SaaS — `catalog.advanced` pasa de `declared` a `implemented` en los dos sitios a la vez.**
+    El `state` no es decorativo: lo compara un test de paridad entre `app_capabilities` y
+    `src/domain/capabilities.ts`, y lo enseña `/app/diagnostics`. Se actualiza con un `UPDATE` en una
+    migración nueva, no editando la 160000, porque una migración aplicada es inmutable.
+
 ## Pendientes / riesgos abiertos
 
 ### Abiertos por la auditoría P00-SaaS (2026-08-27)
@@ -829,7 +1088,11 @@ Detalle y evidencia en `docs/SAAS_BASELINE.md` §4; asignación de fase en `docs
       repositorio**: el alta de `ecommerce` y su catálogo de addons en el hub (§5.1).
 - [ ] **R2 — Canales sin superficie.** `channels`/`product_channels`/`orders.channel_id` completos y
       probados; `grep -ri channel src/` = 0. Un tenant no puede crear ni administrar un canal.
-      → **P03-SaaS** (P02 no lo tocó: un canal no es una capacidad contratada, es una dimensión del catálogo).
+      → **P04-SaaS.** P02 lo pasó a P03 y P03 tampoco lo cierra, con motivo: un canal no es
+      vocabulario de catálogo, es una dimensión de venta con precios, catálogo restringido y reglas
+      de sesión propias, y su pantalla no se puede diseñar antes que las listas de precio. Lo que P03
+      sí deja garantizado es la premisa de la que el canal depende: **el canal no duplica ni un SKU**
+      —`product_channels` referencia `products`, y las variantes heredan el canal de su maestro—.
 - [ ] **R3 — Outbox sin consumidor.** `integration_enqueue` solo lo invocan los tests: el transporte
       nunca ha entregado un mensaje real, así que el contrato canónico está escrito pero no validado.
       → primer consumidor en **P07/P08-SaaS**, superficie enterprise en **P14-SaaS**.

@@ -2,8 +2,19 @@ import AddIcon from '@mui/icons-material/Add'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import RemoveIcon from '@mui/icons-material/Remove'
 import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined'
-import { Box, Button, Card, Chip, Divider, IconButton, Stack, Typography } from '@mui/material'
-import { useMemo, useState } from 'react'
+import {
+  Box,
+  Button,
+  Card,
+  Chip,
+  Divider,
+  IconButton,
+  MenuItem,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
@@ -18,10 +29,18 @@ import {
   useGallery,
   usePublicProduct,
   usePublicProducts,
+  usePublicVariants,
   useStorefront,
   useThumbnails,
 } from './hooks'
-import { discountPercent, pickRelated, type CatalogQuery, type PublicProduct } from './types'
+import {
+  defaultVariant,
+  discountPercent,
+  pickRelated,
+  type CatalogQuery,
+  type PublicProduct,
+  type PublicVariant,
+} from './types'
 
 /**
  * Ficha de producto: galería, precio, disponibilidad, descripción, cantidad,
@@ -38,6 +57,7 @@ export function StoreProductPage() {
 
   const product = usePublicProduct(store.store_id, productSlug)
   const gallery = useGallery(product.data?.product_id ?? null)
+  const variants = usePublicVariants(product.data)
 
   // Relacionados «simples»: el resto de su categoría. Si no tiene categoría o
   // no llega para llenar la fila, `pickRelated` completa con el catálogo.
@@ -83,6 +103,7 @@ export function StoreProductPage() {
   const item = product.data
   const discount = discountPercent(item)
   const available = item.in_stock !== false
+  const hasVariants = item.kind === 'variant'
 
   return (
     <Stack sx={{ gap: { xs: 2.5, md: 4 } }}>
@@ -127,10 +148,22 @@ export function StoreProductPage() {
           </Typography>
 
           <Stack direction="row" sx={{ gap: 1, alignItems: 'baseline', flexWrap: 'wrap' }}>
+            {/* Con variantes el precio de la ficha es un "desde" hasta que el
+                comprador elige: el maestro puede costar 60 y la talla XL 70,
+                y anunciar 60 a secas es un precio que no se va a cobrar. */}
+            {hasVariants && item.variant_count > 1 && (
+              <Typography sx={{ color: 'var(--muted)', fontWeight: 700 }}>
+                {t('store.product.priceFrom')}
+              </Typography>
+            )}
             <Typography sx={{ fontSize: 24, fontWeight: 800 }}>
-              {formatMoney(Number(item.price), item.currency, locale)}
+              {formatMoney(
+                Number(hasVariants ? (item.price_from ?? item.price) : item.price),
+                item.currency,
+                locale,
+              )}
             </Typography>
-            {discount !== null && item.compare_at_price && (
+            {!hasVariants && discount !== null && item.compare_at_price && (
               <>
                 <Typography component="s" sx={{ color: 'var(--muted)', fontWeight: 600 }}>
                   {formatMoney(Number(item.compare_at_price), item.currency, locale)}
@@ -154,7 +187,12 @@ export function StoreProductPage() {
             {available ? t('store.availability.inStock') : t('store.availability.outOfStock')}
           </Typography>
 
-          <AddToCart product={item} available={available} />
+          <AddToCart
+            product={item}
+            available={available}
+            variants={hasVariants ? (variants.data ?? []) : []}
+            variantsPending={hasVariants && variants.isPending}
+          />
 
           <Divider sx={{ my: 1 }} />
 
@@ -187,63 +225,128 @@ export function StoreProductPage() {
 }
 
 /**
- * Cantidad + «Agregar al carrito».
+ * Elección de variante + cantidad + «Agregar al carrito».
  *
  * Sin stock no hay botón habilitado: la disponibilidad la manda `in_stock`, que
- * la vista pública deriva del inventario real. Y aunque alguien lo forzara, la
- * base vuelve a comprobar el stock al crear el pedido.
+ * la vista pública deriva del inventario real —de la variante o de los
+ * componentes del kit, según el tipo—. Y aunque alguien lo forzara, la base
+ * vuelve a comprobar el stock al crear el pedido.
+ *
+ * Con variantes, el botón exige elegir una. NO se elige "la primera" en
+ * silencio: preseleccionar es cómodo, pero comprar sin haber elegido es recibir
+ * la talla que no era.
  */
-function AddToCart({ product, available }: { product: PublicProduct; available: boolean }) {
-  const { t } = useI18n()
+function AddToCart({
+  product,
+  available,
+  variants,
+  variantsPending,
+}: {
+  product: PublicProduct
+  available: boolean
+  variants: PublicVariant[]
+  variantsPending: boolean
+}) {
+  const { t, locale } = useI18n()
   const { add } = useCart()
   const [quantity, setQuantity] = useState(1)
+  const [variantId, setVariantId] = useState('')
+
+  const hasVariants = product.kind === 'variant'
+
+  // Preselección: la marcada por defecto, o la primera disponible. Se aplica
+  // cuando llegan las variantes y no antes, para no fijar una elección sobre
+  // una lista vacía.
+  useEffect(() => {
+    if (!hasVariants || variants.length === 0) return
+    setVariantId((current) =>
+      current && variants.some((variant) => variant.variant_id === current)
+        ? current
+        : (defaultVariant(variants)?.variant_id ?? ''),
+    )
+  }, [hasVariants, variants])
+
+  const selected = variants.find((variant) => variant.variant_id === variantId) ?? null
+  const canBuy = available && (!hasVariants || (selected !== null && selected.in_stock !== false))
 
   return (
-    <Stack direction="row" sx={{ gap: 1.5, alignItems: 'center', flexWrap: 'wrap', mt: 1 }}>
-      <Stack
-        direction="row"
-        sx={{
-          alignItems: 'center',
-          gap: 0.5,
-          border: '1px solid var(--border)',
-          borderRadius: `${R.md}px`,
-          px: 0.5,
-        }}
-      >
-        <IconButton
+    <Stack sx={{ gap: 1.5, mt: 1 }}>
+      {hasVariants && (
+        <TextField
+          select
           size="small"
-          aria-label={t('store.cart.decrease')}
-          disabled={quantity <= 1}
-          onClick={() => setQuantity((value) => Math.max(1, value - 1))}
+          label={t('store.product.chooseVariant')}
+          value={variantId}
+          disabled={variantsPending || variants.length === 0}
+          onChange={(event) => setVariantId(event.target.value)}
+          sx={{ maxWidth: 320 }}
         >
-          <RemoveIcon fontSize="small" />
-        </IconButton>
-        <Typography
-          component="output"
-          aria-live="polite"
-          aria-label={t('store.cart.quantity')}
-          sx={{ minWidth: 28, textAlign: 'center', fontWeight: 800 }}
-        >
-          {quantity}
-        </Typography>
-        <IconButton
-          size="small"
-          aria-label={t('store.cart.increase')}
-          disabled={quantity >= MAX_LINE_QUANTITY}
-          onClick={() => setQuantity((value) => Math.min(MAX_LINE_QUANTITY, value + 1))}
-        >
-          <AddIcon fontSize="small" />
-        </IconButton>
-      </Stack>
+          <MenuItem value="">{t('store.product.variantRequired')}</MenuItem>
+          {variants.map((variant) => (
+            <MenuItem
+              key={variant.variant_id}
+              value={variant.variant_id}
+              disabled={variant.in_stock === false}
+            >
+              {variant.name} · {formatMoney(Number(variant.price), variant.currency, locale)}
+              {variant.in_stock === false && ` · ${t('store.product.variantOutOfStock')}`}
+            </MenuItem>
+          ))}
+        </TextField>
+      )}
 
-      <Button
-        variant="contained"
-        startIcon={<ShoppingCartOutlinedIcon />}
-        disabled={!available}
-        onClick={() => add(product, quantity)}
-      >
-        {t('store.product.addToCart')}
-      </Button>
+      {hasVariants && selected && (
+        <Typography sx={{ fontSize: 20, fontWeight: 800 }}>
+          {formatMoney(Number(selected.price), selected.currency, locale)}
+        </Typography>
+      )}
+
+      <Stack direction="row" sx={{ gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Stack
+          direction="row"
+          sx={{
+            alignItems: 'center',
+            gap: 0.5,
+            border: '1px solid var(--border)',
+            borderRadius: `${R.md}px`,
+            px: 0.5,
+          }}
+        >
+          <IconButton
+            size="small"
+            aria-label={t('store.cart.decrease')}
+            disabled={quantity <= 1}
+            onClick={() => setQuantity((value) => Math.max(1, value - 1))}
+          >
+            <RemoveIcon fontSize="small" />
+          </IconButton>
+          <Typography
+            component="output"
+            aria-live="polite"
+            aria-label={t('store.cart.quantity')}
+            sx={{ minWidth: 28, textAlign: 'center', fontWeight: 800 }}
+          >
+            {quantity}
+          </Typography>
+          <IconButton
+            size="small"
+            aria-label={t('store.cart.increase')}
+            disabled={quantity >= MAX_LINE_QUANTITY}
+            onClick={() => setQuantity((value) => Math.min(MAX_LINE_QUANTITY, value + 1))}
+          >
+            <AddIcon fontSize="small" />
+          </IconButton>
+        </Stack>
+
+        <Button
+          variant="contained"
+          startIcon={<ShoppingCartOutlinedIcon />}
+          disabled={!canBuy}
+          onClick={() => add(product, quantity, selected)}
+        >
+          {t('store.product.addToCart')}
+        </Button>
+      </Stack>
     </Stack>
   )
 }

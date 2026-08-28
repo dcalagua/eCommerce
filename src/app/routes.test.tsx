@@ -66,13 +66,15 @@ describe('rutas base', () => {
   it('separa las áreas: ninguna ruta del storefront cuelga del backoffice', () => {
     const admin = protectedArea()?.children?.find((route) => route.path === '/app')
     const storefront = routes.find((route) => route.path === '/s/:storeSlug')
-    // P04 anade Categorias y P02-SaaS anade Diagnostico: panel, productos,
-    // categorias, pedidos, configuracion y diagnostico.
+    // P04 anade Categorias, P02-SaaS anade Diagnostico y P03-SaaS anade el
+    // catalogo avanzado (PIM): panel, productos, categorias, PIM, pedidos,
+    // configuracion y diagnostico.
     expect(paths(admin?.children ?? [], '/app').sort()).toEqual([
       '/app',
       '/app/categories',
       '/app/diagnostics',
       '/app/orders',
+      '/app/pim',
       '/app/products',
       '/app/settings',
     ])

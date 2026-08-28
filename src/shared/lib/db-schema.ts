@@ -60,6 +60,24 @@ export const TENANT_PLATFORM_CONTEXT_TABLE = 'tenant_platform_context'
 export const TENANT_ENTITLEMENTS_TABLE = 'tenant_entitlements'
 export const TENANT_FEATURE_FLAGS_TABLE = 'tenant_feature_flags'
 
+// --- PIM (P03-SaaS, migraciones 170000-170300) ------------------------------
+// Sin `satisfies` por la misma razón que las cuatro de arriba: `database.types.ts`
+// se genera contra el proyecto ENLAZADO y estas migraciones todavía no están
+// aplicadas allí. La red mientras tanto es `supabase/tests/pim-catalog.test.ts`,
+// que comprueba estos mismos nombres contra el esquema construido desde las
+// migraciones. Al aplicar: `npm run db:types` y añadir el `satisfies`.
+export const BRANDS_TABLE = 'brands'
+export const PRODUCT_FAMILIES_TABLE = 'product_families'
+export const ATTRIBUTES_TABLE = 'attributes'
+export const ATTRIBUTE_VALUES_TABLE = 'attribute_values'
+export const UNITS_OF_MEASURE_TABLE = 'units_of_measure'
+export const PRODUCT_VARIANTS_TABLE = 'product_variants'
+export const VARIANT_ATTRIBUTE_VALUES_TABLE = 'variant_attribute_values'
+export const PRODUCT_ATTRIBUTE_VALUES_TABLE = 'product_attribute_values'
+export const PRODUCT_UOMS_TABLE = 'product_uoms'
+export const BUNDLE_ITEMS_TABLE = 'bundle_items'
+export const PRODUCT_RELATIONS_TABLE = 'product_relations'
+
 // --- Vistas del modelo de lectura público ----------------------------------
 // `security_invoker` sobre policies `to anon`: filtran filas, y el GRANT por
 // columna es lo que evita que `anon` vea `stock` o `config` (P02, §4.3).
@@ -67,6 +85,8 @@ export const PUBLIC_STORES_VIEW = 'public_stores' satisfies ViewName
 export const PUBLIC_CATEGORIES_VIEW = 'public_categories' satisfies ViewName
 export const PUBLIC_PRODUCTS_VIEW = 'public_products' satisfies ViewName
 export const PUBLIC_PRODUCT_IMAGES_VIEW = 'public_product_images' satisfies ViewName
+// Ídem que las tablas del PIM: sin `satisfies` hasta que se regeneren los tipos.
+export const PUBLIC_PRODUCT_VARIANTS_VIEW = 'public_product_variants'
 
 // --- Buckets de Storage ----------------------------------------------------
 // Los dos son PRIVADOS: no hay URL pública ni para el dueño. Cada lado firma

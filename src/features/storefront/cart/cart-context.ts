@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { PublicProduct } from '../types'
+import type { PublicProduct, PublicVariant } from '../types'
 import type { Cart } from './cart'
 
 /**
@@ -15,9 +15,14 @@ export interface CartApi {
   subtotal: string
   currency: string
   isOpen: boolean
-  add: (product: PublicProduct, quantity?: number) => void
-  setQuantity: (productId: string, quantity: number) => void
-  remove: (productId: string) => void
+  /**
+   * `variant` es opcional y `null` para el producto simple. La identidad de una
+   * línea es producto MÁS variante desde P03: sin ella, la talla M y la L
+   * acabarían en la misma línea.
+   */
+  add: (product: PublicProduct, quantity?: number, variant?: PublicVariant | null) => void
+  setQuantity: (productId: string, quantity: number, variantId?: string | null) => void
+  remove: (productId: string, variantId?: string | null) => void
   clear: () => void
   openCart: () => void
   closeCart: () => void

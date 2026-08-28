@@ -78,6 +78,9 @@ describe('validacion del formulario de producto', () => {
     price: '199.90',
     stock: '12',
     status: 'draft' as const,
+    kind: 'simple' as const,
+    brand_id: '',
+    family_id: '',
   }
 
   it('acepta un producto bien formado', () => {
@@ -309,6 +312,9 @@ describe('exportar a CSV', () => {
     stock: 4,
     published_at: null,
     updated_at: '2026-08-27T00:00:00.000Z',
+    kind: 'simple',
+    brand_id: null,
+    family_id: null,
     ...over,
   })
 

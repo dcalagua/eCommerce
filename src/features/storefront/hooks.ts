@@ -6,6 +6,7 @@ import {
   fetchPublicProduct,
   fetchPublicProducts,
   fetchPublicStore,
+  fetchPublicVariants,
   signPaths,
 } from './api'
 import type {
@@ -14,6 +15,7 @@ import type {
   PublicCategory,
   PublicProduct,
   PublicStore,
+  PublicVariant,
 } from './types'
 
 /**
@@ -27,6 +29,7 @@ export const productsKey = (query: CatalogQuery) => ['storefront', 'products', q
 export const productKey = (storeId: string, slug: string) =>
   ['storefront', 'product', storeId, slug] as const
 export const galleryKey = (productId: string) => ['storefront', 'gallery', productId] as const
+export const variantsKey = (productId: string) => ['storefront', 'variants', productId] as const
 export const thumbsKey = (paths: string[]) => ['storefront', 'thumbs', paths] as const
 
 /** La marca cambia poco; el catálogo, algo más. De ahí los dos `staleTime`. */
@@ -71,6 +74,23 @@ export function usePublicProduct(
     queryKey: productKey(storeId ?? '', slug ?? ''),
     queryFn: () => fetchPublicProduct({ storeId, slug: slug as string }),
     enabled: Boolean(storeId && slug),
+    staleTime: CATALOG_STALE,
+    retry: false,
+  })
+}
+
+/**
+ * Variantes de la ficha. Solo se piden cuando el producto declara tenerlas: un
+ * catálogo de productos simples no paga una consulta por ficha visitada.
+ */
+export function usePublicVariants(
+  product: PublicProduct | undefined,
+): UseQueryResult<PublicVariant[]> {
+  const productId = product?.kind === 'variant' ? product.product_id : null
+  return useQuery({
+    queryKey: variantsKey(productId ?? ''),
+    queryFn: () => fetchPublicVariants(productId),
+    enabled: Boolean(productId),
     staleTime: CATALOG_STALE,
     retry: false,
   })

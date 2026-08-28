@@ -21,6 +21,7 @@ export {
   PUBLIC_CATEGORIES_VIEW,
   PUBLIC_PRODUCTS_VIEW,
   PUBLIC_PRODUCT_IMAGES_VIEW,
+  PUBLIC_PRODUCT_VARIANTS_VIEW,
   PRODUCT_IMAGES_BUCKET,
   STORE_ASSETS_BUCKET,
 } from '@/shared/lib/db-schema'
@@ -104,8 +105,52 @@ export const publicProductSchema = z.object({
   category_name: z.string().nullable().default(null),
   primary_image_path: z.string().nullable().default(null),
   primary_image_alt: z.string().nullable().default(null),
+  /**
+   * PIM (P03-SaaS). `in_stock` de arriba YA viene calculado por tipo desde la
+   * vista: para un maestro de variantes es «alguna variante disponible» y para
+   * un kit es «se puede armar». La vitrina no vuelve a decidirlo.
+   *
+   * `default` y no `optional`: una respuesta anterior al despliegue del PIM se
+   * lee como el producto simple que era, sin que ninguna pantalla compruebe
+   * `undefined`.
+   */
+  kind: z.enum(['simple', 'variant', 'bundle']).default('simple'),
+  brand_name: z.string().nullable().default(null),
+  variant_count: z.number().int().default(0),
+  /** Precio más bajo que el comprador puede pagar. El «desde» de la tarjeta. */
+  price_from: moneyText.nullable().default(null),
 })
 export type PublicProduct = z.infer<typeof publicProductSchema>
+
+/**
+ * Variante publicada. El precio ya llega HEREDADO desde la vista: resolverlo
+ * en el navegador significaría tener la regla escrita dos veces, y la copia del
+ * cliente es la que nadie comprueba.
+ */
+export const publicVariantSchema = z.object({
+  variant_id: z.string().uuid(),
+  product_id: z.string().uuid(),
+  store_id: z.string().uuid(),
+  name: z.string().min(1),
+  position: z.number().int(),
+  is_default: z.boolean(),
+  in_stock: z.boolean().nullable().default(false),
+  price: moneyText,
+  compare_at_price: moneyText.nullable().default(null),
+  currency: z.string().length(3),
+})
+export type PublicVariant = z.infer<typeof publicVariantSchema>
+
+/** Variante preseleccionada: la marcada por defecto, o la primera disponible. */
+export function defaultVariant(variants: readonly PublicVariant[]): PublicVariant | null {
+  if (variants.length === 0) return null
+  return (
+    variants.find((variant) => variant.is_default && variant.in_stock !== false) ??
+    variants.find((variant) => variant.in_stock !== false) ??
+    variants[0] ??
+    null
+  )
+}
 
 export const publicProductImageSchema = z.object({
   image_id: z.string().uuid(),

@@ -5,26 +5,31 @@ import {
   fetchProducts,
   saveProduct,
   setProductStatus,
+  type ProductPage,
   type ProductQuery,
   type ProductStatusFilter,
 } from './api/products'
-import type { Product, ProductFormValues, ProductStatus, ProductUsage } from './types'
+import type { ProductFormValues, ProductStatus, ProductUsage } from './types'
 
 export const CATALOG_KEY = ['catalog'] as const
 
-export const productsKey = (storeId: string | null, status: ProductStatusFilter, search: string) =>
-  [...CATALOG_KEY, 'products', storeId, status, search] as const
+export const productsKey = (
+  storeId: string | null,
+  status: ProductStatusFilter,
+  search: string,
+  page: number,
+) => [...CATALOG_KEY, 'products', storeId, status, search, page] as const
 
 export const productUsageKey = (productId: string | null) =>
   [...CATALOG_KEY, 'product-usage', productId] as const
 
 export function useProducts(query: ProductQuery) {
-  return useQuery<Product[]>({
-    queryKey: productsKey(query.storeId, query.status, query.search),
+  return useQuery<ProductPage>({
+    queryKey: productsKey(query.storeId, query.status, query.search, query.page),
     queryFn: () => fetchProducts(query),
     enabled: Boolean(query.storeId),
-    // Mantener la tabla anterior mientras se teclea evita el parpadeo a
-    // esqueleto en cada letra del buscador.
+    // Mantener la tabla anterior mientras se teclea —o mientras se pasa de
+    // página— evita el parpadeo a esqueleto en cada letra del buscador.
     placeholderData: (previous) => previous,
   })
 }

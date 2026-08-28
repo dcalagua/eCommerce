@@ -60,6 +60,18 @@ Se volvieron a leer desde la fuente, no por traza, las secciones que gobiernan e
 | §4.1 Config en 3 capas | `features` es el nombre del contrato para flags dentro de la config. Los flags técnicos locales van bajo el namespace de la app, no en las claves comunes |
 | §13 Doble enforcement | Guard en servidor **y** en UI: es la forma de las dos superficies cerradas en policies |
 
+## Relectura directa para P03-SaaS (2026-08-27)
+
+El PIM toca modelo de datos, aislamiento y superficie de backoffice, así que se releyeron:
+
+| Seccion | Que se extrajo para P03 |
+|---|---|
+| §0.2 Personalización = configuración | Ningún fork de schema por cliente. Marcas, familias, atributos y unidades son DATOS del tenant, no tablas por cliente; los atributos extensibles son la respuesta a AA0004 sin tocar código |
+| §3 Jerarquía | `organization_id` + `company_id` en las once tablas nuevas, con los nombres exactos. `store_id` **solo** donde la entidad pertenece de verdad a una tienda: por eso el vocabulario del catálogo no lo lleva |
+| §4.2 Eliminación segura | «desactivar conserva los datos; eliminar muestra el conteo de uso real antes de borrar». `product_deletion_usage` suma variantes y kits; el conteo de kits decide si el borrado puede ocurrir, porque la FK del componente es `restrict` |
+| §8 UI de suite | Tabs centrados con deep-link `#hash` para la pantalla larga (`/app/pim`); un buscador general por pestaña, sin panel de filtros multi-campo |
+| §13 Doble enforcement | Las policies del PIM son la autoridad; el gating de `catalog.advanced` en ruta y en pestañas es cortesía |
+
 ## Hallazgo de la relectura directa (2026-08-27, P00-SaaS)
 
 **`ecommerce` no figura en ninguna de las fuentes.** No está en el contrato v1.15 (cabecera «Apps»:

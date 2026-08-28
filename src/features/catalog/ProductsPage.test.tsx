@@ -23,6 +23,7 @@ vi.mock('@/shared/lib/supabase', () => ({
 }))
 
 const { TenantProvider } = await import('@/features/tenant/TenantProvider')
+const { CapabilitiesProvider } = await import('@/features/capabilities/CapabilitiesProvider')
 const { ProductsPage } = await import('./ProductsPage')
 
 const PRODUCT_ID = '88888888-8888-4888-8888-888888888888'
@@ -93,11 +94,20 @@ function defaultProducts() {
   ]
 }
 
+/**
+ * El `CapabilitiesProvider` va aqui desde P03-SaaS: el cajon de producto
+ * pregunta si la sociedad tiene `catalog.advanced` para decidir si ensena las
+ * pestanas del PIM. El doble sirve por defecto un tenant con eCommerce activo y
+ * SOLO lo baseline, que es exactamente el tenant de antes del PIM: estos tests
+ * siguen comprobando el catalogo simple sin el modulo vendible.
+ */
 function renderPage(fake: FakeSupabase) {
   holder.client = fake
   return renderWithProviders(
     <TenantProvider>
-      <ProductsPage />
+      <CapabilitiesProvider>
+        <ProductsPage />
+      </CapabilitiesProvider>
     </TenantProvider>,
     { session: fake.state.session },
   )
@@ -247,9 +257,26 @@ describe('ProductsPage — alta y edicion', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Nuevo producto' }))
     const drawer = await screen.findByRole('dialog')
+    // Desde P03-SaaS el cajon va por pestanas: las imagenes viven en la suya.
+    await user.click(within(drawer).getByRole('tab', { name: 'Imágenes' }))
     expect(
-      within(drawer).getByText(/Guarda el producto y podrás subir sus imágenes/),
+      await within(drawer).findByText(/Guarda el producto y podrás subir sus imágenes/),
     ).toBeInTheDocument()
+  })
+
+  it('el cajon se organiza en pestanas y no en un formulario monolitico', async () => {
+    const user = userEvent.setup()
+    renderPage(backend())
+
+    await user.click(await screen.findByRole('button', { name: 'Nuevo producto' }))
+    const drawer = await screen.findByRole('dialog')
+
+    // Sin `catalog.advanced` contratado solo hay dos: General e Imagenes. Las
+    // del PIM aparecen con el modulo, y eso lo comprueba `pim.test.tsx`.
+    expect(within(drawer).getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+      'General',
+      'Imágenes',
+    ])
   })
 })
 

@@ -38,9 +38,15 @@ const ALLOWED_FIELDS = [
   'stock',
   'status',
   'category_id',
+  // PIM (P03-SaaS). `kind` decide si el producto se vende solo, por variantes o
+  // como kit; la base impide bajarlo a `simple` si ya tiene variantes.
+  'kind',
+  'brand_id',
+  'family_id',
 ] as const
 
 const PRODUCT_STATUS = ['draft', 'published', 'archived'] as const
+const PRODUCT_KIND = ['simple', 'variant', 'bundle'] as const
 
 /** El dinero llega como string o número y se normaliza a string decimal: el
  *  float del JavaScript no toca el importe que va a la base (`numeric`). */
@@ -110,12 +116,15 @@ const handler = serveJson(
         status,
         published_at: status === 'published' ? new Date().toISOString() : null,
         category_id: optionalUuid(body, 'category_id'),
+        kind: body.kind === undefined ? 'simple' : requireEnum(body, 'kind', PRODUCT_KIND),
+        brand_id: optionalUuid(body, 'brand_id'),
+        family_id: optionalUuid(body, 'family_id'),
       }
 
       const { data, error } = await client
         .from('products')
         .insert(insert)
-        .select('id, store_id, sku, slug, name, price, currency, stock, status, published_at')
+        .select('id, store_id, sku, slug, name, price, currency, stock, status, published_at, kind')
         .single()
 
       if (error) throw fromDatabaseError(error)
@@ -141,6 +150,9 @@ const handler = serveJson(
     if ('compare_at_price' in body) patch.compare_at_price = requireMoney(body, 'compare_at_price', false)
     if ('stock' in body) patch.stock = requireStock(body)
     if ('category_id' in body) patch.category_id = optionalUuid(body, 'category_id')
+    if ('kind' in body) patch.kind = requireEnum(body, 'kind', PRODUCT_KIND)
+    if ('brand_id' in body) patch.brand_id = optionalUuid(body, 'brand_id')
+    if ('family_id' in body) patch.family_id = optionalUuid(body, 'family_id')
     if ('status' in body) {
       patch.status = status
       // `published` sin fecha viola el CHECK de la tabla: se rellena aquí.
@@ -156,7 +168,7 @@ const handler = serveJson(
       .from('products')
       .update(patch)
       .eq('id', productId)
-      .select('id, store_id, sku, slug, name, price, currency, stock, status, published_at')
+      .select('id, store_id, sku, slug, name, price, currency, stock, status, published_at, kind')
       .single()
 
     if (error) throw fromDatabaseError(error)

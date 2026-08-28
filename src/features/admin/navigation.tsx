@@ -4,6 +4,7 @@ import MonitorHeartOutlinedIcon from '@mui/icons-material/MonitorHeartOutlined'
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import SpaceDashboardOutlinedIcon from '@mui/icons-material/SpaceDashboardOutlined'
+import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined'
 import type { ReactNode } from 'react'
 import type { CapabilityId } from '@/domain'
 import type { MessageKey } from '@/shared/i18n/messages'
@@ -50,6 +51,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'nav.categories',
     icon: <CategoryOutlinedIcon fontSize="small" />,
     capability: 'catalog',
+  },
+  {
+    to: '/app/pim',
+    label: 'nav.pim',
+    icon: <TuneOutlinedIcon fontSize="small" />,
+    capability: 'catalog.advanced',
   },
   {
     to: '/app/orders',
