@@ -86,25 +86,32 @@ export const BOUNDARIES: readonly Boundary[] = [
   {
     id: 'pricing',
     kind: 'domain',
-    state: 'partial',
+    state: 'implemented',
     responsibility:
-      'Cuánto cuesta una línea antes de promociones: precio base, moneda e impuesto aplicable.',
-    paths: [],
+      'Cuánto cuesta una línea antes de promociones: listas por canal, segmento y cliente, escalas, vigencia, moneda e impuesto aplicable.',
+    paths: ['features/pricing'],
     port: 'PricingPort',
     serverSide: [
-      'products.price y compare_at_price (090300)',
+      'ebim.resolve_prices y ebim.resolve_price — la ÚNICA autoridad de precio (180100)',
+      'price_lists, price_list_items, price_list_assignments (180000)',
+      'price_quote_for_slug (vitrina) y price_quote (backoffice) (180100)',
       'ebim.effective_tax_rate (091700, 091800, 091900)',
-      'create_order es hoy la autoridad de precio (130300)',
+      'create_order pide el precio al motor, ya no lo calcula (180200)',
     ],
   },
   {
     id: 'customers',
     kind: 'domain',
-    state: 'declared',
+    state: 'partial',
     responsibility:
       'Quién compra, separado de quién se autentica: cuenta, contacto, segmento y condiciones B2B.',
+    // El segmento comercial nace en P04 porque es una dimensión de PRECIO antes
+    // que una ficha de cliente; la cuenta B2B que se le cuelga es P05.
     paths: [],
-    serverSide: ['hoy solo contacto desnormalizado en orders (090400)'],
+    serverSide: [
+      'hoy solo contacto desnormalizado en orders (090400)',
+      'customer_segments — vocabulario comercial de la sociedad (180000)',
+    ],
   },
   {
     id: 'inventory',

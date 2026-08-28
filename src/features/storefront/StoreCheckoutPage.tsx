@@ -2,9 +2,10 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined'
 import { Alert, Box, Button, Card, Divider, Stack, TextField, Typography } from '@mui/material'
 import { useMutation } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
+import { useCartQuote } from '@/features/pricing/useCartQuote'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { formatMoney } from '@/shared/lib/format'
@@ -20,9 +21,12 @@ import { useStorefront } from './hooks'
  * opcional. **Sin pasarela de pago** (P06 no la incluye): el pedido queda en
  * `pending` y la tienda cobra por su canal.
  *
- * El importe que se ve aquí es el subtotal informativo del carrito. El que
- * manda es el que devuelve el servidor tras recalcular con los precios de la
- * base — por eso la confirmación muestra SUS números, no los de esta pantalla.
+ * El importe que se ve aquí se lo pregunta al SERVIDOR (P04-SaaS): la misma
+ * función que va a cobrar el pedido. Antes era el subtotal del carrito, que es
+ * de escaparate; con listas de precio por canal y escalas por cantidad, enseñar
+ * ese número al lado del botón de comprar es prometer un importe que no se ha
+ * calculado. Si la cotización no llega, se cae al subtotal local y la
+ * confirmación sigue mostrando los números del servidor, que son los que mandan.
  */
 export function StoreCheckoutPage() {
   const { t, locale } = useI18n()
@@ -30,6 +34,22 @@ export function StoreCheckoutPage() {
   const { storeSlug } = useStorefront()
   const { cart, subtotal, currency, clear } = useCart()
   const [errorKey, setErrorKey] = useState<MessageKey | null>(null)
+
+  // El array entra en la clave de la consulta: uno nuevo por render la
+  // invalidaría en bucle. Se arma con la forma del PUERTO, no con la del
+  // transporte: quien cotiza puede ser mañana el ERP del tenant.
+  const requests = useMemo(
+    () =>
+      cart.lines.map((line) => ({
+        productId: line.product_id,
+        variantId: line.variant_id,
+        uomCode: null,
+        quantity: line.quantity,
+      })),
+    [cart.lines],
+  )
+  const quote = useCartQuote(storeSlug, currency, requests)
+  const quoted = quote.data ?? null
 
   const {
     register,
@@ -197,11 +217,38 @@ export function StoreCheckoutPage() {
           <Stack direction="row" sx={{ justifyContent: 'space-between' }}>
             <Typography sx={{ fontWeight: 700 }}>{t('store.cart.subtotal')}</Typography>
             <Typography sx={{ fontWeight: 800 }}>
-              {formatMoney(Number(subtotal), currency, locale)}
+              {formatMoney(
+                Number(quoted?.netTotal ?? subtotal),
+                quoted?.currency ?? currency,
+                locale,
+              )}
             </Typography>
           </Stack>
+
+          {quoted && Number(quoted.taxTotal) > 0 && (
+            <Stack direction="row" sx={{ justifyContent: 'space-between', mt: 0.5 }}>
+              <Typography sx={{ color: 'var(--muted)' }}>{t('store.cart.tax')}</Typography>
+              <Typography sx={{ color: 'var(--muted)' }}>
+                {formatMoney(Number(quoted.taxTotal), quoted.currency, locale)}
+              </Typography>
+            </Stack>
+          )}
+
+          {quoted && (
+            <Stack direction="row" sx={{ justifyContent: 'space-between', mt: 1 }}>
+              <Typography sx={{ fontWeight: 800 }}>{t('store.cart.total')}</Typography>
+              <Typography sx={{ fontWeight: 800 }}>
+                {formatMoney(Number(quoted.grossTotal), quoted.currency, locale)}
+              </Typography>
+            </Stack>
+          )}
+
           <Typography sx={{ fontSize: T.label, color: 'var(--muted)', mt: 0.5 }}>
-            {t('store.cart.taxNote')}
+            {quote.isPending
+              ? t('store.cart.quoting')
+              : quoted
+                ? t('store.cart.quoted')
+                : t('store.cart.taxNote')}
           </Typography>
 
           {errorKey && (

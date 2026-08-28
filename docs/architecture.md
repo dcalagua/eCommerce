@@ -68,7 +68,7 @@ tenants (PK = organization_id del hub)
   `public_store_branding` — §4.3). La disponibilidad se publica como `products.in_stock`, columna
   **generada** (`stock > 0`): `anon` la lee, pero nunca lee `stock` (P05).
 - Sin forks de schema por cliente: diferencias por `store_settings.config` + `products.custom_fields` (JSONB).
-- Pendiente de fases siguientes: `price_lists`, `customers`, `carts`, `payments`, `audit_log`.
+- Pendiente de fases siguientes: `customers`, `carts`, `payments`, `audit_log`.
 
 ### PIM: variantes, atributos, unidades y kits (P03-SaaS)
 
@@ -110,6 +110,47 @@ LO QUE CUELGA DEL PRODUCTO (con store_id: el producto es de una tienda)
 - Vista nueva `public_product_variants` (precio heredado ya resuelto, sin SKU ni existencia exacta).
   La composición del kit y los atributos **no** salen a `anon` en esta fase.
 
+### Motor de precios (P04-SaaS)
+
+Cinco tablas más, migraciones `20260827180000`–`20260827180200`. Decisiones completas en
+[`adr/004-pricing-engine.md`](adr/004-pricing-engine.md).
+
+```
+VOCABULARIO DE LA SOCIEDAD (sin store_id)
+  customer_segments                el grupo comercial; P05 le cuelga los clientes
+
+EL ACUERDO (de la tienda)
+  price_lists ──── price_list_items         precio por producto/variante, presentación y escala
+              └── price_list_assignments    a quién: tienda · canal · segmento · cliente
+
+BITÁCORA
+  price_change_events               alta, cambio y baja de precio, con actor. Sin FK: sobrevive a la lista
+```
+
+- **Una sola autoridad de precio: `ebim.resolve_prices`.** `create_order` deja de calcular y pasa a
+  preguntar (`180200`); la vitrina lee un precio ya resuelto; el carrito cotiza contra la misma
+  función. Lo que se muestra, lo que se cotiza y lo que se cobra salen del mismo sitio, y hay un
+  test que lo compra comparando los tres totales.
+- **Contexto explícito y nada de él viene del navegador**: tienda (del slug), canal (de la tienda),
+  segmento y cliente (solo si los pone un llamante de servidor). La lista negra del payload crece
+  con `segment_id`, `customer_id`, `price_list_id`, `price_source` y `channel_id`, en el borde y en
+  la base.
+- **Precedencia TOTAL y documentada**: especificidad del alcance (cliente 40 > segmento 30 > canal
+  20 > tienda 10) → `priority` → `valid_from` más reciente → `id`. La especificidad no es
+  configurable; el último paso lo denuncia `public.price_list_conflicts` como ambigüedad.
+- **La escala se mide en unidades base**, nunca en unidades de venta: si no, cambiar de presentación
+  cambiaría el descuento sin que nadie lo decidiera.
+- **Fallback al precio de catálogo** cuando ninguna lista alcanza —incluido el tenant que no tiene
+  `pricing.lists` contratado—. Por eso ningún test de pedido de P02/P03 cambió una línea.
+- **El entitlement se comprueba con un JOIN** dentro de `ebim.active_price_lists` y no llamando a
+  `has_capability`: una función invocada dentro de una vista definer corre como el usuario que
+  pregunta, y para `anon` devolvería «no» siempre.
+- **La vitrina muestra el precio resuelto** (`ebim.public_unit_prices`, definer, limitada a alcances
+  tienda y canal público). Un precio de segmento o de cliente no sale nunca a `anon`.
+- **Tres puertas públicas, tres autorizaciones**: `price_quote_for_slug` (anónima, por slug),
+  `price_quote` (backoffice, con membresía) y `price_list_conflicts` (invoker, la RLS decide).
+- `order_items` gana `price_source` y `price_list_id`: la línea explica por qué costó lo que costó.
+
 ### Capacidades y entitlements (P02-SaaS)
 
 Cuatro tablas más, migración `20260827160000`. Decisiones completas en
@@ -141,6 +182,12 @@ tenant_feature_flags      interruptores técnicos del tenant. Solo restan; nunca
 | `catalog-product` | JWT del usuario | clave publicable + `Authorization` | **decide la RLS**, no la función |
 | `update-order-status` | JWT del usuario | clave publicable + `Authorization` | idem, más el trigger de transiciones |
 | `platform-context` | JWT del usuario **o** clave de aprovisionamiento | `service_role` | es la única que tiene la credencial del hub; el navegador nunca habla con el hub |
+
+Desde P04-SaaS hay además tres funciones de base con autorización propia, y no una con bandera
+porque cada una responde a un llamante distinto: `public.price_quote_for_slug` (comprador **anónimo**;
+resuelve tienda por slug y canal público por defecto), `public.price_quote` (backoffice; comprueba
+membresía contra la tienda antes de mirar un precio) y `public.price_list_conflicts` (invoker: la RLS
+decide qué tiendas ve quien pregunta).
 
 `supabase/functions/_shared/` (auth, CORS, errores, validación, reglas de pedido, roles) es TypeScript puro:
 lo compila el `tsc` del repo y lo cubren los tests. `_runtime/clients.ts` queda aparte porque importa el SDK
@@ -181,6 +228,9 @@ src/
   features/catalog/     productos del backoffice
     pim/                  PIM (P03-SaaS): marcas, familias, atributos, unidades,
                           variantes, UoM de producto, componentes de kit y relaciones
+  features/pricing/     motor de precios (P04-SaaS): listas, renglones, asignaciones,
+                        segmentos, simulador, diagnostico, importacion CSV y el
+                        adaptador `serverPricing` que implementa `PricingPort`
   features/orders/      pedidos del backoffice
   features/storefront/  vitrina pública: resolución por slug, catálogo, ficha, carrito/checkout (P06)
   architecture.test.ts  las reglas de frontera, comprobadas sobre el codigo real

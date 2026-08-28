@@ -78,6 +78,19 @@ export const PRODUCT_UOMS_TABLE = 'product_uoms'
 export const BUNDLE_ITEMS_TABLE = 'bundle_items'
 export const PRODUCT_RELATIONS_TABLE = 'product_relations'
 
+// --- Motor de precios (P04-SaaS, migraciones 180000-180200) -----------------
+// Sin `satisfies` por la misma razón que las del PIM: `database.types.ts` se
+// genera contra el proyecto ENLAZADO y estas migraciones todavía no están
+// aplicadas allí. La red mientras tanto es `supabase/tests/pricing-engine.test.ts`
+// y `pricing-checkout.test.ts`, que comprueban estos nombres contra el esquema
+// construido desde las migraciones. Al aplicar: `npm run db:types` y `satisfies`.
+export const CUSTOMER_SEGMENTS_TABLE = 'customer_segments'
+export const PRICE_LISTS_TABLE = 'price_lists'
+export const PRICE_LIST_ITEMS_TABLE = 'price_list_items'
+export const PRICE_LIST_ASSIGNMENTS_TABLE = 'price_list_assignments'
+export const PRICE_CHANGE_EVENTS_TABLE = 'price_change_events'
+export const CHANNELS_TABLE = 'channels'
+
 // --- Vistas del modelo de lectura público ----------------------------------
 // `security_invoker` sobre policies `to anon`: filtran filas, y el GRANT por
 // columna es lo que evita que `anon` vea `stock` o `config` (P02, §4.3).
@@ -104,6 +117,13 @@ export const SET_TAX_RATE_RPC = 'set_tax_rate' satisfies FunctionName
 export const ORDER_BY_TOKEN_RPC = 'order_by_token' satisfies FunctionName
 // Ídem que las tablas de 160000: sin `satisfies` hasta que se regeneren.
 export const EFFECTIVE_CAPABILITIES_RPC = 'effective_capabilities'
+// Motor de precios (P04-SaaS). `price_quote_for_slug` la llama el comprador
+// ANÓNIMO desde la vitrina; `price_quote` y `price_list_conflicts` solo el
+// backoffice con sesión. Son tres funciones distintas y no una con bandera
+// justo por eso: cada una tiene su propia autorización dentro.
+export const PRICE_QUOTE_PUBLIC_RPC = 'price_quote_for_slug'
+export const PRICE_QUOTE_RPC = 'price_quote'
+export const PRICE_LIST_CONFLICTS_RPC = 'price_list_conflicts'
 
 // --- Edge Functions --------------------------------------------------------
 export const BOOTSTRAP_FUNCTION = 'bootstrap-tenant'

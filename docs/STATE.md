@@ -3,7 +3,7 @@
 GUIDELINES_STATUS: VERIFIED (**por lectura directa** en la 2ª pasada de P00-SaaS: contrato v1.15,
 `PROTOCOLO.md`, `BANDEJA.md` y `EBIM-CREW-ROSTER.md`). La unidad montada es `G:`, no `H:`.
 Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
-Última actualización: 2026-08-27 (P03 de productización SaaS)
+Última actualización: 2026-08-27 (P04 de productización SaaS)
 
 > **Dos numeraciones de fase.** Lo que sigue como «P00…P12» es el trabajo histórico de este repo. A
 > partir del 2026-08-27 arranca un segundo recorrido, **P00–P17 de productización SaaS**
@@ -11,6 +11,190 @@ Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
 > serie: el P12 histórico es el framework de integraciones; el P12-SaaS será fulfillment y devoluciones.
 
 ## Fase actual
+**P04-SaaS — Motor de precios: listas, escalas, vigencias y precedencia. COMPLETA. Gate: PASS.**
+Decisiones completas en [`docs/adr/004-pricing-engine.md`](adr/004-pricing-engine.md).
+
+### Gates (2026-08-27, partiendo de `7a7e2e1`)
+
+| Comando | Antes de P04 | Después |
+|---|---|---|
+| `npm run typecheck` | PASS | **PASS** |
+| `npm run lint` | PASS, 0 problemas | **PASS**, 0 problemas |
+| `npm run test` | 837 / 53 archivos | **1000 / 58 archivos** |
+| `npm run test:db` | 445 / 20 | **560 / 22** |
+| `npm run build` | 778,24 kB (231,39 gzip) | **PASS**, 794,17 kB (237,00 gzip) |
+
+163 tests nuevos: 115 contra Postgres real (72 del motor y su aislamiento, 43 del pedido, la
+cotización pública, el simulador y la vitrina) y 48 en el cliente (34 de reglas puras, 9 de la
+pantalla del backoffice y 5 del carrito cotizando contra el servidor). **Ningún test existente se
+borró ni se debilitó**; cuatro se ajustaron y se explican abajo.
+
+### Lo que P04 hace imposible: que la pantalla y la caja digan cosas distintas
+
+Antes de esta fase había **tres** implementaciones de «cuánto cuesta esto»: `create_order` en la
+base, la vista pública leyendo `products.price`, y el carrito sumando en JavaScript lo que guardó
+`localStorage`. Tres copias de la misma regla en dos lenguajes coinciden el día que se escriben y
+dejan de coincidir el día que una de las tres cambia — y el día que dejan de coincidir lo descubre
+un comprador mirando la factura.
+
+Ahora hay **una**: `ebim.resolve_prices`. `create_order` pregunta, la vitrina lee un precio ya
+resuelto y el carrito cotiza. Hay un test que compra exactamente esa propiedad: cotiza un carrito,
+lo compra y compara los tres totales.
+
+### La precedencia, escrita una vez y denunciada cuando es ambigua
+
+| # | Criterio | ¿Configurable? |
+|---|---|---|
+| 1 | Alcance: cliente (40) > segmento (30) > canal (20) > tienda (10) | **No** |
+| 2 | `price_lists.priority`, 0–1000, descendente | Sí |
+| 3 | `valid_from` más reciente | — |
+| 4 | `id` de la lista | — |
+
+La especificidad no es configurable a propósito: si lo fuera, un precio negociado podría quedar por
+debajo del general por haber tecleado mal una prioridad, y nadie lo vería venir hasta la factura.
+
+El paso 4 existe para que el precio no dependa del plan de ejecución, no para llegar hasta él.
+`public.price_list_conflicts` denuncia como **error** las combinaciones que dependen de ese
+desempate, y la pantalla de diagnóstico las separa de las cuatro que solo dejan una lista sin efecto:
+moneda distinta a la de la tienda, vigencia agotada, sin asignar, y asignada pero vacía.
+
+Dentro de la lista ganadora: variante concreta antes que «todas las variantes», presentación concreta
+antes que unidad base, y la escala **mayor alcanzada**. Y la lista de mayor precedencia gana aunque
+su renglón sea menos concreto que el de una lista inferior — primero se elige el ACUERDO, después el
+renglón. Al revés, un precio de catálogo por variante le ganaría a un precio negociado por producto.
+
+### Cinco tablas, y una columna sin FK que es deuda declarada
+
+`customer_segments` · `price_lists` · `price_list_items` · `price_list_assignments` ·
+`price_change_events`.
+
+El **segmento** nace en P04 aunque `customers` sea P05: es antes una dimensión de precio que una
+ficha de cliente, y sin él esta fase no podría demostrar la precedencia que tiene que fijar. Es
+vocabulario de la sociedad, sin `store_id`, igual que marcas y unidades.
+
+`price_list_assignments.customer_id` va **sin FK**, y es la única de las cuatro columnas de alcance
+que lo está. Queda dicho aquí para que la revisión no lo confunda con un descuido: el aislamiento no
+depende de esa columna —lo garantiza `store_id` vía `stores`—, ninguna resolución la inventa (solo
+aplica si un llamante de servidor pasa un cliente concreto, y el storefront anónimo nunca pasa
+ninguno), y P05 añade la FK con su migración.
+
+El alcance va en columnas **tipadas** y no en un par `(tipo, uuid)` genérico: con el par genérico no
+hay FK posible y una asignación que apunta a un canal borrado se queda viva decidiendo precios.
+
+### La escala se mide en unidades base, y eso es una decisión
+
+`min_quantity` se compara contra `cantidad × factor de la presentación`. Medirla en unidades de
+venta haría que 10 cajas de 12 no alcanzaran una escala de 100, y que **cambiar de presentación
+cambiara el descuento** sin que nadie lo hubiera decidido.
+
+### El fallback es la regla, no la excepción
+
+Si ninguna lista alcanza —porque no hay, porque no están vigentes, porque la moneda no coincide, o
+porque la sociedad no tiene `pricing.lists` contratado— la respuesta es el precio de catálogo
+calculado **exactamente** como antes: `product_uoms.price` si la presentación tiene el suyo, y si no
+`coalesce(variante.price, producto.price) × factor`. `source` lo dice y hay un test por caso.
+
+Eso es lo que permite que **ningún test de pedido de P02 ni de P03 haya cambiado una línea**.
+
+### El entitlement se comprueba con un JOIN, y no es prolijidad
+
+`ebim.active_price_lists` filtra por `tenant_entitlements` con un join en vez de llamar a
+`ebim.company_is_entitled`. Una función invocada dentro de una vista `SECURITY DEFINER` corre como
+el usuario que **pregunta**: `has_capability` devolvería «no» para el comprador anónimo y ninguna
+lista se aplicaría jamás en la vitrina. El join sí corre con los permisos de la vista.
+
+La consecuencia comercial es deliberada y tiene test: si un tenant deja de pagar el módulo, sus
+precios vuelven al catálogo. Sus listas se siguen **viendo** en el backoffice —la policy de SELECT no
+exige capacidad— porque esconderlas convertiría una baja comercial en una pérdida de datos aparente.
+
+### La vitrina deja de pintar `products.price`
+
+`public_products.price`, `compare_at_price` y `price_from` salen ahora de
+`ebim.public_unit_prices`: una vista definer limitada a alcances **tienda y canal público**,
+cantidad 1 y unidad base. Sin esto, el catálogo pintaría 10 y el carrito cobraría 8 —o 12—, que es
+tan malo en un sentido como en el otro.
+
+Un precio de segmento o de cliente **no sale nunca** a `anon`: que el vecino tenga un acuerdo
+negociado es información comercial de la sociedad, no del catálogo. Hay un test que lo fija.
+
+El tachado del catálogo **no se arrastra** cuando manda una lista: anunciaría un descuento que nadie
+declaró. Es la misma regla que P03 aplicó a la variante con precio propio.
+
+### El puerto deja de ser una interfaz vacía
+
+`PricingPort` existía desde P01 sin implementación. Ahora tiene una —`serverPricing`— y el carrito
+la usa: la vitrina no habla con PostgREST para pedir un precio. El día que un tenant tarifique en su
+ERP (`integration_providers` ya declara `price.read`), lo que cambia es qué implementación se
+inyecta, no el carrito.
+
+El contrato del puerto se ajustó a lo que el motor sabe responder de verdad: `PriceRequest` gana
+`variantId` y `uomCode`, `PricedLine` gana `priceListCode`, `scope` y `minQuantity` —el desglose
+que explica el precio— y **pierde `taxAmount` y `grossAmount` por línea**. No es una rebaja: el
+impuesto se redondea por GRUPO DE TASA, no por línea, así que un importe de impuesto por línea sería
+una cifra inventada que no suma el total.
+
+### Backoffice: una ruta gateada, cuatro pestañas y una importación revisable
+
+- **`/app/pricing`** «Precios» — Listas · Segmentos · Simulador · Diagnóstico, en tabs centrados con
+  deep-link `#hash` (§8) y un buscador único por listado. Gateada por `pricing.lists`.
+- **Cajón de lista** por pestañas: General · Precios · Asignaciones. Las tres se guardan por separado
+  porque son filas de tablas distintas, y juntarlas obligaría a inventar una transacción en el
+  cliente (misma decisión que el cajón de producto del PIM).
+- **El simulador llama a la MISMA función** que cobra el pedido. Si fuera una estimación del cliente,
+  diría una cosa y la caja otra — y el simulador se abre precisamente cuando alguien duda del precio.
+- **Importación CSV** en dos pasos: parsear el texto y cruzarlo con el catálogo por SKU. Se enseña el
+  resultado ANTES de escribir, con las filas rechazadas y su motivo. Acepta el BOM de Excel y la coma
+  decimal, porque si no, la mitad de las hojas del mundo fallan por una convención de teclado.
+- **El selector de producto busca en el SERVIDOR con límite 20.** Uno que se trae los 3.000 SKU de la
+  tienda para filtrarlos en memoria rompe justo en el cliente que más lo necesita.
+
+### El carrito pregunta el total, y sigue funcionando si no le contestan
+
+El resumen del carrito y del checkout cotizan contra `price_quote_for_slug`. Si la cotización falla
+se enseña el subtotal local y se avisa, sin bloquear la compra: no poder adelantar un total no es
+motivo para impedir comprar, porque quien valora de verdad es `create_order`.
+
+En la petición viajan el slug y qué se compra. Ni un precio, ni el canal, ni el cliente — hay un test
+que recorre el cuerpo enviado buscando esas palabras.
+
+### Los cuatro tests existentes que se ajustaron (y por qué no es debilitarlos)
+
+- `server-operations.test.ts` › «todo el dinero es numeric»: el filtro por nombre (`%price%`) atrapa
+  ahora `price_list_id` y `price_source`, que no son importes. En vez de sacarlos del filtro —lo que
+  dejaría un hueco por donde colar un importe con ese nombre— se comprueba que **cada uno sea del
+  tipo que le toca**. La regla queda más fuerte: un uuid llamado `unit_price` también falla ahí.
+- `capabilities.test.ts` (base) y `capabilities.test.tsx` (cliente): `pricing.lists` pasa de
+  `declared` a `implemented` y su texto de venta cambia. Se sigue comparando la fila entera contra
+  el registro de TypeScript.
+- `routes.test.tsx`: suma `/app/pricing` a la lista **exacta** de rutas del backoffice.
+- `edge-shared.test.ts`: se le AÑADEN cinco campos prohibidos (`channel_id`, `segment_id`,
+  `customer_id`, `price_list_id`, `price_source`). `channel_id` estaba en la lista negra de la base
+  desde la fase de canales y faltaba en el borde.
+
+### Lo que P04 NO resuelve, dicho claramente
+
+- **El comprador autenticado todavía no tiene segmento ni cuenta.** El checkout público es anónimo y
+  pasa `null` en los dos argumentos. La costura ya existe —son dos parámetros de `resolve_price`— y
+  se cierra en P05 junto con la FK de `customer_id`.
+- **Vigencia por renglón.** La vigencia es de la lista. Añadirla al renglón multiplica la detección
+  de solapamientos y no compra nada que no compre una segunda lista con más prioridad. Es una
+  limitación consciente.
+- **Conversión de moneda.** El motor no convierte: una lista en USD no aplica a una tienda en PEN y
+  el diagnóstico lo denuncia. Convertir exige tipos de cambio con vigencia, que es otra fase.
+- **La tarjeta del catálogo no muestra escalas.** Enseña lo que cuesta UNA unidad; el precio
+  mayorista aparece al poner la cantidad en el carrito. Mostrar «desde 7.00» en la tarjeta sin decir
+  desde cuántas unidades es publicidad, no precio.
+- **`database.types.ts` sin regenerar.** Las cinco tablas y las tres funciones nuevas van sin
+  `satisfies`, por la misma razón que las de P02 y P03. Al aplicar: `npm run db:types` y añadir el
+  `satisfies`.
+- **R2 (canales sin superficie) se cierra a medias.** El canal ya tiene una pantalla donde importa
+  —se le asignan listas de precio desde `/app/pricing`— pero sigue sin ABM propio: crear un canal
+  B2B nuevo sigue siendo un `insert`. Su pantalla va con la fase de clientes B2B, que es quien le da
+  usuarios.
+
+---
+
+## Fase anterior
 **P03-SaaS — PIM: catálogo avanzado, variantes, atributos, UoM y kits. COMPLETA. Gate: PASS.**
 Decisiones completas en [`docs/adr/003-pim-variantes-uom-kits.md`](adr/003-pim-variantes-uom-kits.md).
 
@@ -196,8 +380,8 @@ P04. Queda dicho aquí para que la revisión lo vea y no lo confunda con parte d
   necesitaba: **el canal no duplica ni un SKU** —`product_channels` referencia `products` y las
   variantes heredan el canal de su maestro—.
 
-Siguiente: **P04-SaaS** (precios: listas, escalas y precio por canal), que ya tiene contra qué
-aplicarlas — variantes y unidades de venta.
+Siguiente: **P05-SaaS** (clientes y cuentas B2B), que ya tiene dónde engancharse: el segmento
+comercial existe, y el motor de precios acepta segmento y cliente como contexto.
 
 ## Fase anterior
 **P02-SaaS — Módulos, entitlements, feature flags y control plane. COMPLETA. Gate: PASS.**

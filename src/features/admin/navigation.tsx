@@ -1,6 +1,7 @@
 import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined'
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined'
 import MonitorHeartOutlinedIcon from '@mui/icons-material/MonitorHeartOutlined'
+import PriceChangeOutlinedIcon from '@mui/icons-material/PriceChangeOutlined'
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import SpaceDashboardOutlinedIcon from '@mui/icons-material/SpaceDashboardOutlined'
@@ -57,6 +58,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'nav.pim',
     icon: <TuneOutlinedIcon fontSize="small" />,
     capability: 'catalog.advanced',
+  },
+  {
+    to: '/app/pricing',
+    label: 'nav.pricing',
+    icon: <PriceChangeOutlinedIcon fontSize="small" />,
+    capability: 'pricing.lists',
   },
   {
     to: '/app/orders',

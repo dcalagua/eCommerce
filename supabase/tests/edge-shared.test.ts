@@ -224,6 +224,23 @@ describe('carrito con variantes y unidades', () => {
     },
   )
 
+  /**
+   * P04-SaaS. Las tres llaves del motor de precios y el canal. Un comprador que
+   * pudiera declarar `segment_id` o `customer_id` se estaria asignando el
+   * acuerdo comercial de otro; con `price_list_id` se saltaria la precedencia
+   * entera, y con `channel_id`, el canal interno y sus precios preferenciales.
+   */
+  it.each(['channel_id', 'segment_id', 'customer_id', 'price_list_id', 'price_source'])(
+    'rechaza `%s`: el acuerdo comercial no lo elige quien compra',
+    (field) => {
+      expectCode(
+        () => normalizeOrderItems([{ product_id: ORG, quantity: 1, [field]: ORG }]),
+        'CAMPO_NO_PERMITIDO',
+        400,
+      )
+    },
+  )
+
   it('la linea de un producto simple viaja EXACTAMENTE igual que antes del PIM', () => {
     // Las claves opcionales solo aparecen si tienen valor. Mandar
     // `variant_id: null` habria cambiado el cuerpo de todas las peticiones del

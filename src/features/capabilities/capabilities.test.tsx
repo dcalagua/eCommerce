@@ -95,7 +95,7 @@ describe('CapabilityGate', () => {
     // Es un estado, no un error: nada falló.
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     // Y dice qué se pierde, en palabras del producto.
-    expect(screen.getByText(/Listas de precio por segmento/)).toBeInTheDocument()
+    expect(screen.getByText(/Listas de precio por canal, segmento, cliente/)).toBeInTheDocument()
   })
 
   it('lo contratado se abre sin más', async () => {

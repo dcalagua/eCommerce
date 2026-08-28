@@ -43,6 +43,9 @@ const CategoriesPage = lazy(() =>
 const PimPage = lazy(() =>
   import('@/features/catalog/pim/PimPage').then((m) => ({ default: m.PimPage })),
 )
+const PricingPage = lazy(() =>
+  import('@/features/pricing/PricingPage').then((m) => ({ default: m.PricingPage })),
+)
 const OrdersPage = lazy(() =>
   import('@/features/orders/OrdersPage').then((m) => ({ default: m.OrdersPage })),
 )
@@ -109,6 +112,9 @@ export const routes: RouteObject[] = [
           { path: 'categories', element: gated('catalog', <CategoriesPage />) },
           // El vocabulario del PIM es del módulo vendible, no del baseline.
           { path: 'pim', element: gated('catalog.advanced', <PimPage />) },
+          // El precio por canal, segmento o cliente es el módulo vendible; el
+          // precio de catálogo sigue viniendo con el producto.
+          { path: 'pricing', element: gated('pricing.lists', <PricingPage />) },
           { path: 'orders', element: gated('orders', <OrdersPage />) },
           // Ajustes y diagnóstico NO se gatean por capacidad: son la salida de
           // un tenant sin nada contratado y el sitio donde se ve por qué.

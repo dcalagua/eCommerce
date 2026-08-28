@@ -52,6 +52,17 @@ const UOM_CODE_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,15}$/
  * dejar que el comprador decida cuánto se descuenta del almacén — la misma
  * clase de fallo que aceptar el precio. `sku` entra por lo mismo: identifica lo
  * que se despacha y lo resuelve el servidor a partir del producto y la variante.
+ *
+ * Desde P04 entran los del motor de precios. `segment_id` y `customer_id` son
+ * A QUIÉN se le aplica un acuerdo comercial: un comprador que pudiera
+ * declararlos se estaría asignando el precio negociado de otro. `price_list_id`
+ * y `price_source` son el resultado de la resolución, no una entrada; y
+ * `channel_id` lo elige el servidor desde P10 —estaba en la lista negra de la
+ * base y faltaba aquí—, porque el canal interno tiene precios preferenciales.
+ *
+ * La lista se comprueba ANTES de normalizar y no después: normalizar descarta
+ * las claves desconocidas, y descartar en silencio un intento de ponerse precio
+ * es exactamente el fallo que no se quiere que pase inadvertido.
  */
 const FORBIDDEN_ITEM_FIELDS = [
   'price',
@@ -73,6 +84,11 @@ const FORBIDDEN_ITEM_FIELDS = [
   'base_quantity',
   'sku',
   'variant_sku',
+  'channel_id',
+  'segment_id',
+  'customer_id',
+  'price_list_id',
+  'price_source',
 ]
 
 /**

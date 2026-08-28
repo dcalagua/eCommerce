@@ -142,8 +142,12 @@ export const CAPABILITIES: readonly Capability[] = [
     id: 'pricing.lists',
     boundary: 'pricing',
     entitlement: `${ENTITLEMENT_PREFIX}pricing.lists`,
-    state: 'declared',
-    grants: 'Listas de precio por segmento, moneda y vigencia (P04).',
+    // La segunda vendible que deja de ser `declared` (P04-SaaS): tiene esquema,
+    // motor determinista, pantalla y pedido detras. Sin ella, la resolucion
+    // devuelve el precio de catalogo — no falla, se degrada.
+    state: 'implemented',
+    grants:
+      'Listas de precio por canal, segmento, cliente, cantidad, moneda y vigencia, con precedencia documentada.',
   },
   {
     id: 'customers.b2b',

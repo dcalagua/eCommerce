@@ -253,7 +253,21 @@ describe('create_order — el precio lo pone la base', () => {
     `)
     expect(rows.length).toBeGreaterThan(0)
     for (const row of rows) {
-      expect(`${row.table_name}.${row.column_name}:${row.data_type}`).toMatch(/:numeric$/)
+      const name = String(row.column_name)
+      const signature = `${row.table_name}.${name}:${row.data_type}`
+      // P04-SaaS: el filtro por nombre atrapa ahora tambien REFERENCIAS a una
+      // lista de precio (`price_list_id`) y el origen del precio
+      // (`price_source`), que no son importes. En vez de sacarlos del filtro
+      // —que dejaria un hueco por donde colar un importe con ese nombre— se
+      // comprueba que cada uno sea del tipo que le toca. La regla queda mas
+      // fuerte: un uuid llamado `unit_price` tambien falla aqui.
+      if (name.endsWith('_id')) {
+        expect(signature).toMatch(/:uuid$/)
+      } else if (name === 'price_source') {
+        expect(signature).toMatch(/:text$/)
+      } else {
+        expect(signature).toMatch(/:numeric$/)
+      }
     }
   })
 })
