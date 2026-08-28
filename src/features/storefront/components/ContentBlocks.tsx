@@ -1,0 +1,468 @@
+import { Box, Button, Card, Chip, Stack, Typography } from '@mui/material'
+import { Link } from 'react-router-dom'
+import { useI18n } from '@/shared/i18n/i18n-context'
+import { formatMoney } from '@/shared/lib/format'
+import { RichText } from '@/shared/ui/RichText'
+import { T } from '@/theme/tokens'
+import type { ContentBlock, ContentCollectionItem } from '../content'
+import { ProductMedia } from './ProductMedia'
+
+/**
+ * Pinta los bloques de una página del CMS (P11-SaaS).
+ *
+ * **Un componente por TIPO, no uno por tenant.** El encargo lo pide con esas
+ * palabras («no dupliques componentes por tenant») y aquí es donde se cumple o
+ * no: lo que cambia entre dos tiendas son los DATOS del bloque y los tokens del
+ * tema, nunca el árbol de React. Si algún día hiciera falta un `if` por nombre
+ * de comercio, lo que falta es un tipo de bloque.
+ *
+ * Todo lo que llega ya está resuelto y filtrado por el servidor: qué bloques
+ * están vigentes, en qué orden y con qué productos dentro. Aquí no se decide
+ * visibilidad — decidirla en dos sitios es como se acaba enseñando en la
+ * vitrina algo que el editor daba por despublicado.
+ */
+export function ContentBlocks({
+  blocks,
+  storeSlug,
+  assets,
+  images,
+}: {
+  blocks: readonly ContentBlock[]
+  storeSlug: string
+  /** Rutas de `store-assets` ya firmadas. */
+  assets: Record<string, string>
+  /** Rutas de `product-images` ya firmadas. */
+  images: Record<string, string>
+}) {
+  if (blocks.length === 0) return null
+
+  return (
+    <Stack sx={{ gap: { xs: 2, md: 3 } }}>
+      {blocks.map((block) => (
+        <ContentBlockView
+          key={block.id}
+          block={block}
+          storeSlug={storeSlug}
+          assets={assets}
+          images={images}
+        />
+      ))}
+    </Stack>
+  )
+}
+
+/** Una URL externa se pinta tal cual; una ruta del bucket, ya firmada. */
+function mediaUrl(value: string | null, assets: Record<string, string>): string | null {
+  if (!value) return null
+  if (/^https:\/\//i.test(value)) return value
+  return assets[value] ?? null
+}
+
+function ContentBlockView({
+  block,
+  storeSlug,
+  assets,
+  images,
+}: {
+  block: ContentBlock
+  storeSlug: string
+  assets: Record<string, string>
+  images: Record<string, string>
+}) {
+  switch (block.type) {
+    case 'hero':
+      return <HeroBlock block={block} assets={assets} />
+    case 'banner':
+      return <BannerBlock block={block} assets={assets} />
+    case 'campaign':
+      return <CampaignBlock block={block} assets={assets} />
+    case 'rich_text':
+      return <RichTextBlock block={block} />
+    case 'category_collection':
+      return <CategoryCollectionBlock block={block} storeSlug={storeSlug} />
+    default:
+      return <ProductCollectionBlock block={block} storeSlug={storeSlug} images={images} />
+  }
+}
+
+/** Botón de llamada a la acción. Interno → `Link`; externo → `<a>`. */
+function BlockCta({ block, contrast = false }: { block: ContentBlock; contrast?: boolean }) {
+  if (!block.ctaHref || !block.ctaLabel) return null
+
+  const internal = block.ctaHref.startsWith('/')
+  const sx = {
+    alignSelf: 'flex-start',
+    fontWeight: 700,
+    ...(contrast ? { bgcolor: '#FFFFFF', color: 'var(--accent-deep)' } : {}),
+  }
+
+  return internal ? (
+    <Button component={Link} to={block.ctaHref} variant="contained" sx={sx}>
+      {block.ctaLabel}
+    </Button>
+  ) : (
+    <Button
+      component="a"
+      href={block.ctaHref}
+      target="_blank"
+      rel="noopener noreferrer"
+      variant="contained"
+      sx={sx}
+    >
+      {block.ctaLabel}
+    </Button>
+  )
+}
+
+/**
+ * Hero: la primera pantalla. Misma anatomía que `StoreHero` —degradado de
+ * tokens cuando no hay imagen, degradado vertical cuando la hay— para que una
+ * portada con CMS y una sin él no parezcan dos productos distintos.
+ */
+function HeroBlock({ block, assets }: { block: ContentBlock; assets: Record<string, string> }) {
+  const url = mediaUrl(block.mediaUrl, assets)
+
+  return (
+    <Box
+      component="section"
+      aria-label={block.title ?? undefined}
+      sx={{
+        position: 'relative',
+        borderRadius: 'var(--radius-hero, 18px)',
+        overflow: 'hidden',
+        border: '1px solid var(--border)',
+        background: url ? 'var(--neutral-soft)' : 'var(--hero-grad)',
+        minHeight: { xs: 240, md: 360 },
+        display: 'flex',
+        boxShadow: 'var(--shadow-hero)',
+      }}
+    >
+      {url ? (
+        <>
+          <Box
+            component="img"
+            src={url}
+            alt={block.mediaAlt ?? ''}
+            aria-hidden={block.mediaAlt ? undefined : true}
+            sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+          <Box
+            aria-hidden
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              background:
+                'linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.55) 55%, rgba(0,0,0,0.78) 100%)',
+            }}
+          />
+        </>
+      ) : null}
+
+      <Stack
+        sx={{
+          position: 'relative',
+          justifyContent: 'flex-end',
+          gap: 1.25,
+          p: { xs: 3, md: 5 },
+          maxWidth: 680,
+          color: url ? '#FFFFFF' : 'var(--text)',
+        }}
+      >
+        {block.title ? (
+          <Typography
+            component="h2"
+            sx={{
+              fontSize: { xs: 28, md: 44 },
+              fontWeight: 800,
+              letterSpacing: '-0.02em',
+              lineHeight: 1.08,
+              textWrap: 'balance',
+            }}
+          >
+            {block.title}
+          </Typography>
+        ) : null}
+        {block.subtitle ? (
+          <Typography sx={{ fontSize: { xs: T.bodyStrong, md: 16 }, lineHeight: 1.5, maxWidth: 560 }}>
+            {block.subtitle}
+          </Typography>
+        ) : null}
+        <BlockCta block={block} contrast={Boolean(url)} />
+      </Stack>
+    </Box>
+  )
+}
+
+/** Banner: más bajo que el hero y con la imagen al lado, no detrás. */
+function BannerBlock({ block, assets }: { block: ContentBlock; assets: Record<string, string> }) {
+  const url = mediaUrl(block.mediaUrl, assets)
+  const reverse = block.settings.reverse === true
+
+  return (
+    <Card
+      component="section"
+      aria-label={block.title ?? undefined}
+      sx={{ p: 0, overflow: 'hidden' }}
+    >
+      <Stack
+        direction={{ xs: 'column', md: reverse ? 'row-reverse' : 'row' }}
+        sx={{ alignItems: 'stretch' }}
+      >
+        {url ? (
+          <Box
+            component="img"
+            src={url}
+            alt={block.mediaAlt ?? ''}
+            aria-hidden={block.mediaAlt ? undefined : true}
+            sx={{ width: { xs: '100%', md: '40%' }, maxHeight: 260, objectFit: 'cover' }}
+          />
+        ) : null}
+        <Stack sx={{ gap: 1, p: { xs: 2.5, md: 3.5 }, justifyContent: 'center', flex: 1 }}>
+          {block.title ? (
+            <Typography component="h2" sx={{ fontSize: T.pageTitle, fontWeight: 800 }}>
+              {block.title}
+            </Typography>
+          ) : null}
+          {block.subtitle ? (
+            <Typography sx={{ fontSize: T.body, color: 'var(--muted)', lineHeight: 1.6 }}>
+              {block.subtitle}
+            </Typography>
+          ) : null}
+          <RichText doc={block.body} />
+          <BlockCta block={block} />
+        </Stack>
+      </Stack>
+    </Card>
+  )
+}
+
+/**
+ * Bloque de campaña.
+ *
+ * `campaignLive` viene del servidor y dice si la promoción a la que apunta está
+ * descontando AHORA. Lo que NO viene —ni puede venir— es el código del cupón:
+ * enumerar los códigos activos de una tienda a un comprador anónimo sería
+ * regalar el folleto de las campañas secretas (misma decisión que P10 tomó al
+ * no reportar las campañas que exigen cupón y no lo traen).
+ */
+function CampaignBlock({ block, assets }: { block: ContentBlock; assets: Record<string, string> }) {
+  const { t, locale } = useI18n()
+  const url = mediaUrl(block.mediaUrl, assets)
+
+  return (
+    <Card component="section" aria-label={block.title ?? undefined} sx={{ p: 0, overflow: 'hidden' }}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ alignItems: 'stretch' }}>
+        {url ? (
+          <Box
+            component="img"
+            src={url}
+            alt={block.mediaAlt ?? ''}
+            aria-hidden={block.mediaAlt ? undefined : true}
+            sx={{ width: { xs: '100%', sm: 200 }, maxHeight: 200, objectFit: 'cover' }}
+          />
+        ) : null}
+        <Stack sx={{ gap: 1, p: { xs: 2.5, md: 3 }, flex: 1, justifyContent: 'center' }}>
+          <Stack direction="row" sx={{ gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Typography component="h2" sx={{ fontSize: T.cardTitle, fontWeight: 800 }}>
+              {block.title}
+            </Typography>
+            {block.campaignLive ? (
+              <Chip size="small" color="primary" label={t('store.content.campaignLive')} />
+            ) : null}
+          </Stack>
+          {block.subtitle ? (
+            <Typography sx={{ fontSize: T.body, color: 'var(--muted)' }}>{block.subtitle}</Typography>
+          ) : null}
+          {block.campaignLive && block.campaignEndsAt ? (
+            <Typography sx={{ fontSize: T.label, fontWeight: 700, color: 'var(--accent-deep)' }}>
+              {`${t('store.content.campaignEnds')} ${new Date(block.campaignEndsAt).toLocaleDateString(
+                locale === 'en' ? 'en-US' : 'es-PE',
+                { day: '2-digit', month: 'short', year: 'numeric' },
+              )}`}
+            </Typography>
+          ) : null}
+          <BlockCta block={block} />
+        </Stack>
+      </Stack>
+    </Card>
+  )
+}
+
+function RichTextBlock({ block }: { block: ContentBlock }) {
+  return (
+    <Card component="section" aria-label={block.title ?? undefined} sx={{ p: { xs: 2.5, md: 3.5 } }}>
+      <Stack sx={{ gap: 1.5 }}>
+        {block.title ? (
+          <Typography component="h2" sx={{ fontSize: T.pageTitle, fontWeight: 800 }}>
+            {block.title}
+          </Typography>
+        ) : null}
+        <RichText doc={block.body} />
+        <BlockCta block={block} />
+      </Stack>
+    </Card>
+  )
+}
+
+function CategoryCollectionBlock({
+  block,
+  storeSlug,
+}: {
+  block: ContentBlock
+  storeSlug: string
+}) {
+  const categories = block.items.filter(
+    (item): item is Extract<ContentCollectionItem, { kind: 'category' }> => item.kind === 'category',
+  )
+  if (categories.length === 0) return null
+
+  return (
+    <Stack component="section" aria-label={block.title ?? undefined} sx={{ gap: 1.5 }}>
+      <BlockHeading block={block} />
+      <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
+        {categories.map((category) => (
+          <Chip
+            key={category.category_id}
+            component={Link}
+            clickable
+            to={`/s/${storeSlug}?c=${encodeURIComponent(category.slug)}`}
+            label={category.name}
+            sx={{ fontWeight: 700 }}
+          />
+        ))}
+      </Stack>
+    </Stack>
+  )
+}
+
+function ProductCollectionBlock({
+  block,
+  storeSlug,
+  images,
+}: {
+  block: ContentBlock
+  storeSlug: string
+  images: Record<string, string>
+}) {
+  const items = block.items.filter(
+    (item): item is Exclude<ContentCollectionItem, { kind: 'category' }> => item.kind !== 'category',
+  )
+  if (items.length === 0) return null
+
+  const columns = typeof block.settings.columns === 'number' ? block.settings.columns : 4
+  const showPrice = block.settings.show_price !== false
+  // `carousel` es el mismo contenido con desplazamiento horizontal en vez de
+  // rejilla. No es otro componente: es otra caja.
+  const scroll = block.type === 'carousel'
+
+  return (
+    <Stack component="section" aria-label={block.title ?? undefined} sx={{ gap: 1.5 }}>
+      <BlockHeading block={block} />
+      <Box
+        sx={
+          scroll
+            ? {
+                display: 'grid',
+                gridAutoFlow: 'column',
+                gridAutoColumns: { xs: '62%', sm: '38%', md: '22%' },
+                gap: 1.5,
+                overflowX: 'auto',
+                pb: 1,
+                scrollSnapType: 'x mandatory',
+              }
+            : {
+                display: 'grid',
+                gap: 1.5,
+                gridTemplateColumns: {
+                  xs: 'repeat(2, minmax(0, 1fr))',
+                  md: `repeat(${Math.min(Math.max(columns, 2), 6)}, minmax(0, 1fr))`,
+                },
+              }
+        }
+      >
+        {items.map((item) => (
+          <CollectionCard
+            key={'variant_id' in item ? item.variant_id : item.product_id}
+            item={item}
+            storeSlug={storeSlug}
+            images={images}
+            showPrice={showPrice}
+            snap={scroll}
+          />
+        ))}
+      </Box>
+    </Stack>
+  )
+}
+
+function BlockHeading({ block }: { block: ContentBlock }) {
+  if (!block.title && !block.subtitle) return null
+  return (
+    <Stack sx={{ gap: 0.25 }}>
+      {block.title ? (
+        <Typography component="h2" sx={{ fontSize: T.pageTitle, fontWeight: 800 }}>
+          {block.title}
+        </Typography>
+      ) : null}
+      {block.subtitle ? (
+        <Typography sx={{ fontSize: T.body, color: 'var(--muted)' }}>{block.subtitle}</Typography>
+      ) : null}
+    </Stack>
+  )
+}
+
+function CollectionCard({
+  item,
+  storeSlug,
+  images,
+  showPrice,
+  snap,
+}: {
+  item: Exclude<ContentCollectionItem, { kind: 'category' }>
+  storeSlug: string
+  images: Record<string, string>
+  showPrice: boolean
+  snap: boolean
+}) {
+  const { t, locale } = useI18n()
+  const price = item.kind === 'product' ? (item.price_from ?? item.price) : item.price
+
+  return (
+    <Card
+      component={Link}
+      to={`/s/${storeSlug}/product/${item.slug}`}
+      sx={{
+        p: 1.25,
+        display: 'grid',
+        gap: 0.75,
+        textDecoration: 'none',
+        color: 'inherit',
+        scrollSnapAlign: snap ? 'start' : undefined,
+        '&:hover': { boxShadow: 'var(--shadow-md)' },
+      }}
+    >
+      <ProductMedia
+        url={item.image_path ? (images[item.image_path] ?? null) : null}
+        alt={item.image_alt ?? item.name}
+      />
+      <Typography sx={{ fontSize: T.bodyStrong, fontWeight: 700, lineHeight: 1.3 }}>
+        {item.name}
+      </Typography>
+      {item.kind === 'variant' && item.variant_label ? (
+        <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+          {item.variant_label}
+        </Typography>
+      ) : null}
+      {showPrice && price && item.currency ? (
+        <Typography sx={{ fontSize: T.body, fontWeight: 800, color: 'var(--accent-deep)' }}>
+          {formatMoney(Number(price), item.currency, locale)}
+        </Typography>
+      ) : null}
+      {item.in_stock === false ? (
+        <Typography sx={{ fontSize: T.micro, fontWeight: 700, color: 'var(--muted)' }}>
+          {t('store.availability.outOfStock')}
+        </Typography>
+      ) : null}
+    </Card>
+  )
+}

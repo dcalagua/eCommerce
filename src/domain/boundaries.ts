@@ -212,11 +212,24 @@ export const BOUNDARIES: readonly Boundary[] = [
   {
     id: 'content',
     kind: 'domain',
-    state: 'partial',
+    // P11-SaaS. Deja de ser `partial`: la vitrina ya no es solo un lector del
+    // catálogo, tiene páginas y bloques que el comercio escribe, con vigencia,
+    // canal y segmento, y un buscador con índice propio. Lo que faltaba para
+    // dejar de ser parcial no era código de pantalla, era que el CONTENIDO
+    // fuera un dato del tenant en vez de una plantilla.
+    state: 'implemented',
     responsibility:
-      'Cómo se presenta la tienda al comprador: vitrina, navegación, ficha y marca publicable.',
-    paths: ['features/storefront'],
-    serverSide: ['public_stores y public_products (090500, 091200)', 'store_settings (091500)'],
+      'Cómo se presenta la tienda al comprador y cómo la encuentra: vitrina, contenido administrable, navegación, ficha, marca publicable y búsqueda del catálogo.',
+    paths: ['features/storefront', 'features/content'],
+    port: 'SearchPort',
+    serverSide: [
+      'public_stores y public_products (090500, 091200)',
+      'store_settings + tokens de white-label (091500, 140200)',
+      'content_pages, content_blocks, content_block_items con RLS default deny (140000)',
+      'ebim.resolve_content — una sola autoridad para la vitrina y la vista previa (140100)',
+      'store_page_for_slug (anónimo) y content_preview (backoffice) (140100)',
+      'products.search_vector, pg_trgm, search_synonyms y ebim.search_catalog (140300)',
+    ],
   },
   {
     id: 'fulfillment',

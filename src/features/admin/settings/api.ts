@@ -71,6 +71,15 @@ const SETTINGS_SELECT = [
   'hero_subtitle',
   'contact_phone',
   'contact_address',
+  'favicon_url',
+  'font_family',
+  'ui_radius',
+  'ui_density',
+  'business_display_name',
+  'email_from_name',
+  'email_reply_to',
+  'custom_domain_status',
+  'custom_domain_verified_at',
 ].join(', ')
 
 function client(): SupabaseClient {
@@ -101,10 +110,13 @@ export interface SaveSettingsInput {
   /**
    * ¿La sociedad tiene `content.white_label` (contrato §4.3)?
    *
-   * Sin ella el campo NO se envía en vez de enviarse en `false`: el guardado de
-   * un nombre comercial no puede apagar de paso una marca blanca que el tenant
-   * tenía. Si alguien lo forzara igualmente, la policy
-   * `store_settings_update_admin` lo rechaza — esto solo evita el 403.
+   * Sin ella los campos PREMIUM no se envían en vez de enviarse vacíos: el
+   * guardado de un nombre comercial no puede apagar de paso una marca blanca
+   * que el tenant tenía. Desde P11-SaaS son cuatro —`white_label`,
+   * `font_family` y la identidad de correo—; los de tematización (acento,
+   * logo, favicon, radio, densidad) van siempre. Si alguien los forzara
+   * igualmente, la policy `store_settings_update_admin` lo rechaza — esto solo
+   * evita el 403.
    */
   canWhiteLabel: boolean
 }
@@ -143,7 +155,24 @@ export async function saveStoreSettings(input: SaveSettingsInput): Promise<void>
     contact_address: orNull(values.contact_address),
     logo_url: values.logo_url,
     banner_url: values.banner_url,
-    ...(input.canWhiteLabel ? { white_label: values.white_label } : {}),
+    favicon_url: values.favicon_url,
+    // Tematización: no exige el addon. El lockup de la suite sigue puesto.
+    ui_radius: orNull(values.ui_radius),
+    ui_density: orNull(values.ui_density),
+    business_display_name: orNull(values.business_display_name),
+    // PREMIUM. Igual que `white_label` desde P02: sin la capacidad el campo NO
+    // se envía, en vez de enviarse vacío. Guardar el teléfono de contacto no
+    // puede apagar de paso una tipografía que el tenant tenía. Si alguien lo
+    // forzara igualmente, la policy `store_settings_update_admin` lo rechaza —
+    // esto solo evita el 403.
+    ...(input.canWhiteLabel
+      ? {
+          white_label: values.white_label,
+          font_family: orNull(values.font_family),
+          email_from_name: orNull(values.email_from_name),
+          email_reply_to: orNull(values.email_reply_to),
+        }
+      : {}),
   }
 
   const { data, error } = await supabase

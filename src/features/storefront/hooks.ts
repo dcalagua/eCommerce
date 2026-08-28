@@ -1,5 +1,6 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 import { useOutletContext } from 'react-router-dom'
+import type { SearchQuery, SearchResult, Suggestion } from '@/domain'
 import {
   fetchGallery,
   fetchPublicCategories,
@@ -8,7 +9,17 @@ import {
   fetchPublicStore,
   fetchPublicVariants,
   signPaths,
+  signStoreAssetPaths,
 } from './api'
+import {
+  contentAssetPaths,
+  contentImagePaths,
+  fetchStoreContent,
+  fetchStoreNavigation,
+  type StoreContent,
+  type StoreNavigationItem,
+} from './content'
+import { createStorefrontSearch } from './search'
 import type {
   CatalogQuery,
   GalleryImage,
@@ -142,4 +153,117 @@ export interface StorefrontOutlet {
 
 export function useStorefront(): StorefrontOutlet {
   return useOutletContext<StorefrontOutlet>()
+}
+
+// ---------------------------------------------------------------------------
+// Contenido administrable y búsqueda (P11-SaaS)
+// ---------------------------------------------------------------------------
+
+export const contentKey = (storeSlug: string, pageSlug: string | null) =>
+  ['storefront', 'content', storeSlug, pageSlug ?? 'home'] as const
+export const navigationKey = (storeSlug: string) =>
+  ['storefront', 'navigation', storeSlug] as const
+export const searchKey = (storeSlug: string, query: SearchQuery) =>
+  ['storefront', 'search', storeSlug, query.term, query.filters, query.sort, query.offset] as const
+export const suggestKey = (storeSlug: string, term: string) =>
+  ['storefront', 'suggest', storeSlug, term] as const
+
+/**
+ * Contenido de una página. `pageSlug` nulo = portada.
+ *
+ * `retry: false` como el resto de la vitrina, y `staleTime` de marca: el
+ * contenido cambia cuando el comercio lo cambia, no cada minuto. Un `cms:false`
+ * —la sociedad no tiene el módulo— es una respuesta VÁLIDA y se cachea igual:
+ * reintentarla no la convierte en otra cosa.
+ */
+export function useStoreContent(
+  storeSlug: string | undefined,
+  pageSlug: string | null = null,
+): UseQueryResult<StoreContent> {
+  return useQuery({
+    queryKey: contentKey(storeSlug ?? '', pageSlug),
+    queryFn: () => fetchStoreContent({ storeSlug: storeSlug as string, pageSlug }),
+    enabled: Boolean(storeSlug),
+    staleTime: BRAND_STALE,
+    retry: false,
+  })
+}
+
+export function useStoreNavigation(storeSlug: string | undefined): UseQueryResult<StoreNavigationItem[]> {
+  return useQuery({
+    queryKey: navigationKey(storeSlug ?? ''),
+    queryFn: () => fetchStoreNavigation(storeSlug as string),
+    enabled: Boolean(storeSlug),
+    staleTime: BRAND_STALE,
+    retry: false,
+  })
+}
+
+/**
+ * Firma las imágenes que el contenido necesita: las del bucket de branding
+ * (hero, banner) y las del bucket de producto (colecciones).
+ *
+ * Dos lotes y no uno porque son dos buckets con dos policies. Una firma que
+ * falle deja el hueco neutral en vez de tumbar la portada.
+ */
+export function useContentAssets(content: StoreContent | undefined): {
+  assets: Record<string, string>
+  images: Record<string, string>
+} {
+  const assetPaths = content ? contentAssetPaths(content) : []
+  const imagePaths = content ? contentImagePaths(content) : []
+  const uniqueAssets = [...new Set(assetPaths)].sort()
+
+  const { data: assets } = useQuery({
+    queryKey: ['storefront', 'content-assets', uniqueAssets] as const,
+    queryFn: () => signStoreAssetPaths(uniqueAssets),
+    enabled: uniqueAssets.length > 0,
+    staleTime: 30 * 60 * 1000,
+    retry: false,
+  })
+
+  return { assets: assets ?? {}, images: useSignedThumbnails(imagePaths) }
+}
+
+/**
+ * Búsqueda del catálogo con rebote y CANCELACIÓN.
+ *
+ * La cancelación no es una optimización: sin ella, la respuesta de una consulta
+ * anterior puede llegar después de la actual y pintar resultados que ya no
+ * corresponden a lo que hay escrito en la caja. React Query pasa su `signal` al
+ * puerto y el adaptador se lo da al SDK.
+ *
+ * `placeholderData` mantiene la página anterior mientras llega la nueva: sin
+ * ella, cada tecla vacía la rejilla y la pantalla parpadea.
+ */
+export function useCatalogSearch(
+  storeSlug: string | undefined,
+  query: SearchQuery,
+  enabled = true,
+): UseQueryResult<SearchResult> {
+  return useQuery({
+    queryKey: searchKey(storeSlug ?? '', query),
+    queryFn: ({ signal }) =>
+      createStorefrontSearch(storeSlug as string).search({ ...query, signal }),
+    enabled: Boolean(storeSlug) && enabled,
+    staleTime: CATALOG_STALE,
+    placeholderData: (previous) => previous,
+    retry: false,
+  })
+}
+
+/** Autocompletado. Solo a partir de dos caracteres: con uno, sugiere el catálogo entero. */
+export function useCatalogSuggestions(
+  storeSlug: string | undefined,
+  term: string,
+): UseQueryResult<readonly Suggestion[]> {
+  const clean = term.trim()
+  return useQuery({
+    queryKey: suggestKey(storeSlug ?? '', clean),
+    queryFn: ({ signal }) =>
+      createStorefrontSearch(storeSlug as string).suggest(clean, { signal }),
+    enabled: Boolean(storeSlug) && clean.length >= 2,
+    staleTime: CATALOG_STALE,
+    retry: false,
+  })
 }

@@ -28,9 +28,12 @@ export function sanitizeSearchTerm(term: string): string {
  * Devuelve `null` cuando el término queda vacío tras sanearlo, para que el
  * llamante simplemente no añada el filtro: un `or=` vacío no es «sin filtro».
  *
- * NO es un `SearchPort`. Es la construcción del filtro y nada más; el puerto
- * llegará cuando exista un segundo motor que lo justifique (ver
- * `src/domain/ports/index.ts`).
+ * NO es el `SearchPort`, y sigue sin serlo después de P11-SaaS. El puerto —que
+ * ya existe— es del CATÁLOGO y lo sirve un índice de verdad (FTS + trigramas);
+ * esto es la construcción de un filtro `ilike` de PostgREST para los listados
+ * que buscan sobre OTRAS tablas (pedidos, clientes, campañas, listas de
+ * precio), donde un índice de texto sería aparato para una caja de búsqueda
+ * sobre unas pocas columnas. Ver `src/domain/ports/search.ts`.
  */
 export function buildTextSearchFilter(term: string, columns: readonly string[]): string | null {
   const safe = sanitizeSearchTerm(term)

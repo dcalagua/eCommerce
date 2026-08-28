@@ -9,6 +9,7 @@ Compatible con `EBIM-CONTRATO-PLATAFORMA.md` (§0 principios, §1 topología, §
 Comprador (público) ─┐
                      ├─► App eCommerce (React + TS + Vite + MUI)
 Usuario del tenant ──┘      ├─ /s/:storeSlug  storefront público (tenant por slug/dominio)
+                            ├─ /s/:slug/p/:page  página administrable del CMS (P11-SaaS)
                             └─ /app           backoffice (sesión + membership + active_company)
                                    │
                                    ▼
@@ -78,7 +79,8 @@ tenants (PK = organization_id del hub)
 - Pendiente de fases siguientes: `audit_log`. (`customers` llegó en P05-SaaS; los almacenes y las
   reservas, en P06-SaaS; `carts`, `checkout_intents` y `domain_events`, en P07-SaaS; la línea de
   tiempo del pedido, sus anotaciones y sus referencias externas, en P08-SaaS; las siete tablas del
-  cobro, en P09-SaaS; las campañas, los cupones y las tarjetas regalo, en P10-SaaS.)
+  cobro, en P09-SaaS; las campañas, los cupones y las tarjetas regalo, en P10-SaaS;
+  las páginas, los bloques y los sinónimos de búsqueda, en P11-SaaS.)
 
 ### PIM: variantes, atributos, unidades y kits (P03-SaaS)
 
@@ -459,6 +461,72 @@ EL MEDIO DE PAGO (no es un descuento)
 - `order_items.discount_amount` y `discount_snapshot` —que P08 creó para esto— se llenan por fin: un
   pedido explica su descuento incluso después de borrar la campaña.
 
+### CMS, white-label por tokens y búsqueda del catálogo (P11-SaaS)
+
+Cuatro tablas más, migraciones `20260828140000`-`140400`. Decisiones completas en
+[`adr/011-cms-white-label-search.md`](adr/011-cms-white-label-search.md).
+
+```
+LA PAGINA (de la tienda)
+  content_pages ──── content_blocks      TIPO cerrado (7) + columnas tipadas.
+                          │              Vigencia, canal y segmento PROPIOS.
+                          └── content_block_items   lo que la coleccion ENSENA,
+                                                    con FK compuestas tenant-safe
+
+EL DISCOVERY QUE EL COMERCIO AJUSTA
+  search_synonyms        term_normalized es GENERATED y el indice va sobre el
+
+EL BRANDING CRECE (sin tabla nueva)
+  store_settings + font_family · ui_radius · ui_density · business_display_name
+                 + email_from_name · email_reply_to
+                 + custom_domain_status/_verified_at/_token
+
+EL INDICE (sin tabla nueva)
+  products.search_vector   tsvector GENERADA, pesos A/B/C, GIN + trigramas
+```
+
+- **El contenido enriquecido NO es HTML.** Es un array plano de cuatro nodos
+  (`paragraph`, `heading`, `list`, `quote`) con vocabulario CERRADO de claves,
+  validado por `ebim.rich_text_is_safe` como CHECK —rechaza también a
+  `service_role`— y pintado por `shared/ui/RichText.tsx` mapeando nodo →
+  componente. **No hay `dangerouslySetInnerHTML` en `src/`** y un test de
+  arquitectura lo mantiene cierto: no hay cadena que escapar mal porque no hay
+  cadena que interpretar.
+- **El bloque tiene tipo cerrado y columnas tipadas, no un `config jsonb`.**
+  Misma decisión que `promotion_scopes` en P10: sin FK, una colección que apunta
+  a un producto borrado se queda viva enseñando un hueco. `settings` es un
+  vocabulario cerrado de doce claves escalares — el sitio donde, si admitiera un
+  objeto, alguien metería una URL de script «porque es solo configuración».
+- **La resolución vive en la base y tiene orden TOTAL**: canal específico > canal
+  nulo → `priority desc` → `publish_from desc` → `id`. `anon` **no tiene ni un
+  GRANT** sobre las tres tablas del CMS: recibe el resultado de
+  `store_page_for_slug`, así que un borrador no se filtra por una policy pública
+  mal escrita — no hay policy pública.
+- **La vista previa llama a la MISMA `ebim.resolve_content` que la vitrina**, con
+  el reloj, el canal y el segmento explícitos. Una vista previa calculada aparte
+  miente el día que las dos se separan, y ese día no avisa.
+- **White-label por TOKENS, y la tipografía es un token de lista cerrada, nunca
+  una URL**: una fuente remota elegida por el tenant es contenido remoto en el
+  dominio de la vitrina. `content.white_label` gatea lo que hace que la tienda y
+  su correo dejen de parecer de la suite (marca blanca, tipografía, identidad de
+  correo, dominio propio); el acento, el logo, el favicon, el radio y la densidad
+  no se gatean — el lockup de la suite sigue puesto.
+- **Retirar el addon apaga su efecto por TODOS los caminos**: `ebim.reset_premium_branding`
+  es un trigger sobre `tenant_entitlements`, no una línea dentro de
+  `sync_platform_context` (que es lo único que P02 pudo cubrir).
+- **La búsqueda vive en Postgres**: `products.search_vector` GENERADA con pesos,
+  `pg_trgm` como PLAN B —solo si el texto no encontró nada, y exigiendo que
+  TODOS los términos se parezcan—, facetas contadas en el servidor y un `mode`
+  (`fts`/`fuzzy`/`browse`/`empty`) que sale del ORIGEN de las filas. Un índice
+  externo sería un segundo almacén **sin RLS**.
+- **La portada dejó de descargarse entera**: `StoreHomePage` pide una PÁGINA al
+  `SearchPort` en vez de `public_products` sin límite, que es la línea que el
+  encargo prohíbe cruzar.
+- `SearchPort` **por fin existe**, con las dos implementaciones que la regla del
+  repositorio exige: la vitrina anónima (solo publicado) y el backoffice con
+  sesión (incluye borradores), cuyo primer llamante es el selector de productos
+  del editor — la deuda que P10 dejó escrita.
+
 ### Capacidades y entitlements (P02-SaaS)
 
 Cuatro tablas más, migración `20260827160000`. Decisiones completas en
@@ -589,6 +657,10 @@ src/
                         escala y cupon, que son configuracion comercial—; el contador
                         de usos y el saldo de una tarjeta son comandos. Gateada por la
                         capacidad `promotions`
+  features/content/     el editor de la vitrina (P11-SaaS): páginas, bloques con
+                        vigencia/canal/segmento, colecciones con buscador de
+                        producto, vista previa con reloj y sinónimos de búsqueda.
+                        Gateada por la capacidad `content.cms`
   features/storefront/  vitrina pública: resolución por slug, catálogo, ficha, carrito/checkout
                         (P07-SaaS: carrito de servidor con fusión al iniciar sesión y
                          checkout idempotente con etapas)

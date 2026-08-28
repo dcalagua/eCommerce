@@ -25,23 +25,30 @@
  * | `NotificationProvider` | `message.email` / `sms` / `whatsapp` |
  * | `ErpProvider` | dos generaciones del mismo ERP, mismas operaciones |
  * | `InvoicingProvider` | `invoice.issue` / `invoice.read` |
+ * | `SearchPort` | vitrina anónima y backoffice con sesión (P11-SaaS) |
  *
- * ## `SearchPort`: deliberadamente NO se crea todavía
+ * ## `SearchPort`: el disparador se cumplió en P11-SaaS
  *
- * La búsqueda de hoy es un `ilike` de PostgREST en dos sitios
- * (`features/catalog/api/products.ts` y `features/storefront/api.ts`), sobre
- * dos vistas distintas y devolviendo dos tipos distintos. Un puerto que los
- * unificara tendría que inventar un modelo de resultado que ninguna de las dos
- * pantallas necesita, y seguiría teniendo una sola implementación real: sería
- * exactamente la abstracción sin frontera que este proyecto se prohíbe.
+ * Hasta P10 este bloque explicaba por qué el puerto NO existía —una sola
+ * implementación real, un `ilike` de PostgREST en dos sitios— y dejaba escrito
+ * el disparador: «el día que aparezca un índice o motor de búsqueda propio
+ * (P11 / P15)». P11 crea ese índice (`products.search_vector`, trigramas y
+ * sinónimos por tienda) y con él aparecen las DOS implementaciones que la regla
+ * de arriba exige, que no son dos capas de lo mismo:
  *
- * Lo que sí había era duplicación de verdad: la construcción del filtro. Está
- * unificada en `shared/lib/search.ts` (`buildTextSearchFilter`), que es la
- * costura por la que entrará el puerto cuando exista el segundo implementador.
+ *  - la de la **vitrina** (`catalog_search_for_slug`, comprador anónimo, solo
+ *    lo publicado, con precio resuelto y semáforo de disponibilidad), y
+ *  - la del **backoffice** (`catalog_search`, con sesión, incluye lo NO
+ *    publicado), cuyo primer llamante es el selector de productos del editor de
+ *    contenido.
  *
- * **Disparador para crearlo:** el día que aparezca un índice o motor de
- * búsqueda propio (P11 / P15) o un `catalog.search` en
- * `integration_providers`. Antes no.
+ * Es la misma forma que `InventoryPort` tiene desde P06: dos actores, dos
+ * autorizaciones, dos respuestas.
+ *
+ * `shared/lib/search.ts` (`buildTextSearchFilter`) NO se retira: sigue siendo la
+ * construcción del filtro `ilike` de los listados del backoffice —pedidos,
+ * clientes, campañas—, que buscan sobre otras tablas y no sobre el catálogo. El
+ * puerto es del catálogo; aquello es sintaxis de PostgREST.
  */
 export * from './operations'
 export * from './pricing'
@@ -51,3 +58,4 @@ export * from './fulfillment'
 export * from './notification'
 export * from './erp'
 export * from './invoicing'
+export * from './search'

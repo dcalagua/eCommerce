@@ -10,6 +10,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { PGlite } from '@electric-sql/pglite'
+import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const MIGRATIONS_DIR = join(HERE, '..', 'migrations')
@@ -79,8 +80,17 @@ export function readMigration(file: string): string {
   return readFileSync(join(MIGRATIONS_DIR, file), 'utf8')
 }
 
+/**
+ * `pg_trgm` se pasa como extensión disponible, igual que en un proyecto
+ * Supabase, donde está en la lista de extensiones instalables y vive en el
+ * esquema `extensions`. La migración `20260828140300` la habilita con
+ * `create extension if not exists`; sin declararla aquí, PGlite no la tiene
+ * compilada y la migración no aplicaría — que es exactamente la señal que este
+ * banco de pruebas tiene que dar si alguien usa una extensión que el proyecto
+ * real no tendría.
+ */
 export async function createTestDatabase(): Promise<PGlite> {
-  const db = await PGlite.create()
+  const db = await PGlite.create({ extensions: { pg_trgm } })
   await db.exec(SUPABASE_PRELUDE)
   for (const file of migrationFiles()) {
     try {

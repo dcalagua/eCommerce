@@ -2,9 +2,9 @@ import { createTheme, type Theme } from '@mui/material/styles'
 import {
   ACCENT_HEX,
   DENSITY_METRICS,
-  FONT_STACK,
-  R,
   T,
+  brandFontStack,
+  brandRadiusScale,
   type Accent,
   type ColorMode,
   type Density,
@@ -26,18 +26,41 @@ export interface EbimThemeInput {
   density: Density
   /** `accent_color` del tenant (Branding). Manda sobre el preset cuando existe. */
   tenantAccent?: string | null
+  /**
+   * Tokens de white-label del tenant (P11-SaaS). Los dos son OPCIONALES y con
+   * valor nulo el tema es exactamente el de suite: un tenant que no los toca no
+   * puede notar que existen.
+   *
+   * `tenantFont` es un TOKEN de `BRAND_FONTS`, nunca una pila CSS ni una URL:
+   * un valor desconocido cae a la de suite en vez de acabar en un
+   * `font-family` que el navegador interpreta.
+   */
+  tenantFont?: string | null
+  tenantRadius?: string | null
 }
 
 /**
  * El color es 100% del tenant (contrato §4.4): si hay `tenantAccent` se usa como
  * `primary.main`; si no, cae al preset de casa. El usuario solo elige modo y densidad.
  */
-export function createEbimTheme({ mode, accent, density, tenantAccent }: EbimThemeInput): Theme {
+export function createEbimTheme({
+  mode,
+  accent,
+  density,
+  tenantAccent,
+  tenantFont = null,
+  tenantRadius = null,
+}: EbimThemeInput): Theme {
   const isDark = mode === 'dark'
   const preset = ACCENT_HEX[accent]
   const main = tenantAccent || (isDark ? preset.dark : preset.light)
   const deep = tenantAccent || (isDark ? preset.darkDeep : preset.lightDeep)
   const d = DENSITY_METRICS[density]
+  // `R` deja de importarse del módulo y pasa a resolverse por token: con
+  // `tenantRadius` nulo, `brandRadiusScale` devuelve EXACTAMENTE la escala de
+  // suite, así que el tema de un tenant sin white-label no cambia ni un píxel.
+  const R = brandRadiusScale(tenantRadius)
+  const fontFamily = brandFontStack(tenantFont)
 
   return createTheme({
     palette: {
@@ -59,7 +82,7 @@ export function createEbimTheme({ mode, accent, density, tenantAccent }: EbimThe
     },
     shape: { borderRadius: R.md },
     typography: {
-      fontFamily: FONT_STACK,
+      fontFamily,
       fontSize: T.body,
       h1: { fontSize: T.hero, fontWeight: 800, letterSpacing: -0.6, lineHeight: 1.12 },
       h2: { fontSize: T.pageTitle, fontWeight: 800, letterSpacing: -0.4, lineHeight: 1.15 },

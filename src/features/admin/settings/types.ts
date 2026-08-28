@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { BRAND_FONTS, BRAND_RADII, DENSITIES } from '@/theme/tokens'
 
 /**
  * Personalización de la tienda (`/app/settings`).
@@ -40,7 +41,7 @@ export const ALLOWED_ASSET_TYPES: Record<string, string> = {
   'image/avif': 'avif',
 }
 
-export type AssetKind = 'logo' | 'banner'
+export type AssetKind = 'logo' | 'banner' | 'favicon'
 
 export const storeSettingsSchema = z.object({
   store_id: z.string().uuid(),
@@ -56,6 +57,26 @@ export const storeSettingsSchema = z.object({
   hero_subtitle: z.string().nullable().default(null),
   contact_phone: z.string().nullable().default(null),
   contact_address: z.string().nullable().default(null),
+  /**
+   * White-label por tokens (P11-SaaS). `catch(null)` en los tres de lista
+   * cerrada: un valor que la app no conoce cae al de suite en vez de dejar la
+   * pantalla sin cargar.
+   */
+  favicon_url: z.string().nullable().default(null),
+  font_family: z.enum(BRAND_FONTS).nullable().catch(null).default(null),
+  ui_radius: z.enum(BRAND_RADII).nullable().catch(null).default(null),
+  ui_density: z.enum(DENSITIES).nullable().catch(null).default(null),
+  business_display_name: z.string().nullable().default(null),
+  email_from_name: z.string().nullable().default(null),
+  email_reply_to: z.string().nullable().default(null),
+  /**
+   * Estado del dominio propio. Se LEE aquí y no se escribe: `store_settings`
+   * dejó de tener GRANT de UPDATE sobre estas columnas en la migración
+   * `20260828140200`. Marcarse a uno mismo el dominio como verificado sería
+   * saltarse la única prueba de que ese dominio es suyo.
+   */
+  custom_domain_status: z.string().nullable().default('none'),
+  custom_domain_verified_at: z.string().nullable().default(null),
 })
 export type StoreSettings = z.infer<typeof storeSettingsSchema>
 
@@ -103,6 +124,26 @@ export const storeFormSchema = z.object({
    * capacidad `content.white_label` — ver `saveStoreSettings`.
    */
   white_label: z.boolean(),
+  /**
+   * Tokens de white-label. `font_family` es PREMIUM (exige
+   * `content.white_label`) y `ui_radius`/`ui_density`/`business_display_name`
+   * no: el acento, el logo, el favicon, el radio y la densidad son
+   * tematización —el lockup de la suite sigue puesto— mientras que la
+   * tipografía, la identidad de correo y el dominio propio son lo que hace que
+   * la tienda deje de parecer de la suite. La raya está explicada en la
+   * migración `20260828140200` y la impone la policy, no esta pantalla.
+   */
+  font_family: z.string(),
+  ui_radius: z.string(),
+  ui_density: z.string(),
+  business_display_name: optionalText(200, 'settings.error.name'),
+  email_from_name: optionalText(120, 'settings.error.name'),
+  email_reply_to: z
+    .string()
+    .trim()
+    .max(320, 'settings.error.email')
+    .refine((value) => value === '' || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value), 'settings.error.email'),
+  favicon_url: z.string().nullable(),
 })
 export type StoreFormValues = z.infer<typeof storeFormSchema>
 
@@ -118,6 +159,13 @@ export function toForm(name: string, settings: StoreSettings | null): StoreFormV
     logo_url: settings?.logo_url ?? null,
     banner_url: settings?.banner_url ?? null,
     white_label: settings?.white_label ?? false,
+    font_family: settings?.font_family ?? '',
+    ui_radius: settings?.ui_radius ?? '',
+    ui_density: settings?.ui_density ?? '',
+    business_display_name: settings?.business_display_name ?? '',
+    email_from_name: settings?.email_from_name ?? '',
+    email_reply_to: settings?.email_reply_to ?? '',
+    favicon_url: settings?.favicon_url ?? null,
   }
 }
 

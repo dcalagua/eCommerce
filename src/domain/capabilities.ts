@@ -227,15 +227,27 @@ export const CAPABILITIES: readonly Capability[] = [
     id: 'content.cms',
     boundary: 'content',
     entitlement: `${ENTITLEMENT_PREFIX}content.cms`,
-    state: 'declared',
-    grants: 'Páginas, colecciones y bloques editables de la vitrina (P11).',
+    // La sexta vendible que deja de ser `declared` (P11-SaaS): páginas, bloques
+    // con vigencia/canal/segmento, colecciones con FK de verdad, editor con
+    // vista previa y búsqueda con sinónimos. Sin ella la vitrina cae a lo que
+    // pintaba antes —hero de `store_settings` y catálogo— no falla: se degrada,
+    // igual que el motor de precios, el inventario y las promociones.
+    state: 'implemented',
+    grants:
+      'Páginas, colecciones y bloques editables de la vitrina, con vigencia, canal y segmento, más los sinónimos de búsqueda (P11).',
   },
   {
     id: 'content.white_label',
     boundary: 'content',
     entitlement: `${ENTITLEMENT_PREFIX}content.white_label`,
+    // Estaba `implemented` desde P02 con un solo interruptor (`white_label`).
+    // P11 no cambia su estado —ya estaba hecha— sino CUÁNTO cubre: tipografía,
+    // identidad de correo y dominio propio. Lo que NO gatea sigue siendo el
+    // acento, el logo, el favicon, el radio y la densidad: eso es tematización
+    // y el lockup de la suite sigue puesto.
     state: 'implemented',
-    grants: 'Vitrina sin la firma de la suite. El contrato §4.3 ya lo declara addon premium.',
+    grants:
+      'Vitrina y correo sin la firma de la suite: tipografía de la whitelist, identidad de correo y dominio propio. El contrato §4.3 ya lo declara addon premium.',
   },
   {
     id: 'fulfillment',

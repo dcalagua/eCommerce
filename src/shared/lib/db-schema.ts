@@ -191,6 +191,24 @@ export const GIFT_CARD_TRANSACTIONS_TABLE = 'gift_card_transactions'
 export const PROMOTION_OVERVIEW_VIEW = 'promotion_overview'
 export const GIFT_CARD_OVERVIEW_VIEW = 'gift_card_overview'
 
+// --- CMS y busqueda (P11-SaaS, migraciones 140000-140400) ------------------
+// Sin `satisfies` por la misma razón que las de arriba: `database.types.ts` se
+// genera contra el proyecto ENLAZADO y estas migraciones no están aplicadas
+// allí. La red mientras tanto es `supabase/tests/cms-content.test.ts` y
+// `supabase/tests/catalog-search.test.ts`, que comprueban estos mismos nombres
+// contra el esquema construido desde las migraciones.
+//
+// De las cuatro tablas el backoffice ESCRIBE las cuatro: contenido, colección y
+// sinónimos son configuración del comercio. Lo que NO se escribe desde el
+// navegador es el estado de verificación del dominio propio —queda fuera del
+// GRANT por columna de `store_settings` (migración 140200)— porque marcarse uno
+// mismo el dominio como verificado sería saltarse la única prueba que hay.
+export const CONTENT_PAGES_TABLE = 'content_pages'
+export const CONTENT_BLOCKS_TABLE = 'content_blocks'
+export const CONTENT_BLOCK_ITEMS_TABLE = 'content_block_items'
+export const SEARCH_SYNONYMS_TABLE = 'search_synonyms'
+export const CONTENT_PAGE_OVERVIEW_VIEW = 'content_page_overview'
+
 // --- Vistas del modelo de lectura público ----------------------------------
 // `security_invoker` sobre policies `to anon`: filtran filas, y el GRANT por
 // columna es lo que evita que `anon` vea `stock` o `config` (P02, §4.3).
@@ -289,6 +307,20 @@ export const GIFT_CARD_BALANCE_PUBLIC_RPC = 'gift_card_balance_for_slug'
 export const GIFT_CARD_ISSUE_RPC = 'gift_card_issue'
 export const GIFT_CARD_ADJUST_RPC = 'gift_card_adjust'
 export const GIFT_CARD_CANCEL_RPC = 'gift_card_cancel'
+
+// Contenido y búsqueda (P11-SaaS). Tres puertas ANÓNIMAS de la vitrina
+// —`store_page_for_slug`, `store_navigation_for_slug`, `catalog_search_for_slug`
+// y `catalog_suggest_for_slug`— y tres del backoffice con sesión. `content_preview`
+// es la única forma de ver un BORRADOR y por eso `anon` no puede ejecutarla ni
+// conociendo el uuid de la página. Ninguna función interna de resolución
+// (`ebim.resolve_content`, `ebim.search_catalog`) está aquí: no son públicas.
+export const STORE_PAGE_PUBLIC_RPC = 'store_page_for_slug'
+export const STORE_NAVIGATION_PUBLIC_RPC = 'store_navigation_for_slug'
+export const CATALOG_SEARCH_PUBLIC_RPC = 'catalog_search_for_slug'
+export const CATALOG_SUGGEST_PUBLIC_RPC = 'catalog_suggest_for_slug'
+export const CONTENT_PREVIEW_RPC = 'content_preview'
+export const CATALOG_SEARCH_RPC = 'catalog_search'
+export const STORE_DOMAIN_CLAIM_RPC = 'store_domain_claim'
 
 // --- Edge Functions --------------------------------------------------------
 export const BOOTSTRAP_FUNCTION = 'bootstrap-tenant'

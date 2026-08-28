@@ -512,11 +512,26 @@ describe('storefront publico (anon)', () => {
     const rows = await asRole(db, 'anon', null, () =>
       sql(`select * from public.public_store_branding order by brand_slug`),
     )
-    expect(Object.keys(rows[0] ?? {}).sort()).toEqual([
+    const columns = Object.keys(rows[0] ?? {}).sort()
+
+    // Los cinco nombres del contrato son OBLIGATORIOS y no cambian: es el
+    // contrato el que los fija, no este proyecto.
+    for (const required of ['accent_color', 'brand_slug', 'logo_url', 'name', 'white_label']) {
+      expect(columns, required).toContain(required)
+    }
+    // P11-SaaS anade los tokens de white-label de esta app. La lista se
+    // comprueba entera —y no solo "contiene"— para que una columna nueva sea
+    // una decision y no un descuido: esta vista la lee `anon`.
+    expect(columns).toEqual([
       'accent_color',
       'brand_slug',
+      'business_display_name',
+      'favicon_url',
+      'font_family',
       'logo_url',
       'name',
+      'ui_density',
+      'ui_radius',
       'white_label',
     ])
     expect(rows.map((r) => r.brand_slug)).toEqual([TENANT_A.storeSlug, TENANT_B.storeSlug])

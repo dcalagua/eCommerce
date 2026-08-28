@@ -61,6 +61,9 @@ const PaymentsPage = lazy(() =>
 const PromotionsPage = lazy(() =>
   import('@/features/promotions/PromotionsPage').then((m) => ({ default: m.PromotionsPage })),
 )
+const ContentPage = lazy(() =>
+  import('@/features/content/ContentPage').then((m) => ({ default: m.ContentPage })),
+)
 const DiagnosticsPage = lazy(() =>
   import('@/features/capabilities/DiagnosticsPage').then((m) => ({ default: m.DiagnosticsPage })),
 )
@@ -81,6 +84,9 @@ const StoreCheckoutPage = lazy(() =>
 )
 const StoreAccountPage = lazy(() =>
   import('@/features/storefront/StoreAccountPage').then((m) => ({ default: m.StoreAccountPage })),
+)
+const StoreContentPage = lazy(() =>
+  import('@/features/storefront/StoreContentPage').then((m) => ({ default: m.StoreContentPage })),
 )
 const StoreOrderPage = lazy(() =>
   import('@/features/storefront/StoreOrderPage').then((m) => ({ default: m.StoreOrderPage })),
@@ -147,6 +153,11 @@ export const routes: RouteObject[] = [
           // `promotions`: sin el addon los pedidos cuestan el precio de lista,
           // que es exactamente lo que costaban antes de esta fase.
           { path: 'promotions', element: gated('promotions', <PromotionsPage />) },
+          // P11: portada, páginas, bloques y sinónimos de búsqueda. Gateado por
+          // `content.cms`: sin el addon la vitrina pinta el hero de
+          // `store_settings` y el catálogo, que es lo que pintaba antes de esta
+          // fase. Se degrada, no se rompe.
+          { path: 'content', element: gated('content.cms', <ContentPage />) },
           // Ajustes y diagnóstico NO se gatean por capacidad: son la salida de
           // un tenant sin nada contratado y el sitio donde se ve por qué.
           { path: 'settings', element: withSuspense(<SettingsPage />) },
@@ -162,6 +173,13 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: withSuspense(<StoreHomePage />) },
       { path: 'product/:productSlug', element: withSuspense(<StoreProductPage />) },
+      // Página administrable del CMS (P11-SaaS). El slug va en la URL y no el
+      // uuid porque una campaña se comparte por mensajería, y un uuid no se
+      // comparte. NO se gatea por capacidad en el router: la vitrina es pública
+      // y quien decide si hay algo que enseñar es la función de la base, que
+      // sin `content.cms` devuelve «no hay página» — no «no contratado», que
+      // sería contarle al comprador el plan de la tienda.
+      { path: 'p/:pageSlug', element: withSuspense(<StoreContentPage />) },
       { path: 'cart', element: withSuspense(<StoreCartPage />) },
       { path: 'checkout', element: withSuspense(<StoreCheckoutPage />) },
       // Área de cuenta del comprador B2B. NO cuelga del guard del backoffice:

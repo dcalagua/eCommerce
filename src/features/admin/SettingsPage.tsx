@@ -6,6 +6,7 @@ import {
   Card,
   CardContent,
   FormControlLabel,
+  MenuItem,
   Link as MuiLink,
   Stack,
   Switch,
@@ -28,7 +29,14 @@ import { TaxesSection } from './settings/TaxesSection'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import { EmptyState, ErrorState, LoadingState, UnauthorizedState } from '@/shared/ui/states'
 import { useAppearance } from '@/theme/appearance-context'
-import { COLOR_MODES, DENSITIES, type ColorMode, type Density } from '@/theme/tokens'
+import {
+  BRAND_FONTS,
+  BRAND_RADII,
+  COLOR_MODES,
+  DENSITIES,
+  type ColorMode,
+  type Density,
+} from '@/theme/tokens'
 import { SettingsError } from './settings/api'
 import { StoreAssetField } from './settings/StoreAssetField'
 import { storeFormSchema, toForm, type StoreFormValues } from './settings/types'
@@ -152,7 +160,8 @@ export function SettingsPage() {
 
   const logo = form.watch('logo_url')
   const banner = form.watch('banner_url')
-  const assetUrls = useAssetUrls([logo, banner])
+  const favicon = form.watch('favicon_url')
+  const assetUrls = useAssetUrls([logo, banner, favicon])
 
   async function onSubmit(values: StoreFormValues) {
     if (!storeId || !activeCompanyId || !tenant) return
@@ -373,6 +382,126 @@ export function SettingsPage() {
                             />
                           )}
                         />
+
+                        <Controller
+                          control={form.control}
+                          name="favicon_url"
+                          render={({ field }) => (
+                            <StoreAssetField
+                              kind="favicon"
+                              ratio="1 / 1"
+                              label={t('settings.favicon')}
+                              help={t('settings.faviconHelp')}
+                              value={field.value}
+                              previewUrl={field.value ? (assetUrls[field.value] ?? null) : null}
+                              disabled={busy}
+                              organizationId={tenant?.organization_id ?? ''}
+                              storeId={storeId ?? ''}
+                              onChange={field.onChange}
+                            />
+                          )}
+                        />
+
+                        <TextField
+                          label={t('settings.businessName')}
+                          helperText={t('settings.businessNameHelp')}
+                          disabled={busy}
+                          {...form.register('business_display_name')}
+                        />
+
+                        {/* Radio y densidad: tematización, NO addon. El lockup
+                            de la suite sigue puesto, así que cobrar por elegir
+                            esquinas redondeadas sería vender una casilla en vez
+                            de una capacidad. La raya del premium está escrita
+                            en la migración 20260828140200. */}
+                        <Controller
+                          control={form.control}
+                          name="ui_radius"
+                          render={({ field }) => (
+                            <TextField
+                              select
+                              label={t('settings.radius')}
+                              helperText={t('settings.radiusHelp')}
+                              value={field.value}
+                              disabled={busy}
+                              onChange={(event) => field.onChange(event.target.value)}
+                            >
+                              <MenuItem value="">{t('settings.tokenDefault')}</MenuItem>
+                              {BRAND_RADII.map((value) => (
+                                <MenuItem key={value} value={value}>
+                                  {t(`settings.radius.${value}` as MessageKey)}
+                                </MenuItem>
+                              ))}
+                            </TextField>
+                          )}
+                        />
+
+                        <Controller
+                          control={form.control}
+                          name="ui_density"
+                          render={({ field }) => (
+                            <TextField
+                              select
+                              label={t('settings.density')}
+                              helperText={t('settings.densityHelp')}
+                              value={field.value}
+                              disabled={busy}
+                              onChange={(event) => field.onChange(event.target.value)}
+                            >
+                              <MenuItem value="">{t('settings.tokenDefault')}</MenuItem>
+                              {DENSITIES.map((value) => (
+                                <MenuItem key={value} value={value}>
+                                  {t(`appearance.density.${value}` as MessageKey)}
+                                </MenuItem>
+                              ))}
+                            </TextField>
+                          )}
+                        />
+
+                        {/* Tipografía e identidad de correo: PREMIUM. Son las
+                            que hacen que la tienda —y su correo— dejen de
+                            parecer de la suite. */}
+                        <CapabilityFeature capability="content.white_label">
+                          <Stack spacing={3}>
+                            <Controller
+                              control={form.control}
+                              name="font_family"
+                              render={({ field }) => (
+                                <TextField
+                                  select
+                                  label={t('settings.font')}
+                                  helperText={t('settings.fontHelp')}
+                                  value={field.value}
+                                  disabled={busy}
+                                  onChange={(event) => field.onChange(event.target.value)}
+                                >
+                                  <MenuItem value="">{t('settings.tokenDefault')}</MenuItem>
+                                  {BRAND_FONTS.map((value) => (
+                                    <MenuItem key={value} value={value}>
+                                      {t(`settings.font.${value}` as MessageKey)}
+                                    </MenuItem>
+                                  ))}
+                                </TextField>
+                              )}
+                            />
+                            <TextField
+                              label={t('settings.emailFromName')}
+                              helperText={t('settings.emailFromNameHelp')}
+                              disabled={busy}
+                              {...form.register('email_from_name')}
+                            />
+                            <TextField
+                              label={t('settings.emailReplyTo')}
+                              helperText={
+                                fieldError(form.formState.errors.email_reply_to?.message, t) ??
+                                t('settings.emailReplyToHelp')
+                              }
+                              error={Boolean(form.formState.errors.email_reply_to)}
+                              disabled={busy}
+                              {...form.register('email_reply_to')}
+                            />
+                          </Stack>
+                        </CapabilityFeature>
 
                         {/* Marca blanca: addon premium de suite (contrato §4.3).
                             Es el primer módulo vendible con superficie real, y

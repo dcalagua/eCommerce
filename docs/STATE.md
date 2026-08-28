@@ -3,7 +3,7 @@
 GUIDELINES_STATUS: VERIFIED (**por lectura directa** en la 2ª pasada de P00-SaaS: contrato v1.15,
 `PROTOCOLO.md`, `BANDEJA.md` y `EBIM-CREW-ROSTER.md`). La unidad montada es `G:`, no `H:`.
 Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
-Última actualización: 2026-08-28 (P10-SaaS: promociones, cupones y tarjetas regalo)
+Última actualización: 2026-08-28 (P11-SaaS: CMS, white-label por tokens y búsqueda)
 
 > **Dos numeraciones de fase.** Lo que sigue como «P00…P12» es el trabajo histórico de este repo. A
 > partir del 2026-08-27 arranca un segundo recorrido, **P00–P17 de productización SaaS**
@@ -32,6 +32,138 @@ pantalla y sin un solo test propio. Se conservó tal cual y se continuó desde a
 ---
 
 ## Fase actual
+**P11-SaaS — CMS, white-label por tokens, búsqueda y merchandising. COMPLETA. Gate: PASS.**
+Decisiones completas en [`docs/adr/011-cms-white-label-search.md`](adr/011-cms-white-label-search.md).
+
+### Gates (2026-08-28, partiendo de `9d76b29`)
+
+| Comando | Antes de P11 | Después |
+|---|---|---|
+| `npm run typecheck` | PASS | **PASS** |
+| `npm run lint` | PASS, 0 problemas | **PASS**, 0 problemas |
+| `npm run test` | 1642 / 76 archivos | **1822 / 82 archivos** |
+| `npm run test:db` | 1050 / 33 | **1157 / 36** |
+| `npm run build` | 891,18 kB (262,18 gzip) | **PASS**, 916,37 kB (269,25 gzip) |
+
+180 tests nuevos, repartidos así:
+
+| Dónde | Cuántos | Qué defienden |
+|---|---|---|
+| `supabase/tests/cms-content.test.ts` | 36 | la resolución contra Postgres real: qué página gana por canal, prioridad y vigencia; que el borrador no sale; que el contenido enriquecido no es HTML —diez formas de intentarlo, ninguna entra, tampoco como `service_role`—; el aislamiento y la degradación sin addon |
+| `supabase/tests/catalog-search.test.ts` | 41 | el motor: acentos, plural, marca y categoría, la errata como PLAN B con su modo, los cuatro órdenes, las facetas contadas en el servidor, la paginación, los sinónimos, el autocompletado y el aislamiento |
+| `supabase/tests/white-label.test.ts` | 30 | los tokens: lista cerrada, lo premium que exige addon y lo que no, el apagado por los tres caminos que cambian entitlements, el dominio propio y lo que `anon` no puede leer |
+| `src/features/content/content.test.ts` | 43 | la mitad de cliente: enlaces, documento, ida y vuelta del editor de texto, forma del bloque y sinónimos |
+| `src/features/content/content-ui.test.tsx` | 17 | la pantalla: cuatro tabs, gating por capacidad y por rol, estado efectivo, bloques vivos, el selector de campaña, el de productos y la vista previa |
+| `src/features/storefront/storefront-content.test.tsx` | 11 | la vitrina: degradación sin CMS, el hero que sustituye al de ajustes, el texto que se pinta como texto y el pie con el nombre comercial |
+| `src/architecture.test.ts` | +2 | que `dangerouslySetInnerHTML` y `innerHTML =` no existen en `src/` |
+
+**Ningún test existente se borró ni se debilitó**; cuatro expectativas se ampliaron porque el repo
+cambió de verdad: la lista de rutas de `/app` y de la vitrina, las columnas de
+`public_store_branding`, el rol accesible de la caja de búsqueda (`combobox`, no `searchbox`, porque
+ahora tiene sugerencias) y el doble de PostgREST, que pasó a servir la búsqueda por función en vez de
+por vista.
+
+### El criterio de aceptación, comprobado
+
+> «PASS si el tenant puede cambiar contenido/branding y mejorar discovery sin deploy y sin ejecutar
+> código arbitrario.»
+
+Las cuatro mitades, cada una con su prueba:
+
+| Exigencia | Dónde se comprueba |
+|---|---|
+| **contenido sin deploy** | `cms-content.test.ts` monta portada, campaña con vigencia, colección curada y colección automática por categoría desde cero, sin una línea de SQL nueva |
+| **branding sin deploy** | `white-label.test.ts` cambia tipografía, esquinas, densidad, nombre comercial e identidad de correo, y `storefront-content.test.tsx` comprueba que la vitrina los aplica |
+| **discovery sin deploy** | «sin sinónimo, *tenis* no encuentra la zapatilla; con él, sí» — y apagarlo lo deshace sin borrar la fila |
+| **sin código arbitrario** | diez tests de rechazo en la base (etiquetas, claves desconocidas, `javascript:`, `data:`, protocolo-relativo, nodo inventado, `settings` con clave libre) + dos reglas de arquitectura que impiden el punto de inyección |
+
+### Qué se construyó
+
+**Cinco migraciones, todas nuevas (ninguna aplicada se tocó):**
+
+| Migración | Qué trae |
+|---|---|
+| `140000_cms_core` | las 3 tablas del CMS, los 4 enums, `ebim.rich_text_is_safe` / `is_safe_href` / `content_settings_are_safe`, las FK compuestas que hacen imposibles las formas inválidas y RLS *default deny* SIN un solo GRANT para `anon` |
+| `140100_cms_resolution` | `ebim.content_pick_page` (orden total), `ebim.content_block_items_json`, `ebim.resolve_content` y las tres puertas: `store_page_for_slug`, `store_navigation_for_slug` y `content_preview` |
+| `140200_white_label` | nueve columnas de branding en `store_settings`, el CHECK que le faltaba al favicon, las policies premium ampliadas, el trigger `ebim.reset_premium_branding`, `store_domain_claim` y las dos vistas públicas recreadas |
+| `140300_catalog_search` | `pg_trgm`, `products.search_vector` GENERADA con pesos, los dos índices, `search_synonyms`, `ebim.search_catalog` y las tres puertas (`catalog_search_for_slug`, `catalog_suggest_for_slug`, `catalog_search`) |
+| `140400_content_capability` | `content.cms → implemented` y la vista `content_page_overview` con el estado EFECTIVO y los bloques VIVOS |
+
+**Backoffice** `/app/content`, gateado por la capacidad `content.cms`, con cuatro tabs
+(`#paginas`, `#bloques`, `#vista-previa`, `#sinonimos`), buscador general único por listado y sin un
+solo panel de filtros multi-campo. Y la pestaña de Branding de `/app/settings` crece con los tokens.
+
+**Vitrina**: la portada pinta los bloques del comercio encima del catálogo, gana `/s/:slug/p/:pageSlug`
+para las páginas administrables, un menú con las que el comercio marque, y un buscador con
+sugerencias, facetas de marca, aviso de resultado aproximado y «ver más».
+
+**Dominio**: `SearchPort` y `src/domain/content.ts`, los dos puros.
+
+### Las decisiones que más cuesta revertir
+
+1. **El contenido enriquecido no es HTML.** Cuatro nodos, seis claves, sin anidamiento. Guardar HTML
+   «saneado» habría trasladado la seguridad a una lista de etiquetas que hay que mantener contra cada
+   `mXSS` nuevo, y basta una ruta de renderizado despistada para perderla. El coste: un editor visual
+   completo no cabe.
+2. **`anon` no tiene ni un GRANT sobre las tres tablas del CMS.** No hay policy pública que pueda
+   estar mal escrita porque no hay lectura pública: el comprador recibe el resultado de una función
+   definer. Es lo que hace IMPOSIBLE que un borrador se filtre.
+3. **Una sola autoridad de resolución.** El editor y la vitrina llaman a `ebim.resolve_content`; lo
+   único que cambia son tres argumentos. Una vista previa que se calcula aparte miente el día que las
+   dos se separan, y ese día no avisa.
+4. **La tipografía es un token de lista cerrada, nunca una URL.** «No permitir JavaScript arbitrario»
+   no se cumple permitiendo CSS arbitrario: una `@font-face` del tenant es contenido remoto que él
+   elige y que la vitrina carga en su propio dominio.
+5. **La raya de lo premium está donde el lockup.** `content.white_label` gatea lo que hace que la
+   tienda y su correo dejen de parecer de la suite; el acento, el logo, el favicon, el radio y la
+   densidad no. Cobrar por elegir esquinas redondeadas sería vender una casilla.
+6. **Retirar el addon apaga su efecto por TODOS los caminos**, con un trigger sobre
+   `tenant_entitlements`. P02 solo pudo cubrir `sync_platform_context`, que es uno.
+7. **La búsqueda vive en Postgres.** Un índice externo es un segundo almacén **sin RLS**: el
+   aislamiento pasaría a depender de que cada consulta se acuerde de filtrar. El `SearchPort` deja
+   escrito el camino para cambiar de motor sin reabrir el dominio.
+8. **Los trigramas son el plan B, y exigen que TODOS los términos se parezcan.** Sin esa condición,
+   «bota lámpara» devolvería las dos cosas: el plan B habría convertido el Y de la búsqueda en un O
+   silencioso.
+9. **La portada dejó de descargarse entera.** Pide una PÁGINA con sus facetas ya contadas. Era la
+   línea que el encargo prohibía cruzar y la estábamos cruzando desde P02.
+
+### Lo que NO se hizo, y por qué
+
+- **Historial de versiones del contenido.** Hoy `updated_at` y el hecho de que solo `owner`/`admin`
+  escriben responden «¿quién cambió la portada?». El disparador es el primer tenant con varios
+  editores y publicación delegada, que es una decisión de roles (P16).
+- **Experimentos A/B.** Exigen una identidad estable del visitante anónimo —que choca con que el
+  comprador de esta vitrina es anónimo por diseño— y un modelo de medición, que es P13.
+- **Traducción del contenido por idioma.** Un bloque con dos textos obliga a decidir qué pasa cuando
+  solo uno está escrito, y esa es una decisión de producto.
+- **La comprobación DNS del dominio propio.** El metadato y el token existen y el estado **no tiene
+  GRANT de escritura**; comprobar el TXT es infraestructura, no una migración.
+- **Firmar las imágenes en la vista previa.** Exigiría montar el cliente anónimo de la vitrina dentro
+  del backoffice para una previsualización. El editor ve el hueco neutral y la pantalla lo dice.
+- **Meilisearch/OpenSearch/Algolia.** El puerto queda escrito; el adaptador llega el día que el
+  volumen lo justifique.
+
+- **Auditoría de secretos sobre `dist/`**: las únicas coincidencias de `service_role`/`sb_secret_`
+  siguen siendo la regex del guard `assertNoServiceKey` y el chequeo de prefijo del propio SDK. Sin
+  claves de servicio.
+- **`pg_trgm` es la primera extensión que este proyecto necesita.** Está en la lista estándar de
+  Supabase y la migración la habilita con `create extension if not exists ... with schema extensions`;
+  el banco de pruebas la declara igual (`supabase/tests/harness.ts`) para que un fallo de permisos
+  aparezca en los dos entornos o en ninguno.
+- Sin push, sin PR, **sin deploy remoto**: sigue sin existir project ref y ninguna migración de P11
+  está aplicada. Por eso las cinco se pudieron corregir dentro de la fase; a partir del primer
+  `db push`, la regla vuelve a ser la del encargo — migración aplicada es inmutable.
+
+- **Buzón EBIM**: revisado el 2026-08-28. Sin mensajes `to: ecommerce` ni `to: all` nuevos desde el
+  2026-08-20, y sigue sin poderse responder: `ecommerce` no es todavía un `from` válido del
+  `PROTOCOLO.md` (§5.1 del roadmap, bloqueo del operador).
+
+Siguiente: **P12-SaaS**.
+
+---
+
+## Fase anterior
 **P10-SaaS — Promociones: motor determinista, cupones y tarjetas regalo. COMPLETA. Gate: PASS.**
 Decisiones completas en [`docs/adr/010-promotions-engine.md`](adr/010-promotions-engine.md).
 
@@ -143,8 +275,6 @@ de la petición gana `coupon_codes` y sigue sin llevar ni un importe.
   mensaje más reciente de `coordinacion/pendientes/` sigue siendo del 2026-08-20 y ninguno va `to:
   ecommerce`. Nada que responder en esta fase, y sigue sin poderse: `ecommerce` no es todavía un
   `from` válido del `PROTOCOLO.md` (§5.1 del roadmap, bloqueo del operador).
-
-Siguiente: **P11-SaaS**.
 
 ---
 

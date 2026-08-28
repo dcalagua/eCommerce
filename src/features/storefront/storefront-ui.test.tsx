@@ -116,15 +116,121 @@ function catalogo() {
   ]
 }
 
+type ProductRow = Record<string, unknown>
+
+/**
+ * Motor de busqueda de mentira, con el CONTRATO de verdad.
+ *
+ * Desde P11-SaaS la portada no lee `public_products` y filtra en el navegador:
+ * pregunta a `catalog_search_for_slug`, que devuelve una PAGINA, los contadores
+ * de las facetas y el MODO de coincidencia. Este doble responde esa misma forma
+ * sobre las tres filas del catalogo de prueba.
+ *
+ * Lo que sigue probandose con esto no cambia: que la vitrina pinta lo que el
+ * servidor le da, que los filtros viven en la URL y que un termino sin
+ * resultados ofrece quitarlos. Lo que YA NO se prueba aqui —y no debe— es que
+ * el filtrado sea correcto: eso ocurre en Postgres y se comprueba contra
+ * Postgres real en `supabase/tests/catalog-search.test.ts`. Duplicar la logica
+ * del motor en el doble seria probar el doble.
+ */
+function normalize(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+
+function fakeSearch(rows: ProductRow[]) {
+  return (args: Record<string, unknown>) => {
+    const term = normalize(String(args.p_query ?? ''))
+    const filters = (args.p_filters ?? {}) as Record<string, unknown>
+    const sort = String(args.p_sort ?? 'relevance')
+    const limit = Number(args.p_limit ?? 24)
+
+    let items = rows.filter((row) => {
+      if (filters.category && row.category_slug !== filters.category) return false
+      if (filters.availability === 'in-stock' && row.in_stock !== true) return false
+      if (!term) return true
+      const haystack = normalize(
+        [row.name, row.description, row.category_name].filter(Boolean).join(' '),
+      )
+      return term.split(' ').every((token) => haystack.includes(token))
+    })
+
+    if (sort === 'name') items = [...items].sort((a, b) => String(a.name).localeCompare(String(b.name)))
+    if (sort === 'price-asc') items = [...items].sort((a, b) => Number(a.price) - Number(b.price))
+    if (sort === 'price-desc') items = [...items].sort((a, b) => Number(b.price) - Number(a.price))
+
+    const total = items.length
+    const page = items.slice(0, limit)
+
+    return {
+      items: page.map((row) => ({
+        product_id: row.product_id,
+        slug: row.slug,
+        name: row.name,
+        description: row.description ?? null,
+        kind: row.kind ?? 'simple',
+        brand_name: row.brand_name ?? null,
+        category_slug: row.category_slug ?? null,
+        category_name: row.category_name ?? null,
+        price: row.price,
+        compare_at_price: row.compare_at_price ?? null,
+        price_from: row.price_from ?? row.price,
+        currency: row.currency,
+        in_stock: row.in_stock === true,
+        image_path: row.primary_image_path ?? null,
+        image_alt: row.primary_image_alt ?? null,
+        published: true,
+        score: '1',
+      })),
+      total,
+      limit,
+      offset: 0,
+      sort,
+      mode: term ? (total > 0 ? 'fts' : 'empty') : 'browse',
+      query: args.p_query ?? null,
+      facets: {
+        categories: [],
+        brands: [],
+        attributes: [],
+        price: { min: null, max: null },
+        availability: {
+          in_stock: page.filter((row) => row.in_stock === true).length,
+          total,
+        },
+      },
+    }
+  }
+}
+
 function backend(overrides: Record<string, unknown[]> = {}): FakeSupabase {
+  const products = (overrides.public_products ?? catalogo()) as ProductRow[]
   return createFakeSupabase({
+    rpc: {
+      catalog_search_for_slug: fakeSearch(products),
+      catalog_suggest_for_slug: () => [],
+      // Sin `content.cms` contratado: la respuesta VALIDA es «no hay CMS», y la
+      // portada cae al hero de `store_settings` y al catalogo — que es lo que
+      // pintaba antes de P11. Se degrada, no se rompe.
+      store_page_for_slug: () => ({
+        cms: false,
+        store_id: STORE,
+        page: null,
+        blocks: [],
+        resolved_at: '2026-08-28T00:00:00.000Z',
+      }),
+      store_navigation_for_slug: () => [],
+    },
     tables: {
       public_stores: [store()],
       public_categories: [
         { category_id: CAT_SILLAS, store_id: STORE, slug: 'sillas', name: 'Sillas', position: 1 },
         { category_id: CAT_MESAS, store_id: STORE, slug: 'mesas', name: 'Mesas', position: 2 },
       ],
-      public_products: catalogo(),
+      public_products: products,
       public_product_images: [
         {
           image_id: 'dddd1111-1111-4111-8111-111111111111',
@@ -280,6 +386,13 @@ describe('resolución del tenant por slug', () => {
     expect(seen.every((table) => table.startsWith('public_'))).toBe(true)
     expect(seen).not.toContain('products')
     expect(seen).not.toContain('stores')
+
+    // P11-SaaS: el catalogo llega por la funcion de busqueda, no por una
+    // consulta a la vista. Es lo que impide que el navegador se traiga el
+    // catalogo entero para filtrarlo, y por eso se comprueba que la portada
+    // NO consulta `public_products` por PostgREST.
+    expect(seen).not.toContain('public_products')
+    expect(fake.state.rpcCalls.map((call) => call.name)).toContain('catalog_search_for_slug')
   })
 })
 
@@ -301,12 +414,16 @@ describe('catálogo', () => {
     expect(card).toHaveAttribute('href', '/s/casa-nordica/product/silla-roble')
   })
 
+  // P11-SaaS: la caja de busqueda pasa a ser un `combobox`, no un `searchbox`.
+  // No es un detalle de MUI: un campo con lista de sugerencias ES un combobox
+  // segun WAI-ARIA, y anunciarlo como caja de busqueda a secas dejaria a un
+  // lector de pantalla sin saber que hay opciones debajo.
   it('el buscador general filtra por nombre', async () => {
     const user = userEvent.setup()
     renderStorefront(backend(), '/s/casa-nordica')
     await screen.findByText('Silla de roble')
 
-    await user.type(screen.getByRole('searchbox', { name: 'Buscar productos' }), 'mesa')
+    await user.type(screen.getByRole('combobox', { name: 'Buscar productos' }), 'mesa')
 
     await waitFor(() => expect(screen.queryByText('Silla de roble')).not.toBeInTheDocument())
     expect(screen.getByText('Mesa extensible')).toBeInTheDocument()
@@ -317,7 +434,7 @@ describe('catálogo', () => {
     renderStorefront(backend(), '/s/casa-nordica')
     await screen.findByText('Silla de roble')
 
-    await user.type(screen.getByRole('searchbox', { name: 'Buscar productos' }), 'zzz')
+    await user.type(screen.getByRole('combobox', { name: 'Buscar productos' }), 'zzz')
     expect(await screen.findByText('Sin resultados')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Quitar filtros' }))

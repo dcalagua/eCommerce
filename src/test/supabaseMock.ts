@@ -69,6 +69,36 @@ export function makeSession(options: FakeSessionOptions = {}): Session {
 
 type Row = Record<string, unknown>
 
+interface RpcOutcome {
+  data: unknown
+  error: unknown
+}
+
+/**
+ * El resultado de un `rpc` es «esperable» Y encadenable con `abortSignal`.
+ *
+ * El SDK real devuelve un constructor de peticiones al que se le puede colgar
+ * la señal de cancelación antes de esperarlo, y desde P11-SaaS hay dos módulos
+ * que lo hacen —la búsqueda del catálogo y el autocompletado— porque una
+ * respuesta de hace tres letras no puede pisar a la de ahora. Con un `Promise`
+ * pelado, ese código no se podría probar aquí: fallaría por la forma del doble,
+ * no por lo que hace.
+ *
+ * `abortSignal` se acepta y se ignora: cancelar de verdad exigiría un doble con
+ * concurrencia real, y lo que estos tests comprueban es que el módulo de datos
+ * SEPA cancelar, no que la red lo obedezca.
+ */
+function rpcResult(outcome: RpcOutcome) {
+  const promise = Promise.resolve(outcome)
+  const builder = {
+    abortSignal: (_signal?: AbortSignal) => builder,
+    then: promise.then.bind(promise),
+    catch: promise.catch.bind(promise),
+    finally: promise.finally.bind(promise),
+  }
+  return builder
+}
+
 export interface FakeState {
   session: Session | null
   tables: Record<string, Row[]>
@@ -430,16 +460,16 @@ export function createFakeSupabase(initial: Partial<FakeState> = {}) {
       state.rpcCalls.push({ name, args })
       const handler = state.rpc[name]
       if (!handler) {
-        return Promise.resolve({ data: null, error: { message: `rpc ${name} no simulada` } })
+        return rpcResult({ data: null, error: { message: `rpc ${name} no simulada` } })
       }
       try {
-        return Promise.resolve({ data: handler(args), error: null })
+        return rpcResult({ data: handler(args), error: null })
       } catch (error) {
         // Un handler que LANZA simula el fallo de PostgREST: es como se prueba
         // un 42501 de RLS o una funcion de la base que levanta
         // `CODIGO: mensaje`. Sin esto, el unico error simulable era «rpc no
         // simulada», que no distingue un fallo de autorizacion de un olvido.
-        return Promise.resolve({ data: null, error: error as { message?: string; code?: string } })
+        return rpcResult({ data: null, error: error as { message?: string; code?: string } })
       }
     },
     storage: {

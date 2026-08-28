@@ -15,6 +15,8 @@
  *  - `capabilities` — qué módulos sabe hacer el producto y cómo se resuelve
  *                     cuáles tiene contratados una sociedad.
  *  - `flags`        — interruptores técnicos. Solo restan; nunca conceden.
+ *  - `content`      — qué es contenido SEGURO: el documento enriquecido que no
+ *                     es HTML y el vocabulario cerrado de bloques (P11-SaaS).
  *  - `errors`       — `AppError` y su discriminante `kind`.
  *  - `money`        — importe como decimal en texto, nunca `number`.
  *  - `ports`        — los contratos con el mundo exterior y la regla para crearlos.
@@ -24,6 +26,7 @@
  */
 export * from './boundaries'
 export * from './capabilities'
+export * from './content'
 export * from './errors'
 export * from './flags'
 export * from './money'

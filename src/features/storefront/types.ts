@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { AppError } from '@/domain/errors'
 import { moneyText } from '@/shared/lib/money'
+import { BRAND_FONTS, BRAND_RADII, DENSITIES } from '@/theme/tokens'
 
 /**
  * Vitrina pública. Todo lo que hay aquí sale de las vistas
@@ -70,6 +71,19 @@ export const publicStoreSchema = z.object({
   hero_subtitle: z.string().nullable().default(null),
   contact_phone: z.string().nullable().default(null),
   contact_address: z.string().nullable().default(null),
+  /**
+   * White-label por tokens (P11-SaaS). Los cuatro son `default(null)` y no
+   * `optional`: una respuesta anterior al despliegue de esta fase se lee como
+   * la tienda sin white-label que era, sin que ninguna pantalla compruebe
+   * `undefined`. Y cada uno se valida contra su lista cerrada — un valor que no
+   * esté en ella cae a `null` y la vitrina usa el de suite, en vez de acabar en
+   * un `font-family` que el navegador interpreta.
+   */
+  favicon_url: assetRef,
+  font_family: z.enum(BRAND_FONTS).nullable().catch(null).default(null),
+  ui_radius: z.enum(BRAND_RADII).nullable().catch(null).default(null),
+  ui_density: z.enum(DENSITIES).nullable().catch(null).default(null),
+  business_display_name: z.string().nullable().default(null),
 })
 export type PublicStore = z.infer<typeof publicStoreSchema>
 

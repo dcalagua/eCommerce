@@ -87,6 +87,18 @@ function storefront(): SupabaseClient {
   return supabase
 }
 
+/**
+ * El mismo cliente ANÓNIMO, para los módulos de datos que P11 añade
+ * (`content.ts` y `search.ts`).
+ *
+ * Se exporta la función y no el cliente: crearlo en el momento de importar
+ * haría que un bundle sin configuración de Supabase reventara al cargar en vez
+ * de al consultar, y el mensaje «falta configurar» no llegaría a pintarse.
+ */
+export function storefrontClient(): SupabaseClient {
+  return storefront()
+}
+
 const STORE_SELECT = [
   'store_id',
   'slug',
@@ -102,6 +114,11 @@ const STORE_SELECT = [
   'hero_subtitle',
   'contact_phone',
   'contact_address',
+  'favicon_url',
+  'font_family',
+  'ui_radius',
+  'ui_density',
+  'business_display_name',
 ].join(', ')
 
 const CATEGORY_SELECT = 'category_id, store_id, slug, name, position'
@@ -328,6 +345,35 @@ export async function signPaths(paths: string[]): Promise<Record<string, string>
 
   const { data, error } = await storefront()
     .storage.from(PRODUCT_IMAGES_BUCKET)
+    .createSignedUrls(unique, 3600)
+
+  if (error) return {}
+
+  const map: Record<string, string> = {}
+  for (const item of data ?? []) {
+    if (item.path && item.signedUrl) map[item.path] = item.signedUrl
+  }
+  return map
+}
+
+/**
+ * Firma un lote de rutas del bucket de BRANDING (`store-assets`).
+ *
+ * Es la hermana de `signPaths`, que firma sobre `product-images`. Son dos
+ * buckets con dos policies distintas —una mira producto publicado, la otra
+ * tienda activa— y por eso son dos funciones y no una con parámetro: un
+ * parámetro invitaría a pasar el bucket equivocado y a que la policy que
+ * autoriza no fuera la que se cree.
+ *
+ * Lo usa el contenido del CMS (P11-SaaS): la imagen de un hero o de un banner
+ * vive en el mismo bucket privado que el logo del tenant.
+ */
+export async function signStoreAssetPaths(paths: string[]): Promise<Record<string, string>> {
+  const unique = [...new Set(paths.filter(Boolean))]
+  if (unique.length === 0) return {}
+
+  const { data, error } = await storefront()
+    .storage.from(STORE_ASSETS_BUCKET)
     .createSignedUrls(unique, 3600)
 
   if (error) return {}

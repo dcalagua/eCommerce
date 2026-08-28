@@ -2,6 +2,7 @@ import {
   Box,
   Button,
   Card,
+  Chip,
   FormControlLabel,
   MenuItem,
   Stack,
@@ -10,42 +11,72 @@ import {
   Typography,
 } from '@mui/material'
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import type { SearchQuery, SearchSort } from '@/domain'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { useDebouncedValue } from '@/shared/lib/useDebouncedValue'
-import { SearchField } from '@/shared/ui/SearchField'
 import { EmptyState, ErrorState } from '@/shared/ui/states'
 import { T } from '@/theme/tokens'
 import { CategoryBar } from './components/CategoryBar'
+import { ContentBlocks } from './components/ContentBlocks'
 import { ProductGrid, ProductGridSkeleton } from './components/ProductGrid'
 import { StoreHero } from './components/StoreHero'
-import { usePublicCategories, usePublicProducts, useStorefront, useThumbnails } from './hooks'
-import { PRODUCT_SORTS, type CatalogQuery, type ProductSort } from './types'
+import { StoreSearchField } from './components/StoreSearchField'
+import {
+  useCatalogSearch,
+  useCatalogSuggestions,
+  useContentAssets,
+  usePublicCategories,
+  useSignedThumbnails,
+  useStoreContent,
+  useStorefront,
+} from './hooks'
+import { hitToPublicProduct } from './search'
+
+/** Cuántos resultados por página. El «ver más» suma otra tanda. */
+const PAGE_SIZE = 24
+
+const SORTS: readonly SearchSort[] = ['relevance', 'price-asc', 'price-desc', 'name', 'recent']
 
 /**
- * Portada de la vitrina: banner, categorías, buscador y catálogo.
+ * Portada de la vitrina: contenido administrable + catálogo buscable.
  *
- * Los filtros viven en la **URL** (`?q=&c=&d=&sort=`), no en un estado suelto:
- * así una búsqueda se puede compartir, el botón de atrás hace lo que se espera
- * y recargar no borra lo que el comprador acababa de elegir.
+ * ## Lo que P11-SaaS cambia aquí, y por qué
  *
- * Un solo buscador general + filtros simples (categoría y disponibilidad), como
- * manda la regla de suite: nada de paneles de filtros multi-campo.
+ * 1. **El catálogo ya no se descarga entero.** Hasta P10 la portada pedía
+ *    `public_products` sin límite y filtraba en el navegador; el encargo de esta
+ *    fase lo prohíbe con esas palabras («evita cargar catálogo completo al
+ *    browser para buscar»). Ahora pregunta al `SearchPort`, que devuelve una
+ *    PÁGINA y los contadores de las facetas.
+ * 2. **La portada la escribe el comercio.** Si la sociedad tiene `content.cms`
+ *    y hay una página `home` publicada, sus bloques se pintan encima del
+ *    catálogo. Y si esos bloques traen un `hero`, el hero de `store_settings`
+ *    NO se pinta: dos portadas apiladas no son una portada más completa.
+ * 3. **Sin `content.cms` todo se ve igual que antes.** `cms: false` es una
+ *    respuesta válida, no un error: hero de `store_settings` y catálogo. Se
+ *    degrada, no se rompe.
+ *
+ * Los filtros siguen viviendo en la **URL** (`?q=&c=&d=&sort=&b=`): una
+ * búsqueda se comparte, el botón de atrás hace lo que se espera y recargar no
+ * borra lo que el comprador acababa de elegir.
  */
 export function StoreHomePage() {
   const { t, locale } = useI18n()
   const { store, storeSlug } = useStorefront()
+  const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
 
   const categorySlug = params.get('c')
+  const brand = params.get('b')
   const availability = params.get('d') === '1' ? 'in-stock' : 'all'
   const sortParam = params.get('sort')
-  const sort: ProductSort = (PRODUCT_SORTS as readonly string[]).includes(sortParam ?? '')
-    ? (sortParam as ProductSort)
-    : 'recent'
+  const sort: SearchSort = (SORTS as readonly string[]).includes(sortParam ?? '')
+    ? (sortParam as SearchSort)
+    : 'relevance'
 
   const [term, setTerm] = useState(() => params.get('q') ?? '')
   const search = useDebouncedValue(term, 300)
+  const [pages, setPages] = useState(1)
 
   // El término sale a la URL solo cuando deja de escribirse, y con `replace`
   // para no dejar una entrada de historial por cada letra.
@@ -61,6 +92,12 @@ export function StoreHomePage() {
     )
   }, [search, setParams])
 
+  // Cambiar de término o de filtro vuelve a la primera página: seguir en la
+  // tercera de la búsqueda anterior enseña resultados que nadie pidió.
+  useEffect(() => {
+    setPages(1)
+  }, [search, categorySlug, brand, availability, sort])
+
   function update(key: string, value: string | null) {
     setParams((prev) => {
       const next = new URLSearchParams(prev)
@@ -70,21 +107,46 @@ export function StoreHomePage() {
     })
   }
 
+  const content = useStoreContent(storeSlug)
+  const { assets, images } = useContentAssets(content.data)
   const categories = usePublicCategories(store.store_id)
+  const suggestions = useCatalogSuggestions(storeSlug, search)
 
-  const query: CatalogQuery = useMemo(
-    () => ({ storeId: store.store_id, search, categorySlug, availability, sort }),
-    [store.store_id, search, categorySlug, availability, sort],
+  const query: SearchQuery = useMemo(
+    () => ({
+      term: search,
+      filters: {
+        category: categorySlug,
+        brands: brand ? [brand] : [],
+        availability,
+      },
+      sort,
+      limit: PAGE_SIZE * pages,
+      offset: 0,
+    }),
+    [search, categorySlug, brand, availability, sort, pages],
   )
-  const products = usePublicProducts(query)
-  const thumbnails = useThumbnails(products.data ?? [])
 
-  const filtered = Boolean(search.trim() || categorySlug || availability === 'in-stock')
-  const count = products.data?.length ?? 0
+  const results = useCatalogSearch(storeSlug, query)
+  const products = useMemo(
+    () => (results.data?.items ?? []).map((hit) => hitToPublicProduct(hit, store.store_id)),
+    [results.data, store.store_id],
+  )
+  const thumbnails = useSignedThumbnails(products.map((product) => product.primary_image_path))
+
+  const blocks = content.data?.cms ? (content.data.blocks ?? []) : []
+  const hasCmsHero = blocks.some((block) => block.type === 'hero')
+  const filtered = Boolean(search.trim() || categorySlug || brand || availability === 'in-stock')
+  const total = results.data?.total ?? 0
+  const brandFacets = results.data?.facets.brands ?? []
+  const canLoadMore = products.length < total
 
   return (
     <Stack sx={{ gap: { xs: 2, md: 3 } }}>
-      <StoreHero store={store} />
+      {/* El hero del CMS SUSTITUYE al de `store_settings`, no se suma a él. */}
+      {hasCmsHero ? null : <StoreHero store={store} />}
+
+      <ContentBlocks blocks={blocks} storeSlug={storeSlug} assets={assets} images={images} />
 
       <CategoryBar
         categories={categories.data ?? []}
@@ -96,11 +158,23 @@ export function StoreHomePage() {
         direction={{ xs: 'column', md: 'row' }}
         sx={{ gap: 1.5, alignItems: { md: 'center' }, justifyContent: 'space-between' }}
       >
-        <SearchField
+        <StoreSearchField
           value={term}
           onChange={setTerm}
-          placeholder={t('store.catalog.search')}
-          ariaLabel={t('store.catalog.search')}
+          suggestions={suggestions.data ?? []}
+          loading={suggestions.isFetching}
+          onPick={(suggestion) => {
+            // Cada tipo de sugerencia lleva a un sitio distinto: el producto a
+            // su ficha, la categoría y la marca a un catálogo ya filtrado. Que
+            // las tres rellenaran la caja de texto sería tratar una respuesta
+            // exacta como si fuera una conjetura.
+            if (suggestion.kind === 'product') {
+              navigate(`/s/${storeSlug}/product/${suggestion.slug}`)
+              return
+            }
+            setTerm('')
+            update(suggestion.kind === 'category' ? 'c' : 'b', suggestion.slug)
+          }}
         />
         <Stack direction="row" sx={{ gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
           <FormControlLabel
@@ -125,6 +199,7 @@ export function StoreHomePage() {
             label={t('store.sort.label')}
             sx={{ minWidth: 190 }}
           >
+            <MenuItem value="relevance">{t('store.sort.relevance')}</MenuItem>
             <MenuItem value="recent">{t('store.sort.recent')}</MenuItem>
             <MenuItem value="price-asc">{t('store.sort.priceAsc')}</MenuItem>
             <MenuItem value="price-desc">{t('store.sort.priceDesc')}</MenuItem>
@@ -133,21 +208,41 @@ export function StoreHomePage() {
         </Stack>
       </Stack>
 
-      {products.isPending && <ProductGridSkeleton />}
+      {/* Faceta de marca: chips, no un panel multi-campo. Solo aparece cuando
+          hay más de una marca que elegir; con una sola, el filtro no filtra. */}
+      {brandFacets.length > 1 && (
+        <Stack
+          direction="row"
+          sx={{ gap: 1, flexWrap: 'wrap' }}
+          role="group"
+          aria-label={t('store.filter.brand')}
+        >
+          {brandFacets.map((facet) => (
+            <Chip
+              key={facet.code}
+              label={`${facet.name} (${facet.count})`}
+              size="small"
+              clickable
+              color={brand === facet.code ? 'primary' : 'default'}
+              onClick={() => update('b', brand === facet.code ? null : facet.code)}
+            />
+          ))}
+        </Stack>
+      )}
 
-      {products.isError && (
+      {results.isPending && <ProductGridSkeleton />}
+
+      {results.isError && (
         <Card>
-          <ErrorState error={products.error} onRetry={() => void products.refetch()} />
+          <ErrorState error={results.error} onRetry={() => void results.refetch()} />
         </Card>
       )}
 
-      {products.isSuccess && count === 0 && (
+      {results.isSuccess && total === 0 && (
         <Card>
           <EmptyState
             title={filtered ? t('store.catalog.noResults') : t('store.catalog.empty')}
-            description={
-              filtered ? t('store.catalog.noResultsBody') : t('store.catalog.emptyBody')
-            }
+            description={filtered ? t('store.catalog.noResultsBody') : t('store.catalog.emptyBody')}
             action={
               filtered ? (
                 <Button
@@ -165,21 +260,42 @@ export function StoreHomePage() {
         </Card>
       )}
 
-      {products.isSuccess && count > 0 && (
+      {results.isSuccess && total > 0 && (
         <Box>
-          <Typography
-            aria-live="polite"
-            sx={{ fontSize: T.label, fontWeight: 700, color: 'var(--muted)', mb: 1.5 }}
+          <Stack
+            direction="row"
+            sx={{ gap: 1, alignItems: 'baseline', flexWrap: 'wrap', mb: 1.5 }}
           >
-            {`${new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'es-PE').format(count)} ${
-              count === 1 ? t('store.catalog.item') : t('store.catalog.items')
-            }`}
-          </Typography>
-          <ProductGrid
-            products={products.data}
-            storeSlug={storeSlug}
-            thumbnails={thumbnails}
-          />
+            <Typography
+              aria-live="polite"
+              sx={{ fontSize: T.label, fontWeight: 700, color: 'var(--muted)' }}
+            >
+              {`${new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'es-PE').format(total)} ${
+                total === 1 ? t('store.catalog.item') : t('store.catalog.items')
+              }`}
+            </Typography>
+            {/* Un resultado por tolerancia a erratas no es lo mismo que uno
+                exacto, y decirlo es la diferencia entre ayudar y fingir. */}
+            {results.data?.mode === 'fuzzy' && (
+              <Typography sx={{ fontSize: T.label, color: 'var(--amber)', fontWeight: 700 }}>
+                {t('store.search.fuzzy')}
+              </Typography>
+            )}
+          </Stack>
+
+          <ProductGrid products={products} storeSlug={storeSlug} thumbnails={thumbnails} />
+
+          {canLoadMore && (
+            <Stack sx={{ alignItems: 'center', mt: 2 }}>
+              <Button
+                variant="outlined"
+                onClick={() => setPages((current) => current + 1)}
+                disabled={results.isFetching}
+              >
+                {t('store.catalog.more')}
+              </Button>
+            </Stack>
+          )}
         </Box>
       )}
     </Stack>

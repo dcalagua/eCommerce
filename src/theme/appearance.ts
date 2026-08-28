@@ -55,6 +55,19 @@ export function readStoredAppearance(): Appearance {
   }
 }
 
+/**
+ * ¿El visitante ya eligió densidad en este dispositivo?
+ *
+ * Lo usa la vitrina (P11-SaaS) para decidir si la densidad que el tenant fijó
+ * en su branding es aplicable: una preferencia guardada gana siempre, porque es
+ * la del usuario y a menudo es de accesibilidad. La convención de suite —el
+ * default no se guarda— es justo lo que hace que esta pregunta se pueda
+ * responder: hay clave solo si alguien la eligió.
+ */
+export function hasStoredDensity(): boolean {
+  return readKey(STORAGE_KEYS.density, DENSITIES) !== null
+}
+
 /** Persiste omitiendo los defaults (convención de suite: el default no se guarda). */
 export function persistAppearance(next: Appearance): void {
   try {

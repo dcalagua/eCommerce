@@ -190,6 +190,42 @@ describe('el error del servidor no llega crudo a la pantalla', () => {
   })
 })
 
+describe('el contenido del tenant no puede convertirse en marcado (P11-SaaS)', () => {
+  /**
+   * Protege la decisión central del CMS: **el contenido enriquecido no es
+   * HTML**. Se guarda como un documento de cuatro tipos de nodo
+   * (`src/domain/content.ts`), lo valida un CHECK en Postgres y lo pinta
+   * `shared/ui/RichText.tsx` mapeando nodo → componente.
+   *
+   * Toda esa cadena se cae con una sola línea: un `dangerouslySetInnerHTML`
+   * puesto «solo para este caso». Por eso la regla no es «sanea antes de
+   * inyectar» —que exige acordarse cada vez— sino «no existe el punto de
+   * inyección», y esto es lo que la mantiene cierta.
+   *
+   * Incluye los tests: si un test lo usa, es que alguien está probando una ruta
+   * de renderizado que no debería existir. Se mira el CÓDIGO y no el texto,
+   * como el resto de reglas: nombrar lo prohibido en un comentario para
+   * explicar por qué no está no puede poner la suite roja.
+   */
+  it('`dangerouslySetInnerHTML` no aparece en ningún archivo de src/', () => {
+    const offenders = ALL.filter((file) => file.path !== 'architecture.test.ts')
+      .filter((file) => /dangerouslySetInnerHTML/.test(file.code))
+      .map((file) => file.path)
+    expect(offenders).toEqual([])
+  })
+
+  /**
+   * La otra mitad: `innerHTML`, `outerHTML` y `document.write` son la misma
+   * puerta sin pasar por React.
+   */
+  it('nadie escribe HTML en el DOM a mano', () => {
+    const offenders = PRODUCTION.filter((file) =>
+      /\.(inner|outer)HTML\s*=|document\.write\(/.test(file.code),
+    ).map((file) => file.path)
+    expect(offenders).toEqual([])
+  })
+})
+
 describe('el core no conoce a ningún cliente ni proveedor por su nombre', () => {
   /**
    * Protege la respuesta a AA0004 del pliego —«personalización por

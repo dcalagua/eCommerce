@@ -2,6 +2,7 @@ import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined'
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined'
 import MonitorHeartOutlinedIcon from '@mui/icons-material/MonitorHeartOutlined'
 import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined'
+import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
 import LocalOfferOutlinedIcon from '@mui/icons-material/LocalOfferOutlined'
 import PriceChangeOutlinedIcon from '@mui/icons-material/PriceChangeOutlined'
 import PaymentsOutlinedIcon from '@mui/icons-material/PaymentsOutlined'
@@ -98,6 +99,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'nav.promotions',
     icon: <LocalOfferOutlinedIcon fontSize="small" />,
     capability: 'promotions',
+  },
+  {
+    to: '/app/content',
+    label: 'nav.content',
+    icon: <ArticleOutlinedIcon fontSize="small" />,
+    capability: 'content.cms',
   },
   { to: '/app/settings', label: 'nav.settings', icon: <SettingsOutlinedIcon fontSize="small" /> },
   {

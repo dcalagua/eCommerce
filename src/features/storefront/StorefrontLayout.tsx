@@ -25,7 +25,7 @@ import { initials } from './branding'
 import { CartDrawer } from './cart/CartDrawer'
 import { CartProvider } from './cart/CartProvider'
 import { useCart } from './cart/cart-context'
-import { usePublicStore, type StorefrontOutlet } from './hooks'
+import { usePublicStore, useStoreNavigation, type StorefrontOutlet } from './hooks'
 import type { PublicStore } from './types'
 
 /**
@@ -74,7 +74,17 @@ export function StorefrontLayout() {
 
   return (
     // El acento de la vitrina es el `accent_color` del tenant, no el de casa.
-    <AppearanceProvider tenantAccent={store.accent_color}>
+    // Desde P11-SaaS viajan con él los tokens de white-label: tipografía, radio
+    // y densidad por defecto. Los cuatro se aplican en el MISMO render en el
+    // que la tienda queda resuelta, así que no hay un primer pintado con la
+    // marca de suite y otro con la del tenant — que es el «flash de branding»
+    // que el encargo prohíbe.
+    <AppearanceProvider
+      tenantAccent={store.accent_color}
+      tenantFont={store.font_family}
+      tenantRadius={store.ui_radius}
+      tenantDensity={store.ui_density}
+    >
       {/* El carrito cuelga de la tienda YA RESUELTA: su `store_id` sale de
           `public_stores`, nunca de la URL ni de `localStorage`. Al cambiar de
           tienda, el provider se remonta y carga el carrito de esa tienda. */}
@@ -180,11 +190,44 @@ function StoreHeader({ store, storeSlug }: { store: PublicStore; storeSlug: stri
             </Typography>
           </Box>
 
+          <StoreNav storeSlug={storeSlug} />
           <AccountButton storeSlug={storeSlug} />
           <CartButton />
         </Toolbar>
       </Container>
     </Box>
+  )
+}
+
+/**
+ * Menú de páginas administrables (P11-SaaS).
+ *
+ * Existe porque una página que solo se alcanza escribiendo su URL es media
+ * funcionalidad: el comercio la crea y nadie llega. Qué páginas salen aquí lo
+ * decide `content_pages.show_in_nav`, y la lista la resuelve el servidor ya
+ * filtrada por publicación, vigencia y canal.
+ *
+ * Se esconde en móvil: en una barra que ya lleva cuenta y carrito, tres enlaces
+ * más empujan el nombre de la tienda fuera de la pantalla. Las páginas siguen
+ * alcanzables desde los bloques de contenido y desde el pie.
+ */
+function StoreNav({ storeSlug }: { storeSlug: string }) {
+  const { data } = useStoreNavigation(storeSlug)
+  if (!data || data.length === 0) return null
+
+  return (
+    <Stack
+      component="nav"
+      direction="row"
+      aria-label="secciones"
+      sx={{ gap: 0.5, display: { xs: 'none', md: 'flex' }, flexShrink: 0 }}
+    >
+      {data.slice(0, 4).map((item) => (
+        <Button key={item.slug} component={Link} to={`/s/${storeSlug}/p/${item.slug}`} size="small">
+          {item.title}
+        </Button>
+      ))}
+    </Stack>
   )
 }
 
@@ -289,7 +332,7 @@ function StoreFooter({ store }: { store: PublicStore }) {
           sx={{ justifyContent: 'space-between', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}
         >
           <Typography sx={{ fontSize: T.label, fontWeight: 700, color: 'var(--muted)' }}>
-            © {store.name}
+            © {store.business_display_name?.trim() || store.name}
           </Typography>
           {/* El lockup de suite acompaña a la vitrina salvo white-label. */}
           {!store.white_label && (

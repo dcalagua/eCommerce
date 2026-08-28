@@ -67,6 +67,62 @@ export const SH = {
 
 export const FONT_STACK = "'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif"
 
+/**
+ * White-label del tenant (P11-SaaS): tipografía y radio, por TOKEN.
+ *
+ * ## Por qué la lista está cerrada y por qué todas las pilas son locales
+ *
+ * El encargo pide «tipografía de una whitelist» y prohíbe ejecutar código
+ * arbitrario del tenant. Una fuente elegida por URL sería contenido remoto que
+ * el comercio decide y que la vitrina carga en su propio dominio: no es
+ * JavaScript, pero es exactamente la misma clase de agujero (fuga de la
+ * navegación al proveedor de fuentes, y un recurso de terceros que puede
+ * cambiar sin que nadie lo revise).
+ *
+ * `dm-sans` es la de suite y ya viene cargada en `index.html`; las otras cuatro
+ * son pilas del sistema operativo y no cuestan ni una petición. Añadir una
+ * fuente web nueva es una decisión de producto —hay que cargarla, medirla y
+ * comprobar su contraste— y por eso es una línea de código, no una fila.
+ *
+ * Los nombres son los mismos que el CHECK `store_settings_font` de la migración
+ * `20260828140200`: si las dos listas se separan, un valor válido en la base
+ * caería aquí al fallback y el tenant vería otra fuente sin que nada fallara.
+ */
+export const BRAND_FONTS = ['dm-sans', 'system', 'grotesk', 'serif', 'mono'] as const
+export type BrandFont = (typeof BRAND_FONTS)[number]
+
+export const BRAND_FONT_STACKS: Record<BrandFont, string> = {
+  'dm-sans': FONT_STACK,
+  system: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+  grotesk: "'Helvetica Neue', Helvetica, Arial, sans-serif",
+  serif: "Georgia, 'Times New Roman', Times, serif",
+  mono: "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace",
+}
+
+/** Radio del tenant. `soft` es el de suite y el default cuando no hay token. */
+export const BRAND_RADII = ['sharp', 'soft', 'round'] as const
+export type BrandRadius = (typeof BRAND_RADII)[number]
+
+export type RadiusScale = { sm: number; md: number; lg: number; xl: number; pill: number }
+
+export const BRAND_RADIUS_SCALES: Record<BrandRadius, RadiusScale> = {
+  sharp: { sm: 2, md: 4, lg: 4, xl: 6, pill: 6 },
+  soft: { sm: 8, md: 12, lg: 14, xl: 18, pill: 999 },
+  round: { sm: 12, md: 18, lg: 22, xl: 28, pill: 999 },
+}
+
+export function brandFontStack(token: string | null | undefined): string {
+  return (BRAND_FONTS as readonly string[]).includes(token ?? '')
+    ? BRAND_FONT_STACKS[token as BrandFont]
+    : FONT_STACK
+}
+
+export function brandRadiusScale(token: string | null | undefined): RadiusScale {
+  return (BRAND_RADII as readonly string[]).includes(token ?? '')
+    ? BRAND_RADIUS_SCALES[token as BrandRadius]
+    : BRAND_RADIUS_SCALES.soft
+}
+
 /** Presets de acento de suite. El default de suite es `forest`. */
 export const ACCENTS = ['forest', 'indigo', 'cobalt', 'teal', 'graphite'] as const
 export type Accent = (typeof ACCENTS)[number]
