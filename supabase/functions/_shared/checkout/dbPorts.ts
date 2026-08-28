@@ -25,6 +25,7 @@ import type {
   CheckoutContext,
   CheckoutPorts,
   CheckoutRequest,
+  DeliveryContext,
   GiftCardRedemption,
   GiftCardTender,
   IntentClaim,
@@ -285,7 +286,68 @@ export function createDbPorts(options: DbPortOptions): CheckoutPorts {
       }
     },
 
-    validateDelivery: alwaysDeliverable,
+    /**
+     * Etapa 7 · la entrega, resuelta contra la base (P12-SaaS).
+     *
+     * Sin elección de método cae al gancho neutro `alwaysDeliverable`, que es
+     * el comportamiento de P06 a P11: entregable, transporte cero y sin
+     * promesa. Un tenant que no ha configurado zonas ni métodos sigue vendiendo
+     * exactamente igual — se degrada, no se rompe.
+     *
+     * Con elección, la autoridad es `delivery_options_for_slug`, que recalcula
+     * el subtotal con el motor de precios ANTES de mirar la tarifa: ni el
+     * importe ni el subtotal con el que se evalúa el envío gratis pueden venir
+     * del navegador. Aquí no se suma ni se redondea nada, como en el resto de
+     * este archivo.
+     */
+    async validateDelivery(input): Promise<DeliveryContext> {
+      if (input.choice === null) {
+        return alwaysDeliverable({
+          context: input.context,
+          address: input.address,
+          account: input.account,
+        })
+      }
+
+      const quoted = record(
+        await service('delivery_options_for_slug', {
+          p_store_slug: input.context.storeSlug,
+          p_address: input.address,
+          p_items: itemPayload(input.items),
+        }),
+      )
+
+      const options = Array.isArray(quoted.options) ? quoted.options : []
+      const chosen = options
+        .map((entry) => record(entry))
+        .find((entry) => text(entry, 'code') === input.choice?.methodCode)
+
+      if (!chosen) {
+        return {
+          address: input.address,
+          deliverable: false,
+          // Código de dominio y no el texto del servidor: la vitrina lo traduce.
+          reason: 'ENTREGA_NO_DISPONIBLE',
+          amount: '0.00',
+          methodCode: null,
+          strategy: null,
+          promisedFrom: null,
+          promisedTo: null,
+        }
+      }
+
+      const available = chosen.available === true
+      return {
+        address: input.address,
+        deliverable: available,
+        reason: available ? null : nullableText(chosen, 'reason') ?? 'FUERA_DE_COBERTURA',
+        amount: text(chosen, 'amount', '0.00'),
+        methodCode: text(chosen, 'code'),
+        strategy: text(chosen, 'strategy'),
+        promisedFrom: nullableText(chosen, 'promised_from'),
+        promisedTo: nullableText(chosen, 'promised_to'),
+      }
+    },
 
     /**
      * P10 · canjear saldo de tarjeta regalo, de una en una y en orden.
@@ -370,6 +432,23 @@ export function createDbPorts(options: DbPortOptions): CheckoutPorts {
           // y bloqueadas. El navegador no puede declarar un descuento.
           p_coupon_codes:
             input.request.couponCodes.length > 0 ? [...input.request.couponCodes] : null,
+          // P12 · la ELECCION de entrega. Ni importe, ni proveedor, ni almacen:
+          // `create_order` vuelve a cotizar dentro de la transaccion, con la
+          // fila de tarifa delante, y de ahi sale `orders.shipping_total`.
+          p_delivery:
+            input.request.delivery === null
+              ? null
+              : {
+                  method_code: input.request.delivery.methodCode,
+                  pickup_point_id: input.request.delivery.pickupPointId,
+                  window: input.request.delivery.window
+                    ? {
+                        date: input.request.delivery.window.date,
+                        starts_at: input.request.delivery.window.startsAt,
+                        ends_at: input.request.delivery.window.endsAt,
+                      }
+                    : null,
+                },
         }),
       )
       const orderId = text(raw, 'order_id')
@@ -422,8 +501,10 @@ export function createDbPorts(options: DbPortOptions): CheckoutPorts {
         currency: text(raw, 'currency'),
         subtotal: text(raw, 'subtotal', '0.00'),
         taxTotal: text(raw, 'tax_total', '0.00'),
+        shippingTotal: text(raw, 'shipping_total', '0.00'),
         grandTotal: text(raw, 'grand_total', '0.00'),
         items: Array.isArray(raw.items) ? (raw.items as Record<string, unknown>[]) : [],
+        delivery: raw.delivery === null || raw.delivery === undefined ? null : record(raw.delivery),
         replay: raw.replay === true,
       }
     },

@@ -633,3 +633,158 @@ describe('confirmación', () => {
     expect(screen.getByRole('heading', { name: 'Pedido registrado' })).toBeInTheDocument()
   })
 })
+
+/**
+ * P12-SaaS · elegir CÓMO llega el pedido.
+ *
+ * Las tres propiedades que solo se ven montando el árbol:
+ *
+ *  1. el envío se ve ANTES de comprar, separado del total y ya calculado por el
+ *     servidor;
+ *  2. lo que sale hacia el borde es un CÓDIGO y ni un céntimo —la lista de
+ *     claves prohibidas de arriba se aplica igual al bloque `delivery`—;
+ *  3. y una opción sin cobertura se pinta deshabilitada con su motivo, en vez
+ *     de desaparecer: «a tu distrito no llegamos con express, pero sí con
+ *     estándar» solo se puede decir si express aparece.
+ */
+const OPCIONES_ENTREGA = {
+  currency: 'PEN',
+  zone: { code: 'lima', name: 'Lima metropolitana' },
+  options: [
+    {
+      delivery_method_id: 'ffff1111-1111-4111-8111-111111111111',
+      code: 'estandar',
+      name: 'Envío estándar',
+      description: null,
+      instructions: null,
+      strategy: 'ship',
+      available: true,
+      reason: null,
+      currency: 'PEN',
+      amount: '15.00',
+      free: false,
+      promised_from: '2026-08-29',
+      promised_to: '2026-08-31',
+      requires_window: false,
+      pickup_points: [],
+    },
+    {
+      delivery_method_id: 'ffff2222-1111-4111-8111-111111111111',
+      code: 'express',
+      name: 'Envío express',
+      description: null,
+      instructions: null,
+      strategy: 'ship',
+      available: false,
+      reason: 'FUERA_DE_COBERTURA',
+      currency: 'PEN',
+      amount: null,
+      free: false,
+      promised_from: null,
+      promised_to: null,
+      requires_window: false,
+      pickup_points: [],
+    },
+  ],
+}
+
+function backendConEntrega(options: { onCheckout?: (body: Record<string, unknown>) => unknown } = {}) {
+  const fake = backend(options)
+  fake.state.rpc.delivery_options_for_slug = () => OPCIONES_ENTREGA
+  return fake
+}
+
+async function rellenarContacto(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(await screen.findByLabelText(/Nombre y apellido/), 'Ana Pérez')
+  await user.type(screen.getByLabelText(/Correo/), 'ana@compradora.com')
+  await user.type(screen.getByLabelText(/Teléfono/), '+51 999 888 777')
+  await user.type(screen.getByLabelText(/Dirección de entrega/), 'Av. Primavera 120')
+}
+
+describe('entrega en el checkout (P12)', () => {
+  it('enseña el envío ya calculado por el servidor, separado del total', async () => {
+    const user = userEvent.setup()
+    sembrarCarrito([LINEA_SILLA])
+    renderStorefront(backendConEntrega(), '/s/casa-nordica/checkout')
+
+    await rellenarContacto(user)
+
+    await user.click(await screen.findByRole('radio', { name: /Envío estándar/ }))
+
+    // El importe del envío sale del servidor y se pinta aparte: un total mayor
+    // que la suma de las líneas sin una línea que lo explique es un carrito
+    // abandonado.
+    expect(await screen.findByText('Envío')).toBeInTheDocument()
+    expect(screen.getByText(/^S\/ 15\.00$/)).toBeInTheDocument()
+  })
+
+  it('una opción sin cobertura se pinta deshabilitada, con su motivo', async () => {
+    const user = userEvent.setup()
+    sembrarCarrito([LINEA_SILLA])
+    renderStorefront(backendConEntrega(), '/s/casa-nordica/checkout')
+
+    await rellenarContacto(user)
+
+    const express = await screen.findByRole('radio', { name: /Envío express/ })
+    expect(express).toBeDisabled()
+    expect(screen.getByText('No disponible para tu dirección')).toBeInTheDocument()
+  })
+
+  it('lo que viaja es un CÓDIGO de método y ni un céntimo', async () => {
+    const user = userEvent.setup()
+    const fake = backendConEntrega()
+    sembrarCarrito([LINEA_SILLA])
+    renderStorefront(fake, '/s/casa-nordica/checkout')
+
+    await rellenarContacto(user)
+    await user.click(await screen.findByRole('radio', { name: /Envío estándar/ }))
+    await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+
+    await waitFor(() => expect(fake.state.invocations).toHaveLength(1))
+    const body = fake.state.invocations[0]?.body as Record<string, unknown>
+    const delivery = body.delivery as Record<string, unknown>
+
+    expect(delivery.method_code).toBe('estandar')
+    expect(delivery.pickup_point_id).toBeNull()
+    // La misma regla que el resto del cuerpo: ni importes, ni tenant, ni
+    // transportista, ni almacén, a ninguna profundidad.
+    for (const clave of todasLasClaves(delivery)) {
+      expect(CLAVES_PROHIBIDAS).not.toContain(clave)
+    }
+    expect(todasLasClaves(delivery)).not.toContain('provider_code')
+  })
+
+  it('no deja comprar sin elegir cómo lo quiere recibir', async () => {
+    const user = userEvent.setup()
+    const fake = backendConEntrega()
+    sembrarCarrito([LINEA_SILLA])
+    renderStorefront(fake, '/s/casa-nordica/checkout')
+
+    await rellenarContacto(user)
+    await screen.findByRole('radio', { name: /Envío estándar/ })
+    await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+
+    expect(
+      await screen.findByText('Elige cómo quieres recibir tu pedido.'),
+    ).toBeInTheDocument()
+    // No se llegó a llamar al borde: el error se resolvió aquí.
+    expect(fake.state.invocations).toHaveLength(0)
+  })
+
+  it('sin métodos configurados el checkout funciona EXACTAMENTE como antes de P12', async () => {
+    const user = userEvent.setup()
+    // `backend()` sin la RPC: la tienda no tiene red de entrega configurada.
+    const fake = backend()
+    sembrarCarrito([LINEA_SILLA])
+    renderStorefront(fake, '/s/casa-nordica/checkout')
+
+    await rellenarContacto(user)
+    expect(await screen.findByText('Esta tienda todavía no cobra envío.')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+    expect(await screen.findByRole('heading', { name: 'Pedido registrado' })).toBeInTheDocument()
+
+    const body = fake.state.invocations[0]?.body as Record<string, unknown>
+    expect(body.delivery).toBeNull()
+  })
+})

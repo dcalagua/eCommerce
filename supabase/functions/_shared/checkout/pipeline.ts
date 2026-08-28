@@ -308,28 +308,43 @@ export async function runCheckout(
       return held
     })
 
-    // --- 7 · Entrega (gancho estable) --------------------------------------
-    await stage('validate_delivery', async (): Promise<DeliveryContext> => {
-      const resolved = await ports.validateDelivery({
-        context,
-        address: input.shippingAddress,
-        account,
-      })
-      if (!resolved.deliverable) {
-        throw new CheckoutStageError({
-          stage: 'validate_delivery',
-          code: 'DIRECCION_NO_ENTREGABLE',
-          message: resolved.reason ?? 'No se puede entregar en esa direccion',
+    // --- 7 · Entrega -------------------------------------------------------
+    //
+    // El coste sale de aquí y no de `create_order` por una razón concreta: la
+    // etapa 8 tiene que autorizar el total CON transporte. Si el transporte
+    // apareciera solo dentro de la transacción del pedido, a la pasarela se le
+    // habría pedido de menos y el comercio cobraría el envío a nadie.
+    const delivery: DeliveryContext = await stage(
+      'validate_delivery',
+      async (): Promise<DeliveryContext> => {
+        const resolved = await ports.validateDelivery({
+          context,
+          address: input.shippingAddress,
+          account,
+          choice: input.delivery,
+          items: input.items,
         })
-      }
-      return resolved
-    })
+        if (!resolved.deliverable) {
+          throw new CheckoutStageError({
+            stage: 'validate_delivery',
+            code: 'DIRECCION_NO_ENTREGABLE',
+            message: resolved.reason ?? 'No se puede entregar en esa direccion',
+          })
+        }
+        return resolved
+      },
+    )
+
+    // Lo que de verdad se paga. Se calcula una sola vez y con `cents`, porque
+    // `Number(a) + Number(b)` sobre dos decimales produce el céntimo fantasma
+    // que separaría lo autorizado de lo cobrado.
+    const payableTotal = ((cents(taxes.grandTotal) + cents(delivery.amount)) / 100).toFixed(2)
 
     // --- 8 · Tarjeta regalo, cobro y autorización de compra ----------------
     const payment: PaymentOutcome = await stage('authorize_payment', async () => {
       // El límite de la persona es una autorización de COMPRA, y solo se puede
       // comprobar cuando ya hay total. Por eso vive aquí y no en la etapa 2.
-      if (account.spendingLimit !== null && Number(taxes.grandTotal) > Number(account.spendingLimit)) {
+      if (account.spendingLimit !== null && Number(payableTotal) > Number(account.spendingLimit)) {
         throw new CheckoutStageError({
           stage: 'authorize_payment',
           code: 'LIMITE_DE_AUTORIZACION',
@@ -347,7 +362,7 @@ export async function runCheckout(
       // un portal B2B que no conteste degrada a «no se pudo preguntar» y sigue.
       if (account.accountId !== null) {
         try {
-          approval = await ports.resolveApproval(account.accountId, taxes.grandTotal)
+          approval = await ports.resolveApproval(account.accountId, payableTotal)
         } catch (error) {
           console.error('[checkout] no se pudo resolver la autorizacion de compra', error)
           approval = null
@@ -364,7 +379,7 @@ export async function runCheckout(
         const tender = await ports.applyGiftCards({
           storeSlug: input.storeSlug,
           codes: input.giftCardCodes,
-          amount: taxes.grandTotal,
+          amount: payableTotal,
           idempotencyKey: input.idempotencyKey,
         })
         if (tender.redemptions.length > 0) {
@@ -378,7 +393,7 @@ export async function runCheckout(
         }
       }
 
-      const toAuthorize = giftCards === null ? taxes.grandTotal : giftCards.remaining
+      const toAuthorize = giftCards === null ? payableTotal : giftCards.remaining
 
       // Pagado entero con saldo: no hay nada que pedirle a ninguna pasarela, y
       // llamarla igual por «coherencia» sería un cargo de cero que algunas
@@ -526,8 +541,13 @@ function toPlacedOrder(result: Record<string, unknown>, replay: boolean): Placed
     currency: text('currency'),
     subtotal: text('subtotal'),
     taxTotal: text('tax_total'),
+    shippingTotal: text('shipping_total') || '0.00',
     grandTotal: text('grand_total'),
     items: Array.isArray(result.items) ? (result.items as Record<string, unknown>[]) : [],
+    delivery:
+      result.delivery && typeof result.delivery === 'object' && !Array.isArray(result.delivery)
+        ? (result.delivery as Record<string, unknown>)
+        : null,
     replay,
   }
 }

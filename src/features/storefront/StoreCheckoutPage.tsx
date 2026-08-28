@@ -3,7 +3,7 @@ import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined'
 import { Alert, AlertTitle, Box, Button, Card, Chip, Divider, Stack, TextField, Typography } from '@mui/material'
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import { useSessionContext } from '@/features/auth/session-context'
 import { useCartQuote } from '@/features/pricing/useCartQuote'
@@ -14,6 +14,8 @@ import { PageHeader } from '@/shared/ui/PageHeader'
 import { EmptyState } from '@/shared/ui/states'
 import { T } from '@/theme/tokens'
 import { useCart } from './cart/cart-context'
+import { DeliveryPicker } from './components/DeliveryPicker'
+import { useDeliveryOptions } from './delivery'
 import {
   CheckoutError,
   checkoutSchema,
@@ -106,6 +108,8 @@ export function StoreCheckoutPage() {
 
   const {
     register,
+    control,
+    setValue,
     handleSubmit,
     formState: { errors },
   } = useForm<CheckoutValues>({
@@ -117,8 +121,51 @@ export function StoreCheckoutPage() {
       address: '',
       reference: '',
       couponCode: '',
+      city: '',
+      region: '',
+      postalCode: '',
+      country: '',
+      deliveryMethodCode: '',
+      pickupPointId: '',
     },
   })
+
+  /**
+   * La cotización de entrega se pide con lo que hay ESCRITO en el formulario y
+   * no con lo que se envía al confirmar: el comprador tiene que ver el precio
+   * del envío antes de pulsar comprar, no descubrirlo en la confirmación.
+   *
+   * `useWatch` y no `watch()` a secas: solo estos campos vuelven a disparar
+   * esta parte, así que teclear el nombre no vuelve a cotizar el envío.
+   *
+   * Aquí no se calcula ninguna tarifa. El importe llega resuelto del servidor,
+   * que además recalcula el subtotal por su cuenta: si viajara en la petición,
+   * el umbral de envío gratis lo decidiría el navegador.
+   */
+  const watched = useWatch({ control })
+  const deliveryAddress = useMemo(
+    () => ({
+      address: (watched.address ?? '').trim(),
+      city: (watched.city ?? '').trim() || undefined,
+      region: (watched.region ?? '').trim() || undefined,
+      postal_code: (watched.postalCode ?? '').trim() || undefined,
+      country: (watched.country ?? '').trim().toUpperCase() || undefined,
+    }),
+    [watched.address, watched.city, watched.region, watched.postalCode, watched.country],
+  )
+  const delivery = useDeliveryOptions({
+    storeSlug,
+    address: deliveryAddress,
+    cart,
+    enabled: cart.lines.length > 0,
+  })
+  const deliveryOptions = delivery.data?.options ?? []
+  const selectedDelivery =
+    deliveryOptions.find((option) => option.code === (watched.deliveryMethodCode ?? '')) ?? null
+  const shippingAmount =
+    selectedDelivery?.available && selectedDelivery.amount !== null
+      ? Number(selectedDelivery.amount)
+      : 0
 
   const mutation = useMutation({
     mutationFn: (input: { values: CheckoutValues; acceptPriceChanges: boolean }) => {
@@ -202,6 +249,20 @@ export function StoreCheckoutPage() {
       // clic rápido) no llega a disparar nada. Ninguno de los dos es la garantía:
       // la garantía es la clave de idempotencia del servidor.
       if (mutation.isPending) return
+
+      // Dos comprobaciones de FORMA, no de precio: que se eligió una opción
+      // cuando la tienda ofrece alguna, y que un recojo dice dónde. Las dos las
+      // vuelve a exigir la base; aquí evitan un viaje al servidor para recibir
+      // un error que ya se sabe.
+      if (deliveryOptions.length > 0 && !values.deliveryMethodCode) {
+        setErrorKey('store.checkout.error.delivery.method')
+        return
+      }
+      if (selectedDelivery?.strategy === 'pickup' && !values.pickupPointId) {
+        setErrorKey('store.checkout.error.delivery.pickup')
+        return
+      }
+
       setErrorKey(null)
       setErrorStage(null)
       mutation.mutate({ values, acceptPriceChanges })
@@ -275,6 +336,38 @@ export function StoreCheckoutPage() {
               helperText={errors.address ? t(errors.address.message as MessageKey) : ' '}
               {...register('address')}
             />
+            {/* P12 · los cuatro campos de COBERTURA. Opcionales: una tienda
+                sin zonas configuradas no tiene por qué pedirlos, y exigirlos
+                rompería el checkout mínimo que funciona desde P06. */}
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <TextField
+                fullWidth
+                label={t('store.checkout.city')}
+                autoComplete="address-level2"
+                {...register('city')}
+              />
+              <TextField
+                fullWidth
+                label={t('store.checkout.region')}
+                autoComplete="address-level1"
+                {...register('region')}
+              />
+            </Stack>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <TextField
+                fullWidth
+                label={t('store.checkout.postalCode')}
+                autoComplete="postal-code"
+                {...register('postalCode')}
+              />
+              <TextField
+                fullWidth
+                label={t('store.checkout.country')}
+                autoComplete="country"
+                inputProps={{ maxLength: 2, style: { textTransform: 'uppercase' } }}
+                {...register('country')}
+              />
+            </Stack>
             <TextField
               label={t('store.checkout.reference')}
               error={Boolean(errors.reference)}
@@ -301,6 +394,28 @@ export function StoreCheckoutPage() {
               inputProps={{ style: { textTransform: 'uppercase' } }}
               {...register('couponCode')}
             />
+            <Divider />
+
+            {/* P12 · cómo lo quiere recibir. Envío, recojo, reparto propio y
+                entrega digital son opciones de ESTE checkout, no de otro. */}
+            <DeliveryPicker
+              options={deliveryOptions}
+              loading={delivery.isFetching && deliveryOptions.length === 0}
+              failed={delivery.isError}
+              selectedCode={watched.deliveryMethodCode ?? ''}
+              onSelect={(code) => {
+                setValue('deliveryMethodCode', code)
+                setValue('pickupPointId', '')
+              }}
+              selectedPickupPointId={watched.pickupPointId ?? ''}
+              onSelectPickupPoint={(id) => setValue('pickupPointId', id)}
+              error={null}
+            />
+            {deliveryOptions.length > 0 && (
+              <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+                {t('store.delivery.help')}
+              </Typography>
+            )}
           </Stack>
         </Card>
 
@@ -366,11 +481,27 @@ export function StoreCheckoutPage() {
             </Stack>
           )}
 
+          {/* El transporte va SEPARADO del total. Un comprador que ve un total
+              mayor que la suma de sus líneas y ninguna línea que lo explique es
+              un comprador que abandona el carrito. */}
+          {selectedDelivery?.available && (
+            <Stack direction="row" sx={{ justifyContent: 'space-between', mt: 0.5 }}>
+              <Typography sx={{ color: 'var(--muted)' }}>
+                {t('store.delivery.shipping')}
+              </Typography>
+              <Typography sx={{ color: 'var(--muted)' }}>
+                {shippingAmount === 0
+                  ? t('store.delivery.free')
+                  : formatMoney(shippingAmount, selectedDelivery.currency, locale)}
+              </Typography>
+            </Stack>
+          )}
+
           {quoted && (
             <Stack direction="row" sx={{ justifyContent: 'space-between', mt: 1 }}>
               <Typography sx={{ fontWeight: 800 }}>{t('store.cart.total')}</Typography>
               <Typography sx={{ fontWeight: 800 }}>
-                {formatMoney(Number(quoted.grossTotal), quoted.currency, locale)}
+                {formatMoney(Number(quoted.grossTotal) + shippingAmount, quoted.currency, locale)}
               </Typography>
             </Stack>
           )}

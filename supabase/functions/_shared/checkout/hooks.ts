@@ -92,18 +92,32 @@ export function noGiftCardRelease(_input: {
 /**
  * Etapa 7 · sin reglas de entrega.
  *
- * El checkout mínimo pide una dirección de texto libre y una referencia
- * (P06), y eso es lo único que hay que validar hoy — el formato ya lo impuso
- * `normalizeShippingAddress`. Lo que P12 traerá son zonas de cobertura, coste
- * de envío y ventanas de entrega; el asiento está aquí y la forma del
- * resultado no va a cambiar: entregable o no, y por qué.
+ * P12 le puso motor detrás (`serverDelivery`, en `dbPorts.ts`), pero esta
+ * función NO se retira y no es código muerto: es el elemento neutro con el que
+ * se prueba que el pipeline se comporta igual cuando el comercio no ha
+ * configurado ninguna zona ni ningún método, que es el caso de todo tenant
+ * recién dado de alta y el que funcionaba desde P06. Ese camino tiene que
+ * seguir existiendo y tiene que seguir estando probado.
+ *
+ * Devuelve entregable y coste CERO siempre. `methodCode: null` es lo que hace
+ * que `create_order` no planifique ningún fulfillment: no es que la entrega
+ * falle, es que no se eligió ninguna.
  */
 export function alwaysDeliverable(input: {
   context: CheckoutContext
   address: ShippingAddress
   account: AccountContext
 }): Promise<DeliveryContext> {
-  return Promise.resolve({ address: input.address, deliverable: true, reason: null })
+  return Promise.resolve({
+    address: input.address,
+    deliverable: true,
+    reason: null,
+    amount: '0.00',
+    methodCode: null,
+    strategy: null,
+    promisedFrom: null,
+    promisedTo: null,
+  })
 }
 
 /**

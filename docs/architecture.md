@@ -23,7 +23,9 @@ Usuario del tenant ──┘      ├─ /s/:storeSlug  storefront público (ten
                             │                      la 8a canjea tarjeta regalo antes de cobrar)
                             ├─ create-order       (la puerta de P02-P06; sigue viva)
                             ├─ catalog-product    (alta/edición con el JWT del usuario)
-                            └─ update-order-status (transiciones con el JWT del usuario)
+                            ├─ update-order-status (transiciones con el JWT del usuario)
+                            ├─ payments-webhook   (la pasarela dice qué pasó — P09-SaaS)
+                            └─ fulfillment-webhook (el operador dice dónde va — P12-SaaS)
 
                             ├─ platform-context   ──► HUB EBIM (addons y config, §5)
                             │                        [escrita y probada; el hub todavía
@@ -44,7 +46,7 @@ El **hub EBIM** es el emisor de identidad y dueño del catálogo/billing. eComme
 escribe en él. La identidad del comprador final del storefront es **local** a este proyecto (patrón §2.5,
 igual que los proveedores externos de eSupplier); los usuarios del tenant llegan por SSO del hub.
 
-## Modelo de datos (implementado hasta P09-SaaS)
+## Modelo de datos (implementado hasta P12-SaaS)
 
 Nueve tablas en `supabase/migrations`, todas con `organization_id uuid` + `company_id uuid` (uuids del hub),
 `created_at`/`updated_at`, PK uuid y RLS default deny **forzada**:
@@ -293,9 +295,16 @@ LOS HECHOS
   bloquearía las filas de existencia mientras un tercero contesta.
 - **Las etapas 10 y 11 no ejecutan nada, y eso es la propiedad**: los hechos se escriben DENTRO de la
   transacción del pedido (`checkout_place_order`), así que no existe «pedido creado, nadie enterado».
-- **Tres ganchos vacíos con el elemento neutro** —promociones (P10), entrega (P12) y cobro (P09)—,
-  para que esas fases sean sustituir un adaptador y no abrir el orquestador. Ningún nombre de
-  pasarela, transportista ni ERP aparece en el directorio.
+- **Los tres ganchos vacíos ya tienen motor detrás** —promociones (P10), cobro (P09) y entrega
+  (P12)— y **ninguna de las tres fases abrió el orquestador para meter una etapa**: sustituyeron un
+  adaptador, que era exactamente el punto de dejar el asiento hecho. Las tres funciones neutras
+  (`noPromotions`, `noPaymentGateway`, `alwaysDeliverable`) siguen existiendo y siguen probadas: son
+  el camino del tenant que no tiene ese módulo contratado. Ningún nombre de pasarela, transportista
+  ni ERP aparece en el directorio.
+- **La etapa 7 resuelve el coste de la entrega, y la 8 autoriza el total CON transporte** (P12). Es
+  lo único que no se podía dejar para `create_order`: si el envío apareciera solo dentro de la
+  transacción del pedido, a la pasarela se le habría pedido de menos y el comercio cobraría el envío
+  a nadie.
 - **La fusión invitado → usuario toma el MÁXIMO, no la suma**, solo absorbe carritos sin dueño y
   exige mismo canal.
 - **En la petición de compra no viaja ni un céntimo**: el aviso de cambio de precio lo produce
@@ -527,6 +536,75 @@ EL INDICE (sin tabla nueva)
   sesión (incluye borradores), cuyo primer llamante es el selector de productos
   del editor — la deuda que P10 dejó escrita.
 
+### Fulfillment, logística y devoluciones (P12-SaaS)
+
+Quince tablas más, migraciones `20260828150000`–`20260828150700`. Decisiones completas en
+[`adr/012-fulfillment-returns.md`](adr/012-fulfillment-returns.md).
+
+```
+LA OFERTA (configuración del comercio; el backoffice la escribe)
+  delivery_zones      dónde se entrega: país, regiones y prefijos postales
+  delivery_methods    cómo llega: ship · pickup · local_delivery · digital, y su operador
+  delivery_rates      cuánto cuesta: base + por línea + por peso + umbral de gratuidad
+  pickup_points       dónde se recoge; si cuelga de un almacén, de ahí sale la mercancía
+  delivery_windows    franjas SEMANALES con aforo y hora de corte
+
+EL DESPACHO (se lee; se mueve con comandos)
+  fulfillments        la PROMESA de entrega de una PARTE del pedido
+  fulfillment_items   qué unidades entran en ella — esta tabla ES el despacho parcial
+  shipments           el bulto que movió un operador, con su guía y su coste real
+  shipment_items      qué va dentro del bulto
+  tracking_events     el recorrido, normalizado y append-only
+
+LA DEVOLUCIÓN
+  return_reasons      el vocabulario del comercio: qué exige foto y qué repone stock
+  return_requests     la solicitud, con su RMA y su ciclo
+  return_items        qué unidades vuelven, en qué estado llegaron y si se reponen
+  return_events       la bitácora, append-only
+  return_evidence     la ruta en un bucket PRIVADO por tenant
+```
+
+- **Un pedido no es un fulfillment.** Tres FK del despacho al pedido y **cero** del pedido al
+  despacho — hay un test contra el catálogo de Postgres, no contra el diff. Es la misma forma que
+  P09 dio a los cobros y por la misma razón: conectar un operador nuevo no puede ser una migración
+  sobre `orders`. `orders.fulfillment_status` es un ESPEJO derivado de las cantidades entregadas
+  (`ebim.fulfillment_sync_order`), y solo avanza.
+- **La única columna del pedido que cambia es el dinero**: `shipping_total`, que existía desde P02 y
+  valía siempre cero. Llenarlo obligó a reescribir `create_order` entera, y la copia la hace un
+  script con anclas exactas (`scripts/build-p12-create-order.mjs`).
+- **El reparto de ese importe entre entregas es estructural**: `coste = shipping_total − lo ya
+  asignado a entregas no anuladas`. Con una sola da el total, con la segunda da cero, y partir un
+  despacho no cobra transporte de más.
+- **`delivery_rates` no tiene GRANT de SELECT para `anon`**, y el subtotal con el que se evalúa el
+  umbral de envío gratis **tampoco viaja en la pregunta**: `delivery_options_for_slug` lo recalcula
+  con `ebim.build_quote`, el mismo motor que cotiza el carrito.
+- **Una sola autoridad de cotización**, `ebim.delivery_options`, para la vitrina, el checkout y el
+  backoffice — la misma forma que `ebim.resolve_prices` desde P04.
+- **La zona gana por especificidad**: prefijo postal más largo, luego región declarada, luego
+  `priority`. Sin eso, una zona «país» creada después taparía a «Lima 15001».
+- **`null` de peso no es cero**: una tarifa por kilo sobre un catálogo sin pesos NO se aplica, y el
+  motivo se distingue (`PESO_NO_DECLARADO` lo arregla el catálogo; `SIN_TARIFA`, la configuración).
+- **Recojo, reparto y envío son estrategias del MISMO checkout**, no checkouts distintos. Lo que
+  cambia por estrategia lo imponen CHECKs: solo `ship` admite transportista, `pickup` exige punto, y
+  un recojo congela la dirección del PUNTO y no la del comprador.
+- **El punto de recojo manda sobre la regla de abastecimiento** (`ebim.select_warehouse`): que una
+  regla eligiera otro almacén produce el caso peor del comercio físico.
+- **El seguimiento se normaliza a `tracking_status`** y la jerga del operador se guarda al lado, sin
+  traducir, en `provider_status`. La ingesta es idempotente por índice único
+  `(shipment_id, external_event_id)`, un aviso sin firma verificada se registra y **no mueve nada**,
+  y un aviso desordenado se guarda sin fallar — la tabla de transiciones es una función precisamente
+  porque tiene dos lectores, el que prohíbe y el que pregunta.
+- **Una devolución no es un pedido negativo**: tiene ciclo propio, motivo por línea y
+  `received_quantity` distinta de `quantity`, porque el reembolso se calcula sobre lo que llegó.
+- **La integración financiera es un HECHO canónico** (`return.completed` en `domain_events`), no una
+  nota de crédito de ningún ERP. Y completar una devolución **no abona nada**: eso es un acto
+  autorizado del dominio de pagos, con su pantalla y su rol.
+- **La reposición pasa por el motor de P06** con referencia externa en el asiento, así que
+  inspeccionar dos veces no repone el doble; y lo que no llegó vendible no se repone, lo pida quien
+  lo pida (`return_items_restock_shape`).
+- **`products.shipping_weight`** (y el de variante) nacen aquí: sin peso no hay tarifa por kilo, y
+  esa es la mitad de las tarifas reales de esta región.
+
 ### Capacidades y entitlements (P02-SaaS)
 
 Cuatro tablas más, migración `20260827160000`. Decisiones completas en
@@ -657,6 +735,12 @@ src/
                         escala y cupon, que son configuracion comercial—; el contador
                         de usos y el saldo de una tarjeta son comandos. Gateada por la
                         capacidad `promotions`
+  features/fulfillment/ entregas y devoluciones (P12-SaaS): cola de preparación con su
+                        detalle, línea de tiempo y acciones autorizadas; cola de
+                        devoluciones con decisión, recepción, inspección y cierre; y la
+                        red de entrega —métodos, zonas y tarifas—. Escribe SEIS tablas,
+                        todas de configuración; mover una entrega es un comando.
+                        Gateada por la capacidad `fulfillment`
   features/content/     el editor de la vitrina (P11-SaaS): páginas, bloques con
                         vigencia/canal/segmento, colecciones con buscador de
                         producto, vista previa con reloj y sinónimos de búsqueda.
@@ -666,6 +750,9 @@ src/
                          checkout idempotente con etapas)
                         + StoreAccountPage: área de cuenta del comprador B2B (P05-SaaS),
                           resuelta por `my_business_accounts()` y no por la URL
+                        + delivery.ts / DeliveryPicker (P12-SaaS): envío, recojo, reparto
+                          y entrega digital en la MISMA lista del MISMO checkout; el
+                          importe llega resuelto del servidor y aquí no se calcula nada
   architecture.test.ts  las reglas de frontera, comprobadas sobre el codigo real
 supabase/
   migrations/  SQL versionado (tabla nueva = tabla + RLS + policies en la misma migración)
@@ -686,9 +773,12 @@ Decisiones completas en [`adr/001-domain-boundaries.md`](adr/001-domain-boundari
 - **Un puerto existe solo si hay una segunda implementación ya declarada**: una fila de
   `integration_providers` con esa operación, o dos llamantes concretos hoy. Por eso hay
   `PricingPort`, `InventoryPort`, `PaymentProvider`, `FulfillmentProvider`, `NotificationProvider`,
-  `ErpProvider` e `InvoicingProvider`, y **no** hay `SearchPort`. `InventoryPort` es el primero con
-  DOS implementaciones vivas (P06-SaaS): backoffice y vitrina, que no son dos capas de lo mismo sino
-  dos actores con dos autorizaciones y dos respuestas distintas.
+  `ErpProvider`, `InvoicingProvider` y —desde P11-SaaS, cuando aparecieron sus dos implementaciones—
+  `SearchPort`. `InventoryPort` es el primero con DOS implementaciones vivas (P06-SaaS): backoffice
+  y vitrina, que no son dos capas de lo mismo sino dos actores con dos autorizaciones y dos
+  respuestas distintas. `FulfillmentProvider` deja de ser solo un contrato en P12-SaaS: su versión
+  de servidor (`_shared/fulfillment/provider.ts`) tiene registro, conector de pruebas y una Edge
+  Function que lo usa.
 - **Ningún puerto recibe el tenant como parámetro**: `organization_id`/`company_id` salen del JWT
   en el servidor. Un parámetro que se puede pasar se puede pasar mal.
 - **El vocabulario canónico es el de la base.** `src/domain/ports/operations.ts` replica el enum

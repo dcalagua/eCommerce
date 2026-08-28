@@ -234,11 +234,29 @@ export const BOUNDARIES: readonly Boundary[] = [
   {
     id: 'fulfillment',
     kind: 'domain',
-    state: 'declared',
-    responsibility: 'Cómo llega el pedido: zonas, métodos, envío, seguimiento y devolución.',
-    paths: [],
+    // P12-SaaS. Deja de ser `declared`: hay zonas, métodos con tarifa resuelta
+    // en el servidor, ventanas, puntos de recojo, cola de preparación,
+    // seguimiento normalizado y devoluciones con reposición. La propiedad que
+    // sostiene la frontera es la misma que P09 estableció para los cobros: una
+    // entrega apunta al pedido y el pedido NO apunta a la entrega, así que
+    // conectar un operador nuevo no toca el dominio de pedidos.
+    state: 'implemented',
+    responsibility:
+      'Cómo llega el pedido y cómo vuelve: cobertura, coste, ventanas, punto de recojo, despacho (parcial incluido), seguimiento y devolución.',
+    paths: ['features/fulfillment'],
     port: 'FulfillmentProvider',
-    serverSide: ['orders.shipping_total existe y vale siempre 0 (090400)'],
+    serverSide: [
+      'la oferta: delivery_zones, delivery_methods, delivery_rates, pickup_points, delivery_windows (150000)',
+      'el despacho: fulfillments, fulfillment_items, shipments, shipment_items, tracking_events (150100)',
+      'ebim.delivery_options — la ÚNICA autoridad de cobertura y tarifa (150200)',
+      'ebim.select_warehouse — el punto de recojo manda sobre la regla del método (150200)',
+      'comandos: fulfillment_create/assign/transition, shipment_open y la ingesta de seguimiento (150300)',
+      'devoluciones: return_reasons, return_requests, return_items, return_events, return_evidence (150400)',
+      'return_decide/receive/inspect/complete y el hecho canónico return.completed (150500)',
+      'create_order cotiza la entrega y escribe orders.shipping_total, que valía siempre 0 (150600)',
+      'contrato canónico y adaptadores: supabase/functions/_shared/fulfillment',
+      'Edge Function fulfillment-webhook: firma verificada e ingesta idempotente',
+    ],
   },
   {
     id: 'analytics',

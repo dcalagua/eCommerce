@@ -605,8 +605,14 @@ describe('Storage: aislamiento por path {organization_id}/{store_id}/', () => {
     const rows = await asRole(db, 'service_role', null, () =>
       sql(`select id, public from storage.buckets order by id`),
     )
+    // La lista es EXHAUSTIVA a proposito: un bucket nuevo tiene que aparecer
+    // aqui, y quien lo anade tiene que mirar su `public`. `return-evidence`
+    // (P12-SaaS) entra con la misma regla que los otros dos —privado, lectura
+    // por policy— y ademas sin ninguna policy `to anon`: la foto de una
+    // devolucion es un dato personal de un comprador.
     expect(rows).toEqual([
       { id: 'product-images', public: false },
+      { id: 'return-evidence', public: false },
       { id: 'store-assets', public: false },
     ])
   })

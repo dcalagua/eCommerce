@@ -125,7 +125,12 @@ const handler = serveJson(
             currency: result.order.currency,
             subtotal: result.order.subtotal,
             tax_total: result.order.taxTotal,
+            // P12: el transporte va SEPARADO del total. Un comprador que ve un
+            // total mayor que la suma de sus lineas y ninguna linea que lo
+            // explique es un comprador que abandona el carrito.
+            shipping_total: result.order.shippingTotal,
             grand_total: result.order.grandTotal,
+            delivery: result.order.delivery,
             // P10: el desglose. Un total con descuento y sin explicación es lo
             // que hace que un comprador llame por teléfono para preguntar por
             // qué le cobraron eso.

@@ -58,6 +58,9 @@ const OrdersPage = lazy(() =>
 const PaymentsPage = lazy(() =>
   import('@/features/payments/PaymentsPage').then((m) => ({ default: m.PaymentsPage })),
 )
+const FulfillmentPage = lazy(() =>
+  import('@/features/fulfillment/FulfillmentPage').then((m) => ({ default: m.FulfillmentPage })),
+)
 const PromotionsPage = lazy(() =>
   import('@/features/promotions/PromotionsPage').then((m) => ({ default: m.PromotionsPage })),
 )
@@ -149,6 +152,11 @@ export const routes: RouteObject[] = [
           // `payments`: sin el addon la tienda sigue vendiendo con el pago
           // pendiente, que es lo que hacia antes de esta fase.
           { path: 'payments', element: gated('payments', <PaymentsPage />) },
+          // P12: cola de preparacion, devoluciones y red de entrega. Gateado
+          // por la capacidad `fulfillment`: sin el addon los pedidos nacen con
+          // transporte cero y sin promesa de entrega, que es exactamente lo que
+          // hacian antes de esta fase. Se degrada, no se rompe.
+          { path: 'fulfillment', element: gated('fulfillment', <FulfillmentPage />) },
           // P10: campanas, cupones y tarjetas regalo. Gateado por la capacidad
           // `promotions`: sin el addon los pedidos cuestan el precio de lista,
           // que es exactamente lo que costaban antes de esta fase.

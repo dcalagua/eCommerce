@@ -241,8 +241,36 @@ export const trackedOrderSchema = z.object({
   // P10. `.default('0.00')` y no obligatorio: un pedido anterior al despliegue
   // de esta fase no lo trae, y esa respuesta tiene que seguir pintándose.
   discount_total: z.string().default('0.00'),
+  // P12. Mismo criterio que `discount_total`: `.default` y no obligatorio, para
+  // que un pedido anterior al despliegue de esta fase siga pintandose.
+  shipping_total: z.string().default('0.00'),
   grand_total: z.string(),
   shipping_address: z.record(z.unknown()).default({}),
+  /**
+   * Como llega el pedido, en el vocabulario del COMPRADOR. Una LISTA porque un
+   * pedido puede salir en varias entregas: enseñar solo la primera convertiria
+   * un despacho parcial en «tu pedido ya llego» cuando falta media caja.
+   *
+   * No trae almacen, ni operador, ni lo que cobra el transportista: eso es
+   * informacion del comercio.
+   */
+  deliveries: z
+    .array(
+      z.object({
+        sequence: z.number(),
+        method_name: z.string(),
+        strategy: z.string(),
+        state: z.string(),
+        promised_from: z.string().nullable(),
+        promised_to: z.string().nullable(),
+        pickup_point: z
+          .object({ name: z.string(), address: z.record(z.unknown()).default({}) })
+          .nullable(),
+        tracking_number: z.string().nullable(),
+        tracking_url: z.string().nullable(),
+      }),
+    )
+    .default([]),
   items: z
     .array(
       z.object({

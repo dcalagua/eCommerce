@@ -3,6 +3,7 @@ import { Box, Button, Card, Chip, Divider, Stack, Typography } from '@mui/materi
 import { useQuery } from '@tanstack/react-query'
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
+import type { MessageKey } from '@/shared/i18n/messages'
 import { formatMoney } from '@/shared/lib/format'
 import { R, T } from '@/theme/tokens'
 import { fetchOrderByToken } from './api'
@@ -66,6 +67,7 @@ export function StoreOrderPage() {
           subtotal: tracked.data.subtotal,
           tax_total: tracked.data.tax_total,
           discount_total: tracked.data.discount_total,
+          shipping_total: tracked.data.shipping_total,
           grand_total: tracked.data.grand_total,
           items: tracked.data.items.map((item) => ({
             product_id: '',
@@ -165,6 +167,15 @@ export function StoreOrderPage() {
             />
           )}
           <Amount label={t('store.order.tax')} value={order.tax_total} currency={order.currency} />
+          {/* P12 · el transporte, SEPARADO. Un total mayor que la suma de las
+              lineas y ninguna linea que lo explique es una llamada al comercio. */}
+          {Number(order.shipping_total) > 0 && (
+            <Amount
+              label={t('store.delivery.shipping')}
+              value={order.shipping_total}
+              currency={order.currency}
+            />
+          )}
           <Divider sx={{ my: 1 }} />
           <Amount
             label={t('common.total')}
@@ -172,6 +183,45 @@ export function StoreOrderPage() {
             currency={order.currency}
             strong
           />
+        </Card>
+      )}
+
+      {/* P12 · en que va cada entrega. Solo aparece por el enlace permanente:
+          justo despues de comprar todavia no hay nada que seguir, y el estado
+          de navegacion no lo trae. */}
+      {(tracked.data?.deliveries ?? []).length > 0 && (
+        <Card sx={{ p: { xs: 2, md: 3 } }}>
+          <Typography component="h2" sx={{ fontSize: T.cardTitle, fontWeight: 800, mb: 1.5 }}>
+            {t('store.delivery.title')}
+          </Typography>
+          <Stack sx={{ gap: 1.5 }}>
+            {(tracked.data?.deliveries ?? []).map((entry) => (
+              <Stack key={entry.sequence} sx={{ gap: 0.25 }}>
+                <Typography sx={{ fontSize: T.body, fontWeight: 700 }}>
+                  {entry.method_name}
+                </Typography>
+                <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+                  {t(`fulfillment.state.${entry.state}` as MessageKey)}
+                  {entry.promised_from
+                    ? ` · ${t('store.delivery.promised')} ${entry.promised_from} – ${entry.promised_to}`
+                    : ''}
+                </Typography>
+                {entry.pickup_point && (
+                  <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+                    {t('store.delivery.pickupPoint')}: {entry.pickup_point.name}
+                    {typeof entry.pickup_point.address.address === 'string'
+                      ? ` · ${entry.pickup_point.address.address}`
+                      : ''}
+                  </Typography>
+                )}
+                {entry.tracking_number && (
+                  <Typography sx={{ fontSize: T.label, fontWeight: 700 }}>
+                    {t('fulfillment.field.tracking')}: {entry.tracking_number}
+                  </Typography>
+                )}
+              </Stack>
+            ))}
+          </Stack>
         </Card>
       )}
 

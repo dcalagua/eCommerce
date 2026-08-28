@@ -209,6 +209,40 @@ export const CONTENT_BLOCK_ITEMS_TABLE = 'content_block_items'
 export const SEARCH_SYNONYMS_TABLE = 'search_synonyms'
 export const CONTENT_PAGE_OVERVIEW_VIEW = 'content_page_overview'
 
+// --- Fulfillment y devoluciones (P12-SaaS, migraciones 150000-150700) -------
+// Sin `satisfies` por la misma razón que las anteriores: `database.types.ts` se
+// genera contra el proyecto ENLAZADO y estas migraciones todavía no están
+// aplicadas allí. La red mientras tanto es `supabase/tests/fulfillment.test.ts`
+// y `supabase/tests/returns.test.ts`, que comprueban estos mismos nombres
+// contra el esquema construido desde las migraciones.
+//
+// De las quince tablas, el backoffice ESCRIBE seis —zonas, métodos, tarifas,
+// puntos de recojo, franjas y motivos de devolución, que son configuración del
+// comercio—. El DESPACHO se lee y se mueve con comandos: mover una entrega son
+// cuatro cosas que tienen que pasar juntas (autorización, máquina de estados,
+// línea de tiempo y espejo en el pedido) y un GRANT de UPDATE permite la mitad.
+export const DELIVERY_ZONES_TABLE = 'delivery_zones'
+export const DELIVERY_METHODS_TABLE = 'delivery_methods'
+export const DELIVERY_RATES_TABLE = 'delivery_rates'
+export const DELIVERY_WINDOWS_TABLE = 'delivery_windows'
+export const PICKUP_POINTS_TABLE = 'pickup_points'
+export const FULFILLMENTS_TABLE = 'fulfillments'
+export const FULFILLMENT_ITEMS_TABLE = 'fulfillment_items'
+export const SHIPMENTS_TABLE = 'shipments'
+export const SHIPMENT_ITEMS_TABLE = 'shipment_items'
+export const TRACKING_EVENTS_TABLE = 'tracking_events'
+export const RETURN_REASONS_TABLE = 'return_reasons'
+export const RETURN_REQUESTS_TABLE = 'return_requests'
+export const RETURN_ITEMS_TABLE = 'return_items'
+export const RETURN_EVENTS_TABLE = 'return_events'
+export const RETURN_EVIDENCE_TABLE = 'return_evidence'
+export const FULFILLMENT_OVERVIEW_VIEW = 'fulfillment_overview'
+export const RETURN_OVERVIEW_VIEW = 'return_overview'
+export const PUBLIC_DELIVERY_METHODS_VIEW = 'public_delivery_methods'
+// Bucket PRIVADO de la evidencia de devolución. Sin lectura pública ni para el
+// dueño: se accede con URL firmada que caduca (P12).
+export const RETURN_EVIDENCE_BUCKET = 'return-evidence'
+
 // --- Vistas del modelo de lectura público ----------------------------------
 // `security_invoker` sobre policies `to anon`: filtran filas, y el GRANT por
 // columna es lo que evita que `anon` vea `stock` o `config` (P02, §4.3).
@@ -322,6 +356,31 @@ export const CONTENT_PREVIEW_RPC = 'content_preview'
 export const CATALOG_SEARCH_RPC = 'catalog_search'
 export const STORE_DOMAIN_CLAIM_RPC = 'store_domain_claim'
 
+// Fulfillment y devoluciones (P12-SaaS). `delivery_options_for_slug` es la
+// puerta ANÓNIMA de la vitrina —hermana de `price_quote_for_slug` y de
+// `availability_for_slug`— y `returns_by_token` y `return_request_for_slug` son
+// las del comprador con el token de su pedido. El resto exige sesión y su
+// autorización vive dentro de cada función. `shipment_apply_outcome` y
+// `shipment_track_ingest` NO están aquí a propósito: son el resultado de hablar
+// con un operador externo, solo se pueden llamar con `service_role` desde una
+// Edge Function, y listarlas invitaría a intentarlo desde el bundle.
+export const DELIVERY_OPTIONS_PUBLIC_RPC = 'delivery_options_for_slug'
+export const DELIVERY_OPTIONS_ORDER_RPC = 'delivery_options_for_order'
+export const FULFILLMENT_CREATE_RPC = 'fulfillment_create'
+export const FULFILLMENT_ASSIGN_RPC = 'fulfillment_assign'
+export const FULFILLMENT_TRANSITION_RPC = 'fulfillment_transition'
+export const SHIPMENT_OPEN_RPC = 'shipment_open'
+export const SHIPMENT_TRACK_NOTE_RPC = 'shipment_track_note'
+export const RETURN_REQUEST_PUBLIC_RPC = 'return_request_for_slug'
+export const RETURNS_BY_TOKEN_RPC = 'returns_by_token'
+export const RETURN_OPEN_RPC = 'return_open'
+export const RETURN_DECIDE_RPC = 'return_decide'
+export const RETURN_RECEIVE_RPC = 'return_receive'
+export const RETURN_INSPECT_RPC = 'return_inspect'
+export const RETURN_COMPLETE_RPC = 'return_complete'
+export const RETURN_CANCEL_RPC = 'return_cancel'
+export const RETURN_EVIDENCE_ATTACH_RPC = 'return_evidence_attach'
+
 // --- Edge Functions --------------------------------------------------------
 export const BOOTSTRAP_FUNCTION = 'bootstrap-tenant'
 export const CATALOG_PRODUCT_FUNCTION = 'catalog-product'
@@ -332,3 +391,6 @@ export const CREATE_ORDER_FUNCTION = 'create-order'
 export const CHECKOUT_FUNCTION = 'checkout'
 export const UPDATE_ORDER_STATUS_FUNCTION = 'update-order-status'
 export const PLATFORM_CONTEXT_FUNCTION = 'platform-context'
+// P12: la puerta por la que un operador logístico dice dónde va el paquete. No
+// la llama el navegador: la llama un servidor y la autentica una FIRMA.
+export const FULFILLMENT_WEBHOOK_FUNCTION = 'fulfillment-webhook'

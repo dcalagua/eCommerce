@@ -4,6 +4,7 @@ import MonitorHeartOutlinedIcon from '@mui/icons-material/MonitorHeartOutlined'
 import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined'
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
 import LocalOfferOutlinedIcon from '@mui/icons-material/LocalOfferOutlined'
+import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined'
 import PriceChangeOutlinedIcon from '@mui/icons-material/PriceChangeOutlined'
 import PaymentsOutlinedIcon from '@mui/icons-material/PaymentsOutlined'
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
@@ -93,6 +94,15 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'nav.payments',
     icon: <PaymentsOutlinedIcon fontSize="small" />,
     capability: 'payments',
+  },
+  {
+    // P12: entregas, devoluciones y la red de reparto. Va DESPUES de pedidos y
+    // pagos porque ese es el orden real de la operacion: primero se vende, se
+    // cobra, y despues se despacha.
+    to: '/app/fulfillment',
+    label: 'nav.fulfillment',
+    icon: <LocalShippingOutlinedIcon fontSize="small" />,
+    capability: 'fulfillment',
   },
   {
     to: '/app/promotions',

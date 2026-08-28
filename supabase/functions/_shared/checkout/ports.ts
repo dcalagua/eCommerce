@@ -205,13 +205,43 @@ export interface Reservation {
 }
 
 // ---------------------------------------------------------------------------
-// 7 · Entrega (gancho estable; P12)
+// 7 · Entrega (P12-SaaS)
 // ---------------------------------------------------------------------------
+/**
+ * Lo que el comprador ELIGE. Nunca lleva importe: cuánto cuesta ese método lo
+ * decide `ebim.delivery_options` en el servidor, dos veces —una para
+ * enseñárselo y otra, con la fila delante, para cobrárselo—.
+ *
+ * Es la misma forma que tienen `paymentMethodCode` y `couponCodes`: un código
+ * del comercio y ningún número.
+ */
+export interface DeliveryChoice {
+  readonly methodCode: string
+  /** Obligatorio cuando la estrategia es `pickup`; lo comprueba la base. */
+  readonly pickupPointId: string | null
+  /** Franja elegida, ya resuelta a fecha. `null` = el método no la exige. */
+  readonly window: {
+    readonly date: string
+    readonly startsAt: string
+    readonly endsAt: string
+  } | null
+}
+
 export interface DeliveryContext {
   readonly address: ShippingAddress
   readonly deliverable: boolean
   /** Motivo cuando no lo es. Sin nombres de transportista. */
   readonly reason: string | null
+  /**
+   * Lo que se le va a cobrar por la entrega, resuelto en el servidor. `'0.00'`
+   * cuando la tienda no cobra transporte, que es lo que pasaba antes de P12.
+   */
+  readonly amount: MoneyText
+  /** `null` cuando no se eligió método: el pedido nace sin promesa de entrega. */
+  readonly methodCode: string | null
+  readonly strategy: string | null
+  readonly promisedFrom: string | null
+  readonly promisedTo: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -306,8 +336,15 @@ export interface PlacedOrder {
   readonly currency: string
   readonly subtotal: MoneyText
   readonly taxTotal: MoneyText
+  /** P12. `'0.00'` cuando la tienda no cobra transporte. */
+  readonly shippingTotal: MoneyText
   readonly grandTotal: MoneyText
   readonly items: readonly Record<string, unknown>[]
+  /**
+   * Como y cuando llega, tal y como quedo congelado en el pedido. `null` = no
+   * se eligio entrega, que es distinto de «entrega gratis».
+   */
+  readonly delivery: Record<string, unknown> | null
   readonly replay: boolean
 }
 
@@ -357,6 +394,14 @@ export interface CheckoutRequest {
    * cobrar de menos o falsear la base imponible.
    */
   readonly giftCardCodes: readonly string[]
+  /**
+   * Cómo quiere que le llegue. P12.
+   *
+   * `null` = no eligió, y entonces el pedido nace con transporte cero y sin
+   * promesa de entrega — exactamente como antes de esta fase. Un tenant que no
+   * ha configurado métodos sigue vendiendo.
+   */
+  readonly delivery: DeliveryChoice | null
 }
 
 export interface IntentClaim {
@@ -404,10 +449,21 @@ export interface CheckoutPorts {
     items: readonly OrderItemInput[]
     ttlSeconds: number
   }): Promise<Reservation>
+  /**
+   * Etapa 7 · ¿se puede entregar, y por cuánto?
+   *
+   * Recibe la ELECCIÓN y las líneas —no un importe— y devuelve el coste ya
+   * resuelto. Las líneas hacen falta porque el umbral de envío gratis y la
+   * tarifa por peso dependen de lo que se compra, y el subtotal con el que se
+   * evalúan lo recalcula el servidor: si viniera en la petición, el envío
+   * gratis lo decidiría el navegador.
+   */
   validateDelivery(input: {
     context: CheckoutContext
     address: ShippingAddress
     account: AccountContext
+    choice: DeliveryChoice | null
+    items: readonly OrderItemInput[]
   }): Promise<DeliveryContext>
   /**
    * Etapa 8a · la tarjeta regalo, ANTES de la pasarela.

@@ -58,6 +58,10 @@ export const PROVIDER_OPERATIONS = [
   'payment.refund',
   'shipment.create',
   'shipment.track',
+  // P12-SaaS. Anular una guia ya emitida no es «no crearla»: el operador puede
+  // haberla cobrado y la anulacion es una llamada aparte que no todos ofrecen,
+  // por eso es una operacion propia y no una bandera de `shipment.create`.
+  'shipment.cancel',
   'message.email',
   'message.sms',
   'message.whatsapp',

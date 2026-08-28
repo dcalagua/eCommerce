@@ -253,8 +253,15 @@ export const CAPABILITIES: readonly Capability[] = [
     id: 'fulfillment',
     boundary: 'fulfillment',
     entitlement: `${ENTITLEMENT_PREFIX}fulfillment`,
-    state: 'declared',
-    grants: 'Zonas, métodos de envío, seguimiento y devoluciones (P12).',
+    // La séptima vendible que deja de ser `declared` (P12-SaaS). Sin ella el
+    // comercio sigue vendiendo exactamente como antes: `create_order` sin
+    // `p_delivery` cobra transporte cero y no planifica entrega, así que el
+    // pedido nace igual que en P11 y el backoffice lo mueve a mano por
+    // `orders.status`. Se degrada, no se rompe — el mismo trato que el motor de
+    // precios, el inventario, las promociones y el CMS.
+    state: 'implemented',
+    grants:
+      'Zonas y métodos de entrega con tarifa server-side, ventanas, puntos de recojo, cola de preparación, seguimiento normalizado y devoluciones con reposición (P12).',
   },
   {
     id: 'analytics.advanced',

@@ -59,6 +59,31 @@ export const checkoutSchema = z.object({
     .max(300, 'store.checkout.error.address'),
   reference: z.string().trim().max(200, 'store.checkout.error.reference').optional(),
   /**
+   * Los cuatro campos de COBERTURA (P12-SaaS).
+   *
+   * Opcionales a propósito: una tienda que no ha configurado zonas no tiene por
+   * qué pedirle el código postal a nadie, y exigirlos rompería el checkout
+   * mínimo que funciona desde P06. Cuando sí hay zonas, son exactamente lo que
+   * `ebim.delivery_zone_for` necesita para decir «ahí no llegamos».
+   */
+  city: z.string().trim().max(120, 'store.checkout.error.address').optional(),
+  region: z.string().trim().max(120, 'store.checkout.error.address').optional(),
+  postalCode: z.string().trim().max(12, 'store.checkout.error.address').optional(),
+  country: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z]{2}$/, 'store.checkout.error.address')
+    .optional()
+    .or(z.literal('')),
+  /**
+   * CÓMO quiere recibirlo. Un código del comercio y nada más: ni importe, ni
+   * transportista, ni almacén. Cuánto cuesta lo decide el servidor dos veces
+   * —una para enseñárselo y otra, con la fila delante, para cobrárselo—.
+   */
+  deliveryMethodCode: z.string().trim().max(40).optional(),
+  pickupPointId: z.string().uuid().optional().or(z.literal('')),
+  /**
    * El cupón que el comprador teclea (P10-SaaS).
    *
    * **Un solo campo, no cinco.** El motor admite hasta cinco códigos por
@@ -83,6 +108,21 @@ export const orderResultSchema = z.object({
   currency: z.string().length(3),
   subtotal: moneyText,
   tax_total: moneyText,
+  // P12. Con la tienda sin métodos configurados es '0.00', que es lo que
+  // devolvía P11: una respuesta anterior al despliegue simplemente no lo trae.
+  shipping_total: moneyText.default('0.00'),
+  /** Cómo y cuándo llega. `null` = no se eligió entrega, que no es «gratis». */
+  delivery: z
+    .object({
+      method_code: z.string(),
+      method_name: z.string(),
+      strategy: z.string(),
+      amount: moneyText.optional(),
+      promised_from: z.string().nullable().optional(),
+      promised_to: z.string().nullable().optional(),
+    })
+    .nullable()
+    .optional(),
   // P10. Con cero campañas es '0.00', que es lo que devolvía P07: una respuesta
   // anterior al despliegue simplemente no lo trae y el resumen no lo pinta.
   discount_total: moneyText.default('0.00'),
@@ -186,7 +226,15 @@ export function mapCheckoutCode(code: string): MessageKey {
     case 'PAGO_RECHAZADO':
       return 'store.checkout.error.payment'
     case 'DIRECCION_NO_ENTREGABLE':
+    case 'FUERA_DE_COBERTURA':
       return 'store.checkout.error.delivery'
+    case 'ENTREGA_NO_DISPONIBLE':
+    case 'ENTREGA_NO_INDICADA':
+      return 'store.checkout.error.delivery.method'
+    case 'PUNTO_DE_RECOJO_REQUERIDO':
+    case 'PUNTO_DE_RECOJO_NO_VALIDO':
+    case 'PUNTO_DE_RECOJO_NO_APLICA':
+      return 'store.checkout.error.delivery.pickup'
     case 'LIMITE_DE_PEDIDOS':
       return 'store.checkout.error.rateLimit'
     case 'CHECKOUT_EN_CURSO':
@@ -285,6 +333,23 @@ export interface StartCheckoutInput extends CheckoutValues {
   authenticated?: boolean
 }
 
+/**
+ * La dirección tal y como viaja: solo los campos con contenido.
+ *
+ * Mandar `city: ''` y `city` ausente tienen que dar el MISMO resumen de
+ * petición, o el mismo carrito parecería dos compras distintas según si el
+ * comprador tocó el campo y lo borró.
+ */
+export function shippingAddressOf(values: CheckoutValues): Record<string, string> {
+  const address: Record<string, string> = { address: values.address }
+  if (values.reference) address.reference = values.reference
+  if (values.city) address.city = values.city
+  if (values.region) address.region = values.region
+  if (values.postalCode) address.postal_code = values.postalCode
+  if (values.country) address.country = values.country
+  return address
+}
+
 export async function startCheckout(input: StartCheckoutInput): Promise<OrderResult> {
   // Con sesión hace falta el cliente que la lleva: es lo único que permite al
   // servidor resolver la cuenta B2B del comprador (`my_business_accounts()`).
@@ -305,9 +370,16 @@ export async function startCheckout(input: StartCheckoutInput): Promise<OrderRes
       customer_name: input.customerName,
       customer_email: input.customerEmail,
       customer_phone: input.customerPhone,
-      shipping_address: input.reference
-        ? { address: input.address, reference: input.reference }
-        : { address: input.address },
+      shipping_address: shippingAddressOf(input),
+      // P12. La ELECCIÓN de entrega, sin un solo importe dentro. `null` cuando
+      // la tienda no tiene métodos: el pedido nace con transporte cero, que es
+      // exactamente lo que hacía antes de esta fase.
+      delivery: input.deliveryMethodCode
+        ? {
+            method_code: input.deliveryMethodCode,
+            pickup_point_id: input.pickupPointId ? input.pickupPointId : null,
+          }
+        : null,
       items,
       accept_price_changes: input.acceptPriceChanges === true,
       // P10. La lista viaja vacía cuando no se tecleó nada: un `[]` es «no hay

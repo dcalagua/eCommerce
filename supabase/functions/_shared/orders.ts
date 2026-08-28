@@ -247,15 +247,41 @@ export function normalizeOrderItems(raw: unknown): OrderItemInput[] {
   return [...merged.values()]
 }
 
-/** Lo único que la vitrina pregunta para la entrega (P06: checkout mínimo). */
-export type ShippingAddress = { address: string; reference?: string }
+/**
+ * Lo que la vitrina pregunta para la entrega.
+ *
+ * P06 pedía dos campos —calle y referencia— porque no había nada que decidir
+ * con más. P12 añade CUATRO opcionales y ninguno es decorativo: son
+ * exactamente los que `ebim.delivery_zone_for` necesita para decir «ahí no
+ * llegamos» o «esa zona cuesta esto». `city` no participa en la cobertura y
+ * entra igual porque es lo que se imprime en la etiqueta.
+ *
+ * Siguen siendo OPCIONALES: una tienda que no configura zonas no tiene por qué
+ * pedirle el código postal a nadie, y exigirlo rompería el checkout mínimo que
+ * funciona desde P06.
+ */
+export type ShippingAddress = {
+  address: string
+  reference?: string
+  city?: string
+  region?: string
+  postal_code?: string
+  /** ISO 3166-1 alpha-2, en mayúsculas. */
+  country?: string
+}
 
-const SHIPPING_FIELDS = ['address', 'reference']
+const SHIPPING_FIELDS = ['address', 'reference', 'city', 'region', 'postal_code', 'country']
+
+/** Los cuatro opcionales, con su tope. `country` se valida aparte por su forma. */
+const SHIPPING_OPTIONAL: ReadonlyArray<{ key: 'reference' | 'city' | 'region' | 'postal_code'; max: number }> = [
+  { key: 'reference', max: 200 },
+  { key: 'city', max: 120 },
+  { key: 'region', max: 120 },
+  { key: 'postal_code', max: 12 },
+]
 
 /**
- * Dirección de entrega del checkout mínimo: calle obligatoria y referencia
- * opcional. Nada más — ni coordenadas, ni ciudad, ni país: pedir datos que
- * nadie usa es tan malo como no pedir los que sí.
+ * Dirección de entrega: calle obligatoria y el resto opcional.
  *
  * Las claves desconocidas se RECHAZAN en vez de guardarse: `shipping_address`
  * es un `jsonb` y sin esta puerta se convierte en el vertedero por el que
@@ -271,7 +297,7 @@ export function normalizeShippingAddress(raw: unknown): ShippingAddress {
   if (unknown.length > 0) {
     throw badRequest(
       'CAMPO_NO_PERMITIDO',
-      `\`shipping_address\` solo admite address y reference. Campos rechazados: ${unknown.join(', ')}`,
+      `\`shipping_address\` solo admite ${SHIPPING_FIELDS.join(', ')}. Campos rechazados: ${unknown.join(', ')}`,
     )
   }
 
@@ -283,14 +309,43 @@ export function normalizeShippingAddress(raw: unknown): ShippingAddress {
     )
   }
 
-  const rawReference = source.reference
-  if (rawReference !== undefined && rawReference !== null && typeof rawReference !== 'string') {
-    throw badRequest('CAMPO_INVALIDO', '`shipping_address.reference` debe ser texto')
-  }
-  const reference = typeof rawReference === 'string' ? rawReference.trim() : ''
-  if (reference.length > 200) {
-    throw badRequest('CAMPO_INVALIDO', '`shipping_address.reference` supera los 200 caracteres')
+  const normalized: ShippingAddress = { address }
+
+  for (const field of SHIPPING_OPTIONAL) {
+    const value = source[field.key]
+    if (value === undefined || value === null) continue
+    if (typeof value !== 'string') {
+      throw badRequest('CAMPO_INVALIDO', `\`shipping_address.${field.key}\` debe ser texto`)
+    }
+    const trimmed = value.trim()
+    if (trimmed.length > field.max) {
+      throw badRequest(
+        'CAMPO_INVALIDO',
+        `\`shipping_address.${field.key}\` supera los ${field.max} caracteres`,
+      )
+    }
+    if (trimmed !== '') normalized[field.key] = trimmed
   }
 
-  return reference ? { address, reference } : { address }
+  // El país decide la cobertura, así que su forma se comprueba: un «Perú» donde
+  // se espera «PE» no encajaría con ninguna zona y el comprador vería «no
+  // llegamos a tu dirección» sin entender por qué.
+  const rawCountry = source.country
+  if (rawCountry !== undefined && rawCountry !== null) {
+    if (typeof rawCountry !== 'string') {
+      throw badRequest('CAMPO_INVALIDO', '`shipping_address.country` debe ser texto')
+    }
+    const country = rawCountry.trim().toUpperCase()
+    if (country !== '') {
+      if (!/^[A-Z]{2}$/.test(country)) {
+        throw badRequest(
+          'CAMPO_INVALIDO',
+          '`shipping_address.country` debe ser un codigo ISO 3166-1 alpha-2 (dos letras)',
+        )
+      }
+      normalized.country = country
+    }
+  }
+
+  return normalized
 }

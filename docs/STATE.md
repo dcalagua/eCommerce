@@ -3,12 +3,12 @@
 GUIDELINES_STATUS: VERIFIED (**por lectura directa** en la 2ª pasada de P00-SaaS: contrato v1.15,
 `PROTOCOLO.md`, `BANDEJA.md` y `EBIM-CREW-ROSTER.md`). La unidad montada es `G:`, no `H:`.
 Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
-Última actualización: 2026-08-28 (P11-SaaS: CMS, white-label por tokens y búsqueda)
+Última actualización: 2026-08-28 (P12-SaaS: fulfillment, logística y devoluciones)
 
 > **Dos numeraciones de fase.** Lo que sigue como «P00…P12» es el trabajo histórico de este repo. A
 > partir del 2026-08-27 arranca un segundo recorrido, **P00–P17 de productización SaaS**
 > (`claude-saas-opus/config/phases.json`), que se identifica siempre como «P0x-SaaS». No son la misma
-> serie: el P12 histórico es el framework de integraciones; el P12-SaaS será fulfillment y devoluciones.
+> serie: el P12 histórico es el framework de integraciones; el P12-SaaS es fulfillment y devoluciones.
 
 ## Recuperación de la ejecución interrumpida (2026-08-28)
 
@@ -32,6 +32,138 @@ pantalla y sin un solo test propio. Se conservó tal cual y se continuó desde a
 ---
 
 ## Fase actual
+**P12-SaaS — Fulfillment, logística, ventanas de entrega y devoluciones. COMPLETA. Gate: PASS.**
+Decisiones completas en [`docs/adr/012-fulfillment-returns.md`](adr/012-fulfillment-returns.md).
+
+### Gates (2026-08-28, partiendo de `1059bac`)
+
+| Comando | Antes de P12 | Después |
+|---|---|---|
+| `npm run typecheck` | PASS | **PASS** |
+| `npm run lint` | PASS, 0 problemas | **PASS**, 0 problemas |
+| `npm run test` | 1822 / 82 archivos | **1934 / 86 archivos** |
+| `npm run test:db` | 1157 / 36 | **1253 / 39** |
+| `npm run build` | 916,37 kB (269,25 gzip) | **PASS**, 942,16 kB (275,75 gzip) |
+
+112 tests nuevos, repartidos así:
+
+| Dónde | Cuántos | Qué defienden |
+|---|---|---|
+| `supabase/tests/fulfillment.test.ts` | 43 | contra Postgres real: que `orders` no ganó ni una columna de logística y que las FK van solo del despacho al pedido; que `anon` no puede leer una tarifa; cobertura, umbral de envío gratis y zona más específica; despacho parcial y el reparto de `shipping_total`; transiciones inválidas, motivo obligatorio y guard de rol; guía idempotente, aviso repetido, aviso sin firma, aviso desordenado y bitácora inmutable; aislamiento en las diez tablas |
+| `supabase/tests/returns.test.ts` | 31 | la puerta del comprador por token; cantidades que no caben y las que sí tras un rechazo; decisión con motivo; recepción parcial, inspección con reposición idempotente y lo que no llegó vendible; el hecho canónico `return.completed` **sin nombrar ningún ERP** y sin abonar nada; evidencia privada con ruta del tenant; aislamiento en las cinco tablas |
+| `supabase/tests/fulfillment-provider.test.ts` | 22 | el contrato canónico con puertos falsos: el sandbox determinista, las capacidades declaradas, la traducción a estados canónicos, la firma sobre el cuerpo crudo, el aviso repetido, la guía desconocida, el id de evento sintetizado — y **la Definition of Done**: un operador inventado se conecta con un adaptador y una línea del registro |
+| `src/features/fulfillment/fulfillment-ui.test.tsx` | 11 | la pantalla: tres tabs, gating por capacidad, un solo buscador, la cola que enseña la ENTREGA y su retraso, las transiciones que la máquina permite, anular con motivo, el alta sin campos de tenant y con el operador limpiado, y la devolución que solo ofrece la acción de su estado |
+| `src/features/storefront/checkout-ui.test.tsx` | +5 | la vitrina: el envío ya calculado por el servidor y separado del total, la opción sin cobertura deshabilitada con su motivo, que lo que viaja es un CÓDIGO y ni un céntimo, y que sin métodos configurados el checkout se comporta EXACTAMENTE como antes de P12 |
+
+**Ningún test existente se borró ni se debilitó**; tres expectativas se ampliaron porque el repo cambió
+de verdad: la lista de rutas de `/app` (entra `/app/fulfillment`), la lista exhaustiva de buckets de
+Storage (entra `return-evidence`, privado y sin policy `anon`) y los fixtures del orquestador de
+checkout, que ahora declaran `delivery: null` — el camino del tenant sin entregas configuradas.
+
+### El criterio de aceptación, comprobado
+
+> «PASS si se puede conectar un operador logístico nuevo mediante adapter y el ciclo de
+> entrega/devolución conserva trazabilidad.»
+
+| Exigencia | Dónde se comprueba |
+|---|---|
+| **operador nuevo por adapter** | `fulfillment-provider.test.ts` registra un transportista que no existe en ninguna otra parte del repositorio y recorre con él guía, seguimiento y webhook firmado. Hicieron falta dos cosas: una implementación de `ShippingProvider` y una línea en `_shared/fulfillment/registry.ts` |
+| **sin tocar el dominio de pedidos** | test contra el catálogo de Postgres: `orders` no tiene columna de transportista, guía, envío ni recojo, y **cero** FK salen del pedido hacia el despacho |
+| **trazabilidad de la entrega** | la línea de tiempo del pedido cuenta `fulfillment.created`, `fulfillment.state_changed`, `shipment.opened`, `shipment.tracking` y `order.fulfillment_status_changed`, y `tracking_events` es append-only incluso para `service_role` |
+| **trazabilidad de la devolución** | `return_events` append-only, los hechos del pedido (`return.requested`, `return.inspected`, `return.completed`) y el asiento de inventario con referencia externa que hace la reposición idempotente |
+
+### Qué se construyó
+
+**Ocho migraciones, todas nuevas (ninguna aplicada se tocó):**
+
+| Migración | Qué trae |
+|---|---|
+| `150000_fulfillment_network` | la OFERTA: `delivery_zones`, `delivery_methods`, `delivery_rates`, `pickup_points`, `delivery_windows`; los enums `delivery_strategy` y `sourcing_strategy`; `products.shipping_weight` y el de variante; `ebim.clean_text_array` |
+| `150100_fulfillment_dispatch` | el DESPACHO: `fulfillments`, `fulfillment_items`, `shipments`, `shipment_items`, `tracking_events`; las dos máquinas de estado como función reusable; los triggers que impiden despachar de más y editar la bitácora |
+| `150200_fulfillment_engine` | `ebim.delivery_zone_for` (gana el prefijo más largo), `basket_weight`, `delivery_rate_for`, `delivery_windows_for`, `delivery_options` —la única autoridad—, `quote_delivery_choice`, `select_warehouse` y las dos puertas públicas |
+| `150300_fulfillment_commands` | `ebim.log_order_fact`, `fulfillment_sync_order` (solo avanza), `plan_fulfillment`; y los comandos `fulfillment_create/assign/transition`, `shipment_open`, `shipment_apply_outcome`, `shipment_track_ingest` y `shipment_track_note` |
+| `150400_returns_core` | `return_reasons`, `return_requests`, `return_items`, `return_events`, `return_evidence`; `stores.return_seq`; el bucket privado `return-evidence` con sus policies y el trigger de ruta |
+| `150500_returns_commands` | `ebim.open_return` y las dos puertas —comprador por token y comercio con sesión—; `return_decide/receive/inspect/complete/cancel`, `return_evidence_attach` y `returns_by_token`; el hecho canónico `return.completed` |
+| `150600_create_order_delivery` | `create_order`, `create_order_for_slug` y `checkout_place_order` con `p_delivery`: cotizan la entrega y escriben `orders.shipping_total`, que valía siempre 0. **Generada por script** (`scripts/build-p12-create-order.mjs`) |
+| `150700_fulfillment_capability` | el conector `sandbox_carrier`, `fulfillment → implemented`, las vistas `fulfillment_overview` y `return_overview`, y `order_by_token` con el transporte cobrado y sus entregas |
+
+**Borde**: contrato canónico `ShippingProvider` en `supabase/functions/_shared/fulfillment`
+(`provider`, `registry`, `sandbox`, `webhook`) y la Edge Function `fulfillment-webhook`, hermana de
+`payments-webhook`: firma sobre el cuerpo crudo, tenant derivado de la fila y 200 casi siempre.
+
+**Pipeline de checkout**: la etapa 7 deja de ser un gancho vacío. `serverDelivery` resuelve cobertura
+y coste contra la base, y —esto es lo que no se podía dejar para `create_order`— la etapa 8 autoriza
+el total **con** transporte. Sin elección, el gancho neutro `alwaysDeliverable` sigue existiendo y
+sigue probado: es el camino del tenant sin entregas configuradas.
+
+**Backoffice** `/app/fulfillment`, gateado por la capacidad `fulfillment`, con tres tabs
+(`#entregas`, `#devoluciones`, `#red`), buscador general único por listado y sin un solo panel de
+filtros multi-campo.
+
+**Vitrina**: cuatro campos de cobertura opcionales, el selector de entrega —envío, recojo, reparto y
+digital en la MISMA lista—, el envío separado en el resumen, y la confirmación por enlace permanente
+con el estado de cada entrega, su punto de recojo y su guía.
+
+### Las decisiones que más cuesta revertir
+
+1. **Un pedido no es un fulfillment.** Tres FK del despacho al pedido y **cero** del pedido al
+   despacho, comprobado contra el catálogo. Es la misma forma que P09 dio a los cobros, y es lo que
+   hace que conectar un operador no sea una migración sobre `orders`.
+2. **La única columna del pedido que cambia es el dinero.** `shipping_total` existía desde P02 y
+   valía siempre cero. Llenarlo obligó a reescribir `create_order` entera —lo hace un script con
+   anclas exactas, no unas manos— porque un dominio de entregas que calcula un coste que nadie cobra
+   está a medio construir.
+3. **`delivery_rates` no tiene GRANT para `anon`, y el subtotal tampoco viaja.** El navegador no
+   puede leer una tarifa ni declarar el importe con el que se evalúa el envío gratis: lo recalcula el
+   servidor con el mismo motor que cotiza el carrito.
+4. **Recojo, reparto y envío son estrategias del mismo checkout.** Comparten formulario, resumen,
+   validación y botón. Lo que cambia por estrategia lo imponen CHECKs de la base, no la pantalla.
+5. **El punto de recojo manda sobre la regla de abastecimiento.** Que una regla eligiera otro almacén
+   produce el caso peor del comercio físico: el comprador va a la tienda y la mercancía salió del
+   depósito.
+6. **El estado del operador se guarda sin traducir, al lado del canónico.** El dominio no aprende la
+   jerga de nadie; `provider_status` existe para poder citarla al llamar al call center.
+7. **La ingesta de seguimiento tolera el desorden.** Un aviso que la máquina no admite se guarda y no
+   se aplica, en vez de fallar y condenar al operador a reintentar para siempre. Por eso las tablas
+   de transición son funciones con dos lectores y no arrays dentro del trigger.
+8. **La máquina admite saltarse `picking`/`packed`/`ready` hacia delante.** Un comercio pequeño no
+   ficha cada paso y el «recogido» del operador llega igual; rechazarlo dejaría la entrega parada con
+   el paquete ya en camino.
+9. **Una devolución no es un pedido negativo**, y `received_quantity` no es `quantity`: el reembolso
+   se calcula sobre lo que llegó, no sobre lo prometido.
+10. **La integración financiera es un HECHO canónico**, no una nota de crédito. Y completar una
+    devolución **no abona nada**: el importe queda decidido y publicado, y quien lo abona pulsa otro
+    botón, en otra pantalla, con otro rol.
+
+### Lo que NO se hizo, y por qué
+
+- **Subida de evidencia por el comprador anónimo.** Un `anon` con INSERT sobre `storage.objects` es
+  un punto de subida abierto a internet. La forma correcta es una URL firmada emitida por una Edge
+  Function que valide el token del pedido; no se improvisa aquí.
+- **Secreto de webhook por sociedad.** Sigue siendo por conector y por despliegue, con el mismo
+  bloqueo que dejó P09: exigiría que la URL de callback identificara al tenant, y eso lo declararía un
+  tercero.
+- **Partir un pedido entre almacenes automáticamente.** `single_warehouse_atp` cae al primero cuando
+  ninguno lo tiene todo: repartir cuesta dos envíos y lo decide una persona desde la cola.
+- **Calendario de feriados.** El plazo se resuelve en días naturales y la aproximación cae del lado
+  seguro. Los hábiles dependen del calendario de cada país, que este producto todavía no tiene.
+- **Cotización en vivo contra el operador.** El contrato tiene `create`, `track` y `cancel`; una
+  operación `quote` sin un transportista contratado que la ofrezca sería una interfaz sin
+  implementación.
+- **Aforo de ventana reservado en firme.** `delivery_windows_for` descuenta las entregas ya
+  planificadas, pero dos compradores simultáneos pueden llevarse la última franja: cerrar eso exige
+  una reserva de aforo con caducidad, que es el mismo patrón que la reserva de stock de P06 y una
+  decisión de operación que ningún tenant ha pedido todavía.
+
+- **Buzón EBIM**: revisado el 2026-08-28. Sin mensajes `to: ecommerce` ni `to: all` nuevos desde el
+  2026-08-20, y sigue sin poderse responder: `ecommerce` no es todavía un `from` válido del
+  `PROTOCOLO.md` (§5.1 del roadmap, bloqueo del operador).
+
+Siguiente: **P13-SaaS**.
+
+---
+
+## Fase anterior
 **P11-SaaS — CMS, white-label por tokens, búsqueda y merchandising. COMPLETA. Gate: PASS.**
 Decisiones completas en [`docs/adr/011-cms-white-label-search.md`](adr/011-cms-white-label-search.md).
 
@@ -159,7 +291,7 @@ sugerencias, facetas de marca, aviso de resultado aproximado y «ver más».
   2026-08-20, y sigue sin poderse responder: `ecommerce` no es todavía un `from` válido del
   `PROTOCOLO.md` (§5.1 del roadmap, bloqueo del operador).
 
-Siguiente: **P12-SaaS**.
+Siguiente: **P12-SaaS** (hecha, arriba).
 
 ---
 

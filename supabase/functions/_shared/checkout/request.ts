@@ -25,7 +25,7 @@ import {
   requireSlug,
   requireText,
 } from '../validation.ts'
-import type { CheckoutRequest } from './ports.ts'
+import type { CheckoutRequest, DeliveryChoice } from './ports.ts'
 
 export const CHECKOUT_ALLOWED_FIELDS = [
   'store_slug',
@@ -49,6 +49,10 @@ export const CHECKOUT_ALLOWED_FIELDS = [
   // del precio. Ninguno de los dos lleva importe.
   'coupon_codes',
   'gift_card_codes',
+  // P12: COMO quiere que le llegue. Un codigo de metodo del comercio, un punto
+  // de recojo y una franja. Ni importe, ni transportista, ni almacen: cuanto
+  // cuesta lo decide el servidor con la tarifa delante.
+  'delivery',
 ] as const
 
 /** Mismo formato que `checkout_intents_key_fmt` en la base. */
@@ -178,6 +182,69 @@ export async function sha256Hex(input: string): Promise<string> {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
+/** Mismo formato que `delivery_methods_code_fmt` en la base (P12). */
+const DELIVERY_CODE_RE = /^[a-z0-9][a-z0-9_-]{0,40}$/
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const TIME_RE = /^\d{2}:\d{2}(:\d{2})?$/
+
+/**
+ * La elección de entrega (P12).
+ *
+ * Se valida la FORMA aquí y todo lo demás en la base: que el método exista y
+ * esté activo, que cubra la dirección, que el punto de recojo sea de esa tienda
+ * y cuánto cuesta lo decide `ebim.quote_delivery_choice`, que tiene las filas
+ * delante. Comprobarlo aquí sería una segunda autoridad sobre el mismo dato, y
+ * la del borde siempre acaba desactualizada respecto a la de la fila.
+ *
+ * **No lleva importe y no puede llevarlo**: `amount`, `price` o `cost` dentro
+ * de este objeto se rechazan como campo no permitido, igual que en el resto del
+ * cuerpo. El envío gratis no lo declara el navegador.
+ */
+export function optionalDelivery(body: Record<string, unknown>): DeliveryChoice | null {
+  const raw = body.delivery
+  if (raw === undefined || raw === null) return null
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    throw badRequest('CAMPO_INVALIDO', '`delivery` debe ser un objeto')
+  }
+
+  const source = raw as Record<string, unknown>
+  rejectUnknownFields(source, ['method_code', 'pickup_point_id', 'window'])
+
+  const methodCode =
+    typeof source.method_code === 'string' ? source.method_code.trim().toLowerCase() : ''
+  if (!DELIVERY_CODE_RE.test(methodCode)) {
+    throw badRequest('CAMPO_INVALIDO', '`delivery.method_code` no tiene la forma de un metodo de entrega')
+  }
+
+  let pickupPointId: string | null = null
+  if (source.pickup_point_id !== undefined && source.pickup_point_id !== null) {
+    const value = typeof source.pickup_point_id === 'string' ? source.pickup_point_id.trim() : ''
+    if (!UUID_RE.test(value)) {
+      throw badRequest('CAMPO_INVALIDO', '`delivery.pickup_point_id` no es un identificador valido')
+    }
+    pickupPointId = value.toLowerCase()
+  }
+
+  let window: DeliveryChoice['window'] = null
+  if (source.window !== undefined && source.window !== null) {
+    if (typeof source.window !== 'object' || Array.isArray(source.window)) {
+      throw badRequest('CAMPO_INVALIDO', '`delivery.window` debe ser un objeto')
+    }
+    const slot = source.window as Record<string, unknown>
+    rejectUnknownFields(slot, ['date', 'starts_at', 'ends_at'])
+    const date = typeof slot.date === 'string' ? slot.date.trim() : ''
+    const startsAt = typeof slot.starts_at === 'string' ? slot.starts_at.trim() : ''
+    const endsAt = typeof slot.ends_at === 'string' ? slot.ends_at.trim() : ''
+    if (!DATE_RE.test(date) || !TIME_RE.test(startsAt) || !TIME_RE.test(endsAt)) {
+      throw badRequest('CAMPO_INVALIDO', '`delivery.window` necesita date, starts_at y ends_at')
+    }
+    window = { date, startsAt, endsAt }
+  }
+
+  return { methodCode, pickupPointId, window }
+}
+
 /**
  * El resumen de LO QUE SE PIDIÓ.
  *
@@ -198,6 +265,8 @@ export async function requestHash(input: {
   notes: string | null
   /** Omitirlo y pasar `[]` dan el MISMO resumen: no hay dos formas de «sin cupón». */
   couponCodes?: readonly string[]
+  /** P12. Omitirlo y pasar `null` dan el MISMO resumen. */
+  delivery?: DeliveryChoice | null
 }): Promise<string> {
   const ordered = [...input.items].sort((a, b) => (itemKey(a) < itemKey(b) ? -1 : 1))
   return await sha256Hex(
@@ -228,6 +297,12 @@ export async function requestHash(input: {
       // un comprador cuya tarjeta se quedó sin saldo no podría reintentar con
       // otra sin que el intento se leyera como una compra distinta.
       coupon_codes: input.couponCodes ?? [],
+      // La ENTREGA sí entra en el resumen, por la misma razón que los cupones y
+      // por la contraria que el medio de pago: cambiar de método cambia lo que
+      // se paga, así que es otra petición. Reusar la misma clave con otro
+      // método tiene que dar conflicto y no devolver el pedido anterior, que se
+      // cobró con otro transporte.
+      delivery: input.delivery ?? null,
     }),
   )
 }
@@ -264,6 +339,7 @@ export async function parseCheckoutBody(
   // pago partido razonable.
   const couponCodes = codeList(body, 'coupon_codes', 5)
   const giftCardCodes = codeList(body, 'gift_card_codes', 3)
+  const delivery = optionalDelivery(body)
 
   const hash = await requestHash({
     storeSlug,
@@ -275,6 +351,7 @@ export async function parseCheckoutBody(
     billingAddress: billingAddress === null ? null : { ...billingAddress },
     notes: notes ?? null,
     couponCodes,
+    delivery,
   })
 
   return {
@@ -292,6 +369,7 @@ export async function parseCheckoutBody(
     paymentMethodCode,
     couponCodes,
     giftCardCodes,
+    delivery,
     acceptPriceChanges: body.accept_price_changes === true,
   }
 }

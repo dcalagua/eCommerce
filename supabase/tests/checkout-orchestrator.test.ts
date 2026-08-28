@@ -69,8 +69,10 @@ const ORDER_RESULT: PlacedOrder = {
   currency: 'PEN',
   subtotal: '200.00',
   taxTotal: '36.00',
+  shippingTotal: '0.00',
   grandTotal: '236.00',
   items: [],
+  delivery: null,
   replay: false,
 }
 
@@ -94,6 +96,10 @@ function input(overrides: Partial<CheckoutInput> = {}): CheckoutInput {
     // el camino que tiene que seguir dando exactamente los mismos importes.
     couponCodes: [],
     giftCardCodes: [],
+    // P12: sin eleccion de entrega. Es el camino del tenant que no configuro
+    // zonas ni metodos, y tiene que seguir dando exactamente los mismos
+    // importes que antes de esta fase.
+    delivery: null,
     ...overrides,
   }
 }
