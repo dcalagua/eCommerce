@@ -7,6 +7,7 @@ import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import SpaceDashboardOutlinedIcon from '@mui/icons-material/SpaceDashboardOutlined'
 import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined'
+import WarehouseOutlinedIcon from '@mui/icons-material/WarehouseOutlined'
 import type { ReactNode } from 'react'
 import type { CapabilityId } from '@/domain'
 import type { MessageKey } from '@/shared/i18n/messages'
@@ -65,6 +66,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'nav.pricing',
     icon: <PriceChangeOutlinedIcon fontSize="small" />,
     capability: 'pricing.lists',
+  },
+  {
+    to: '/app/inventory',
+    label: 'nav.inventory',
+    icon: <WarehouseOutlinedIcon fontSize="small" />,
+    capability: 'inventory.multiwarehouse',
   },
   {
     to: '/app/customers',

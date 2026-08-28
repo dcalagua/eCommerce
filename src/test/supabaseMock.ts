@@ -164,6 +164,16 @@ class FakeQuery implements PromiseLike<QueryResult> {
   }
 
   /**
+   * `neq`: lo usa el buscador de referencias del inventario para dejar fuera
+   * los kits, que no llevan existencia propia. Sin implementarlo de verdad, el
+   * test daria por bueno un desplegable que ofrece un movimiento imposible.
+   */
+  neq(column: string, value: unknown): this {
+    this.rows = this.rows.filter((row) => row[column] !== value)
+    return this
+  }
+
+  /**
    * `gte` sobre texto ISO: es como filtra el listado de pedidos por fecha, y
    * comparar dos ISO como cadenas ordena igual que compararlos como instantes.
    */

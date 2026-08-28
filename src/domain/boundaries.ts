@@ -120,14 +120,20 @@ export const BOUNDARIES: readonly Boundary[] = [
   {
     id: 'inventory',
     kind: 'domain',
-    state: 'partial',
+    state: 'implemented',
     responsibility:
-      'Cuánto hay y cuánto se puede prometer: existencias, reservas y disponibilidad publicable.',
-    paths: [],
+      'Cuánto hay y cuánto se puede prometer: existencias por almacén, movimientos trazables, reservas con caducidad y disponibilidad publicable.',
+    paths: ['features/inventory'],
     port: 'InventoryPort',
     serverSide: [
-      'products.stock y products.in_stock generada (090300, 091200)',
-      'descuento de stock dentro de create_order (091300)',
+      'warehouses, store_warehouses, inventory_levels, inventory_movements y las dos de reserva (200000)',
+      'ebim.atp — la única autoridad de disponibilidad (200100)',
+      'ebim.take_units — el reparto decide DENTRO de la sentencia que escribe (200100)',
+      'ebim.hold_stock / close_reservation — reserva atómica e idempotente (200100)',
+      'reserve_inventory, adjust_inventory, sync_inventory_level y sus autorizaciones (200200)',
+      'in_stock de la vitrina calculado por ATP (200300)',
+      'create_order consume por ebim.consume_stock y acepta una reserva (200400)',
+      'products.stock sigue siendo el camino de fallback sin almacenes (090300)',
     ],
   },
   {

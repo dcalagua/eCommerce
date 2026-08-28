@@ -106,6 +106,20 @@ export const BUSINESS_LOCATIONS_TABLE = 'business_locations'
 export const BUSINESS_ACCOUNT_USERS_TABLE = 'business_account_users'
 export const APPROVAL_RULES_TABLE = 'approval_rules'
 
+// --- Inventario (P06-SaaS, migraciones 200000-200400) -----------------------
+// Sin `satisfies` por la misma razón que las anteriores: `database.types.ts` se
+// genera contra el proyecto ENLAZADO y estas migraciones todavía no están
+// aplicadas allí. La red mientras tanto es `supabase/tests/inventory.test.ts`,
+// que comprueba estos nombres contra el esquema construido desde las
+// migraciones. Al aplicar: `npm run db:types` y añadir el `satisfies`.
+export const WAREHOUSES_TABLE = 'warehouses'
+export const STORE_WAREHOUSES_TABLE = 'store_warehouses'
+export const INVENTORY_LEVELS_TABLE = 'inventory_levels'
+export const INVENTORY_MOVEMENTS_TABLE = 'inventory_movements'
+export const INVENTORY_RESERVATIONS_TABLE = 'inventory_reservations'
+export const INVENTORY_RESERVATION_ITEMS_TABLE = 'inventory_reservation_items'
+export const INVENTORY_ALERTS_VIEW = 'inventory_alerts'
+
 // --- Vistas del modelo de lectura público ----------------------------------
 // `security_invoker` sobre policies `to anon`: filtran filas, y el GRANT por
 // columna es lo que evita que `anon` vea `stock` o `config` (P02, §4.3).
@@ -146,6 +160,20 @@ export const MY_BUSINESS_ACCOUNTS_RPC = 'my_business_accounts'
 export const PURCHASE_APPROVAL_RPC = 'purchase_approval'
 export const CUSTOMER_ORDERS_RPC = 'customer_orders'
 export const CUSTOMER_USAGE_RPC = 'customer_deletion_usage'
+// Inventario (P06-SaaS). Las tres puertas que abre el NAVEGADOR con sesión;
+// las del servidor (`reserve_inventory_for_slug`, `sync_inventory_level`,
+// `release_inventory_by_token`, `expire_inventory_reservations`) no están aquí
+// a propósito: no se pueden llamar desde el bundle y listarlas invitaría a
+// intentarlo. `availability_for_slug` sí, porque es la puerta ANÓNIMA de la
+// vitrina, hermana de `price_quote_for_slug`.
+export const INVENTORY_AVAILABILITY_RPC = 'inventory_availability'
+export const AVAILABILITY_PUBLIC_RPC = 'availability_for_slug'
+export const RESERVE_INVENTORY_RPC = 'reserve_inventory'
+export const RELEASE_RESERVATION_RPC = 'release_inventory_reservation'
+export const COMMIT_RESERVATION_RPC = 'commit_inventory_reservation'
+export const ADJUST_INVENTORY_RPC = 'adjust_inventory'
+export const SET_INVENTORY_POLICY_RPC = 'set_inventory_policy'
+export const SEED_INVENTORY_RPC = 'seed_inventory_from_catalog'
 
 // --- Edge Functions --------------------------------------------------------
 export const BOOTSTRAP_FUNCTION = 'bootstrap-tenant'

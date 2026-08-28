@@ -3,7 +3,7 @@
 GUIDELINES_STATUS: VERIFIED (**por lectura directa** en la 2ª pasada de P00-SaaS: contrato v1.15,
 `PROTOCOLO.md`, `BANDEJA.md` y `EBIM-CREW-ROSTER.md`). La unidad montada es `G:`, no `H:`.
 Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
-Última actualización: 2026-08-27 (P05 de productización SaaS)
+Última actualización: 2026-08-28 (P06 de productización SaaS)
 
 > **Dos numeraciones de fase.** Lo que sigue como «P00…P12» es el trabajo histórico de este repo. A
 > partir del 2026-08-27 arranca un segundo recorrido, **P00–P17 de productización SaaS**
@@ -11,6 +11,222 @@ Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
 > serie: el P12 histórico es el framework de integraciones; el P12-SaaS será fulfillment y devoluciones.
 
 ## Fase actual
+**P06-SaaS — Inventario multi-almacén, ATP, movimientos y reservas. COMPLETA. Gate: PASS.**
+Decisiones completas en [`docs/adr/006-inventory-atp-reservations.md`](adr/006-inventory-atp-reservations.md).
+
+### Gates (2026-08-28, partiendo de `6112328`)
+
+| Comando | Antes de P06 | Después |
+|---|---|---|
+| `npm run typecheck` | PASS | **PASS** |
+| `npm run lint` | PASS, 0 problemas | **PASS**, 0 problemas |
+| `npm run test` | 1078 / 61 archivos | **1182 / 64 archivos** |
+| `npm run test:db` | 605 / 23 | **680 / 24** |
+| `npm run build` | 816,57 kB (242,55 gzip) | **PASS**, 833,60 kB (246,81 gzip) |
+
+104 tests nuevos: 75 contra Postgres real (modelo, aislamiento A/B, ATP, movimientos, reservas,
+concurrencia, multi-almacén, kits, degradación del ERP, transición y vitrina) y 29 en el cliente
+(18 de reglas puras y 11 de pantalla). **Ningún test existente se borró ni se debilitó**; uno se
+ajustó y se explica abajo.
+
+### El criterio de aceptación, comprobado
+
+> «PASS si dos checkouts concurrentes no pueden vender el mismo stock reservado y el core puede
+> trabajar con uno o varios almacenes.»
+
+Las dos mitades tienen test propio, y no son afirmaciones de documento:
+
+- `lo reservado por un carrito no lo puede vender otro checkout` — 5 unidades, un carrito aparta 3,
+  el checkout de otro comprador pide 3 y recibe `STOCK_INSUFICIENTE`; el mismo comprador pide 2 y
+  compra. El almacén queda en 3 físicas, 3 comprometidas, 0 disponibles.
+- `y el dueño de la reserva SÍ puede, presentando su secreto` — el mismo pedido con el token de la
+  reserva pasa, la reserva queda `committed` apuntando al pedido y el almacén baja a 2.
+- `un pedido que no cabe en uno se reparte entre dos, por prioridad` — 4 en Lima y 6 en Arequipa, se
+  piden 7, salen 4 y 3 en ese orden y quedan **dos** asientos en el libro mayor.
+- `sin almacenes activos, el pedido descuenta la columna exactamente como antes` — el core trabaja
+  con uno, con varios y con ninguno.
+
+### La decisión que ordena la fase: la corrección no depende del código
+
+Dos mecanismos, y ninguno es «acordarse de»:
+
+1. **El reparto decide DENTRO de la sentencia que escribe.** Una CTE con `SELECT … FOR UPDATE` toma
+   el bloqueo y relee la fila ya bloqueada; la cantidad a tomar se calcula ahí, sobre la cifra
+   verdadera. El patrón anterior —leer, comparar, escribir— funcionaba solo mientras las tres
+   sentencias cupieran juntas, y depositaba la garantía en que el siguiente que escribiera la función
+   se acordara del `for update`.
+2. **Y detrás, un CHECK.** `inventory_levels_no_oversell` aborta la transacción aunque el reparto
+   fallara. Hay un test que intenta sobrevender **como `service_role`** —el rol que se salta la
+   RLS— y tampoco puede.
+
+El test que compra la primera propiedad reproduce la carrera clásica de forma determinista: se lee la
+disponibilidad (5), otro consume 3, y el primero intenta tomar las 5 «que había». Con una decisión
+basada en la lectura previa se venderían 5 de 2; aquí falla.
+
+### Seis tablas, y las dos que NO se crearon
+
+```
+warehouses ──── store_warehouses          SIN filas = todas: declarar es restringir
+           └─── inventory_levels          on_hand · reserved · available (GENERADA) · colchón
+                inventory_movements       libro mayor inmutable e idempotente
+                inventory_reservations ── inventory_reservation_items
+```
+
+- **`warehouse_locations` no existe.** Una ubicación no cambia ni una respuesta de este dominio: el
+  ATP de un SKU es el mismo en A-01 que en B-14, y quien despacha es el almacén. Lo que necesita
+  ubicaciones es la ola de picking, que es **WMS** —otra app de esta suite, incorporada formalmente
+  en `gmao-033`— y fulfillment (P12). El disparador para crearla está escrito en el ADR.
+- **`reservation_events` tampoco.** El historial de una reserva son cuatro estados y tres marcas de
+  tiempo en su propia fila, y no hay transición intermedia que perder porque la reserva es atómica
+  sobre todas sus líneas. El historial de la EXISTENCIA sí existe: es `inventory_movements`.
+- **`store_warehouses` sí, y no estaba en la lista de la fase**: sin ella, «qué almacén abastece a
+  qué tienda» solo se podría expresar duplicando el almacén por tienda.
+
+### El almacén es de la sociedad; el vínculo con la tienda es una relación
+
+Igual que las marcas, las unidades, los segmentos y los clientes. Y la regla que evita el fallo más
+tonto de la puesta en marcha: **sin filas en `store_warehouses`, todos los almacenes activos
+abastecen a la tienda**. Dar de alta el primero no deja la tienda sin vender. En cuanto declara uno,
+deja de servirse de los demás. Está escrito en la propia pantalla, no solo en el SQL.
+
+### «No se sabe» no es «no hay», y es la decisión incómoda de la fase
+
+Un almacén con sistema de registro externo (`source = 'erp'`) y la cifra caducada no aporta cero:
+aporta *nada*. Dos políticas, y la elige el tenant:
+
+| `stale_policy` | Qué hace | Cuándo |
+|---|---|---|
+| `unknown` (defecto) | deja de aportar cifra; el ATP responde «no se sabe» | no se puede prometer de más |
+| `trust_last_known` | sigue con la última cifra sincronizada | parar la venta cuesta más que el riesgo |
+
+Con `unknown`, **el checkout se niega** con `DISPONIBILIDAD_DESCONOCIDA` —código propio, distinto de
+`STOCK_INSUFICIENTE`, y con su propio texto en las dos lenguas— y **la vitrina sigue mostrando el
+producto**. Se pierde un carrito; no se pierde la tienda. Tratar «no se sabe» como cero vaciaría el
+catálogo entero durante una caída ajena, que es el escenario que el `InventoryPort` describe desde
+P01. Un almacén `local` no puede declararse caducable: esta base *es* su verdad.
+
+### La reserva: caducidad obligatoria, idempotencia y un secreto
+
+- **`expires_at` es NOT NULL.** Quien reserva elige cuánto dura, pero no elige no elegir: una reserva
+  sin caducidad es stock perdido y una tienda que dice «agotado» con el almacén lleno.
+- **`reference_key`** hace que reservar dos veces para el mismo carrito devuelva la MISMA reserva.
+- **`token`** de 256 bits (patrón de `order_tokens`): es lo único que permite al checkout reclamar
+  *su* reserva, porque un uuid es enumerable.
+- **Caduca sola** al reservar y al pedir, no solo desde un planificador: este proyecto no tiene cron
+  garantizado, y una caducidad que depende de un job que puede no existir no existe.
+- Al reclamarla, el checkout **devuelve sus unidades y las vuelve a consumir** en la misma
+  transacción, con las filas ya bloqueadas. Se eligió eso frente a casar línea a línea porque el
+  carrito pudo cambiar entre reservar y pagar.
+
+### Ninguna existencia se escribe con un `UPDATE`
+
+Las cuatro tablas de saldo no tienen **ni un GRANT** de escritura para `authenticated` ni `anon`. Un
+`PATCH /inventory_levels?id=eq.…` cambiaría la existencia sin dejar asiento, y desde ese momento el
+saldo y su historia dirían cosas distintas. Por eso hay más funciones de lo habitual, y cada una trae
+**su llamante y su autorización** —el precedente de las tres puertas de P04—: siete del backoffice
+(rol + capacidad), cuatro del servidor (`service_role`, revocadas a `authenticated`) y una anónima
+(`availability_for_slug`, que devuelve semáforo y jamás la cifra).
+
+### El libro mayor es idempotente por referencia externa
+
+Delta con signo, saldo resultante escrito bajo el mismo bloqueo, y un índice único parcial sobre
+`(organization_id, company_id, warehouse_id, external_ref)`: un webhook reenviado o una cola que
+reparte dos veces **no descuenta dos veces**. La garantía es el índice, no una comprobación previa,
+así que tampoco hay carrera entre dos reintentos simultáneos. `sync_inventory_level` recibe **saldos
+absolutos** —un ERP no manda diferencias— y calcula el delta aquí.
+
+### La transición desde `products.stock`, hecha por debajo
+
+`products.stock` y `product_variants.stock` **no se retiran**: pasan a ser el camino de fallback y su
+`comment on column` lo dice. `ebim.consume_stock` tiene los dos caminos dentro y `create_order` llama
+a uno solo. Sin almacenes que sirvan a la tienda hace **exactamente** lo de antes, con las mismas
+excepciones y el mismo texto — y la prueba es que ni uno solo de los tests de pedido de P02, P03 y
+P04 cambió una línea. `public.seed_inventory_from_catalog` copia el catálogo al almacén como recuento
+inicial, de forma idempotente, para que un tenant que ya vendía no pase ni un minuto en «agotado».
+
+> Nota sobre la expectativa que traía P05: decía que P06 «puede retirar `products.stock`». No se
+> retira, y es a propósito. Retirarla obligaría a migrar a todos los tenants a almacenes en el mismo
+> despliegue —incluidos los que no contratan el módulo, que es vendible— y a reescribir cinco
+> consumidores vivos para nada. Lo que la fase resuelve no es borrar la columna: es que deje de ser
+> la verdad cuando hay algo mejor, y que el paso de una a otra sea una función idempotente y no una
+> migración de datos irreversible.
+
+### La vitrina deja de leer una columna y pasa a preguntar
+
+Mismo movimiento que P03 hizo con el kit y P04 con el precio. `public_products.in_stock` y
+`public_product_variants.in_stock` salen de `ebim.product_is_available`, `SECURITY DEFINER` con la
+autorización dentro: solo responde por producto publicado de tienda activa, y solo un booleano. De
+ahí no se saca una cantidad, ni un almacén, ni un tenant. `ebim.bundle_is_available` recalcula contra
+el ATP de los componentes, y los dos casos que hacen inarmable un kit se comprueban **antes** de
+preguntar, porque una excepción dentro de una vista tumbaría la consulta entera de la vitrina.
+
+### El puerto gana su segunda implementación, y por eso existía
+
+`features/inventory/serverInventory.ts` trae dos adaptadores de `InventoryPort` que no son dos capas
+de lo mismo: backoffice (miembro de la sociedad, tienda por `store_id`, **con** cifra, puede
+reservar) y vitrina (comprador anónimo, tienda por slug, **sin** cifra, no reserva desde el
+navegador). El puerto se retocó solo con lo que la implementación demostró que faltaba:
+`referenceKey`, `claimToken`, `variantId`/`uomCode` y un `unknown` que separa «la fuente no lo sabe»
+de «esta implementación no publica la cifra» — dos cosas que antes eran el mismo `null` y que
+**ninguna se lee como cero**.
+
+### Backoffice: una ruta gateada y cuatro pestañas
+
+`/app/inventory`, gateada por `inventory.multiwarehouse`. Almacenes (con el interruptor de qué
+abastece a la tienda y el botón de carga inicial), Existencias (físico, comprometido, disponible y
+colchón, con movimiento y política por referencia), Movimientos (el libro mayor más las reservas
+vivas, con soltar y confirmar) y Alertas. **No hay campo para escribir el físico**: toda entrada y
+toda corrección es un movimiento con motivo.
+
+Las alertas están al lado de las existencias y no en el panel de inicio por una razón concreta: un
+almacén se descuadra despacio, y el aviso solo sirve si aparece donde se corrige. El orden es por
+urgencia —negativo y «publicado sin existencia» delante de un umbral de prudencia— y es una función
+pura con su propio test, porque una lista que entierra lo grave debajo de lo leve es peor que no
+tenerla.
+
+### El test existente que se ajustó (y por qué no es debilitarlo)
+
+- `routes.test.tsx`: suma `/app/inventory` a la lista **exacta** de rutas del backoffice. La lista es
+  exhaustiva a propósito —es lo que impide que una ruta del storefront cuelgue del área con sesión—,
+  así que añadir una ruta obliga a declararla. Sigue siendo igual de estricta.
+
+### Coordinación (buzón leído, sin escribir en Drive)
+
+Se leyeron `coordinacion\BANDEJA.md` y los 21 pendientes. **No hay ningún mensaje `to: ecommerce`**,
+y ninguno de los `to: all` abiertos exige acción de esta fase. El que roza el trabajo de P06 es
+`2026-08-12-gmao-033` (WMS entra formalmente y la integración entre soluciones pasa a ser principio
+de contrato): la decisión de **no** modelar ubicaciones dentro de eCommerce es precisamente respetar
+esa frontera, y el disparador para revisarla —que WMS declare una operación de ubicación en
+`integration_providers`— queda escrito en el ADR. Ese mensaje dice explícitamente que no hace falta
+responder solo para confirmar que ya se cumplía, y no hay fricción que declarar; queda como material
+para el aviso de alta de eCommerce en la suite, que sigue pendiente del operador.
+
+### Lo que P06 NO resuelve, dicho claramente
+
+- **El carrito todavía no reserva.** La puerta anónima existe y está probada
+  (`reserve_inventory_for_slug`), pero nadie la llama desde la vitrina: eso es **P07**, que es donde
+  se define el pipeline `resolve prices → reserve inventory → validate account`. El roadmap ya decía
+  que P06 y P07 no se paralelizan; esta fase deja las primitivas y su caducidad probadas para que ese
+  pipeline no tenga que inventarlas bajo presión.
+- **No hay traslado entre almacenes como operación.** Los dos motivos existen en el libro mayor y se
+  registran a mano; mover los dos lados en una transacción con su documento es P12.
+- **No hay ubicaciones ni olas de picking** (WMS y P12), **ni reposición automática ni previsión**:
+  `reorder_point` solo alimenta una alerta, porque comprar es una decisión y no un cálculo.
+- **La vitrina paga una llamada `SECURITY DEFINER` por fila.** Es el mismo coste que
+  `bundle_is_available` desde P03 y es aceptable al tamaño de catálogo de hoy; materializarlo es P11.
+- **`database.types.ts` sin regenerar.** Las seis tablas, la vista y las funciones nuevas van sin
+  `satisfies`, por la misma razón que las de P02–P05: el archivo se genera contra el proyecto
+  ENLAZADO y estas migraciones no están aplicadas allí (esta fase no despliega). La red mientras
+  tanto es `supabase/tests/inventory.test.ts`, que comprueba estos mismos nombres contra el esquema
+  real. Al aplicar: `npm run db:types` y añadir el `satisfies`.
+- **Sin Edge Function nueva.** `sync_inventory_level` es la puerta del ERP y hoy solo se puede llamar
+  con `service_role` desde servidor; el conector que la llame es del framework de integraciones (P14).
+
+Siguiente: **P07-SaaS** (carrito y checkout), que es quien conecta la reserva con la compra.
+
+---
+
+## Fase anterior
 **P05-SaaS — Clientes, segmentos y fundamento B2B. COMPLETA. Gate: PASS.**
 Decisiones completas en [`docs/adr/005-customers-b2b.md`](adr/005-customers-b2b.md).
 
@@ -191,7 +407,8 @@ pantalla en vez de en una FK que aparentaría una certeza que no hay.
   vinculadas— pero **sigue sin ABM de canal**: crear un canal B2B nuevo sigue siendo un `insert`. Se
   reasigna a la fase que le dé reglas propias de venta; queda dicho para que no se pierda.
 
-Siguiente: **P06-SaaS** (inventario por almacén), que es además quien puede retirar `products.stock`.
+Siguiente: **P06-SaaS** (inventario por almacén). *Hecho: ver la fase actual. La expectativa de que
+retirara `products.stock` se revisó allí y se explica por qué la columna se conserva.*
 
 ---
 

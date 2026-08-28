@@ -176,8 +176,13 @@ export const CAPABILITIES: readonly Capability[] = [
     id: 'inventory.multiwarehouse',
     boundary: 'inventory',
     entitlement: `${ENTITLEMENT_PREFIX}inventory.multiwarehouse`,
-    state: 'declared',
-    grants: 'Existencias por almacén, reservas y disponibilidad prometida (P06).',
+    // La cuarta vendible que deja de ser `declared` (P06-SaaS): almacenes,
+    // movimientos trazables, reservas con caducidad y ATP por almacén, con su
+    // enforcement en las policies. Sin ella el tenant sigue vendiendo contra
+    // `products.stock` — no falla, se degrada, igual que el motor de precios.
+    state: 'implemented',
+    grants:
+      'Existencias por almacén y variante, movimientos trazables, reservas con caducidad y disponibilidad prometida (ATP).',
   },
   {
     id: 'payments',

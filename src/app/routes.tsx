@@ -46,6 +46,9 @@ const PimPage = lazy(() =>
 const PricingPage = lazy(() =>
   import('@/features/pricing/PricingPage').then((m) => ({ default: m.PricingPage })),
 )
+const InventoryPage = lazy(() =>
+  import('@/features/inventory/InventoryPage').then((m) => ({ default: m.InventoryPage })),
+)
 const CustomersPage = lazy(() =>
   import('@/features/customers/CustomersPage').then((m) => ({ default: m.CustomersPage })),
 )
@@ -121,6 +124,10 @@ export const routes: RouteObject[] = [
           // El precio por canal, segmento o cliente es el módulo vendible; el
           // precio de catálogo sigue viniendo con el producto.
           { path: 'pricing', element: gated('pricing.lists', <PricingPage />) },
+          // Llevar existencia por almacen es el modulo vendible; la existencia
+          // del catalogo (`products.stock`) sigue viniendo con el producto, y
+          // por eso un tenant sin este addon vende igual que antes de P06.
+          { path: 'inventory', element: gated('inventory.multiwarehouse', <InventoryPage />) },
           // La ficha de cliente es baseline: hasta un tenant sin nada
           // contratado necesita saber a quién le vendió. Lo vendible es la
           // CUENTA B2B, y su pestaña se gatea dentro de la pantalla.

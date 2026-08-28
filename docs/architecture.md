@@ -40,7 +40,7 @@ El **hub EBIM** es el emisor de identidad y dueño del catálogo/billing. eComme
 escribe en él. La identidad del comprador final del storefront es **local** a este proyecto (patrón §2.5,
 igual que los proveedores externos de eSupplier); los usuarios del tenant llegan por SSO del hub.
 
-## Modelo de datos (implementado hasta P05-SaaS)
+## Modelo de datos (implementado hasta P06-SaaS)
 
 Nueve tablas en `supabase/migrations`, todas con `organization_id uuid` + `company_id uuid` (uuids del hub),
 `created_at`/`updated_at`, PK uuid y RLS default deny **forzada**:
@@ -66,9 +66,11 @@ tenants (PK = organization_id del hub)
   columna** (RLS filtra filas, nunca columnas) y vistas `security_invoker` encima
   (`public_stores`, `public_categories`, `public_products`, `public_product_images` y
   `public_store_branding` — §4.3). La disponibilidad se publica como `products.in_stock`, columna
-  **generada** (`stock > 0`): `anon` la lee, pero nunca lee `stock` (P05).
+  **generada** (`stock > 0`): `anon` la lee, pero nunca lee `stock` (P05). Desde P06 la vista
+  publica un booleano calculado por ATP, y la cifra exacta sigue sin salir a `anon`.
 - Sin forks de schema por cliente: diferencias por `store_settings.config` + `products.custom_fields` (JSONB).
-- Pendiente de fases siguientes: `carts`, `payments`, `audit_log`. (`customers` llega en P05-SaaS.)
+- Pendiente de fases siguientes: `carts`, `payments`, `audit_log`. (`customers` llegó en P05-SaaS;
+  los almacenes y las reservas, en P06-SaaS.)
 
 ### PIM: variantes, atributos, unidades y kits (P03-SaaS)
 
@@ -196,6 +198,64 @@ EL PORTAL (se contrata: `customers.b2b`)
 - **`orders` NO gana `customer_id`**: el checkout sigue siendo anónimo y esa columna solo la podría
   rellenar el navegador. `public.customer_orders` enlaza por correo y lo dice.
 
+### Inventario multi-almacén, ATP y reservas (P06-SaaS)
+
+Seis tablas más, migraciones `20260827200000`–`20260827200400`. Decisiones completas en
+[`adr/006-inventory-atp-reservations.md`](adr/006-inventory-atp-reservations.md).
+
+```
+VOCABULARIO DE LA SOCIEDAD (sin store_id: el almacén sirve a todas sus tiendas)
+  warehouses ──── store_warehouses      qué tienda se sirve de cuál, y en qué orden
+                                        SIN filas = todas: declarar es restringir
+
+LA EXISTENCIA
+  inventory_levels     on_hand · reserved · available (GENERADA) · safety_stock · reorder_point
+  inventory_movements  libro mayor inmutable: delta con signo, saldo resultante y por qué
+
+LO COMPROMETIDO
+  inventory_reservations ──── inventory_reservation_items
+```
+
+- **La sobreventa la impide un CHECK, no la disciplina del que escribe.**
+  `inventory_levels_no_oversell` (`reserved <= on_hand` y `on_hand >= 0`, salvo backorder explícito)
+  aborta la transacción aunque el reparto fallara. Es la última línea, y hay un test que intenta
+  saltársela como `service_role`.
+- **`available_qty` es una columna GENERADA** (`on_hand - reserved`): no puede discrepar de sus dos
+  sumandos. Lo *prometible* descuenta además `safety_stock` y lo calcula `ebim.atp`, porque el
+  colchón es política comercial y no un hecho del almacén.
+- **El reparto decide DENTRO de la sentencia que escribe** (`ebim.take_units`): una CTE con
+  `SELECT … FOR UPDATE` toma el bloqueo y relee la fila ya bloqueada, así que la cantidad a tomar
+  sale de la cifra verdadera y no de una foto anterior. Sin bucle de reintento: no hay conflicto que
+  reintentar.
+- **El backorder es una política del almacén**, denormalizada en el nivel con FK a
+  `warehouses (id, allows_backorder)` y `on update cascade` — la técnica del PIM, que es lo que
+  permite que un CHECK mire otra tabla.
+- **«No se sabe» no es «no hay»**: un almacén `source = 'erp'` con la cifra caducada deja de aportar
+  (`stale_policy = 'unknown'`, `ebim.atp` responde `unknown: true`) o sigue con la última cifra
+  (`trust_last_known`). Nunca cero. El checkout se niega con `DISPONIBILIDAD_DESCONOCIDA` y la
+  vitrina **no se vacía**.
+- **La reserva tiene caducidad obligatoria** (`expires_at` NOT NULL), **idempotencia de negocio**
+  (`reference_key`, índice único parcial sobre `held`) y un **secreto de 256 bits** (`token`) que es
+  lo único que permite al checkout reclamarla. Caduca sola al reservar y al pedir: este proyecto no
+  tiene cron garantizado.
+- **Ninguna existencia se escribe con `UPDATE`**: las cuatro tablas de saldo no tienen GRANT de
+  escritura para `authenticated` ni `anon`. Toda entrada, corrección y reserva pasa por una función
+  que mueve y anota en la misma transacción.
+- **El libro mayor es idempotente por `external_ref`** (índice único parcial): un webhook reenviado
+  no descuenta dos veces. `sync_inventory_level` recibe SALDOS absolutos del ERP y calcula el delta.
+- **`products.stock` NO se retira**: pasa a ser el camino de FALLBACK. `ebim.consume_stock` tiene los
+  dos caminos dentro y `create_order` llama a uno solo; sin almacenes que sirvan a la tienda hace
+  exactamente lo de antes. Ningún test de pedido de P02/P03/P04 cambió una línea.
+  `public.seed_inventory_from_catalog` copia el catálogo al almacén, idempotente.
+- **La vitrina pregunta en vez de leer una columna**: `in_stock` sale de
+  `ebim.product_is_available` (definer, autorización dentro, solo un booleano) y el kit de
+  `ebim.bundle_is_available` recalculado contra el ATP de sus componentes.
+- **`warehouse_locations` y `reservation_events` NO se crearon**, y el ADR dice el disparador de cada
+  una: las ubicaciones son WMS y P12; el historial de la reserva ya es la propia fila más el asiento
+  del libro mayor.
+- `InventoryPort` gana **dos** implementaciones —backoffice (con cifra) y vitrina (solo semáforo)—,
+  que es exactamente lo que justificaba el puerto desde P01.
+
 ### Capacidades y entitlements (P02-SaaS)
 
 Cuatro tablas más, migración `20260827160000`. Decisiones completas en
@@ -233,6 +293,15 @@ porque cada una responde a un llamante distinto: `public.price_quote_for_slug` (
 resuelve tienda por slug y canal público por defecto), `public.price_quote` (backoffice; comprueba
 membresía contra la tienda antes de mirar un precio) y `public.price_list_conflicts` (invoker: la RLS
 decide qué tiendas ve quien pregunta).
+
+Desde P06-SaaS hay nueve más, agrupadas por llamante y no por tema, porque cada grupo trae su
+propia autorización: del **backoffice con sesión** (rol + capacidad, tenant derivado de la tienda o
+del almacén) `reserve_inventory`, `release_inventory_reservation`, `commit_inventory_reservation`,
+`adjust_inventory`, `set_inventory_policy`, `seed_inventory_from_catalog` e
+`inventory_availability`; del **servidor** (`service_role`, revocadas a `authenticated`)
+`reserve_inventory_for_slug`, `release_inventory_by_token`, `expire_inventory_reservations` y
+`sync_inventory_level`; y del **comprador anónimo**, `availability_for_slug`, que devuelve el
+semáforo por cantidad y nunca la cifra.
 
 Desde P05-SaaS hay tres más, y la primera es la que sostiene la regla del vínculo:
 `public.my_business_accounts()` (definer, **sin parámetros**: el usuario B2B no es miembro del tenant
@@ -285,6 +354,8 @@ src/
   features/customers/   clientes y cuentas B2B (P05-SaaS): ficha, contactos,
                         direcciones, identificadores externos, cuentas de empresa
                         con usuarios, sucursales y reglas de autorizacion
+  features/inventory/   almacenes, existencias por almacen, libro mayor, reservas y
+                        alertas (P06-SaaS), mas los dos adaptadores de `InventoryPort`
   features/orders/      pedidos del backoffice
   features/storefront/  vitrina pública: resolución por slug, catálogo, ficha, carrito/checkout (P06)
                         + StoreAccountPage: área de cuenta del comprador B2B (P05-SaaS),
@@ -309,7 +380,9 @@ Decisiones completas en [`adr/001-domain-boundaries.md`](adr/001-domain-boundari
 - **Un puerto existe solo si hay una segunda implementación ya declarada**: una fila de
   `integration_providers` con esa operación, o dos llamantes concretos hoy. Por eso hay
   `PricingPort`, `InventoryPort`, `PaymentProvider`, `FulfillmentProvider`, `NotificationProvider`,
-  `ErpProvider` e `InvoicingProvider`, y **no** hay `SearchPort`.
+  `ErpProvider` e `InvoicingProvider`, y **no** hay `SearchPort`. `InventoryPort` es el primero con
+  DOS implementaciones vivas (P06-SaaS): backoffice y vitrina, que no son dos capas de lo mismo sino
+  dos actores con dos autorizaciones y dos respuestas distintas.
 - **Ningún puerto recibe el tenant como parámetro**: `organization_id`/`company_id` salen del JWT
   en el servidor. Un parámetro que se puede pasar se puede pasar mal.
 - **El vocabulario canónico es el de la base.** `src/domain/ports/operations.ts` replica el enum
