@@ -286,8 +286,18 @@ export const CAPABILITIES: readonly Capability[] = [
     id: 'integrations.enterprise',
     boundary: 'integrations',
     entitlement: `${ENTITLEMENT_PREFIX}integrations.enterprise`,
-    state: 'partial',
-    grants: 'Habilitar conectores de ERP, facturación, logística y mensajería.',
+    // P14-SaaS. Deja de ser `partial`: hasta aquí existía el transporte —outbox,
+    // reintentos, disyuntor— y no existía forma de que un tercero lo usara. Lo
+    // que faltaba no era más SQL: eran credenciales con permisos, una API
+    // versionada, suscripciones a eventos y una pantalla para operar los fallos.
+    //
+    // El addon cubre PUBLICAR. **No** cubre mirar: el monitor de integraciones
+    // está fuera, igual que `/app/operations` en P13 — quien no puede ver por
+    // qué le fallan las integraciones acaba llamando por teléfono.
+    state: 'implemented',
+    grants:
+      'Habilitar conectores, credenciales de la API de socio con permisos por ' +
+      'operación y suscripciones de webhook por evento.',
   },
 ]
 

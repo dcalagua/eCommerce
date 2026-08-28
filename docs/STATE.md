@@ -3,7 +3,7 @@
 GUIDELINES_STATUS: VERIFIED (**por lectura directa** en la 2ª pasada de P00-SaaS: contrato v1.15,
 `PROTOCOLO.md`, `BANDEJA.md` y `EBIM-CREW-ROSTER.md`). La unidad montada es `G:`, no `H:`.
 Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
-Última actualización: 2026-08-28 (P13-SaaS: analítica, auditoría y observabilidad)
+Última actualización: 2026-08-28 (P14-SaaS: API empresarial, webhooks e Integration Monitor)
 
 > **Dos numeraciones de fase.** Lo que sigue como «P00…P12» es el trabajo histórico de este repo. A
 > partir del 2026-08-27 arranca un segundo recorrido, **P00–P17 de productización SaaS**
@@ -32,6 +32,140 @@ pantalla y sin un solo test propio. Se conservó tal cual y se continuó desde a
 ---
 
 ## Fase actual
+**P14-SaaS — API empresarial, webhooks e Integration Monitor. COMPLETA. Gate: PASS.**
+Decisiones completas en [`docs/adr/014-enterprise-api-webhooks-monitor.md`](adr/014-enterprise-api-webhooks-monitor.md).
+
+### Gates (2026-08-28, partiendo de `f408865`)
+
+| Comando | Antes de P14 | Después |
+|---|---|---|
+| `npm run typecheck` | PASS | **PASS** |
+| `npm run lint` | PASS, 0 problemas | **PASS**, 0 problemas |
+| `npm run test` | 2079 / 93 archivos | **2234 / 98 archivos** |
+| `npm run test:db` | 1365 / 43 | **1504 / 47** |
+| `npm run build` | 956,58 kB (279,75 gzip) | **PASS**, 970,90 kB (283,38 gzip) |
+
+155 tests nuevos, repartidos así:
+
+| Dónde | Cuántos | Qué defienden |
+|---|---|---|
+| `supabase/tests/api-gateway.test.ts` | 51 | sin base de datos: el ORDEN de las comprobaciones —versión, token, scope, tasa, idempotencia— con un caso propio para «la tasa se cuenta DESPUÉS de autenticar»; que lo que viaja a la base es el sha256 del token y no el token; que solo se reenvía lo que la ruta DECLARA (un `company_id` en la query no llega); que el OpenAPI generado describe exactamente las rutas que se sirven y ningún error filtra nombres de tabla ni de policy; la firma de webhooks en las dos direcciones —incluida la ventana que impide reproducir una captura vieja— y **la Definition of Done**: un destino inventado recorre el trabajador entero sin tocar el despachador |
+| `supabase/tests/enterprise-api.test.ts` | 40 | contra Postgres real: los tres vocabularios de scopes comparados entre sí; que el secreto se devuelve UNA vez y ni el `owner` puede leer ni escribir su hash (GRANT por columna en los dos sentidos); que «cliente inexistente» y «secreto incorrecto» dan EXACTAMENTE el mismo error; que pedir de más no amplía nada y pedir solo lo no concedido no emite token; que desactivar o rotar revoca los tokens vivos en el acto; el límite de tasa por credencial; la idempotencia con sus tres estados y el conflicto por huella distinta; y **la comprobación estructural**: ninguna función `api_*` declara un parámetro de tenant |
+| `supabase/tests/webhooks.test.ts` | 28 | que un destino solo puede ser `https` y público —siete direcciones privadas rechazadas por CHECK—; que crear un endpoint habilita el transporte; que el comodín es de DOMINIO y no universal; que republicar el mismo hecho no entrega dos veces; que los datos de tarjeta no salen; que **el fan-out no tumba la venta**: se le retira al conector su operación, el hecho se publica igual y queda un incidente; que el disyuntor es POR endpoint; reproducir con rol, módulo, motivo y `event_id` intacto; y el hilo llegando a `webhooks` |
+| `supabase/tests/integration-monitor.test.ts` | 20 | una fila del monitor con estado, intentos, próximo reintento, disyuntor, hilo y destino con NOMBRE; el detalle con doble redacción y sin la cadena de consulta de la URL, registrado en la bitácora; que la cola NO se puede reescribir desde el navegador; que reintentar conserva los intentos gastados y cierra el disyuntor; que un mensaje entregado o en vuelo no se reintenta; y que `integration_health` no acepta tenant |
+| `src/features/integrations/integrations-ui.test.tsx` | 16 | la pantalla: cuatro tabs, que NO se gatea por capacidad, los tres estados distintos —«no tienes permiso», «no contratado» y «no hay datos»—, reintentar y reproducir exigiendo motivo ANTES de llegar al servidor, el alta de destino sin campos de tenant y con `https` obligatorio, y el secreto enseñado una vez con su aviso |
+
+**Ningún test existente se borró ni se debilitó**; cinco expectativas se
+ampliaron porque el repo cambió de verdad —la lista de familias de proveedor (entra
+`webhook`), la de rutas de `/app` (entra `/app/integrations`), la de entradas de
+menú que sobreviven a un tenant sin nada contratado (entra Integraciones, por el
+mismo motivo que Operación), la de operaciones reclamadas por un puerto (entra
+`event.publish`) y la de tablas auditadas (entran `api_clients`,
+`webhook_endpoints` y `webhook_subscriptions`)— y **una se cambió de forma**, con
+su razón escrita en el propio test: `db-schema.test.ts > integration_kind` deja de
+exigir igualdad y pasa a exigir que todo valor del enum DESPLEGADO esté declarado
+en TypeScript. `database.types.ts` describe el proyecto Supabase enlazado, y
+`webhook` llega en una migración que esta fase **no despliega** (contrato §11);
+exigir igualdad obligaría a editar a mano el archivo generado, que es justo lo que
+R11 arregló. La igualdad estricta contra las migraciones sigue comprobándose —y de
+forma más fuerte— en `integration-contract.test.ts`, contra Postgres real.
+
+### El criterio de aceptación, comprobado
+
+> «PASS si añadir SAP/ERP/pago/logística/mensajería como providers no requiere
+> modificar el core y la operación de fallos es visible y recuperable.»
+
+| Exigencia | Dónde se comprueba |
+|---|---|
+| **un provider nuevo no toca el core** | `api-gateway.test.ts` → «conectar un destino nuevo es una fila, no tocar el core»: un destino que no existe en ninguna parte del repositorio recorre el trabajador entero —firma, entrega, resultado— sin que el despachador cambie. Y en la base, dar de alta un conector es una fila de `integration_providers` más un `tenant_integrations`: ni una migración de dominio |
+| **el fallo es VISIBLE** | `integration-monitor.test.ts` → la fila del monitor trae junto todo lo accionable, y el detalle sale con doble redacción, sin cadena de consulta y con testigo en `audit_log` |
+| **el fallo es RECUPERABLE** | `integration-monitor.test.ts` → reintento manual y cierre de disyuntor con rol, motivo y firma; la cola sin GRANT de escritura para `authenticated` |
+| **el outbox tiene por fin un consumidor** | `supabase/functions/integration-worker` + `_shared/webhooks/dispatcher.ts`, probado con puertos falsos. Hasta P13 el marco estaba completo y sin usar |
+
+### Qué se construyó
+
+**Siete migraciones, todas nuevas (ninguna aplicada se tocó):**
+
+| Migración | Qué trae |
+|---|---|
+| `170000_integration_targets` | el DESTINO: `target` en outbox, circuito y bitácora de intentos; el disyuntor pasa a ser por endpoint; `status_code` y `correlation_id` en cada intento; las cuatro funciones del transporte redefinidas sin cambiar una sola conducta existente |
+| `170100_integration_kind_webhook` | una sentencia sola, en su propio archivo: `alter type … add value 'webhook'` no se puede USAR hasta que su transacción confirme |
+| `170200_webhooks_core` | el conector `webhook`; `webhook_endpoints` (https y solo direcciones públicas por CHECK), `webhook_subscriptions` y `webhook_deliveries`; `ebim.webhook_fanout` colgado de `domain_events` y que NUNCA levanta; `public.webhook_replay` con rol, módulo, motivo y `event_id` intacto |
+| `170300_enterprise_api_core` | `api_clients`, `api_access_tokens`, `api_requests` y `api_idempotency`; el grant `client_credentials`; `api_authenticate` recibiendo el HASH; tasa e idempotencia atómicas; y las tres purgas |
+| `170400_enterprise_api_resources` | los recursos de `/v1` —pedidos, alta de pedido con traducción de SKU, catálogo, existencia por `ebim.atp` y clientes—, todos derivando el tenant de la FILA de la credencial |
+| `170500_integration_monitor` | `integration_monitor` y `webhook_monitor` (`security_invoker`), `integration_health`, el detalle saneado y auditado, y los dos comandos de recuperación |
+| `170600_integrations_capability` | `integrations.enterprise` → `implemented` y el HILO extendido a `webhooks` y `api` |
+
+**Borde**: `supabase/functions/api` (la puerta versionada, cableado puro) sobre
+`_shared/api` —contrato, tabla de rutas, OpenAPI generado y `gateway.ts` con
+puertos—; y `supabase/functions/integration-worker` sobre `_shared/webhooks`
+—firma con instante dentro y despachador puro—.
+
+**Backoffice**: `/app/integrations` con salud, cola, webhooks y credenciales.
+SIN capacidad y con permiso de rol, igual que `/app/operations`.
+
+### Las decisiones que más cuesta revertir
+
+1. **Los webhooks NO son una segunda cola.** Son `integration_outbox` con
+   `provider_code = 'webhook'` y un `target` por endpoint. Heredan idempotencia,
+   backoff, cola muerta, disyuntor y monitor sin escribir ninguno otra vez.
+2. **El disyuntor es POR destino.** Sin eso, un endpoint roto cortaría la entrega
+   a los sanos del mismo tenant y el fallo se volvería invisible.
+3. **La identidad del evento es `domain_events.id`**, y la reproducción la
+   conserva. La deduplicación del receptor funciona por construcción, no por
+   disciplina.
+4. **El fan-out no puede levantar**: cuelga de la transacción del pedido. Lo que
+   falla queda como incidente, no como venta perdida.
+5. **Ninguna función de recurso acepta el tenant.** No se valida el parámetro: no
+   existe el parámetro. Hay un test que lo comprueba leyendo `pg_proc`.
+6. **La API de socio no es PostgREST.** Versión en la ruta, recursos en vez de
+   tablas, importes como cadena decimal, pedido por NÚMERO, producto por SKU,
+   paginación por cursor y errores con código estable.
+7. **Los scopes son las operaciones canónicas** que ya existían. Un vocabulario,
+   tres tiempos de ejecución, un test que los compara.
+8. **El secreto se guarda en sha256, se devuelve una vez y su hash no se puede
+   leer NI escribir** desde el backoffice: el GRANT es por columna en los dos
+   sentidos.
+9. **`api_authenticate` recibe el hash del token**, no el token: el secreto de
+   portador no entra en el registro de sentencias de Postgres.
+10. **La firma lleva el instante dentro.** Sin él, una firma válida lo es para
+    siempre y una captura vieja se puede reproducir contra el cliente.
+11. **El cuerpo de la respuesta del destino NO se guarda.** Lo escribe un tercero
+    y acaba trayendo datos de terceros dentro; el monitor lo pinta.
+12. **Reintentar conserva los intentos gastados**: son la prueba de lo que pasó.
+13. **Lo vendible es PUBLICAR; MIRAR no se vende.** El monitor está fuera del
+    addon, igual que `/app/operations` desde P13.
+
+### Lo que NO se hizo, y por qué
+
+- **Un endpoint `/v1/invoices`.** Esta app no emite facturas. `invoice.get` es el
+  nombre canónico correcto y está en el ADR, pero declarar el scope sin recurso
+  detrás dejaría una promesa que un socio integraría.
+- **Gestión de webhooks por la API de socio.** Un token que pudiera darse de alta
+  a sí mismo destinos de datos es una escalada con pasos extra.
+- **Un `openapi.json` commiteado.** Se genera desde la tabla de rutas —la misma
+  que despacha— y hay un test que compara las dos listas.
+- **Levantar el límite anti-bot del checkout para la API.** `POST /v1/orders`
+  reusa `create_order` y por tanto pasa por `ebim.assert_checkout_allowed`
+  (P10). Es **configurable por tienda** en
+  `store_settings.config -> checkout_rate_limit`, sin migración. Abrir un segundo
+  camino de alta sin límite sería el camino por el que se acaba entrando.
+- **Planificar el trabajador y las purgas.** `integration-worker`,
+  `purge_api_requests`, `purge_api_idempotency` y `purge_api_tokens` existen;
+  quién los llama periódicamente es configuración del proyecto Supabase y esta
+  fase no despliega (contrato §11). Es el mismo pendiente que
+  `purge_checkout_attempts` desde P10.
+
+- **Buzón EBIM**: revisado el 2026-08-28. Sin mensajes `to: ecommerce` ni
+  `to: all` nuevos desde el 2026-08-20 —los pendientes son los mismos que
+  registró P13— y sigue sin poderse responder: `ecommerce` no es todavía un
+  `from` válido del `PROTOCOLO.md` (§5.1 del roadmap, bloqueo del operador).
+
+Siguiente: **P15-SaaS**.
+
+---
+
+## Fase anterior
 **P13-SaaS — Analítica comercial, auditoría y observabilidad operativa. COMPLETA. Gate: PASS.**
 Decisiones completas en [`docs/adr/013-analytics-audit-observability.md`](adr/013-analytics-audit-observability.md).
 

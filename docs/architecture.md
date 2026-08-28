@@ -25,7 +25,14 @@ Usuario del tenant ──┘      ├─ /s/:storeSlug  storefront público (ten
                             ├─ catalog-product    (alta/edición con el JWT del usuario)
                             ├─ update-order-status (transiciones con el JWT del usuario)
                             ├─ payments-webhook   (la pasarela dice qué pasó — P09-SaaS)
-                            └─ fulfillment-webhook (el operador dice dónde va — P12-SaaS)
+                            ├─ fulfillment-webhook (el operador dice dónde va — P12-SaaS)
+                            ├─ api                (la API de SOCIO, versionada: /v1/…
+                            │                      OAuth client_credentials + scopes — P14-SaaS)
+                            └─ integration-worker (vacía la cola y FIRMA los webhooks;
+                                                   clave de trabajador en cabecera — P14-SaaS)
+
+Sistema de un socio ──► api  ──►  Postgres (el tenant sale de la fila de la credencial)
+Sistema suscrito    ◄── integration-worker ◄── integration_outbox ◄── domain_events
 
                             ├─ platform-context   ──► HUB EBIM (addons y config, §5)
                             │                        [escrita y probada; el hub todavía
@@ -46,7 +53,7 @@ El **hub EBIM** es el emisor de identidad y dueño del catálogo/billing. eComme
 escribe en él. La identidad del comprador final del storefront es **local** a este proyecto (patrón §2.5,
 igual que los proveedores externos de eSupplier); los usuarios del tenant llegan por SSO del hub.
 
-## Modelo de datos (implementado hasta P13-SaaS)
+## Modelo de datos (implementado hasta P14-SaaS)
 
 Nueve tablas en `supabase/migrations`, todas con `organization_id uuid` + `company_id uuid` (uuids del hub),
 `created_at`/`updated_at`, PK uuid y RLS default deny **forzada**:
@@ -83,7 +90,8 @@ tenants (PK = organization_id del hub)
   pedido, sus anotaciones y sus referencias externas, en P08-SaaS; las siete tablas del cobro, en
   P09-SaaS; las campañas, los cupones y las tarjetas regalo, en P10-SaaS; las páginas, los bloques y
   los sinónimos de búsqueda, en P11-SaaS; las quince de la entrega y la devolución, en P12-SaaS; y
-  `analytics_events`, `audit_log` y `ops_events` en P13-SaaS. **`audit_log` deja de ser un
+  `analytics_events`, `audit_log` y `ops_events` en P13-SaaS; y las siete de la superficie
+  empresarial —tres de webhooks y cuatro de la API de socio— en P14-SaaS. **`audit_log` deja de ser un
   pendiente**: existe desde P13 y es append-only para todos, incluido `service_role`.
 
 ### PIM: variantes, atributos, unidades y kits (P03-SaaS)
@@ -653,6 +661,75 @@ QUÉ SE ROMPIÓ (operación)
 - **`public.trace_by_correlation`** une once tablas y siete dominios en una consulta, filtrando cada
   rama por `ebim.can_access`. Es la Definition of Done de la fase escrita como función.
 
+### API empresarial, webhooks e Integration Monitor (P14-SaaS)
+
+Siete tablas más, migraciones `20260828170000`–`20260828170600`. Decisiones completas en
+[`adr/014-enterprise-api-webhooks-monitor.md`](adr/014-enterprise-api-webhooks-monitor.md).
+
+```
+EL TRANSPORTE NO CAMBIA: gana una DIMENSIÓN
+  integration_outbox  + target      a QUÉ destino concreto va el mensaje
+  integration_circuit + target      el disyuntor pasa a ser POR destino
+  integration_messages + status_code + correlation_id + target
+
+LO QUE SALE HACIA UN SISTEMA SUSCRITO (se contrata: `integrations.enterprise`)
+  webhook_endpoints ──── webhook_subscriptions   qué eventos quiere cada destino
+                    └─── webhook_deliveries      la IDENTIDAD de lo entregado y
+                                                 la cadena de reproducciones
+
+LO QUE ENTRA DESDE EL SISTEMA DE UN SOCIO
+  api_clients ──── api_access_tokens   el grant client_credentials
+              ├─── api_requests        contador con ventana Y pulso del socio
+              └─── api_idempotency     la misma clave dos veces es UNA operación
+
+LO QUE SE MIRA (NO se vende: es observabilidad, área de plataforma)
+  integration_monitor · webhook_monitor · integration_health
+  integration_message_detail (saneado y auditado) · integration_retry · webhook_replay
+```
+
+- **Los webhooks NO son una segunda cola.** Son `integration_outbox` con
+  `provider_code = 'webhook'` y un `target` por endpoint, así que heredan idempotencia, backoff con
+  jitter, cola muerta, disyuntor, bitácora de intentos y monitor sin escribir ninguno otra vez. La
+  columna `target` existe por una razón concreta: **el disyuntor tiene que ser por destino**, o un
+  endpoint roto cortaría la entrega a los sanos del mismo tenant.
+- **La identidad del evento es `domain_events.id`**, y la reproducción la conserva. Como
+  `domain_events` ya es idempotente por `dedupe_key` (P07), la deduplicación del receptor funciona
+  por construcción y no por disciplina.
+- **El fan-out NUNCA levanta.** Cuelga de un trigger sobre `domain_events`, que se escribe dentro de
+  la transacción del pedido: una excepción ahí tumbaría la venta. Lo que falla queda como incidente
+  (`WEBHOOK_NO_ENCOLADO` en `ops_events`).
+- **Solo `https` y solo direcciones públicas**, por CHECK: bucle local, enlace-local y los tres
+  rangos privados de RFC 1918 se rechazan en la base. Es defensa contra SSRF, no cosmética — el
+  trabajador entrega con credenciales de servidor y desde dentro de la red del proyecto.
+- **La API de socio no es PostgREST.** Versión en la RUTA (`/v1/…`), recursos en vez de tablas,
+  importes como cadena decimal, el pedido por su NÚMERO, el producto por su SKU, paginación por
+  cursor y errores con código estable. Un socio que integrara contra el esquema quedaría atado a
+  nuestros nombres de columna.
+- **Ninguna función `api_*` acepta `organization_id` ni `company_id`**: derivan el tenant de la FILA
+  de la credencial (`ebim.api_authorize`). No se valida el parámetro: no existe el parámetro. Hay un
+  test que lo comprueba leyendo `pg_proc.proargnames`.
+- **Los scopes son las operaciones canónicas que ya existían** (`order.create`, `stock.read`…), las
+  mismas de `integration_providers.capabilities`. Un vocabulario, tres tiempos de ejecución
+  —`ebim.api_scope_catalog()`, `src/domain/api.ts`, `_shared/api/contract.ts`— y un test que los
+  compara contra Postgres real.
+- **El secreto se guarda en sha256 y se devuelve UNA vez.** El GRANT es por columna en los DOS
+  sentidos: `secret_hash` no se puede leer ni escribir desde el backoffice —escribirlo sería
+  elegirlo—. `api_authenticate` recibe el HASH del token, no el token, para que no acabe en el
+  registro de sentencias de Postgres.
+- **El secreto de firma de un webhook no vive en la base**: allí está `secret_ref`, el nombre de la
+  variable del vault. Mismo patrón que `tenant_integrations.secret_ref` desde P12.
+- **La firma lleva un instante dentro** (`t=…,v1=…` sobre `<instante>.<cuerpo crudo>`). Sin él, una
+  firma válida lo es para siempre y una captura vieja se puede reproducir contra el cliente.
+- **El monitor NO se vende.** `integration_monitor`, `webhook_monitor` e `integration_health` están
+  fuera del addon —igual que `/app/operations` desde P13—; lo vendible es PUBLICAR. Quien decide
+  quién entra es el ROL, y lo decide la base.
+- **El detalle de un mensaje pasa por DOBLE redacción** (tarjeta de P09 y datos personales de P13),
+  sale sin la cadena de consulta de la URL y **queda registrado en `audit_log`**: mirarlo es un acto
+  con autor. El CUERPO de la respuesta del destino no se guarda nunca.
+- **La cola no se reescribe desde el navegador.** Reintentar y reproducir son comandos con rol,
+  motivo obligatorio y firma; el reintento CONSERVA los intentos gastados —son la prueba— y da uno
+  más por encima del techo.
+
 ### Capacidades y entitlements (P02-SaaS)
 
 Cuatro tablas más, migración `20260827160000`. Decisiones completas en
@@ -801,6 +878,10 @@ src/
                         calculada, RASTRO por correlation id y auditoría. SIN capacidad —igual
                         que Ajustes y Diagnóstico— y con permiso de rol. Lo único que escribe
                         es atender un incidente, y no es un `update`: es un comando
+  features/integrations/ el monitor (P14-SaaS): salud de conectores, cola con intentos y
+                        disyuntor, webhooks con sus entregas y reproducción, y credenciales de
+                        la API de socio. SIN capacidad —igual que Operación— y con permiso de
+                        rol; lo vendible es PUBLICAR y ese gate vive en la BASE
   features/storefront/  vitrina pública: resolución por slug, catálogo, ficha, carrito/checkout
                         (P07-SaaS: carrito de servidor con fusión al iniciar sesión y
                          checkout idempotente con etapas)
@@ -821,6 +902,11 @@ supabase/
                _shared/observability: el hilo, la redacción, el logger con SINKS y el
                puente con `ops_events`. Sin un solo vendor dentro: cambiar de
                proveedor es registrar un sink más
+               _shared/api (P14-SaaS): contrato, TABLA DE RUTAS, OpenAPI generado de
+               esa misma tabla y `gateway.ts` —puro, con puertos— donde vive el
+               ORDEN de las comprobaciones, que es una decisión de seguridad
+               _shared/webhooks (P14-SaaS): la firma con instante dentro (verificar
+               incluido, para poder probar la promesa) y el despachador puro
   tests/       PGlite: RLS, invariantes de esquema y contrato de integraciones
 ```
 
@@ -829,16 +915,20 @@ supabase/
 Decisiones completas en [`adr/001-domain-boundaries.md`](adr/001-domain-boundaries.md). En resumen:
 
 - **Doce dominios de negocio** —catalog, pricing, customers, inventory, checkout, orders, payments,
-  promotions, content, fulfillment, analytics, integrations— y **seis áreas de plataforma**
-  —identity, tenancy, entitlements, provisioning, configuration, shell—, declarados en
+  promotions, content, fulfillment, analytics, integrations (esta última pasa a `implemented` en
+  P14-SaaS: hasta entonces existía el transporte y no existía forma de que un tercero lo usara)— y
+  **siete áreas de plataforma** —identity, tenancy, entitlements, provisioning, configuration,
+  observability, shell—, declarados en
   `src/domain/boundaries.ts` con su estado real (`implemented` / `partial` / `declared`) y su ruta
   en `src/`. (`entitlements` la añade P02-SaaS: no es un módulo vendible, es la que decide qué
   módulos hay.)
 - **Un puerto existe solo si hay una segunda implementación ya declarada**: una fila de
   `integration_providers` con esa operación, o dos llamantes concretos hoy. Por eso hay
   `PricingPort`, `InventoryPort`, `PaymentProvider`, `FulfillmentProvider`, `NotificationProvider`,
-  `ErpProvider`, `InvoicingProvider` y —desde P11-SaaS, cuando aparecieron sus dos implementaciones—
-  `SearchPort`. `InventoryPort` es el primero con DOS implementaciones vivas (P06-SaaS): backoffice
+  `ErpProvider`, `InvoicingProvider`, —desde P11-SaaS, cuando aparecieron sus dos implementaciones—
+  `SearchPort`, y —desde P14-SaaS— el sobre publicado de los webhooks
+  (`WebhookEnvelope`, cuya «segunda implementación» es literalmente cada sistema suscrito, y que
+  `supabase/tests/webhooks.test.ts` comprueba contra lo que de verdad sale por la cola). `InventoryPort` es el primero con DOS implementaciones vivas (P06-SaaS): backoffice
   y vitrina, que no son dos capas de lo mismo sino dos actores con dos autorizaciones y dos
   respuestas distintas. `FulfillmentProvider` deja de ser solo un contrato en P12-SaaS: su versión
   de servidor (`_shared/fulfillment/provider.ts`) tiene registro, conector de pruebas y una Edge

@@ -26,6 +26,7 @@
  * | `ErpProvider` | dos generaciones del mismo ERP, mismas operaciones |
  * | `InvoicingProvider` | `invoice.issue` / `invoice.read` |
  * | `SearchPort` | vitrina anónima y backoffice con sesión (P11-SaaS) |
+ * | `WebhookEnvelope` | `event.publish` + un sistema suscrito por cliente (P14-SaaS) |
  *
  * ## `SearchPort`: el disparador se cumplió en P11-SaaS
  *
@@ -59,3 +60,4 @@ export * from './notification'
 export * from './erp'
 export * from './invoicing'
 export * from './search'
+export * from './webhook'

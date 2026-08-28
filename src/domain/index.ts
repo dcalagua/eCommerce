@@ -11,6 +11,9 @@
  * Un dominio que sabe de `PostgrestError` no se puede reutilizar: se reescribe.
  *
  * Qué vive aquí:
+ *  - `api`          — el contrato de la API empresarial: versión, scopes,
+ *                     códigos de error canónicos y lo que se asume del
+ *                     transporte (P14-SaaS).
  *  - `boundaries`   — el mapa de dominios, con su estado real y su ruta en `src/`.
  *  - `capabilities` — qué módulos sabe hacer el producto y cómo se resuelve
  *                     cuáles tiene contratados una sociedad.
@@ -24,6 +27,7 @@
  * Qué NO vive aquí: nombres de tabla, de vista, de bucket o de función remota.
  * Eso es vocabulario de persistencia y está en `shared/lib/db-schema.ts`.
  */
+export * from './api'
 export * from './boundaries'
 export * from './capabilities'
 export * from './content'

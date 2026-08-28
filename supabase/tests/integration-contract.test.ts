@@ -30,6 +30,7 @@ import { PAYMENT_OPERATIONS } from '../../src/domain/ports/payment.ts'
 import { FULFILLMENT_OPERATIONS } from '../../src/domain/ports/fulfillment.ts'
 import { NOTIFICATION_OPERATIONS } from '../../src/domain/ports/notification.ts'
 import { INVOICING_OPERATIONS } from '../../src/domain/ports/invoicing.ts'
+import { WEBHOOK_OPERATIONS } from '../../src/domain/ports/webhook.ts'
 
 let db: PGlite
 
@@ -87,6 +88,7 @@ describe('las operaciones son las mismas a los dos lados', () => {
       ...FULFILLMENT_OPERATIONS,
       ...NOTIFICATION_OPERATIONS,
       ...INVOICING_OPERATIONS,
+      ...WEBHOOK_OPERATIONS,
     ])
     const orphans = PROVIDER_OPERATIONS.filter((operation) => !claimed.has(operation))
     expect(orphans).toEqual([])

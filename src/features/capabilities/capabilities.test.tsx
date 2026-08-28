@@ -216,14 +216,18 @@ describe('navegación del backoffice', () => {
   /**
    * Configuración es la salida de un tenant sin nada: nunca se esconde. Desde
    * P13-SaaS la acompañan Operación y Diagnóstico, y por el mismo motivo: quien
-   * no puede ver por qué le fallan los cobros acaba llamando por teléfono. Las
-   * tres van sin capacidad y con permiso de administración.
+   * no puede ver por qué le fallan los cobros acaba llamando por teléfono. Desde
+   * P14-SaaS entra también Integraciones: ver por qué no sale un mensaje hacia
+   * un sistema externo es la misma clase de pregunta. Las cuatro van sin
+   * capacidad y con permiso de administración; lo vendible es PUBLICAR
+   * —credenciales, endpoints, suscripciones— y ese gate está en la base.
    */
-  it('Configuración, Operación y Diagnóstico siguen estando sin ni un módulo activo', () => {
+  it('Configuración, Operación, Integraciones y Diagnóstico siguen estando sin ni un módulo activo', () => {
     const items = visibleNavItems(NAV_ITEMS, { can: allow, has: deny, capabilitiesReady: true })
     expect(items.map((i) => i.to)).toEqual([
       '/app/settings',
       '/app/operations',
+      '/app/integrations',
       '/app/diagnostics',
     ])
   })

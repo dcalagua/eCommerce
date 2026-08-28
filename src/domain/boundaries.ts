@@ -297,12 +297,32 @@ export const BOUNDARIES: readonly Boundary[] = [
   {
     id: 'integrations',
     kind: 'domain',
-    state: 'partial',
+    // P14-SaaS. Deja de ser `partial`. Lo que faltaba no era transporte —eso
+    // existía desde P12 histórico y estaba probado— sino que un tercero
+    // pudiera USARLO: credenciales con permisos por operación, una API
+    // versionada que no expone el esquema, suscripciones a eventos con firma y
+    // reproducción, y una pantalla donde los fallos se ven y se recuperan.
+    //
+    // La propiedad que sostiene la frontera: los webhooks NO son una segunda
+    // cola. Son `integration_outbox` con `provider_code = 'webhook'` y un
+    // `target` por endpoint, así que heredan idempotencia, backoff, cola
+    // muerta, disyuntor y monitor sin escribir ninguno otra vez.
+    state: 'implemented',
     responsibility:
-      'Hablar con sistemas de terceros por un contrato canónico: catálogo de proveedores, outbox, inbox y disyuntor.',
-    paths: [],
+      'Hablar con sistemas de terceros por un contrato canónico, en los dos sentidos: catálogo de proveedores, outbox, inbox, disyuntor, webhooks salientes y la API de socio con sus credenciales y permisos.',
+    paths: ['features/integrations'],
     port: 'ErpProvider · InvoicingProvider · NotificationProvider',
-    serverSide: ['integration_* (150000, 150100), sin un solo consumidor en src/'],
+    serverSide: [
+      'integration_providers, tenant_integrations, outbox, inbox, messages y circuito (150000, 150100)',
+      'el DESTINO: integration_outbox.target y el disyuntor por endpoint (170000)',
+      'webhook_endpoints, webhook_subscriptions, webhook_deliveries y el fan-out desde domain_events (170200)',
+      'api_clients, api_access_tokens, api_requests, api_idempotency y el grant client_credentials (170300)',
+      'los recursos de /v1: pedidos, productos, existencia y clientes (170400)',
+      'integration_monitor, webhook_monitor, integration_health, detalle sanitizado, retry y replay (170500)',
+      'supabase/functions/api — la puerta versionada de la API de socio',
+      'supabase/functions/integration-worker — el que vacía la cola y firma los webhooks',
+      'supabase/functions/_shared/api y _shared/webhooks — contrato, rutas, OpenAPI y firma',
+    ],
   },
 
   {

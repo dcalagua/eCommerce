@@ -73,6 +73,9 @@ const AnalyticsPage = lazy(() =>
 const OperationsPage = lazy(() =>
   import('@/features/ops/OperationsPage').then((m) => ({ default: m.OperationsPage })),
 )
+const IntegrationsPage = lazy(() =>
+  import('@/features/integrations/IntegrationsPage').then((m) => ({ default: m.IntegrationsPage })),
+)
 const DiagnosticsPage = lazy(() =>
   import('@/features/capabilities/DiagnosticsPage').then((m) => ({ default: m.DiagnosticsPage })),
 )
@@ -187,6 +190,14 @@ export const routes: RouteObject[] = [
           // el ROL, y lo decide la base: policy de `ops_events` y de
           // `audit_log`, más la comprobación dentro de `ops_health`.
           { path: 'operations', element: withSuspense(<OperationsPage />) },
+          // P14: salud de conectores, cola, webhooks y credenciales de la API
+          // de socio. SIN capacidad, por la misma razón que Operación: ver por
+          // qué fallan tus integraciones es observabilidad, y quien no puede
+          // verlo acaba llamando por teléfono. Lo vendible es PUBLICAR
+          // —credenciales, endpoints, suscripciones— y su gate está en la
+          // BASE (policy y `SIN_MODULO`), no en el router, para que el
+          // comportamiento sea el mismo desde fuera de la aplicación.
+          { path: 'integrations', element: withSuspense(<IntegrationsPage />) },
           { path: 'diagnostics', element: withSuspense(<DiagnosticsPage />) },
         ],
       },

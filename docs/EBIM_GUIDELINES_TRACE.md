@@ -72,6 +72,26 @@ El PIM toca modelo de datos, aislamiento y superficie de backoffice, así que se
 | §8 UI de suite | Tabs centrados con deep-link `#hash` para la pantalla larga (`/app/pim`); un buscador general por pestaña, sin panel de filtros multi-campo |
 | §13 Doble enforcement | Las policies del PIM son la autoridad; el gating de `catalog.advanced` en ruta y en pestañas es cortesía |
 
+## Relectura directa para P14-SaaS (2026-08-28)
+
+La API empresarial y los webhooks son superficie hacia FUERA del tenant, así que se releyeron el
+contrato y la bandeja antes de tocar nada:
+
+| Sección | Qué se extrajo para P14 |
+|---|---|
+| §2.6 / regla 6 del contrato de ejecución | Ninguna función `api_*` acepta `organization_id` ni `company_id`: el tenant sale de la FILA de la credencial. Es la misma técnica que `my_business_accounts()` en P05, y aquí hay un test que la comprueba leyendo `pg_proc` |
+| §3 Jerarquía | Una credencial de API pertenece a una SOCIEDAD, no a la cuenta: el ERP de la filial A no lee los pedidos de la B aunque sean del mismo grupo. `organization_id` + `company_id` en las siete tablas nuevas |
+| §5 Platform Context API | El addon que gatea PUBLICAR es `ecommerce.integrations.enterprise`, el mismo código que P02 propuso y que sigue **pendiente** de que el operador dé de alta la app y su catálogo en el hub (§5.1 del roadmap). Cambiarlo después es un UPDATE de una columna |
+| §7 Qué vive dónde | eCommerce **lee** del hub y nunca escribe en él: la API de socio expone datos de esta app —pedidos, catálogo, existencia, clientes— y ni un dato de identidad o de facturación, que son del hub |
+| §8 UI de suite | Tabs centrados con deep-link `#hash` en `/app/integrations`; un buscador general por listado, sin paneles de filtros multi-campo |
+| §13 Super Admin / actor de negocio | Sin superficie nueva: las credenciales y los destinos los administra `owner`/`admin` del tenant, y un `@ebim.pe` no es actor de negocio |
+| Secretos (regla del repo) | El secreto de una credencial se guarda en sha256; el de firma de un webhook no se guarda: la base solo tiene `secret_ref`, el nombre de la variable del vault. Mismo patrón que `tenant_integrations.secret_ref` desde P12 |
+
+**Bandeja:** revisada al iniciar (`coordinacion\BANDEJA.md` y `pendientes\`). Los pendientes son los
+mismos que registró P13 —el último es del 2026-08-20— y **ninguno es `to: ecommerce`**; ninguno afecta
+a esta fase. Sigue sin poderse responder: `ecommerce` no es un `from` válido del `PROTOCOLO.md`
+(bloqueo del operador, §5.1 del roadmap).
+
 ## Relectura directa para P05-SaaS (2026-08-27)
 
 Clientes y cuentas B2B tocan identidad, jerarquía y acceso de un público EXTERNO al tenant, así que

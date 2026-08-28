@@ -2,6 +2,7 @@ import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined'
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined'
 import InsightsOutlinedIcon from '@mui/icons-material/InsightsOutlined'
 import MonitorHeartOutlinedIcon from '@mui/icons-material/MonitorHeartOutlined'
+import HubOutlinedIcon from '@mui/icons-material/HubOutlined'
 import HealthAndSafetyOutlinedIcon from '@mui/icons-material/HealthAndSafetyOutlined'
 import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined'
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
@@ -136,6 +137,16 @@ export const NAV_ITEMS: NavItem[] = [
     to: '/app/operations',
     label: 'nav.operations',
     icon: <HealthAndSafetyOutlinedIcon fontSize="small" />,
+    permission: 'tenant.manage',
+  },
+  {
+    // P14: monitor de integraciones, webhooks y credenciales de la API de
+    // socio. SIN capacidad y CON permiso, exactamente igual que Operación:
+    // la observabilidad de las integraciones no se vende, y quien no
+    // administra el tenant no tiene nada que hacer entre sus credenciales.
+    to: '/app/integrations',
+    label: 'nav.integrations',
+    icon: <HubOutlinedIcon fontSize="small" />,
     permission: 'tenant.manage',
   },
   {

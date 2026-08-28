@@ -1,0 +1,30 @@
+-- =============================================================================
+-- P14-SaaS · 2/7 — Una familia mas de proveedor: `webhook`
+--
+-- ## Por que este archivo tiene UNA sola sentencia
+--
+-- No es estetica. `alter type ... add value` se puede ejecutar dentro de una
+-- transaccion desde Postgres 12, pero el valor nuevo NO se puede USAR hasta que
+-- esa transaccion confirme. Un `insert into integration_providers (…, 'webhook')`
+-- en el mismo archivo fallaria con «unsafe use of new value of enum type», y
+-- fallaria SOLO al aplicar la carpeta entera de una vez —que es exactamente lo
+-- que hace el banco de pruebas y lo que hara el operador—. Separarlo en su
+-- propio archivo es lo que garantiza el COMMIT entre el valor y su primer uso.
+--
+-- ## Por que `webhook` es una familia y no se reusa `messaging`
+--
+-- Porque `messaging` en este catalogo significa «avisar a una PERSONA» —correo,
+-- SMS, mensajeria— y sus operaciones son `message.email`, `message.sms`,
+-- `message.whatsapp`. Un webhook avisa a un SISTEMA, con firma criptografica,
+-- reintentos, identidad de evento y reproduccion autorizada. Meterlo dentro de
+-- `messaging` obligaria a que la pantalla de mensajeria del tenant y la de
+-- webhooks fueran la misma, o a filtrar por el codigo del proveedor —que es la
+-- forma en que un enum deja de significar nada.
+--
+-- La familia es del PRODUCTO, no del tenant: que eCommerce sepa entregar
+-- webhooks es una capacidad del producto, igual que saber hablar con un ERP.
+-- A cuantos endpoints entrega cada sociedad es dato suyo, y vive en las tablas
+-- del archivo siguiente.
+-- =============================================================================
+
+alter type public.integration_kind add value if not exists 'webhook';

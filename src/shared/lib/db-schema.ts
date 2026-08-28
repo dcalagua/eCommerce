@@ -261,6 +261,25 @@ export const AUDIT_LOG_TABLE = 'audit_log'
 export const OPS_EVENTS_TABLE = 'ops_events'
 export const OPS_INCIDENT_OVERVIEW_VIEW = 'ops_incident_overview'
 
+// --- Integraciones empresariales (P14-SaaS, migraciones 170000-170600) ------
+// Sin `satisfies` por la misma razón que las anteriores: `database.types.ts` se
+// genera contra el proyecto ENLAZADO y estas migraciones no están aplicadas
+// allí. La red mientras tanto son `webhooks.test.ts`, `enterprise-api.test.ts`
+// e `integration-monitor.test.ts`, que comprueban estos mismos nombres contra
+// el esquema construido desde las migraciones.
+//
+// `api_access_tokens`, `api_requests` y `api_idempotency` NO están aquí: el
+// backoffice no las consulta directamente —lo que necesita se lo da
+// `integration_health`— y listarlas invitaría a leer desde el navegador una
+// tabla cuyo valor está en las columnas que precisamente NO tienen GRANT.
+export const INTEGRATION_OUTBOX_TABLE = 'integration_outbox'
+export const TENANT_INTEGRATIONS_TABLE = 'tenant_integrations'
+export const WEBHOOK_ENDPOINTS_TABLE = 'webhook_endpoints'
+export const WEBHOOK_SUBSCRIPTIONS_TABLE = 'webhook_subscriptions'
+export const API_CLIENTS_TABLE = 'api_clients'
+export const INTEGRATION_MONITOR_VIEW = 'integration_monitor'
+export const WEBHOOK_MONITOR_VIEW = 'webhook_monitor'
+
 // --- Vistas del modelo de lectura público ----------------------------------
 // `security_invoker` sobre policies `to anon`: filtran filas, y el GRANT por
 // columna es lo que evita que `anon` vea `stock` o `config` (P02, §4.3).
@@ -420,6 +439,19 @@ export const OPS_HEALTH_RPC = 'ops_health'
 export const OPS_RESOLVE_EVENT_RPC = 'ops_resolve_event'
 export const TRACE_BY_CORRELATION_RPC = 'trace_by_correlation'
 
+// P14. Las seis del monitor y de las credenciales. `api_token_issue`,
+// `api_authenticate`, `api_rate_limit_hit` y las de idempotencia NO están:
+// son del BORDE, solo las puede llamar `service_role` y nombrarlas aquí
+// invitaría a intentarlo desde el bundle. Misma decisión que P07 con el
+// pipeline de checkout y P13 con `ops_record_event`.
+export const INTEGRATION_HEALTH_RPC = 'integration_health'
+export const INTEGRATION_MESSAGE_DETAIL_RPC = 'integration_message_detail'
+export const INTEGRATION_RETRY_RPC = 'integration_retry'
+export const INTEGRATION_CIRCUIT_RESET_RPC = 'integration_circuit_reset'
+export const WEBHOOK_REPLAY_RPC = 'webhook_replay'
+export const API_CLIENT_CREATE_RPC = 'api_client_create'
+export const API_CLIENT_ROTATE_SECRET_RPC = 'api_client_rotate_secret'
+
 // --- Edge Functions --------------------------------------------------------
 export const BOOTSTRAP_FUNCTION = 'bootstrap-tenant'
 export const CATALOG_PRODUCT_FUNCTION = 'catalog-product'
@@ -433,3 +465,9 @@ export const PLATFORM_CONTEXT_FUNCTION = 'platform-context'
 // P12: la puerta por la que un operador logístico dice dónde va el paquete. No
 // la llama el navegador: la llama un servidor y la autentica una FIRMA.
 export const FULFILLMENT_WEBHOOK_FUNCTION = 'fulfillment-webhook'
+// P14: la API de socio y el trabajador que vacía la cola. Tampoco las llama el
+// navegador —la primera la llama el sistema de un tercero con su token, la
+// segunda un planificador con la clave del trabajador— y están aquí solo para
+// que el nombre del despliegue viva en un sitio.
+export const API_FUNCTION = 'api'
+export const INTEGRATION_WORKER_FUNCTION = 'integration-worker'

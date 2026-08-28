@@ -35,6 +35,11 @@ export const PROVIDER_KINDS = [
   'logistics',
   'messaging',
   'identity',
+  // P14-SaaS. Un webhook avisa a un SISTEMA —con firma, reintentos, identidad
+  // de evento y reproducción autorizada—; `messaging` avisa a una PERSONA por
+  // correo, SMS o mensajería. Meterlos en la misma familia obligaría a filtrar
+  // por el código del proveedor, que es como un enum deja de significar nada.
+  'webhook',
 ] as const
 export type ProviderKind = (typeof PROVIDER_KINDS)[number]
 
@@ -65,6 +70,11 @@ export const PROVIDER_OPERATIONS = [
   'message.email',
   'message.sms',
   'message.whatsapp',
+  // P14-SaaS. La única operación del conector de webhooks: la plataforma
+  // publica un HECHO y el sistema suscrito decide qué hacer con él. No es
+  // `event.send` ni `event.notify` a propósito — publicar no presupone que
+  // haya alguien escuchando, que es justo la propiedad de un outbox.
+  'event.publish',
 ] as const
 export type ProviderOperation = (typeof PROVIDER_OPERATIONS)[number]
 

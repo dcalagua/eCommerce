@@ -429,7 +429,7 @@ describe('lo que NO se audita, y esta escrito', () => {
     expect(rows).toEqual([])
   })
 
-  it('las once tablas auditadas son exactamente las declaradas', async () => {
+  it('las catorce tablas auditadas son exactamente las declaradas', async () => {
     const rows = await sql(`
       select c.relname as tabla
         from pg_trigger t
@@ -438,7 +438,12 @@ describe('lo que NO se audita, y esta escrito', () => {
        where p.proname = 'audit_row' and not t.tgisinternal
        order by c.relname
     `)
+    // P14-SaaS anade tres, y las tres son de la misma clase que las once
+    // anteriores: dar de alta una credencial de API o un destino al que salen
+    // datos de negocio —y cambiarle la URL o el secreto— son las acciones mas
+    // sensibles de esa fase.
     expect(rows.map((r) => r.tabla)).toEqual([
+      'api_clients',
       'customers',
       'delivery_rates',
       'gift_cards',
@@ -450,6 +455,8 @@ describe('lo que NO se audita, y esta escrito', () => {
       'tenant_feature_flags',
       'tenant_integrations',
       'tenant_members',
+      'webhook_endpoints',
+      'webhook_subscriptions',
     ])
   })
 })

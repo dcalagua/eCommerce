@@ -69,8 +69,28 @@ describe('los enums escritos a mano son los de la base', () => {
     sameSet(ORDER_STATUSES, enums.order_status)
   })
 
-  /** De aquí cuelga el vocabulario canónico de los puertos de proveedor. */
+  /**
+   * De aquí cuelga el vocabulario canónico de los puertos de proveedor.
+   *
+   * Es la ÚNICA de las cuatro que no exige igualdad, y el motivo importa:
+   * `database.types.ts` describe el proyecto Supabase **enlazado**, y P14-SaaS
+   * añade `webhook` al enum en una migración que esta fase no despliega
+   * (contrato de ejecución §11). Exigir igualdad aquí obligaría a editar a mano
+   * el archivo generado, que es exactamente lo que R11 arregló.
+   *
+   * Lo que sí se exige es la dirección que protege de verdad: **todo valor que
+   * la base desplegada tiene está declarado en TypeScript**. Un enum que crece
+   * en la base sin que el código se entere sigue rompiendo aquí.
+   *
+   * La igualdad ESTRICTA contra el esquema que construyen las migraciones no se
+   * pierde: la comprueba `supabase/tests/integration-contract.test.ts` contra
+   * Postgres real, que es una verificación más fuerte que esta porque no depende
+   * de que alguien regenere el archivo.
+   *
+   * Al aplicar las migraciones: `npm run db:types` y esto vuelve a `sameSet`.
+   */
   it('integration_kind', () => {
-    sameSet(PROVIDER_KINDS, enums.integration_kind)
+    const declared = new Set<string>(PROVIDER_KINDS)
+    expect(enums.integration_kind.filter((value) => !declared.has(value))).toEqual([])
   })
 })

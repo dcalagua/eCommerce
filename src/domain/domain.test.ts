@@ -144,9 +144,12 @@ describe('vocabulario canónico de proveedores', () => {
     expect(supportsOperation(ref, 'payment.refund')).toBe(false)
   })
 
+  // P14-SaaS anade `webhook`: avisar a un SISTEMA no es lo mismo que avisar a
+  // una PERSONA (`messaging`), y meterlos en la misma familia obligaria a
+  // filtrar por el codigo del proveedor.
   it('las familias de proveedor son las del enum de la base', () => {
     expect([...PROVIDER_KINDS].sort()).toEqual(
-      ['erp', 'identity', 'invoicing', 'logistics', 'messaging', 'payment'].sort(),
+      ['erp', 'identity', 'invoicing', 'logistics', 'messaging', 'payment', 'webhook'].sort(),
     )
   })
 })
