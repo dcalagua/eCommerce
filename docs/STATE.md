@@ -3,7 +3,7 @@
 GUIDELINES_STATUS: VERIFIED (**por lectura directa** en la 2ª pasada de P00-SaaS: contrato v1.15,
 `PROTOCOLO.md`, `BANDEJA.md` y `EBIM-CREW-ROSTER.md`). La unidad montada es `G:`, no `H:`.
 Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
-Última actualización: 2026-08-27 (P04 de productización SaaS)
+Última actualización: 2026-08-27 (P05 de productización SaaS)
 
 > **Dos numeraciones de fase.** Lo que sigue como «P00…P12» es el trabajo histórico de este repo. A
 > partir del 2026-08-27 arranca un segundo recorrido, **P00–P17 de productización SaaS**
@@ -11,6 +11,191 @@ Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
 > serie: el P12 histórico es el framework de integraciones; el P12-SaaS será fulfillment y devoluciones.
 
 ## Fase actual
+**P05-SaaS — Clientes, segmentos y fundamento B2B. COMPLETA. Gate: PASS.**
+Decisiones completas en [`docs/adr/005-customers-b2b.md`](adr/005-customers-b2b.md).
+
+### Gates (2026-08-27, partiendo de `e9fe843`)
+
+| Comando | Antes de P05 | Después |
+|---|---|---|
+| `npm run typecheck` | PASS | **PASS** |
+| `npm run lint` | PASS, 0 problemas | **PASS**, 0 problemas |
+| `npm run test` | 1000 / 58 archivos | **1078 / 61 archivos** |
+| `npm run test:db` | 560 / 22 | **605 / 23** |
+| `npm run build` | 794,17 kB (237,00 gzip) | **PASS**, 816,57 kB (242,55 gzip) |
+
+78 tests nuevos: 45 contra Postgres real (modelo, aislamiento, vínculo servidor, autorización por
+monto y el enlace con precios) y 33 en el cliente (23 de reglas puras y 10 de pantalla). **Ningún
+test existente se borró ni se debilitó**; dos se ajustaron y se explican abajo.
+
+### La decisión que ordena la fase: usuario autenticado ≠ cliente
+
+Son dos ejes y confundirlos es el error que después no se puede deshacer. **Usuario** es quien inicia
+sesión —la identidad la emite el hub—; **cliente** es la contraparte comercial: a quien se le
+factura, a quien se le tarifa y a dónde se le entrega.
+
+Por eso `customers` **no tiene `user_id`**, y hay un test de esquema que falla si aparece. Con esa
+columna, el modelo diría que un cliente ES una persona con sesión, y a partir de ahí el segundo
+comprador de la misma empresa no cabe: o se duplica la ficha, o se elige a uno. El vínculo con
+personas es una **relación** (`business_account_users`), porque una columna solo sabe expresar «uno»
+—y la mayoría de los clientes de una tienda nunca va a tener un usuario, que también hay que poder
+representarlo—.
+
+### Ocho tablas, y el alcance no es el de la tienda
+
+`customers` · `customer_addresses` · `customer_contacts` · `customer_external_ids` ·
+`business_accounts` · `business_locations` · `business_account_users` · `approval_rules`.
+
+Ninguna lleva `store_id`: el cliente es **de la sociedad**, igual que el segmento de P04, las marcas
+y las unidades. Darle `store_id` obligaría a duplicar la ficha —con su documento fiscal, sus
+direcciones y su código de ERP— cada vez que la sociedad abre un canal, y desde ese momento habría
+dos verdades sobre el mismo cliente. El pedido sí es de una tienda; el cliente que lo hace, no.
+
+### La ficha viene con el producto; lo que se vende es el portal
+
+`customers` entra en `app_capabilities` como capacidad **baseline** —la primera que se añade después
+de P02— y `customers.b2b` pasa de `declared` a `implemented`.
+
+Cobrar aparte por poder anotar el correo del comprador no sería un módulo, sería un peaje: dejaría a
+un tenant sin plan sin poder atender una devolución. La ruta `/app/customers` se gatea con
+`customers`; **la pestaña de cuentas B2B**, con `customers.b2b`, dentro de la misma pantalla. Y las
+policies aplican lo mismo: escribir un cliente pide rol (`owner`/`admin`/`orders`), escribir una
+cuenta pide rol (`owner`/`admin`) **y** capacidad.
+
+### La regla que la firma de una función hace cumplir
+
+«El acceso a una cuenta exige vínculo servidor, no un id declarado por el navegador.»
+`public.my_business_accounts()` **no acepta ningún argumento**. No es comodidad: sin parámetro no
+existe la clase de error que consiste en creerse el id que manda el cliente.
+
+Y los usuarios B2B **no tienen ni una policy** sobre las ocho tablas: no son miembros del tenant, así
+que `ebim.can_access` les devuelve `false` y PostgREST no les entrega una sola fila. Su única puerta
+es esa función definer. Hay cuatro tests que lo compran, incluido uno que recorre el cuerpo enviado y
+exige que vaya vacío.
+
+### Roles fijos, importes configurables
+
+Cuatro roles —`admin`, `approver`, `buyer`, `viewer`— en un enum, y no una tabla de roles con
+permisos por fila. Dos razones:
+
+- un permiso que es un dato ya no se puede leer dentro de una policy sin una consulta más, y «quién
+  puede aprobar» pasa a ser el resultado de un JOIN;
+- un «comprador» al que se le puede marcar «puede aprobar» **destruye la separación de funciones**
+  para la que existen las reglas de aprobación. Si el rol es configurable, el control es decorativo.
+
+Lo configurable es lo que cada empresa necesita de verdad: el **límite por persona**
+(`spending_limit`) y el **umbral por regla** (`approval_rules.min_amount`). Misma decisión que P04 con
+la precedencia: el orden no se configura, los números sí.
+
+`public.purchase_approval(cuenta, importe)` decide y explica el motivo —límite personal, regla o
+umbral de la cuenta, en ese orden— y gana la regla de **mayor umbral alcanzado**, como una escala de
+precio. Dos reglas con el mismo umbral las rechaza un índice único: el ganador dependería del orden
+de las filas. No crea solicitudes, no notifica y no cambia estados: la fase pide fundamento, no
+workflow. El comprobador del backoffice llama a **esa misma función**, no a una copia en JavaScript.
+
+### Cuatro estados imposibles, hechos imposibles por el esquema
+
+| Regla | Estado que evita |
+|---|---|
+| Una cuenta B2B solo cuelga de un `kind = 'company'`, y ese cliente ya no baja a persona | Un portal corporativo sobre una persona física |
+| Una sucursal solo apunta a una dirección **de su cliente** | Entregar en el almacén de otro |
+| Un cliente tiene una sola dirección por defecto de cada uso | Dos «por defecto» y el despacho decidiendo por orden de filas |
+| Un contacto sin correo ni teléfono no entra | Una fila que alguien tendrá que interpretar dentro de un año |
+
+Las dos primeras con la técnica del PIM: columna denormalizada + CHECK + FK compuesta a una clave de
+apoyo del padre.
+
+### La dirección: dos banderas, un índice parcial y un ESTADO de verificación
+
+El uso son dos banderas y no un enum, porque la misma dirección suele servir para entregar y para
+facturar; con un enum habría que duplicar la fila y corregir la calle dos veces. El predeterminado es
+un índice parcial único por uso, no una columna del cliente.
+
+Y la verificación es un **estado de cuatro valores**, no un booleano: una integración que valida
+direcciones distingue «todavía no se preguntó» de «se preguntó y dijo que no», y con un booleano las
+dos serían `false` — que es como se reintenta eternamente una dirección ya rechazada. Para un ERP que
+solo entrega en destinos autorizados, `verified` **es** autorizado. `verified_at` lo estampa un
+trigger, y hay un test que manda una fecha falsa y comprueba que la base pone la suya.
+
+### El identificador externo es un atributo, nunca una clave
+
+El código del ERP no es único entre sistemas, cambia cuando el cliente migra de versión y no existe
+para el que se dio de alta ayer. Dos unicidades, y las dos hacen falta: un cliente tiene **un** código
+por sistema, y un código de un sistema apunta a **un** cliente. `system_code` va sin FK a
+`integration_providers` a propósito: un ERP sin conector declarado también tiene códigos de cliente.
+
+### La deuda de P04, saldada por los dos lados
+
+1. **`price_list_assignments.customer_id` gana su FK**, compuesta con el tenant. Un uuid inventado ya
+   no entra y un cliente de otra sociedad tampoco. La pantalla de asignaciones deja de pedir un uuid
+   a mano y pasa a elegir una ficha — no por comodidad: con la FK puesta, teclear un uuid ahora
+   fallaría.
+2. **`public.price_quote` deriva el segmento del cliente** cuando no se declara. Antes se podía
+   simular «el cliente X con el segmento del vecino», que es un precio que no le van a cobrar a
+   nadie. El segmento explícito sigue mandando cuando se da, para responder «¿y si lo pasamos a
+   mayorista?». Y un cliente de otra sociedad se rechaza antes de mirar un solo precio.
+
+### `orders` NO gana `customer_id`, y el enlace por correo se declara
+
+El checkout sigue siendo anónimo. Colgarle un `customer_id` al pedido hoy sería una columna que solo
+puede rellenar el navegador, y el navegador no declara identidades (regla 6 del contrato de
+ejecución). Mientras tanto, `public.customer_orders` enlaza por el **correo** de la ficha o de sus
+contactos: es una heurística, y por eso vive en una función con nombre propio y con su aviso en la
+pantalla en vez de en una FK que aparentaría una certeza que no hay.
+
+### Backoffice y vitrina
+
+- **`/app/customers`** «Clientes» — dos pestañas centradas con deep-link `#hash` (§8): Clientes y
+  Cuentas B2B (esta última gateada). Listado **paginado en el servidor** (25 por página) con un solo
+  buscador general que consulta con retardo.
+- **Cajón de cliente** por pestañas: General · Contactos · Direcciones · Identificadores · Pedidos.
+  Cada una escribe en una tabla distinta y se guarda por separado — misma decisión que el cajón de
+  producto del PIM y el de lista de precio.
+- **El borrado enseña el conteo REAL** (contrato §4.2) de lo que arrastra: direcciones, contactos,
+  identificadores, cuenta, usuarios de la cuenta y asignaciones de precio; más los **pedidos, que se
+  cuentan y no se borran** —un pedido es un hecho contable—. La alternativa segura (desactivar) es el
+  botón primario.
+- **Cajón de cuenta B2B**: General · Usuarios · Sucursales · Aprobaciones, con un comprobador de
+  importe que llama a la función del servidor.
+- **`/s/:storeSlug/account`** — área de cuenta del comprador, con **tres** estados distinguibles: sin
+  sesión (invita a entrar), con sesión y sin vínculo (lo dice), y con cuenta (rol, límite, sucursales
+  y direcciones). Juntar los dos primeros mandaría a alguien a reintentar el login para arreglar algo
+  que un administrador tiene que vincular. La entrada en la cabecera solo aparece con sesión.
+
+### Los dos tests existentes que se ajustaron (y por qué no es debilitarlos)
+
+- `pricing-engine.test.ts`: los dos clientes eran uuid sueltos porque `customers` no existía. Ahora
+  la fixtura los **da de alta de verdad**, porque la FK nueva no admite un uuid inventado. El test se
+  vuelve más parecido a producción, no menos exigente.
+- `routes.test.tsx`: suma `/app/customers` y `/s/:storeSlug/account` a las listas **exactas** de
+  rutas del backoffice y del storefront.
+
+### Lo que P05 NO resuelve, dicho claramente
+
+- **El comprador del storefront sigue sin identidad propia.** El área de cuenta enseña el contexto y
+  todavía no compra en nombre de la cuenta: para eso hace falta el login del comprador (P16). Lo que
+  ya existe es el vínculo y su función de contexto, para que ese día no haya que inventar de dónde
+  sale la cuenta.
+- **No hay flujo de aprobación.** Hay reglas y una función que dice si un importe las cruza. Estados,
+  bandeja del aprobador y notificaciones son de otra fase; la fase pedía fundamento.
+- **No hay crédito ni condiciones de pago**, y es deliberado (regla 7): es lógica de un ERP concreto.
+  Lo que sí nace es el límite de autorización, que es del portal.
+- **El vínculo se crea tecleando el id de usuario del hub.** La invitación por correo es de la fase de
+  identidad; hasta entonces, vincular exige conocer el identificador que emite el hub — que es justo
+  lo que impide vincular a alguien de oído.
+- **`database.types.ts` sin regenerar.** Las ocho tablas y las cinco funciones nuevas van sin
+  `satisfies`, por la misma razón que las de P02, P03 y P04. Al aplicar: `npm run db:types` y añadir
+  el `satisfies`.
+- **R2 (canales sin superficie) se cierra.** P04 lo dejó «a medias» y lo pasó a la fase de clientes
+  B2B «que es quien le da usuarios». P05 le da los usuarios —cuentas de empresa con personas
+  vinculadas— pero **sigue sin ABM de canal**: crear un canal B2B nuevo sigue siendo un `insert`. Se
+  reasigna a la fase que le dé reglas propias de venta; queda dicho para que no se pierda.
+
+Siguiente: **P06-SaaS** (inventario por almacén), que es además quien puede retirar `products.stock`.
+
+---
+
+## Fase anterior
 **P04-SaaS — Motor de precios: listas, escalas, vigencias y precedencia. COMPLETA. Gate: PASS.**
 Decisiones completas en [`docs/adr/004-pricing-engine.md`](adr/004-pricing-engine.md).
 

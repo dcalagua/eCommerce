@@ -31,9 +31,14 @@ const STORE_A_SLUG = 'tienda-a'
 const STORE_B_SLUG = 'tienda-b'
 const PRICING = 'ecommerce.pricing.lists'
 
-/** Cliente B2B ficticio. La tabla `customers` es P05: aqui es solo un uuid. */
-const CUSTOMER_X = '0a000000-0000-4000-8000-0000000000f1'
-const CUSTOMER_Y = '0a000000-0000-4000-8000-0000000000f2'
+/**
+ * Clientes B2B. Hasta P05 eran dos uuid sueltos porque `customers` no existia;
+ * ahora existe y `price_list_assignments.customer_id` tiene FK contra ella, asi
+ * que un uuid inventado ya no entra. La fixtura los da de alta de verdad: el
+ * test no se debilita, se vuelve mas parecido a produccion.
+ */
+let customerX: string
+let customerY: string
 
 let storeA: string
 let storeB: string
@@ -288,6 +293,17 @@ beforeAll(async () => {
      values ($1, $2, 'mayorista', 'Mayorista') returning id`,
     [TENANT_A.organizationId, TENANT_A.companyId],
   )
+
+  const insertCustomer = `
+    insert into public.customers (organization_id, company_id, kind, code, name)
+    values ($1, $2, 'company', $3, $4) returning id`
+
+  customerX = await id(insertCustomer, [
+    TENANT_A.organizationId, TENANT_A.companyId, 'CLI-X', 'Cliente X',
+  ])
+  customerY = await id(insertCustomer, [
+    TENANT_A.organizationId, TENANT_A.companyId, 'CLI-Y', 'Cliente Y',
+  ])
 }, 180_000)
 
 /**
@@ -540,7 +556,7 @@ describe('precedencia entre alcances', () => {
     })
     await addItem({ list: listaSegmento, product: jabon, price: '7.00' })
 
-    listaCliente = await createList({ code: 'cliente-x', scope: 'customer', target: CUSTOMER_X })
+    listaCliente = await createList({ code: 'cliente-x', scope: 'customer', target: customerX })
     await addItem({ list: listaCliente, product: jabon, price: '6.00' })
   })
 
@@ -557,15 +573,15 @@ describe('precedencia entre alcances', () => {
   })
 
   it('el cliente gana al segmento', async () => {
-    expect(await priceOf(jabon, { segment: segmentoMayorista, customer: CUSTOMER_X })).toBe('6.00')
+    expect(await priceOf(jabon, { segment: segmentoMayorista, customer: customerX })).toBe('6.00')
   })
 
   it('un cliente sin acuerdo propio cae al segmento', async () => {
-    expect(await priceOf(jabon, { segment: segmentoMayorista, customer: CUSTOMER_Y })).toBe('7.00')
+    expect(await priceOf(jabon, { segment: segmentoMayorista, customer: customerY })).toBe('7.00')
   })
 
   it('el desglose dice de donde salio el precio', async () => {
-    const result = await resolve(jabon, { customer: CUSTOMER_X })
+    const result = await resolve(jabon, { customer: customerX })
     expect(result.source).toBe('price_list')
     expect(result.price_list_code).toBe('cliente-x')
     expect(result.scope).toBe('customer')

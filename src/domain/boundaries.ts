@@ -102,15 +102,19 @@ export const BOUNDARIES: readonly Boundary[] = [
   {
     id: 'customers',
     kind: 'domain',
-    state: 'partial',
+    state: 'implemented',
     responsibility:
-      'Quién compra, separado de quién se autentica: cuenta, contacto, segmento y condiciones B2B.',
+      'Quién compra, separado de quién se autentica: ficha, contactos, direcciones, segmento, identificadores externos y la cuenta B2B con sus usuarios, sucursales y límites.',
     // El segmento comercial nace en P04 porque es una dimensión de PRECIO antes
-    // que una ficha de cliente; la cuenta B2B que se le cuelga es P05.
-    paths: [],
+    // que una ficha de cliente; la ficha y la cuenta B2B son P05.
+    paths: ['features/customers', 'features/storefront/StoreAccountPage.tsx'],
     serverSide: [
-      'hoy solo contacto desnormalizado en orders (090400)',
       'customer_segments — vocabulario comercial de la sociedad (180000)',
+      'customers, customer_addresses, customer_contacts, customer_external_ids (190000)',
+      'business_accounts, business_locations, business_account_users, approval_rules (190100)',
+      'my_business_accounts y purchase_approval — contexto y autorización sin id del navegador (190100)',
+      'price_quote deriva el segmento del cliente; customer_orders enlaza por correo (190200)',
+      'contacto desnormalizado en orders: sigue siendo la verdad del pedido anónimo (090400)',
     ],
   },
   {

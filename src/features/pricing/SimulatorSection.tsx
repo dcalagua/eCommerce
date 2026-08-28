@@ -12,6 +12,7 @@ import {
 } from '@mui/material'
 import { useMemo, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { useCustomerOptions } from '@/features/customers/hooks'
 import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
@@ -45,10 +46,12 @@ export function SimulatorSection() {
   const variants = useProductVariants(product?.id ?? null)
   const channels = useChannels(activeStore?.id ?? null)
   const segments = useSegments()
+  const customers = useCustomerOptions({ term: '' })
 
   const [variantId, setVariantId] = useState('')
   const [channelId, setChannelId] = useState('')
   const [segmentId, setSegmentId] = useState('')
+  const [customerId, setCustomerId] = useState('')
   const [quantity, setQuantity] = useState('1')
   const [error, setError] = useState<MessageKey | null>(null)
   const [result, setResult] = useState<PriceQuoteResult | null>(null)
@@ -82,6 +85,7 @@ export function SimulatorSection() {
         quantity: parsedQuantity,
         channelId: channelId || null,
         segmentId: segmentId || null,
+        customerId: customerId || null,
       })
       setResult(quote)
     } catch (caught) {
@@ -164,6 +168,26 @@ export function SimulatorSection() {
               {(segments.data ?? []).map((segment) => (
                 <MenuItem key={segment.id} value={segment.id}>
                   {segment.name}
+                </MenuItem>
+              ))}
+            </TextField>
+
+            {/* Desde P05-SaaS: elegir un cliente basta. Si no se declara
+                segmento, el servidor toma el de su ficha —así el simulador
+                responde lo que de verdad le van a cobrar—. Declarar los dos
+                sigue valiendo, para responder «¿y si lo pasamos a mayorista?». */}
+            <TextField
+              select
+              size="small"
+              fullWidth
+              label={t('pricing.field.customer')}
+              value={customerId}
+              onChange={(event) => setCustomerId(event.target.value)}
+            >
+              <MenuItem value="">{t('pricing.field.noCustomer')}</MenuItem>
+              {(customers.data ?? []).map((customer) => (
+                <MenuItem key={customer.id} value={customer.id}>
+                  {customer.code} · {customer.name}
                 </MenuItem>
               ))}
             </TextField>

@@ -15,6 +15,7 @@ import {
   Typography,
 } from '@mui/material'
 import { useMemo, useState } from 'react'
+import { useCustomerOptions } from '@/features/customers/hooks'
 import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
@@ -31,11 +32,10 @@ import { PRICE_SCOPES, SCOPE_RANK, assignmentFormSchema, type PriceList, type Pr
  * la precedencia es la única regla del motor que no se puede configurar, así
  * que la pantalla tiene que decirla en vez de dejar que se descubra vendiendo.
  *
- * El alcance «cliente» pide un identificador de cuenta a mano porque la ficha
- * de cliente todavía no existe (es P05). Está declarado así, con su aviso, en
- * lugar de esconderlo: un motor de precios sin precio negociado por cuenta no
- * es un motor de precios B2B, y dejar el hueco visible es más honesto que
- * fingir que la dimensión no está.
+ * El alcance «cliente» elige una ficha de verdad desde P05-SaaS. Antes pedía un
+ * uuid a mano porque `customers` no existía; ahora no solo sería incómodo, sería
+ * imposible: la asignación tiene FK contra el cliente, así que un identificador
+ * tecleado que no sea una ficha de esta sociedad lo rechaza la base.
  */
 export function AssignmentsPanel({ list, canWrite }: { list: PriceList; canWrite: boolean }) {
   const { t } = useI18n()
@@ -45,6 +45,9 @@ export function AssignmentsPanel({ list, canWrite }: { list: PriceList; canWrite
   const assignments = useAssignments(list.id)
   const channels = useChannels(activeStore?.id ?? null)
   const segments = useSegments()
+  // La cartera se pide con límite y solo aquí: es el selector del alcance más
+  // específico, no un listado de clientes dentro de la pantalla de precios.
+  const customers = useCustomerOptions({ term: '' })
   const add = useAddAssignment()
   const remove = useDeleteAssignment()
 
@@ -58,8 +61,9 @@ export function AssignmentsPanel({ list, canWrite }: { list: PriceList; canWrite
     const names = new Map<string, string>()
     for (const channel of channels.data ?? []) names.set(channel.id, `${channel.code} · ${channel.name}`)
     for (const segment of segments.data ?? []) names.set(segment.id, segment.name)
+    for (const customer of customers.data ?? []) names.set(customer.id, customer.name)
     return names
-  }, [channels.data, segments.data])
+  }, [channels.data, segments.data, customers.data])
 
   async function submit() {
     if (!tenant || !activeCompanyId || !activeStore) return
@@ -154,13 +158,20 @@ export function AssignmentsPanel({ list, canWrite }: { list: PriceList; canWrite
 
             {scope === 'customer' && (
               <TextField
+                select
                 size="small"
                 fullWidth
                 label={t('pricing.field.customer')}
                 value={customerId}
                 onChange={(event) => setCustomerId(event.target.value)}
                 helperText={t('pricing.field.customerHint')}
-              />
+              >
+                {(customers.data ?? []).map((customer) => (
+                  <MenuItem key={customer.id} value={customer.id}>
+                    {customer.code} · {customer.name}
+                  </MenuItem>
+                ))}
+              </TextField>
             )}
 
             <Button variant="contained" onClick={() => void submit()} disabled={add.isPending}>

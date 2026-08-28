@@ -1,3 +1,4 @@
+import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined'
 import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined'
 import {
   Badge,
@@ -13,6 +14,7 @@ import {
 import type { ReactNode } from 'react'
 import { Link, Outlet, useParams } from 'react-router-dom'
 import { ErrorBoundary } from '@/app/ErrorBoundary'
+import { useSessionContext } from '@/features/auth/session-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { EbimMark } from '@/shared/ui/EbimMark'
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/states'
@@ -169,10 +171,38 @@ function StoreHeader({ store, storeSlug }: { store: PublicStore; storeSlug: stri
             </Typography>
           </Box>
 
+          <AccountButton storeSlug={storeSlug} />
           <CartButton />
         </Toolbar>
       </Container>
     </Box>
+  )
+}
+
+/**
+ * Entrada al área de cuenta (P05-SaaS). Solo aparece con sesión, y es
+ * deliberado: un enlace a «tu cuenta» para un comprador anónimo lleva a un
+ * sitio donde no hay nada suyo, y la vitrina se navega sin sesión a propósito.
+ *
+ * Qué cuenta es la suya lo decide el servidor (`my_business_accounts`); esto es
+ * solo la puerta.
+ */
+function AccountButton({ storeSlug }: { storeSlug: string }) {
+  const { t } = useI18n()
+  const { status } = useSessionContext()
+  if (status !== 'authenticated') return null
+
+  return (
+    <Button
+      component={Link}
+      to={`/s/${storeSlug}/account`}
+      startIcon={<PersonOutlineOutlinedIcon />}
+      sx={{ flexShrink: 0 }}
+    >
+      <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+        {t('account.title')}
+      </Box>
+    </Button>
   )
 }
 

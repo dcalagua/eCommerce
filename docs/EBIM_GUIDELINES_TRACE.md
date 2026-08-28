@@ -72,6 +72,24 @@ El PIM toca modelo de datos, aislamiento y superficie de backoffice, así que se
 | §8 UI de suite | Tabs centrados con deep-link `#hash` para la pantalla larga (`/app/pim`); un buscador general por pestaña, sin panel de filtros multi-campo |
 | §13 Doble enforcement | Las policies del PIM son la autoridad; el gating de `catalog.advanced` en ruta y en pestañas es cortesía |
 
+## Relectura directa para P05-SaaS (2026-08-27)
+
+Clientes y cuentas B2B tocan identidad, jerarquía y acceso de un público EXTERNO al tenant, así que
+se releyeron el contrato y la bandeja antes de tocar nada:
+
+| Seccion | Que se extrajo para P05 |
+|---|---|
+| §2 Identidad | La identidad la emite el hub: `business_account_users.user_id` es el `sub` del JWT y **no** tiene FK a `auth.users`. Atar el portal al proveedor de identidad de hoy contradiría la definición de hecho de la fase |
+| §2.6 / regla 6 del contrato de ejecución | El tenant y la cuenta se derivan del servidor. `my_business_accounts()` no acepta argumentos, y por eso no hay id de cuenta que el navegador pueda declarar |
+| §3 Jerarquía | `organization_id` + `company_id` en las ocho tablas nuevas, nombres exactos. **Sin `store_id`**: el cliente es de la sociedad, como el segmento de P04 |
+| §4.2 Eliminación segura | `customer_deletion_usage` cuenta lo que se lleva la cascada y también los pedidos, que **no** se borran. Desactivar es el botón primario |
+| §8 UI de suite | Tabs centrados con deep-link `#hash` en `/app/customers`; un buscador general por listado |
+| §13 Super Admin / actor de negocio | `@ebim.pe` no puede vincularse a una cuenta B2B: un CHECK en la base y una validación en el formulario. Un operador de la suite dentro de la cuenta de un cliente compraría en su nombre |
+
+**Bandeja:** revisada al iniciar (`coordinacion\BANDEJA.md` y `pendientes\`). Siete mensajes
+`to: [all]` siguen pendientes y son los mismos que P00 dejó anotados —se responden con el mensaje de
+alta de la app y no antes—; **ninguno `to: ecommerce`** y ninguno afecta a esta fase.
+
 ## Hallazgo de la relectura directa (2026-08-27, P00-SaaS)
 
 **`ecommerce` no figura en ninguna de las fuentes.** No está en el contrato v1.15 (cabecera «Apps»:

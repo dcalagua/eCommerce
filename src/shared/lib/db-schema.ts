@@ -91,6 +91,21 @@ export const PRICE_LIST_ASSIGNMENTS_TABLE = 'price_list_assignments'
 export const PRICE_CHANGE_EVENTS_TABLE = 'price_change_events'
 export const CHANNELS_TABLE = 'channels'
 
+// --- Clientes y cuentas B2B (P05-SaaS, migraciones 190000-190200) -----------
+// Sin `satisfies` por la misma razón que las anteriores: `database.types.ts` se
+// genera contra el proyecto ENLAZADO y estas migraciones todavía no están
+// aplicadas allí. La red mientras tanto es `supabase/tests/customers.test.ts`,
+// que comprueba estos nombres contra el esquema construido desde las
+// migraciones. Al aplicar: `npm run db:types` y añadir el `satisfies`.
+export const CUSTOMERS_TABLE = 'customers'
+export const CUSTOMER_ADDRESSES_TABLE = 'customer_addresses'
+export const CUSTOMER_CONTACTS_TABLE = 'customer_contacts'
+export const CUSTOMER_EXTERNAL_IDS_TABLE = 'customer_external_ids'
+export const BUSINESS_ACCOUNTS_TABLE = 'business_accounts'
+export const BUSINESS_LOCATIONS_TABLE = 'business_locations'
+export const BUSINESS_ACCOUNT_USERS_TABLE = 'business_account_users'
+export const APPROVAL_RULES_TABLE = 'approval_rules'
+
 // --- Vistas del modelo de lectura público ----------------------------------
 // `security_invoker` sobre policies `to anon`: filtran filas, y el GRANT por
 // columna es lo que evita que `anon` vea `stock` o `config` (P02, §4.3).
@@ -124,6 +139,13 @@ export const EFFECTIVE_CAPABILITIES_RPC = 'effective_capabilities'
 export const PRICE_QUOTE_PUBLIC_RPC = 'price_quote_for_slug'
 export const PRICE_QUOTE_RPC = 'price_quote'
 export const PRICE_LIST_CONFLICTS_RPC = 'price_list_conflicts'
+// Clientes y cuentas B2B (P05-SaaS). `my_business_accounts` no acepta NINGÚN
+// argumento a propósito: el vínculo usuario ↔ cuenta lo resuelve el servidor,
+// nunca un id declarado por el navegador (regla 8 de la fase).
+export const MY_BUSINESS_ACCOUNTS_RPC = 'my_business_accounts'
+export const PURCHASE_APPROVAL_RPC = 'purchase_approval'
+export const CUSTOMER_ORDERS_RPC = 'customer_orders'
+export const CUSTOMER_USAGE_RPC = 'customer_deletion_usage'
 
 // --- Edge Functions --------------------------------------------------------
 export const BOOTSTRAP_FUNCTION = 'bootstrap-tenant'

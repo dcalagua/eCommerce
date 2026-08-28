@@ -30,6 +30,7 @@ export const BASELINE_CAPABILITY_IDS = [
   'analytics.basic',
   'catalog',
   'checkout',
+  'customers',
   'orders',
   'storefront',
 ] as const
@@ -129,6 +130,17 @@ export const CAPABILITIES: readonly Capability[] = [
     grants: 'Indicadores agregados del panel de inicio.',
   },
   {
+    id: 'customers',
+    boundary: 'customers',
+    // BASELINE (P05-SaaS). Guardar a quién le vendiste viene con el producto:
+    // cobrar aparte por poder anotar el correo del comprador no sería un
+    // módulo, sería un peaje, y dejaría a un tenant sin plan sin poder atender
+    // una devolución. Lo vendible es la CUENTA B2B, no la ficha.
+    entitlement: null,
+    state: 'implemented',
+    grants: 'Ficha de cliente con contactos, direcciones, segmento e identificadores externos.',
+  },
+  {
     id: 'catalog.advanced',
     boundary: 'catalog',
     entitlement: `${ENTITLEMENT_PREFIX}catalog.advanced`,
@@ -153,8 +165,12 @@ export const CAPABILITIES: readonly Capability[] = [
     id: 'customers.b2b',
     boundary: 'customers',
     entitlement: `${ENTITLEMENT_PREFIX}customers.b2b`,
-    state: 'declared',
-    grants: 'Cuentas B2B, contactos, condiciones de crédito y aprobaciones (P05).',
+    // La tercera vendible que deja de ser `declared` (P05-SaaS): cuentas con
+    // varios usuarios, sucursales, roles y límites de autorización, con su
+    // enforcement en las policies. El crédito NO entra: es lógica de ERP.
+    state: 'implemented',
+    grants:
+      'Cuentas de empresa con varios usuarios, sucursales, roles y límites de autorización por monto.',
   },
   {
     id: 'inventory.multiwarehouse',

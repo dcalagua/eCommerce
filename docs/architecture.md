@@ -40,7 +40,7 @@ El **hub EBIM** es el emisor de identidad y dueño del catálogo/billing. eComme
 escribe en él. La identidad del comprador final del storefront es **local** a este proyecto (patrón §2.5,
 igual que los proveedores externos de eSupplier); los usuarios del tenant llegan por SSO del hub.
 
-## Modelo de datos (implementado hasta P03-SaaS)
+## Modelo de datos (implementado hasta P05-SaaS)
 
 Nueve tablas en `supabase/migrations`, todas con `organization_id uuid` + `company_id uuid` (uuids del hub),
 `created_at`/`updated_at`, PK uuid y RLS default deny **forzada**:
@@ -68,7 +68,7 @@ tenants (PK = organization_id del hub)
   `public_store_branding` — §4.3). La disponibilidad se publica como `products.in_stock`, columna
   **generada** (`stock > 0`): `anon` la lee, pero nunca lee `stock` (P05).
 - Sin forks de schema por cliente: diferencias por `store_settings.config` + `products.custom_fields` (JSONB).
-- Pendiente de fases siguientes: `customers`, `carts`, `payments`, `audit_log`.
+- Pendiente de fases siguientes: `carts`, `payments`, `audit_log`. (`customers` llega en P05-SaaS.)
 
 ### PIM: variantes, atributos, unidades y kits (P03-SaaS)
 
@@ -151,6 +151,51 @@ BITÁCORA
   `price_quote` (backoffice, con membresía) y `price_list_conflicts` (invoker, la RLS decide).
 - `order_items` gana `price_source` y `price_list_id`: la línea explica por qué costó lo que costó.
 
+### Clientes y cuentas B2B (P05-SaaS)
+
+Ocho tablas más, migraciones `20260827190000`–`20260827190200`. Decisiones completas en
+[`adr/005-customers-b2b.md`](adr/005-customers-b2b.md).
+
+```
+VOCABULARIO DE LA SOCIEDAD (sin store_id: el cliente lo es de todas sus tiendas)
+  customers ──── customer_addresses      envío y facturación, con estado de verificación
+            ├─── customer_contacts       las personas del cliente; NO son usuarios
+            └─── customer_external_ids   cómo se llama en cada sistema externo
+
+EL PORTAL (se contrata: `customers.b2b`)
+  business_accounts ──── business_locations      sucursales y centros de entrega
+                    ├─── business_account_users  EL VÍNCULO usuario ↔ cuenta
+                    └─── approval_rules          desde qué importe y quién aprueba
+```
+
+- **`customers` no tiene `user_id`.** Usuario autenticado y cliente son dos ejes distintos: la
+  identidad la emite el hub y el vínculo con personas es una RELACIÓN, porque una columna solo sabe
+  expresar «uno». Un test de esquema falla si esa columna aparece.
+- **La ficha es baseline; el portal se vende.** `customers` entra en `app_capabilities` como
+  capacidad baseline y `customers.b2b` pasa a `implemented`. Escribir un cliente pide rol
+  (`owner`/`admin`/`orders`); escribir una cuenta pide rol (`owner`/`admin`) **y** capacidad.
+- **Una cuenta corporativa sobre una persona es imposible**: FK compuesta `(customer_id,
+  customer_kind)` contra `customers (id, kind)`, la técnica del PIM.
+- **`public.my_business_accounts()` no acepta argumentos.** Es la forma de la regla «el acceso a una
+  cuenta exige vínculo servidor»: sin parámetro no hay id que el navegador pueda declarar. Los
+  usuarios B2B **no tienen ni una policy** sobre estas tablas —no son miembros del tenant— y esa
+  función definer es su única puerta.
+- **Roles fijos, importes configurables**: enum `business_role` (`admin`, `approver`, `buyer`,
+  `viewer`) y límites por persona (`spending_limit`) y por cuenta (`approval_rules.min_amount`). Un
+  rol cuyos permisos fueran datos permitiría marcar «puede aprobar» sobre un comprador.
+- **`public.purchase_approval(cuenta, importe)`** decide y explica el motivo (`user_limit`, `rule`,
+  `account_threshold`). Es una función pura: no crea solicitudes ni cambia estados. La llaman por
+  igual el portal y el backoffice.
+- **La dirección**: uso en dos banderas (envío/facturación, al menos una), predeterminado por índice
+  parcial único, y verificación como ESTADO de cuatro valores —«no se preguntó» y «lo rechazaron» no
+  son lo mismo—. `verified_at` lo estampa un trigger.
+- **El identificador externo es atributo, nunca clave**: no es único entre sistemas, cambia con la
+  versión del ERP y no existe para el cliente de ayer.
+- **Cierra la deuda de P04**: `price_list_assignments.customer_id` gana su FK tenant-safe y
+  `public.price_quote` deriva el segmento de la ficha cuando no se declara.
+- **`orders` NO gana `customer_id`**: el checkout sigue siendo anónimo y esa columna solo la podría
+  rellenar el navegador. `public.customer_orders` enlaza por correo y lo dice.
+
 ### Capacidades y entitlements (P02-SaaS)
 
 Cuatro tablas más, migración `20260827160000`. Decisiones completas en
@@ -188,6 +233,12 @@ porque cada una responde a un llamante distinto: `public.price_quote_for_slug` (
 resuelve tienda por slug y canal público por defecto), `public.price_quote` (backoffice; comprueba
 membresía contra la tienda antes de mirar un precio) y `public.price_list_conflicts` (invoker: la RLS
 decide qué tiendas ve quien pregunta).
+
+Desde P05-SaaS hay tres más, y la primera es la que sostiene la regla del vínculo:
+`public.my_business_accounts()` (definer, **sin parámetros**: el usuario B2B no es miembro del tenant
+y su cuenta la resuelve el servidor), `public.purchase_approval` (definer, con su autorización
+dentro: o vínculo con la cuenta, o membresía del tenant) y `public.customer_orders` /
+`public.customer_deletion_usage` (invoker: la RLS decide qué ve quien pregunta).
 
 `supabase/functions/_shared/` (auth, CORS, errores, validación, reglas de pedido, roles) es TypeScript puro:
 lo compila el `tsc` del repo y lo cubren los tests. `_runtime/clients.ts` queda aparte porque importa el SDK
@@ -231,8 +282,13 @@ src/
   features/pricing/     motor de precios (P04-SaaS): listas, renglones, asignaciones,
                         segmentos, simulador, diagnostico, importacion CSV y el
                         adaptador `serverPricing` que implementa `PricingPort`
+  features/customers/   clientes y cuentas B2B (P05-SaaS): ficha, contactos,
+                        direcciones, identificadores externos, cuentas de empresa
+                        con usuarios, sucursales y reglas de autorizacion
   features/orders/      pedidos del backoffice
   features/storefront/  vitrina pública: resolución por slug, catálogo, ficha, carrito/checkout (P06)
+                        + StoreAccountPage: área de cuenta del comprador B2B (P05-SaaS),
+                          resuelta por `my_business_accounts()` y no por la URL
   architecture.test.ts  las reglas de frontera, comprobadas sobre el codigo real
 supabase/
   migrations/  SQL versionado (tabla nueva = tabla + RLS + policies en la misma migración)

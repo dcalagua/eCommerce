@@ -1,0 +1,192 @@
+import ApartmentOutlinedIcon from '@mui/icons-material/ApartmentOutlined'
+import {
+  Card,
+  CardContent,
+  Chip,
+  Divider,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Typography,
+} from '@mui/material'
+import { Link } from 'react-router-dom'
+import { useSessionContext } from '@/features/auth/session-context'
+import { useMyAccounts } from '@/features/customers/hooks'
+import { formatAddress } from '@/features/customers/types'
+import { useI18n } from '@/shared/i18n/i18n-context'
+import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/states'
+
+/**
+ * Área de cuenta del comprador B2B (P05-SaaS).
+ *
+ * **De dónde sale lo que se ve, y de dónde NO.** Todo llega de
+ * `my_business_accounts()`, una función de servidor que no acepta ni un
+ * argumento: el vínculo entre la persona con sesión y su cuenta lo resuelve la
+ * base contra `business_account_users`. La URL de la tienda no decide nada aquí
+ * —ni el slug, ni un id de cuenta, ni nada guardado en el navegador—, que es la
+ * regla 8 de la fase: el acceso a una cuenta exige vínculo servidor.
+ *
+ * **Por qué usa el cliente con sesión y no el de la vitrina.** El catálogo lo
+ * lee un cliente anónimo a propósito (policies `to anon`); esto exige un JWT,
+ * porque sin él no hay a quién preguntarle por su cuenta.
+ *
+ * **Y los tres estados, que son tres y no dos.** Sin sesión no es lo mismo que
+ * con sesión y sin cuenta: al primero se le invita a entrar, al segundo se le
+ * dice que su usuario no está vinculado a ninguna empresa, y solo el tercero
+ * ve datos. Juntarlos mandaría a alguien a reintentar el login para arreglar
+ * algo que un administrador tiene que vincular.
+ *
+ * El comprador todavía no compra en nombre de su cuenta: el checkout sigue
+ * siendo anónimo hasta que la identidad del comprador exista (P16). Lo que ya
+ * existe es el contexto, y está aquí para que se vea que existe.
+ */
+export function StoreAccountPage() {
+  const { t } = useI18n()
+  const { status } = useSessionContext()
+  const authenticated = status === 'authenticated'
+  const query = useMyAccounts(authenticated)
+
+  if (status === 'loading') return <LoadingState />
+
+  if (!authenticated) {
+    return (
+      <EmptyState
+        title={t('account.signedOut')}
+        description={t('account.signedOutBody')}
+        icon={<ApartmentOutlinedIcon fontSize="small" />}
+        action={<Link to="/login">{t('auth.submit')}</Link>}
+      />
+    )
+  }
+
+  if (query.isPending) return <LoadingState />
+  if (query.isError) return <ErrorState error={query.error} onRetry={() => void query.refetch()} />
+
+  const accounts = query.data ?? []
+
+  if (accounts.length === 0) {
+    return (
+      <EmptyState
+        title={t('account.noAccounts')}
+        description={t('account.noAccountsBody')}
+        icon={<ApartmentOutlinedIcon fontSize="small" />}
+      />
+    )
+  }
+
+  return (
+    <Stack spacing={3}>
+      <Typography component="h1" sx={{ fontSize: 22, fontWeight: 800 }}>
+        {t('account.title')}
+      </Typography>
+
+      {accounts.map((account) => (
+        <Card key={account.account_id}>
+          <CardContent>
+            <Stack spacing={2}>
+              <Stack
+                direction="row"
+                spacing={1.5}
+                sx={{ alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}
+              >
+                <Stack>
+                  <Typography component="h2" sx={{ fontSize: 17, fontWeight: 800 }}>
+                    {account.name}
+                  </Typography>
+                  <Typography sx={{ color: 'var(--muted)', fontSize: 13 }}>
+                    {account.customer_name} · {account.code}
+                  </Typography>
+                </Stack>
+                <Stack direction="row" spacing={1}>
+                  <Chip size="small" color="primary" label={t(`customers.role.${account.role}`)} />
+                  {account.requires_approval && (
+                    <Chip size="small" color="warning" label={t('account.needsApproval')} />
+                  )}
+                  {account.purchase_order_required && (
+                    <Chip size="small" label={t('customers.field.purchaseOrder')} />
+                  )}
+                </Stack>
+              </Stack>
+
+              {account.spending_limit && (
+                <Typography sx={{ fontSize: 13 }}>
+                  {t('customers.field.spendingLimit')}: <strong>{account.spending_limit}</strong>
+                </Typography>
+              )}
+
+              <Divider />
+
+              <Typography sx={{ fontWeight: 800, fontSize: 14 }}>
+                {t('customers.tab.locations')}
+              </Typography>
+              {account.locations.length === 0 ? (
+                <Typography sx={{ color: 'var(--muted)', fontSize: 13 }}>
+                  {t('customers.locations.empty')}
+                </Typography>
+              ) : (
+                <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+                  {account.locations.map((location) => (
+                    <Chip
+                      key={location.id}
+                      size="small"
+                      color={location.is_default ? 'primary' : 'default'}
+                      label={`${location.code} · ${location.name}`}
+                    />
+                  ))}
+                </Stack>
+              )}
+
+              <Typography sx={{ fontWeight: 800, fontSize: 14 }}>
+                {t('customers.tab.addresses')}
+              </Typography>
+              {account.addresses.length === 0 ? (
+                <Typography sx={{ color: 'var(--muted)', fontSize: 13 }}>
+                  {t('customers.addresses.empty')}
+                </Typography>
+              ) : (
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>{t('customers.field.label')}</TableCell>
+                      <TableCell>{t('customers.field.address')}</TableCell>
+                      <TableCell>{t('customers.field.use')}</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {account.addresses.map((address) => (
+                      <TableRow key={address.id}>
+                        <TableCell sx={{ fontWeight: 700 }}>{address.label}</TableCell>
+                        <TableCell>{formatAddress(address)}</TableCell>
+                        <TableCell>
+                          <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }}>
+                            {address.is_shipping && (
+                              <Chip
+                                size="small"
+                                color={address.is_default_shipping ? 'primary' : 'default'}
+                                label={t('customers.address.shipping')}
+                              />
+                            )}
+                            {address.is_billing && (
+                              <Chip
+                                size="small"
+                                color={address.is_default_billing ? 'primary' : 'default'}
+                                label={t('customers.address.billing')}
+                              />
+                            )}
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </Stack>
+          </CardContent>
+        </Card>
+      ))}
+    </Stack>
+  )
+}

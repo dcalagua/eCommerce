@@ -46,6 +46,9 @@ const PimPage = lazy(() =>
 const PricingPage = lazy(() =>
   import('@/features/pricing/PricingPage').then((m) => ({ default: m.PricingPage })),
 )
+const CustomersPage = lazy(() =>
+  import('@/features/customers/CustomersPage').then((m) => ({ default: m.CustomersPage })),
+)
 const OrdersPage = lazy(() =>
   import('@/features/orders/OrdersPage').then((m) => ({ default: m.OrdersPage })),
 )
@@ -66,6 +69,9 @@ const StoreCartPage = lazy(() =>
 )
 const StoreCheckoutPage = lazy(() =>
   import('@/features/storefront/StoreCheckoutPage').then((m) => ({ default: m.StoreCheckoutPage })),
+)
+const StoreAccountPage = lazy(() =>
+  import('@/features/storefront/StoreAccountPage').then((m) => ({ default: m.StoreAccountPage })),
 )
 const StoreOrderPage = lazy(() =>
   import('@/features/storefront/StoreOrderPage').then((m) => ({ default: m.StoreOrderPage })),
@@ -115,6 +121,10 @@ export const routes: RouteObject[] = [
           // El precio por canal, segmento o cliente es el módulo vendible; el
           // precio de catálogo sigue viniendo con el producto.
           { path: 'pricing', element: gated('pricing.lists', <PricingPage />) },
+          // La ficha de cliente es baseline: hasta un tenant sin nada
+          // contratado necesita saber a quién le vendió. Lo vendible es la
+          // CUENTA B2B, y su pestaña se gatea dentro de la pantalla.
+          { path: 'customers', element: gated('customers', <CustomersPage />) },
           { path: 'orders', element: gated('orders', <OrdersPage />) },
           // Ajustes y diagnóstico NO se gatean por capacidad: son la salida de
           // un tenant sin nada contratado y el sitio donde se ve por qué.
@@ -133,6 +143,10 @@ export const routes: RouteObject[] = [
       { path: 'product/:productSlug', element: withSuspense(<StoreProductPage />) },
       { path: 'cart', element: withSuspense(<StoreCartPage />) },
       { path: 'checkout', element: withSuspense(<StoreCheckoutPage />) },
+      // Área de cuenta del comprador B2B. NO cuelga del guard del backoffice:
+      // quien entra aquí es un comprador de un cliente, no un miembro del
+      // tenant, y su contexto lo resuelve el servidor a partir del vínculo.
+      { path: 'account', element: withSuspense(<StoreAccountPage />) },
       // Confirmación del pedido. El número va en la URL para que el comprador
       // pueda guardarla o compartirla; el detalle llega por estado de
       // navegación, porque un comprador anónimo no puede releer el pedido.

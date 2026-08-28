@@ -67,11 +67,13 @@ describe('rutas base', () => {
     const admin = protectedArea()?.children?.find((route) => route.path === '/app')
     const storefront = routes.find((route) => route.path === '/s/:storeSlug')
     // P04 anade Categorias, P02-SaaS anade Diagnostico, P03-SaaS anade el
-    // catalogo avanzado (PIM) y P04-SaaS anade Precios: panel, productos,
-    // categorias, PIM, precios, pedidos, configuracion y diagnostico.
+    // catalogo avanzado (PIM), P04-SaaS anade Precios y P05-SaaS anade
+    // Clientes: panel, productos, categorias, clientes, PIM, precios, pedidos,
+    // configuracion y diagnostico.
     expect(paths(admin?.children ?? [], '/app').sort()).toEqual([
       '/app',
       '/app/categories',
+      '/app/customers',
       '/app/diagnostics',
       '/app/orders',
       '/app/pim',
@@ -79,9 +81,11 @@ describe('rutas base', () => {
       '/app/products',
       '/app/settings',
     ])
-    // P06 anade la confirmacion: catalogo, ficha, carrito, checkout y pedido.
+    // P06 anade la confirmacion y P05-SaaS el area de cuenta del comprador
+    // B2B: catalogo, ficha, carrito, checkout, pedido y cuenta.
     expect(paths(storefront?.children ?? [], '/s/:storeSlug').sort()).toEqual([
       '/s/:storeSlug',
+      '/s/:storeSlug/account',
       '/s/:storeSlug/cart',
       '/s/:storeSlug/checkout',
       '/s/:storeSlug/order/:orderNumber',

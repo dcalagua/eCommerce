@@ -1,0 +1,241 @@
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
+import {
+  Alert,
+  Button,
+  Chip,
+  FormControlLabel,
+  IconButton,
+  MenuItem,
+  Stack,
+  Switch,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from '@mui/material'
+import { useMemo, useState } from 'react'
+import { useI18n } from '@/shared/i18n/i18n-context'
+import type { MessageKey } from '@/shared/i18n/messages'
+import { useFeedback } from '@/shared/ui/feedback-context'
+import { EmptyState } from '@/shared/ui/states'
+import type { TenantScope } from './api'
+import { CustomersError } from './errors'
+import { useAddresses, useDeleteLocation, useLocations, useSaveLocation } from './hooks'
+import {
+  formatAddress,
+  locationFormSchema,
+  type BusinessAccount,
+  type BusinessLocation,
+  type LocationFormValues,
+} from './types'
+
+const EMPTY: LocationFormValues = {
+  code: '',
+  name: '',
+  address_id: '',
+  is_default: false,
+  is_active: true,
+}
+
+/**
+ * Sucursales y centros de entrega de la cuenta.
+ *
+ * Una empresa no compra «para la empresa»: compra para su planta o para su
+ * local del centro. Sin sucursal, todo el gasto de un cliente grande queda en
+ * un solo montón y no hay forma de explicar un reparto.
+ *
+ * La dirección se ELIGE entre las del cliente, no se escribe: duplicar el
+ * domicilio aquí significaría corregirlo dos veces el día que cambie. La base
+ * además exige que la dirección sea de ese mismo cliente, con una FK compuesta.
+ */
+export function LocationsPanel({
+  account,
+  scope,
+  canWrite,
+}: {
+  account: BusinessAccount
+  scope: TenantScope
+  canWrite: boolean
+}) {
+  const { t } = useI18n()
+  const { notify } = useFeedback()
+  const locations = useLocations(account.id)
+  const addresses = useAddresses(account.customer_id)
+  const save = useSaveLocation()
+  const remove = useDeleteLocation()
+
+  const [editing, setEditing] = useState<BusinessLocation | null>(null)
+  const [values, setValues] = useState<LocationFormValues>(EMPTY)
+  const [error, setError] = useState<MessageKey | null>(null)
+
+  const addressLabel = useMemo(
+    () => new Map((addresses.data ?? []).map((address) => [address.id, address.label])),
+    [addresses.data],
+  )
+
+  function set<K extends keyof LocationFormValues>(key: K, value: LocationFormValues[K]) {
+    setValues((current) => ({ ...current, [key]: value }))
+  }
+
+  function cancel() {
+    setEditing(null)
+    setValues(EMPTY)
+    setError(null)
+  }
+
+  async function submit() {
+    const parsed = locationFormSchema.safeParse(values)
+    if (!parsed.success) {
+      setError((parsed.error.issues[0]?.message as MessageKey) ?? 'customers.error.invalid')
+      return
+    }
+    setError(null)
+    try {
+      await save.mutateAsync({
+        id: editing?.id ?? null,
+        scope,
+        accountId: account.id,
+        customerId: account.customer_id,
+        values: parsed.data,
+      })
+      notify(t('customers.toast.saved'))
+      cancel()
+    } catch (caught) {
+      setError(caught instanceof CustomersError ? caught.key : 'customers.error.generic')
+    }
+  }
+
+  const rows = locations.data ?? []
+
+  return (
+    <Stack spacing={2}>
+      <Typography sx={{ color: 'var(--muted)' }}>{t('customers.locations.help')}</Typography>
+
+      {canWrite && (
+        <Stack spacing={1.5}>
+          {error && <Alert severity="error">{t(error)}</Alert>}
+
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+            <TextField
+              size="small"
+              fullWidth
+              label={t('customers.field.code')}
+              value={values.code}
+              onChange={(event) => set('code', event.target.value)}
+              inputProps={{ spellCheck: false }}
+            />
+            <TextField
+              size="small"
+              fullWidth
+              label={t('customers.field.name')}
+              value={values.name}
+              onChange={(event) => set('name', event.target.value)}
+            />
+          </Stack>
+
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ alignItems: 'center' }}>
+            <TextField
+              select
+              size="small"
+              fullWidth
+              label={t('customers.field.address')}
+              value={values.address_id}
+              onChange={(event) => set('address_id', event.target.value)}
+              helperText={t('customers.field.addressHint')}
+            >
+              <MenuItem value="">{t('customers.field.noAddress')}</MenuItem>
+              {(addresses.data ?? []).map((address) => (
+                <MenuItem key={address.id} value={address.id}>
+                  {address.label} · {formatAddress(address)}
+                </MenuItem>
+              ))}
+            </TextField>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={values.is_default}
+                  onChange={(_, checked) => set('is_default', checked)}
+                />
+              }
+              label={t('customers.field.defaultLocation')}
+            />
+            <Button variant="contained" onClick={() => void submit()} disabled={save.isPending}>
+              {editing ? t('common.save') : t('common.add')}
+            </Button>
+            {editing && <Button onClick={cancel}>{t('common.cancel')}</Button>}
+          </Stack>
+        </Stack>
+      )}
+
+      {!locations.isPending && rows.length === 0 && (
+        <EmptyState title={t('customers.locations.empty')} />
+      )}
+
+      {rows.length > 0 && (
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>{t('customers.field.code')}</TableCell>
+              <TableCell>{t('customers.field.name')}</TableCell>
+              <TableCell>{t('customers.field.address')}</TableCell>
+              <TableCell align="right">{t('common.actions')}</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rows.map((location) => (
+              <TableRow key={location.id} hover>
+                <TableCell sx={{ fontWeight: 700 }}>
+                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                    <span>{location.code}</span>
+                    {location.is_default && (
+                      <Chip size="small" color="primary" label={t('customers.field.byDefault')} />
+                    )}
+                  </Stack>
+                </TableCell>
+                <TableCell>{location.name}</TableCell>
+                <TableCell>
+                  {location.address_id ? (addressLabel.get(location.address_id) ?? '—') : '—'}
+                </TableCell>
+                <TableCell align="right">
+                  <Button
+                    size="small"
+                    disabled={!canWrite}
+                    onClick={() => {
+                      setEditing(location)
+                      setValues({
+                        code: location.code,
+                        name: location.name,
+                        address_id: location.address_id ?? '',
+                        is_default: location.is_default,
+                        is_active: location.is_active,
+                      })
+                      setError(null)
+                    }}
+                    aria-label={`${t('common.edit')}: ${location.name}`}
+                  >
+                    {t('common.edit')}
+                  </Button>
+                  <IconButton
+                    size="small"
+                    disabled={!canWrite || remove.isPending}
+                    aria-label={`${t('common.delete')}: ${location.name}`}
+                    onClick={() => {
+                      void remove
+                        .mutateAsync(location.id)
+                        .then(() => notify(t('customers.toast.deleted')))
+                    }}
+                  >
+                    <DeleteOutlineIcon fontSize="small" />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </Stack>
+  )
+}

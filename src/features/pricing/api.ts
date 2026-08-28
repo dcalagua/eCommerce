@@ -470,6 +470,12 @@ export interface SimulationInput {
   quantity: number
   channelId: string | null
   segmentId: string | null
+  /**
+   * Cliente concreto (P05-SaaS). Si va sin segmento, el SERVIDOR toma el de su
+   * ficha: derivarlo aquí sería una segunda copia de la regla, y la respuesta
+   * que importa es la del motor.
+   */
+  customerId?: string | null
 }
 
 /**
@@ -486,6 +492,7 @@ export async function simulatePrice(input: SimulationInput): Promise<PriceQuoteR
     ],
     p_channel_id: input.channelId,
     p_segment_id: input.segmentId,
+    p_customer_id: input.customerId ?? null,
   })
   if (error) throw pricingErrorFromDb(error)
   return priceQuoteSchema.parse(data)
