@@ -8,12 +8,13 @@ import {
   type ProductStatus,
   type ProductUsage,
 } from '../types'
+import { CATALOG_PRODUCT_FUNCTION, PRODUCT_USAGE_RPC } from '@/shared/lib/db-schema'
 import { PRODUCT_IMAGES_BUCKET } from './images'
-import { catalogClient, sanitizeSearchTerm } from './client'
+import { buildTextSearchFilter } from '@/shared/lib/search'
+import { catalogClient } from './client'
 import { catalogErrorFromDb, catalogErrorFromInvoke } from './errors'
 
-export const CATALOG_PRODUCT_FUNCTION = 'catalog-product'
-export const PRODUCT_USAGE_RPC = 'product_deletion_usage'
+export { CATALOG_PRODUCT_FUNCTION, PRODUCT_USAGE_RPC }
 
 /**
  * `price::text` y `compare_at_price::text`: el importe sale como texto para no
@@ -60,8 +61,8 @@ export async function fetchProducts({ storeId, search, status }: ProductQuery): 
   let query = supabase.from(PRODUCTS_TABLE).select(PRODUCT_SELECT).eq('store_id', storeId)
   if (status !== 'all') query = query.eq('status', status)
 
-  const term = sanitizeSearchTerm(search)
-  if (term) query = query.or(`name.ilike.%${term}%,sku.ilike.%${term}%,slug.ilike.%${term}%`)
+  const filter = buildTextSearchFilter(search, ['name', 'sku', 'slug'])
+  if (filter) query = query.or(filter)
 
   const { data, error } = await query.order('name')
   if (error) throw catalogErrorFromDb(error)

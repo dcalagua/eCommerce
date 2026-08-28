@@ -37,9 +37,8 @@ export function nextStatuses(from: OrderStatus): readonly OrderStatus[] {
   return ORDER_TRANSITIONS[from]
 }
 
-export const ORDERS_TABLE = 'orders'
-export const ORDER_ITEMS_TABLE = 'order_items'
-export const ORDER_EVENTS_TABLE = 'order_status_events'
+/** Nombres reales de las tablas. Fuente unica: `shared/lib/db-schema.ts`. */
+export { ORDERS_TABLE, ORDER_ITEMS_TABLE, ORDER_EVENTS_TABLE } from '@/shared/lib/db-schema'
 
 /**
  * Dirección de entrega: exactamente las dos claves que acepta `create-order`

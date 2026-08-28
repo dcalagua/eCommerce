@@ -1,5 +1,5 @@
 import type { MessageKey } from '@/shared/i18n/messages'
-import { codeFromDbError, type PostgrestLike } from '@/shared/lib/appError'
+import { UiError, codeFromDbError, type PostgrestLike } from '@/shared/lib/appError'
 import { codeFromInvokeError } from '@/shared/lib/edgeError'
 
 /**
@@ -9,15 +9,10 @@ import { codeFromInvokeError } from '@/shared/lib/edgeError'
  * uno filtra internos de la base y el otro viene en un solo idioma. El `code`
  * se conserva para poder diagnosticar sin adivinar.
  */
-export class CatalogError extends Error {
-  readonly key: MessageKey
-  readonly code: string
-
+export class CatalogError extends UiError {
   constructor(key: MessageKey, code: string) {
-    super(code)
+    super({ boundary: 'catalog', key, code })
     this.name = 'CatalogError'
-    this.key = key
-    this.code = code
   }
 }
 

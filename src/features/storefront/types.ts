@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { AppError } from '@/domain/errors'
 import { moneyText } from '@/shared/lib/money'
 
 /**
@@ -11,14 +12,18 @@ import { moneyText } from '@/shared/lib/money'
  * tienda que está mirando, y la vista tampoco se lo sirve.
  */
 
-export const PUBLIC_STORES_VIEW = 'public_stores'
-export const PUBLIC_CATEGORIES_VIEW = 'public_categories'
-export const PUBLIC_PRODUCTS_VIEW = 'public_products'
-export const PUBLIC_PRODUCT_IMAGES_VIEW = 'public_product_images'
-
-/** Buckets privados; la vitrina lee por URL firmada, no por URL pública. */
-export const PRODUCT_IMAGES_BUCKET = 'product-images'
-export const STORE_ASSETS_BUCKET = 'store-assets'
+/**
+ * Vistas del modelo de lectura público y buckets privados (la vitrina lee por
+ * URL firmada, no por URL pública). Fuente única: `shared/lib/db-schema.ts`.
+ */
+export {
+  PUBLIC_STORES_VIEW,
+  PUBLIC_CATEGORIES_VIEW,
+  PUBLIC_PRODUCTS_VIEW,
+  PUBLIC_PRODUCT_IMAGES_VIEW,
+  PRODUCT_IMAGES_BUCKET,
+  STORE_ASSETS_BUCKET,
+} from '@/shared/lib/db-schema'
 
 /** Hex #RRGGBB o nada. Un valor raro se descarta y se cae al acento de suite. */
 const hexColor = z
@@ -193,9 +198,9 @@ export type TrackedOrder = z.infer<typeof trackedOrderSchema>
  * Un pedido no localizable. Deliberadamente SIN detalle: no se distingue si el
  * numero no existe o si el token es incorrecto, igual que hace la funcion.
  */
-export class OrderNotFoundError extends Error {
+export class OrderNotFoundError extends AppError {
   constructor() {
-    super('ORDER_NOT_FOUND')
+    super({ boundary: 'orders', code: 'PEDIDO_NO_ENCONTRADO', message: 'ORDER_NOT_FOUND' })
     this.name = 'OrderNotFoundError'
   }
 }

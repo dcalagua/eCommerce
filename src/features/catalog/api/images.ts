@@ -3,11 +3,17 @@ import { PRODUCT_IMAGES_TABLE, productImageSchema, type ProductImage } from '../
 import { catalogClient } from './client'
 import { CatalogError, catalogErrorFromDb } from './errors'
 
-/** Bucket PRIVADO creado en `20260827090600_storage_buckets.sql`. */
-export const PRODUCT_IMAGES_BUCKET = 'product-images'
+/**
+ * Bucket PRIVADO creado en `20260827090600_storage_buckets.sql` y RPCs de
+ * imagenes. Fuente unica: `shared/lib/db-schema.ts`.
+ */
+import {
+  PRODUCT_IMAGES_BUCKET,
+  SET_PRIMARY_IMAGE_RPC,
+  REORDER_IMAGES_RPC,
+} from '@/shared/lib/db-schema'
 
-export const SET_PRIMARY_IMAGE_RPC = 'set_primary_product_image'
-export const REORDER_IMAGES_RPC = 'reorder_product_images'
+export { PRODUCT_IMAGES_BUCKET, SET_PRIMARY_IMAGE_RPC, REORDER_IMAGES_RPC }
 
 /** 5 MB. Una foto de catálogo por encima de esto es una foto sin optimizar. */
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024

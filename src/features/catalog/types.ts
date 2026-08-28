@@ -2,9 +2,12 @@ import { z } from 'zod'
 import { moneyText } from '@/shared/lib/money'
 import type { MessageKey } from '@/shared/i18n/messages'
 
-export const PRODUCTS_TABLE = 'products'
-export const CATEGORIES_TABLE = 'categories'
-export const PRODUCT_IMAGES_TABLE = 'product_images'
+/** Nombres reales de las tablas. Fuente unica: `shared/lib/db-schema.ts`. */
+export {
+  PRODUCTS_TABLE,
+  CATEGORIES_TABLE,
+  PRODUCT_IMAGES_TABLE,
+} from '@/shared/lib/db-schema'
 
 export const PRODUCT_STATUSES = ['draft', 'published', 'archived'] as const
 export type ProductStatus = (typeof PRODUCT_STATUSES)[number]

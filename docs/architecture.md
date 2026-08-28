@@ -16,10 +16,22 @@ Usuario del tenant ──┘      ├─ /s/:storeSlug  storefront público (ten
                        ├─ PostgreSQL (RLS default deny)
                        ├─ Storage (imágenes de producto, path por tenant)
                        └─ Edge Functions (Deno)
+                            ├─ bootstrap-tenant   (alta de tenant, clave de aprovisionamiento)
+                            ├─ create-order       (checkout anónimo, service_role, solo servidor)
+                            ├─ catalog-product    (alta/edición con el JWT del usuario)
+                            └─ update-order-status (transiciones con el JWT del usuario)
+
+                            [PENDIENTES, no existen todavía]
                             ├─ platform-context ──► HUB EBIM (sociedades, addons, config)
-                            ├─ sso              ──► HUB EBIM (verifica JWT contra JWKS)
-                            └─ checkout/orders  (lógica de negocio con service_role, solo servidor)
+                            └─ sso              ──► HUB EBIM (verifica JWT contra JWKS)
 ```
+
+> **Estado real de la identidad.** `platform-context` y `sso` estaban en este diagrama como si
+> existieran; no existen. La identidad efectiva de DEV/QAS es Supabase Auth más el hook
+> `ebim.demo_access_token_hook` (migraciones `20260827120000` y `..._121000`), y el camino contra el
+> hub no se ha ejercitado nunca. Corregido en P01-SaaS por ser un error de documentación; el cambio
+> de identidad en sí está bloqueado (contrato §2, cambios breaking al buzón) y corresponde a
+> P02/P16.
 
 El **hub EBIM** es el emisor de identidad y dueño del catálogo/billing. eCommerce **lee** del hub y nunca
 escribe en él. La identidad del comprador final del storefront es **local** a este proyecto (patrón §2.5,
@@ -80,24 +92,60 @@ con especificador `npm:` y solo existe dentro de Deno.
 
 ## Frontend
 
-Estructura real desde P01 (organización por features; storefront y backoffice siguen siendo
+Estructura real (organización por features; storefront y backoffice siguen siendo
 áreas lógicamente separadas — rutas, layouts y guards distintos, design system compartido):
 
 ```
 src/
+  domain/               PURO: fronteras, puertos, errores, dinero. Sin React, MUI ni Supabase (P01-SaaS)
+    boundaries.ts         los 12 dominios + 5 areas de plataforma, con su estado real
+    errors.ts             AppError con discriminante `kind`
+    money.ts              importe = decimal en TEXTO, nunca number
+    ports/                PricingPort, InventoryPort, PaymentProvider, ErpProvider, ...
   app/                  router, providers, ErrorBoundary, queryClient
   theme/                tokens (CSS vars + escalas), createEbimTheme, apariencia por usuario
-  shared/               ui kit (EbimMark, SectionTabs, SearchField, estados), i18n ES/EN, lib (env, supabase, format)
+  shared/               ui kit (EbimMark, SectionTabs, SearchField, estados), i18n ES/EN,
+                        lib (env, supabase, db-schema, format, search, slug)
   features/auth/        login (anatomía de suite §4.5), sesión, guard RequireSession
   features/tenant/      contexto de tenant del backoffice, derivado del JWT
   features/admin/       AdminLayout, dashboard, configuración
   features/catalog/     productos del backoffice
   features/orders/      pedidos del backoffice
   features/storefront/  vitrina pública: resolución por slug, catálogo, ficha, carrito/checkout (P06)
+  architecture.test.ts  las reglas de frontera, comprobadas sobre el codigo real
 supabase/
   migrations/  SQL versionado (tabla nueva = tabla + RLS + policies en la misma migración)
   functions/   Edge Functions (Deno) + _shared/
+  tests/       PGlite: RLS, invariantes de esquema y contrato de integraciones
 ```
+
+### Fronteras de dominio y puertos (P01-SaaS)
+
+Decisiones completas en [`adr/001-domain-boundaries.md`](adr/001-domain-boundaries.md). En resumen:
+
+- **Doce dominios de negocio** —catalog, pricing, customers, inventory, checkout, orders, payments,
+  promotions, content, fulfillment, analytics, integrations— y **cinco áreas de plataforma**
+  —identity, tenancy, provisioning, configuration, shell—, declarados en `src/domain/boundaries.ts`
+  con su estado real (`implemented` / `partial` / `declared`) y su ruta en `src/`.
+- **Un puerto existe solo si hay una segunda implementación ya declarada**: una fila de
+  `integration_providers` con esa operación, o dos llamantes concretos hoy. Por eso hay
+  `PricingPort`, `InventoryPort`, `PaymentProvider`, `FulfillmentProvider`, `NotificationProvider`,
+  `ErpProvider` e `InvoicingProvider`, y **no** hay `SearchPort`.
+- **Ningún puerto recibe el tenant como parámetro**: `organization_id`/`company_id` salen del JWT
+  en el servidor. Un parámetro que se puede pasar se puede pasar mal.
+- **El vocabulario canónico es el de la base.** `src/domain/ports/operations.ts` replica el enum
+  `integration_kind` y las `capabilities` sembradas, y
+  `supabase/tests/integration-contract.test.ts` compara las dos copias contra Postgres real.
+- **Ningún nombre de fabricante, banco, transportista o cliente en `src/`**, ni en código ni en
+  comentarios. Los proveedores concretos son filas de `integration_providers`.
+- **Errores con discriminante.** `AppError.kind` —`config`, `unauthorized`, `forbidden`,
+  `not_found`, `conflict`, `invalid`, `rate_limited`, `unavailable`, `unknown`— en vez de comparar
+  textos. Lo desconocido nunca es reintentable. Solo tres módulos leen el texto de un error:
+  `shared/lib/appError.ts`, `shared/lib/edgeError.ts` y `features/auth/authApi.ts`.
+- **Nombres de persistencia en un solo sitio**: `shared/lib/db-schema.ts`, tipado con `satisfies`
+  contra `database.types.ts` (generado por `npm run db:types` → `scripts/gen-db-types.mjs`).
+
+Todas estas reglas las comprueba `src/architecture.test.ts`: no son convenciones, son tests.
 
 - Theming por tokens; el acento proviene del branding del tenant (`accent_color`), nunca hardcodeado.
 - Light + dark, densidad configurable, WCAG AA, mobile-first real.

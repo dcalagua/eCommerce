@@ -1,3 +1,5 @@
+import { AppError } from '@/domain/errors'
+import { codeFromDbError } from '@/shared/lib/appError'
 import { tryGetSupabaseClient } from '@/shared/lib/supabase'
 import type { AppRole } from '@/shared/lib/roles'
 import {
@@ -18,9 +20,13 @@ export const WORKSPACE_KEY_ROOT = ['workspace'] as const
 export const workspaceKey = (organizationId: string) =>
   [...WORKSPACE_KEY_ROOT, organizationId] as const
 
-export class BackendNotConfiguredError extends Error {
+export class BackendNotConfiguredError extends AppError {
   constructor() {
-    super('El proyecto Supabase de eCommerce todavía no está configurado.')
+    super({
+      boundary: 'tenancy',
+      code: 'CONFIG_INCOMPLETA',
+      message: 'El proyecto Supabase de eCommerce todavía no está configurado.',
+    })
     this.name = 'BackendNotConfiguredError'
   }
 }
@@ -49,7 +55,9 @@ export async function fetchWorkspace(userId: string): Promise<Workspace> {
   ])
 
   const failure = tenantsRes.error ?? membersRes.error ?? storesRes.error
-  if (failure) throw new Error(failure.message)
+  // El código, nunca el `message`: un error de PostgREST lleva dentro nombres
+  // de tabla y de policy, y el espacio de trabajo se carga en cada arranque.
+  if (failure) throw new AppError({ boundary: 'tenancy', code: codeFromDbError(failure) })
 
   const tenants: TenantSummary[] = tenantSummarySchema.array().parse(tenantsRes.data ?? [])
   const memberships: Membership[] = membershipSchema.array().parse(membersRes.data ?? [])

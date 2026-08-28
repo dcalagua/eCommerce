@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { MessageKey } from '@/shared/i18n/messages'
-import { codeFromDbError, type PostgrestLike } from '@/shared/lib/appError'
+import { UiError, codeFromDbError, type PostgrestLike } from '@/shared/lib/appError'
 import { tryGetSupabaseClient } from '@/shared/lib/supabase'
 import {
   STORES_TABLE,
@@ -28,15 +28,10 @@ import {
  * el aislamiento lo pone la RLS.
  */
 
-export class SettingsError extends Error {
-  readonly key: MessageKey
-  readonly code: string
-
+export class SettingsError extends UiError {
   constructor(key: MessageKey, code: string) {
-    super(code)
+    super({ boundary: 'configuration', key, code })
     this.name = 'SettingsError'
-    this.key = key
-    this.code = code
   }
 }
 

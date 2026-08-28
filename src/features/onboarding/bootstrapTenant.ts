@@ -1,8 +1,10 @@
 import type { MessageKey } from '@/shared/i18n/messages'
+import { UiError } from '@/shared/lib/appError'
+import { BOOTSTRAP_FUNCTION } from '@/shared/lib/db-schema'
 import { codeFromInvokeError } from '@/shared/lib/edgeError'
 import { tryGetSupabaseClient } from '@/shared/lib/supabase'
 
-export const BOOTSTRAP_FUNCTION = 'bootstrap-tenant'
+export { BOOTSTRAP_FUNCTION }
 
 /** Slug de tienda: minúsculas, guiones, 3–62 (mismo CHECK que la base). */
 export const STORE_SLUG_RE = /^[a-z0-9][a-z0-9-]{1,60}[a-z0-9]$/
@@ -23,15 +25,10 @@ export interface BootstrapResult {
   admin_email: string
 }
 
-export class BootstrapError extends Error {
-  readonly key: MessageKey
-  readonly code: string
-
+export class BootstrapError extends UiError {
   constructor(key: MessageKey, code: string) {
-    super(code)
+    super({ boundary: 'provisioning', key, code })
     this.name = 'BootstrapError'
-    this.key = key
-    this.code = code
   }
 }
 
@@ -89,14 +86,5 @@ export async function bootstrapTenant(input: BootstrapInput): Promise<BootstrapR
   return data.data
 }
 
-/** Sugerencia de slug a partir del nombre del negocio. Solo sugiere: el usuario manda. */
-export function slugify(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 62)
-    .replace(/-+$/g, '')
-}
+/** Reexportado desde `shared/lib/slug`: lo usan también los cajones de catálogo. */
+export { slugify } from '@/shared/lib/slug'

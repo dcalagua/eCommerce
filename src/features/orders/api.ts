@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { sanitizeSearchTerm } from '@/shared/lib/search'
+import { UPDATE_ORDER_STATUS_FUNCTION } from '@/shared/lib/db-schema'
+import { buildTextSearchFilter } from '@/shared/lib/search'
 import { tryGetSupabaseClient } from '@/shared/lib/supabase'
 import { OrderError, orderErrorFromDb, orderErrorFromInvoke } from './errors'
 import {
@@ -32,7 +33,7 @@ import {
  *     los claims del JWT.
  */
 
-export const UPDATE_ORDER_STATUS_FUNCTION = 'update-order-status'
+export { UPDATE_ORDER_STATUS_FUNCTION }
 
 /** `::text` en todo el dinero: el céntimo no pasa por el float del navegador. */
 const ORDER_SELECT = [
@@ -88,12 +89,12 @@ export async function fetchOrders(filter: OrdersFilter): Promise<Order[]> {
   const from = rangeStart(filter.range, new Date(`${filter.today}T00:00:00`))
   if (from) query = query.gte('placed_at', from)
 
-  const term = sanitizeSearchTerm(filter.search)
-  if (term) {
-    query = query.or(
-      `order_number.ilike.%${term}%,customer_name.ilike.%${term}%,customer_email.ilike.%${term}%`,
-    )
-  }
+  const searchFilter = buildTextSearchFilter(filter.search, [
+    'order_number',
+    'customer_name',
+    'customer_email',
+  ])
+  if (searchFilter) query = query.or(searchFilter)
 
   const { data, error } = await query
   if (error) throw orderErrorFromDb(error)

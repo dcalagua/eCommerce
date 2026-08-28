@@ -1,11 +1,13 @@
 import { z } from 'zod'
 import type { MessageKey } from '@/shared/i18n/messages'
+import { UiError } from '@/shared/lib/appError'
+import { CREATE_ORDER_FUNCTION } from '@/shared/lib/db-schema'
 import { codeFromInvokeError } from '@/shared/lib/edgeError'
 import { moneyText } from '@/shared/lib/money'
 import { tryGetStorefrontClient } from '@/shared/lib/supabase'
 import { toOrderItems, type Cart } from './cart/cart'
 
-export const CREATE_ORDER_FUNCTION = 'create-order'
+export { CREATE_ORDER_FUNCTION }
 
 /**
  * Checkout mínimo (P06).
@@ -68,15 +70,10 @@ export const orderResultSchema = z.object({
 })
 export type OrderResult = z.infer<typeof orderResultSchema>
 
-export class CheckoutError extends Error {
-  readonly key: MessageKey
-  readonly code: string
-
+export class CheckoutError extends UiError {
   constructor(key: MessageKey, code: string) {
-    super(code)
+    super({ boundary: 'checkout', key, code })
     this.name = 'CheckoutError'
-    this.key = key
-    this.code = code
   }
 }
 

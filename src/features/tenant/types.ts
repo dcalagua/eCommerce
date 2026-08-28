@@ -49,9 +49,8 @@ export type TenantContext = z.infer<typeof tenantContextSchema>
 // cliente: llegan ya filtradas por las policies a partir del JWT.
 // ---------------------------------------------------------------------------
 
-export const TENANTS_TABLE = 'tenants'
-export const TENANT_MEMBERS_TABLE = 'tenant_members'
-export const STORES_TABLE = 'stores'
+/** Nombres reales de las tablas. Fuente unica: `shared/lib/db-schema.ts`. */
+export { TENANTS_TABLE, TENANT_MEMBERS_TABLE, STORES_TABLE } from '@/shared/lib/db-schema'
 
 export const tenantSummarySchema = z.object({
   organization_id: z.string().uuid(),

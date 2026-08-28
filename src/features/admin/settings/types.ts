@@ -11,11 +11,17 @@ import { z } from 'zod'
  * (precedente P05 #44).
  */
 
-export const STORE_SETTINGS_TABLE = 'store_settings'
-export const STORES_TABLE = 'stores'
-
-/** Bucket PRIVADO de branding (`20260827090600_storage_buckets.sql`). */
-export const STORE_ASSETS_BUCKET = 'store-assets'
+/**
+ * Nombres reales de tabla y del bucket PRIVADO de branding
+ * (`20260827090600_storage_buckets.sql`). Fuente unica:
+ * `shared/lib/db-schema.ts` — `STORES_TABLE` y `STORE_ASSETS_BUCKET` estaban
+ * escritas tambien en tenant y en storefront.
+ */
+export {
+  STORE_SETTINGS_TABLE,
+  STORES_TABLE,
+  STORE_ASSETS_BUCKET,
+} from '@/shared/lib/db-schema'
 
 /** 2 MB. Un logo o un banner por encima de esto es una imagen sin optimizar. */
 export const MAX_ASSET_BYTES = 2 * 1024 * 1024

@@ -16,3 +16,24 @@ export function sanitizeSearchTerm(term: string): string {
     .trim()
     .slice(0, 80)
 }
+
+/**
+ * Filtro `or=` de PostgREST para buscar el mismo término en varias columnas.
+ *
+ * Estaba escrito a mano en tres sitios —catálogo del backoffice, pedidos y
+ * vitrina pública— con la misma interpolación y tres juegos de columnas
+ * distintos. Tres copias de una sintaxis en la que una coma de más cambia la
+ * consulta en vez de no encontrar nada.
+ *
+ * Devuelve `null` cuando el término queda vacío tras sanearlo, para que el
+ * llamante simplemente no añada el filtro: un `or=` vacío no es «sin filtro».
+ *
+ * NO es un `SearchPort`. Es la construcción del filtro y nada más; el puerto
+ * llegará cuando exista un segundo motor que lo justifique (ver
+ * `src/domain/ports/index.ts`).
+ */
+export function buildTextSearchFilter(term: string, columns: readonly string[]): string | null {
+  const safe = sanitizeSearchTerm(term)
+  if (!safe || columns.length === 0) return null
+  return columns.map((column) => `${column}.ilike.%${safe}%`).join(',')
+}

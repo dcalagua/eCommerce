@@ -11,7 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview",
-    "db:types": "supabase gen types typescript --linked --schema public > src/shared/lib/database.types.ts",
+    "db:types": "node scripts/gen-db-types.mjs",
     "test:db": "vitest run supabase/tests"
   },
   "dependencies": {

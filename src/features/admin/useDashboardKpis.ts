@@ -1,8 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
+import { AppError } from '@/domain/errors'
+import { codeFromDbError } from '@/shared/lib/appError'
+import { DASHBOARD_KPIS_RPC } from '@/shared/lib/db-schema'
 import { tryGetSupabaseClient } from '@/shared/lib/supabase'
 
-export const DASHBOARD_KPIS_RPC = 'dashboard_kpis'
+export { DASHBOARD_KPIS_RPC }
 
 /**
  * `sales` llega como TEXTO y puede ser null. Las dos cosas son deliberadas:
@@ -26,10 +29,16 @@ export type DashboardKpis = z.infer<typeof dashboardKpisSchema>
  */
 export async function fetchDashboardKpis(storeId: string | null): Promise<DashboardKpis> {
   const supabase = tryGetSupabaseClient()
-  if (!supabase) throw new Error('El proyecto Supabase de eCommerce todavía no está configurado.')
+  if (!supabase) {
+    throw new AppError({
+      boundary: 'analytics',
+      code: 'CONFIG_INCOMPLETA',
+      message: 'El proyecto Supabase de eCommerce todavía no está configurado.',
+    })
+  }
 
   const { data, error } = await supabase.rpc(DASHBOARD_KPIS_RPC, { p_store_id: storeId })
-  if (error) throw new Error(error.message)
+  if (error) throw new AppError({ boundary: 'analytics', code: codeFromDbError(error) })
   return dashboardKpisSchema.parse(data)
 }
 

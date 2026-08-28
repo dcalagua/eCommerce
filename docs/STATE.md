@@ -3,7 +3,7 @@
 GUIDELINES_STATUS: VERIFIED (**por lectura directa** en la 2ª pasada de P00-SaaS: contrato v1.15,
 `PROTOCOLO.md`, `BANDEJA.md` y `EBIM-CREW-ROSTER.md`). La unidad montada es `G:`, no `H:`.
 Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
-Última actualización: 2026-08-27 (P00 de productización SaaS, 2ª pasada)
+Última actualización: 2026-08-27 (P01 de productización SaaS)
 
 > **Dos numeraciones de fase.** Lo que sigue como «P00…P12» es el trabajo histórico de este repo. A
 > partir del 2026-08-27 arranca un segundo recorrido, **P00–P17 de productización SaaS**
@@ -11,6 +11,129 @@ Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
 > serie: el P12 histórico es el framework de integraciones; el P12-SaaS será fulfillment y devoluciones.
 
 ## Fase actual
+**P01-SaaS — Arquitectura modular, contratos de dominio y extensibilidad. COMPLETA. Gate: PASS.**
+Decisiones completas en [`docs/adr/001-domain-boundaries.md`](adr/001-domain-boundaries.md).
+
+### Gates (2026-08-27, partiendo de `3174ce7`)
+
+| Comando | Antes de P01 | Después |
+|---|---|---|
+| `npm run typecheck` | PASS | **PASS** |
+| `npm run lint` | PASS, 0 problemas | **PASS**, 0 problemas |
+| `npm run test` | 569 / 40 archivos | **611 / 44 archivos** |
+| `npm run test:db` | 303 / 15 | **308 / 16** |
+| `npm run build` | 742,10 kB (219,93 gzip) | **PASS**, 744,91 kB (221,15 gzip) |
+
+Los 42 tests nuevos son de frontera, no de negocio: 14 de arquitectura, 17 de dominio, 6 de tipos
+generados y 5 de contrato contra Postgres. **Ningún test existente se borró ni se debilitó.** Uno se
+reescribió hacia arriba: `orders.test.ts` comprobaba que el fuente de `api.ts` contenía el literal
+`'update-order-status'`; ahora comprueba el VALOR de la constante importada, que detecta además el
+caso de apuntarla a otra función.
+
+### Lo que se decidió, y por qué no fue una migración masiva
+
+**El riesgo de esta fase no era hacer poco, era hacer teatro.** Mover 146 archivos a carpetas
+`domain/application/infrastructure/ui` habría producido un diff enorme sin cambiar una sola
+propiedad verificable, y habría quemado el presupuesto de refactor que P03 (variantes), P06
+(inventario) y P08 (snapshot fiscal) sí necesitan. Así que no se movió ningún archivo por estética:
+lo que se añadió es `src/domain/` —puro, sin React, MUI ni Supabase— y, sobre todo,
+`src/architecture.test.ts`, que convierte las reglas en algo que se pone rojo.
+
+**Doce dominios y cinco áreas de plataforma, declarados en código.** `src/domain/boundaries.ts` dice
+qué decide cada frontera, dónde vive y en qué estado está de verdad (`implemented` / `partial` /
+`declared`). Un archivo nuevo bajo `features/` sin dominio declarado rompe la suite. Las áreas de
+plataforma van aparte a propósito: identidad y multitenancy no son módulos vendibles, y meterlas en
+la lista de doce es cómo se acaba con «identidad» en el catálogo de addons.
+
+**La regla que evita la interfaz por función: un puerto existe cuando hay una segunda
+implementación YA declarada.** Vale una fila de `integration_providers` con esa operación en
+`capabilities`, o dos llamantes concretos hoy. Salen siete puertos —`PricingPort`, `InventoryPort`,
+`PaymentProvider`, `FulfillmentProvider`, `NotificationProvider`, `ErpProvider`,
+`InvoicingProvider`— y **`SearchPort` se descarta explícitamente**: la búsqueda de hoy es un `ilike`
+en tres sitios sobre tablas distintas, y un puerto tendría que inventar un modelo de resultado que
+ninguna pantalla necesita. Lo que sí había era duplicación de verdad —el filtro escrito tres veces—
+y está unificado en `buildTextSearchFilter`.
+
+**Lo que impide que esos siete puertos sean interfaces muertas.** No es un adaptador de mentira: es
+que su vocabulario está atado a Postgres. `src/domain/ports/operations.ts` replica el enum
+`integration_kind` y las `capabilities` sembradas, y `supabase/tests/integration-contract.test.ts`
+compara las dos copias contra Postgres real. Sembrar un proveedor en SQL con una operación que
+TypeScript no declara —o al revés— pone la suite roja. Esa era exactamente la lección de P00: dos
+capacidades construidas y sin un solo consumidor se desincronizan sin que nadie lo note.
+
+**Ningún puerto recibe el tenant.** Ni `organization_id` ni `company_id`: salen del JWT en el
+servidor, y hay un test que falla si aparecen en una firma. Un parámetro que se puede pasar se puede
+pasar mal.
+
+### Dos fugas reales que la fase cerró
+
+**El mensaje crudo de Postgres llegaba a la pantalla.** Había **siete** puntos con
+`throw new Error(error.message)` y **cinco de ellos estaban en la vitrina pública**, que ve un
+comprador anónimo: un `message` de PostgREST lleva dentro nombres de tabla, de columna y de policy.
+La regla «la UI traduce el código, nunca el mensaje» existía en el proyecto desde P02; lo que
+faltaba era comprobarla. Ahora se lanza el código, `ErrorState` pinta `code` en vez de `message` para
+un `AppError`, y la prueba de arquitectura falla si alguien vuelve a construir un `Error` con el
+mensaje del servidor.
+
+**Cinco clases de error idénticas sin antepasado común.** `CatalogError`, `OrderError`,
+`CheckoutError`, `SettingsError` y `BootstrapError` tenían las mismas dos propiedades y ninguna
+relación, así que nada transversal podía preguntar «¿esto fue un permiso o un duplicado?» sin
+conocer las cinco listas de códigos. Siguen existiendo —cada dominio traduce lo suyo— pero heredan
+de `UiError extends AppError` y traen `kind` y `boundary` **sin que su firma cambie**: no se tocó ni
+un llamante ni un test. Detalle que sí cambia comportamiento: **lo desconocido nunca es
+reintentable**, porque dar por transitorio un error que no se entiende es cómo se construye el bucle
+que machaca al servidor justo cuando peor está.
+
+La lectura de texto queda confinada a tres módulos y el test falla si aparece un cuarto:
+`shared/lib/appError.ts`, `shared/lib/edgeError.ts` y `features/auth/authApi.ts`. El tercero es una
+excepción documentada —el SDK de Supabase Auth no da código estable para credenciales inválidas ni
+correo sin confirmar— y se retira en P16.
+
+### R11 cerrado de verdad: generador, archivo y dos consumidores
+
+`database.types.ts` estaba commiteado en **0 bytes** porque `supabase gen types … > archivo` trunca
+el destino ANTES de ejecutar el comando. Arreglar el generador no bastaba: mientras nadie importara
+el archivo, volver a vaciarlo seguiría sin romper nada. Las cuatro piezas:
+
+1. `scripts/gen-db-types.mjs` genera a un temporal **junto al destino** —en Windows el temporal del
+   usuario suele estar en otra unidad y `rename` entre volúmenes falla con `EXDEV`—, valida que la
+   salida no está vacía, que declara `export type Database` y que trae tablas, y solo entonces mueve.
+   Un fallo deja el archivo anterior intacto y devuelve exit 1.
+2. El archivo se **regeneró**: 53.225 caracteres, 24 tablas, 5 vistas, 16 funciones, 11 enums.
+3. `shared/lib/db-schema.ts` reúne los nombres de tabla, vista, bucket y función —que estaban
+   duplicados: `STORES_TABLE`, `PRODUCT_IMAGES_BUCKET` y `STORE_ASSETS_BUCKET` en dos sitios cada
+   uno— y los tipa con `satisfies` contra el esquema generado: un nombre que desaparezca de la base
+   **deja de compilar**. Cada feature reexporta lo suyo, así que ningún llamante cambió de import.
+4. `shared/lib/db-schema.test.ts` compara los enums escritos a mano (`APP_ROLES`,
+   `PRODUCT_STATUSES`, `ORDER_STATUSES`, `PROVIDER_KINDS`) contra `Constants.public.Enums`.
+
+### Correcciones de documentación
+
+`docs/architecture.md` dibujaba `platform-context` y `sso` como si existieran. No existen: las cuatro
+funciones reales son `bootstrap-tenant`, `create-order`, `catalog-product` y `update-order-status`, y
+la identidad efectiva de DEV/QAS es Supabase Auth más `ebim.demo_access_token_hook`. Se corrige el
+diagrama y se marcan como pendientes. **El cambio de identidad en sí no se toca** (contrato §2,
+breaking al buzón): corresponde a P02/P16.
+
+### Lo que P01 NO resuelve, dicho claramente
+
+- **Los servicios siguen hablando PostgREST directamente.** P01 declara la frontera; no la
+  implementa. Los siete puertos no tienen adaptador y no deben tenerlo todavía: un `PricingPort`
+  implementado hoy contra `products.price` en el cliente contradiría el diseño de P04, donde el
+  precio lo resuelve el servidor. La autoridad de precio y stock sigue en `create_order`.
+- **La primera prueba de si estos contratos están bien planteados es P14**, con el adaptador
+  `order.create` end-to-end sobre el outbox que ya existe.
+- **`Capability` sigue significando dos cosas** (permiso de rol y, en la base, operación de
+  proveedor). P01 evita la palabra en el código nuevo (`ProviderOperation`); el renombrado toca a
+  P02, que es quien introduce el tercer eje —lo que el tenant contrató—.
+- **R12 sigue abierto y bloquea P02**: `ecommerce` no está dado de alta en la suite. No se resuelve
+  desde este repositorio.
+
+Siguiente: **P02-SaaS** — entitlements y control plane, **bloqueada** hasta el alta de `ecommerce` en
+el hub (§5.1 de `SAAS_ROADMAP.md`). Arrancables sin ese bloqueo: **P03** (PIM) y **P05** (customers),
+que solo dependían de P01.
+
+## Fase anterior
 **P00-SaaS — Auditoría y baseline verificable. COMPLETA (2ª pasada). Gate: PASS.**
 Fase de solo lectura en producto: **no se tocó una línea de `src/`, ni una migración, ni un test, ni
 `package.json`**. Archivos nuevos o modificados: `docs/SAAS_BASELINE.md`,

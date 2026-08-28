@@ -12,11 +12,13 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
+import { AppError } from '@/domain/errors'
 import { codeFromDbError, type PostgrestLike } from '@/shared/lib/appError'
 import { tryGetSupabaseClient } from '@/shared/lib/supabase'
 
-export const TAX_CATEGORIES_TABLE = 'tax_categories'
-export const SET_TAX_RATE_RPC = 'set_tax_rate'
+import { SET_TAX_RATE_RPC, TAX_CATEGORIES_TABLE } from '@/shared/lib/db-schema'
+
+export { SET_TAX_RATE_RPC, TAX_CATEGORIES_TABLE }
 
 export const taxCategorySchema = z.object({
   id: z.string().uuid(),
@@ -39,12 +41,12 @@ export interface TaxCategoryInput {
 
 function client() {
   const supabase = tryGetSupabaseClient()
-  if (!supabase) throw new Error('SUPABASE_NO_CONFIGURADO')
+  if (!supabase) throw new AppError({ boundary: 'configuration', code: 'CONFIG_INCOMPLETA' })
   return supabase
 }
 
 function fail(error: PostgrestLike): never {
-  throw new Error(codeFromDbError(error))
+  throw new AppError({ boundary: 'configuration', code: codeFromDbError(error) })
 }
 
 /**
@@ -139,7 +141,9 @@ export function useCreateTaxCategory(organizationId: string | null, companyId: s
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: TaxCategoryInput) => {
-      if (!organizationId || !companyId) throw new Error('TENANT_NO_DISPONIBLE')
+      if (!organizationId || !companyId) {
+        throw new AppError({ boundary: 'configuration', code: 'TENANT_NO_DISPONIBLE' })
+      }
       return createTaxCategory(organizationId, companyId, input)
     },
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: taxCategoriesKey }),

@@ -7,6 +7,7 @@ import {
   ORDER_TRANSITIONS as EDGE_TRANSITIONS,
   canTransition as edgeCanTransition,
 } from '../../../supabase/functions/_shared/orders'
+import { UPDATE_ORDER_STATUS_FUNCTION } from './api'
 import { mapOrderCode } from './errors'
 import { ordersToCsv } from './exportCsv'
 import {
@@ -190,7 +191,11 @@ describe('el backoffice no escribe pedidos por PostgREST', () => {
   })
 
   it('el unico camino de escritura es la Edge Function', () => {
-    expect(source).toContain("'update-order-status'")
+    // Desde P01 el nombre de la funcion vive en `shared/lib/db-schema.ts`, asi
+    // que se comprueba el VALOR importado en vez de buscar el literal en este
+    // archivo: si alguien apunta la constante a otra funcion, esto falla, y un
+    // `toContain` sobre el fuente no lo habria visto.
+    expect(UPDATE_ORDER_STATUS_FUNCTION).toBe('update-order-status')
     expect(source).toMatch(/functions\.invoke\(UPDATE_ORDER_STATUS_FUNCTION/)
   })
 

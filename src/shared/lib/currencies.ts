@@ -12,9 +12,10 @@
  */
 import { useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
+import { CURRENCIES_TABLE } from './db-schema'
 import { tryGetSupabaseClient } from './supabase'
 
-export const CURRENCIES_TABLE = 'currencies'
+export { CURRENCIES_TABLE }
 
 export const currencySchema = z.object({
   code: z.string().length(3),

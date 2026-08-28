@@ -1,5 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { sanitizeSearchTerm } from '@/shared/lib/search'
+import { AppError } from '@/domain/errors'
+import { codeFromDbError, type PostgrestLike } from '@/shared/lib/appError'
+import { ORDER_BY_TOKEN_RPC } from '@/shared/lib/db-schema'
+import { buildTextSearchFilter } from '@/shared/lib/search'
 import { tryGetStorefrontClient } from '@/shared/lib/supabase'
 import {
   PRODUCT_IMAGES_BUCKET,
@@ -36,18 +39,42 @@ import {
  *     escriba un uuid en la barra de direcciones no llega a ninguna parte.
  */
 
-export class StorefrontNotConfiguredError extends Error {
+export class StorefrontNotConfiguredError extends AppError {
   constructor() {
-    super('El proyecto Supabase de eCommerce todavía no está conectado.')
+    super({
+      boundary: 'content',
+      code: 'CONFIG_INCOMPLETA',
+      message: 'El proyecto Supabase de eCommerce todavía no está conectado.',
+    })
     this.name = 'StorefrontNotConfiguredError'
   }
 }
 
 /** La tienda o el producto no existen, o existen pero no están publicados. */
-export class StorefrontNotFoundError extends Error {
+export class StorefrontNotFoundError extends AppError {
   constructor(what: string) {
-    super(`No existe nada publicado para "${what}".`)
+    super({
+      boundary: 'content',
+      code: 'NO_ENCONTRADO',
+      message: `No existe nada publicado para "${what}".`,
+    })
     this.name = 'StorefrontNotFoundError'
+  }
+}
+
+/**
+ * Fallo de la vitrina que NO es «no existe»: red, RLS, esquema.
+ *
+ * Se construye con el CÓDIGO del error, nunca con su `message`. Hasta P01 estos
+ * cinco puntos hacían `throw new Error(error.message)`, así que un mensaje crudo
+ * de Postgres —con nombres de tabla, de columna y de policy dentro— podía
+ * acabar pintado en la pantalla de un comprador anónimo. La regla ya estaba
+ * escrita en el proyecto desde P02; lo que faltaba era cumplirla aquí.
+ */
+export class StorefrontError extends AppError {
+  constructor(error: PostgrestLike) {
+    super({ boundary: 'content', code: codeFromDbError(error) })
+    this.name = 'StorefrontError'
   }
 }
 
@@ -146,7 +173,7 @@ export async function fetchPublicStore(slug: string): Promise<PublicStore> {
     .eq('slug', slug)
     .maybeSingle()
 
-  if (error) throw new Error(error.message)
+  if (error) throw new StorefrontError(error)
   if (!data) throw new StorefrontNotFoundError(slug)
   return resolveStoreAssets(publicStoreSchema.parse(data))
 }
@@ -162,7 +189,7 @@ export async function fetchPublicCategories(storeId: string | null): Promise<Pub
     .order('position')
     .order('name')
 
-  if (error) throw new Error(error.message)
+  if (error) throw new StorefrontError(error)
   return publicCategorySchema.array().parse(data ?? [])
 }
 
@@ -184,12 +211,8 @@ export async function fetchPublicProducts(query: CatalogQuery): Promise<PublicPr
   if (query.categorySlug) request = request.eq('category_slug', query.categorySlug)
   if (query.availability === 'in-stock') request = request.eq('in_stock', true)
 
-  const term = sanitizeSearchTerm(query.search)
-  if (term) {
-    request = request.or(
-      `name.ilike.%${term}%,description.ilike.%${term}%,category_name.ilike.%${term}%`,
-    )
-  }
+  const searchFilter = buildTextSearchFilter(query.search, ['name', 'description', 'category_name'])
+  if (searchFilter) request = request.or(searchFilter)
 
   switch (query.sort) {
     case 'price-asc':
@@ -206,7 +229,7 @@ export async function fetchPublicProducts(query: CatalogQuery): Promise<PublicPr
   }
 
   const { data, error } = await request
-  if (error) throw new Error(error.message)
+  if (error) throw new StorefrontError(error)
   return publicProductSchema.array().parse(data ?? [])
 }
 
@@ -223,7 +246,7 @@ export async function fetchPublicProduct(input: {
     .eq('slug', input.slug)
     .maybeSingle()
 
-  if (error) throw new Error(error.message)
+  if (error) throw new StorefrontError(error)
   if (!data) throw new StorefrontNotFoundError(input.slug)
   return publicProductSchema.parse(data)
 }
@@ -247,7 +270,7 @@ export async function fetchGallery(productId: string | null): Promise<GalleryIma
     .order('is_primary', { ascending: false })
     .order('position', { ascending: true })
 
-  if (error) throw new Error(error.message)
+  if (error) throw new StorefrontError(error)
   const images = publicProductImageSchema.array().parse(data ?? [])
   const urls = await signPaths(images.map((image) => image.storage_path))
 
@@ -289,7 +312,7 @@ export async function fetchOrderByToken(input: {
   orderNumber: string
   token: string
 }): Promise<TrackedOrder> {
-  const { data, error } = await storefront().rpc('order_by_token', {
+  const { data, error } = await storefront().rpc(ORDER_BY_TOKEN_RPC, {
     p_store_slug: input.storeSlug,
     p_order_number: input.orderNumber,
     p_token: input.token,

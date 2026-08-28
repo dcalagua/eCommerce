@@ -9,7 +9,9 @@ import {
 import { catalogClient } from './client'
 import { catalogErrorFromDb } from './errors'
 
-export const CATEGORY_USAGE_RPC = 'category_deletion_usage'
+import { CATEGORY_USAGE_RPC } from '@/shared/lib/db-schema'
+
+export { CATEGORY_USAGE_RPC }
 
 const CATEGORY_SELECT = 'id, store_id, parent_id, slug, name, position, is_active'
 

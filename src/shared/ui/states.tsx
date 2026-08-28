@@ -1,6 +1,7 @@
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import { Box, Button, CircularProgress, Stack, Typography } from '@mui/material'
 import type { ReactNode } from 'react'
+import { isAppError } from '@/domain/errors'
 import { useT } from '@/shared/i18n/i18n-context'
 import { R, S } from '@/theme/tokens'
 
@@ -41,7 +42,16 @@ export function ErrorState({
   onRetry?: () => void
 }) {
   const t = useT()
-  const detail = error instanceof Error ? error.message : typeof error === 'string' ? error : null
+  // De un `AppError` se pinta el CODIGO, no el mensaje: es estable, sirve para
+  // diagnosticar y no arrastra nombres de tabla ni de policy. El `message` solo
+  // se usa para lo que no es un error de la aplicacion.
+  const detail = isAppError(error)
+    ? error.code
+    : error instanceof Error
+      ? error.message
+      : typeof error === 'string'
+        ? error
+        : null
   return (
     <Box sx={SHELL_SX} role="alert">
       <Typography component="h2" sx={{ fontSize: 17, fontWeight: 800 }}>

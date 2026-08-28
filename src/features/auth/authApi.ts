@@ -20,6 +20,19 @@ export class AuthActionError extends Error {
   }
 }
 
+/**
+ * ULTIMA excepcion viva a la regla «no ramificar por el texto de un error».
+ *
+ * El SDK de Supabase Auth no expone hoy un codigo estable para todos estos
+ * casos, asi que el texto es lo unico que hay; el `status` cubre solo el 429.
+ * Lo que hace que sea aceptable es que la lectura del texto muere aqui: de esta
+ * funcion sale una CLAVE de i18n y nadie aguas abajo vuelve a mirar el mensaje.
+ * `src/architecture.test.ts` mantiene la lista de los tres modulos que pueden
+ * hacerlo y falla si aparece un cuarto.
+ *
+ * Se retira cuando la identidad pase por el hub (P16) o cuando el SDK exponga
+ * `error.code` de forma estable para credenciales y confirmacion de correo.
+ */
 export function mapAuthError(error: { message?: string; status?: number }): MessageKey {
   const message = (error.message ?? '').toLowerCase()
   if (error.status === 429 || message.includes('rate limit') || message.includes('too many')) {

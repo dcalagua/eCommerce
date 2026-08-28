@@ -1,20 +1,15 @@
 import type { MessageKey } from '@/shared/i18n/messages'
-import { codeFromDbError, type PostgrestLike } from '@/shared/lib/appError'
+import { UiError, codeFromDbError, type PostgrestLike } from '@/shared/lib/appError'
 import { codeFromInvokeError } from '@/shared/lib/edgeError'
 
 /**
  * Error de pedidos con una clave de i18n ya resuelta. La pantalla nunca enseña
  * el mensaje crudo de Postgres ni el de la Edge Function.
  */
-export class OrderError extends Error {
-  readonly key: MessageKey
-  readonly code: string
-
+export class OrderError extends UiError {
   constructor(key: MessageKey, code: string) {
-    super(code)
+    super({ boundary: 'orders', key, code })
     this.name = 'OrderError'
-    this.key = key
-    this.code = code
   }
 }
 
