@@ -267,8 +267,20 @@ export const CAPABILITIES: readonly Capability[] = [
     id: 'analytics.advanced',
     boundary: 'analytics',
     entitlement: `${ENTITLEMENT_PREFIX}analytics.advanced`,
-    state: 'declared',
-    grants: 'Cohortes, embudo de conversión y exportación analítica (P13).',
+    // La séptima vendible que deja de ser `declared` (P13-SaaS): embudo de los
+    // nueve hechos canónicos y términos de búsqueda, con su gate en la base
+    // (`ebim.assert_analytics_advanced`) y no solo en la pantalla. Sin ella el
+    // tenant conserva ventas, pedidos, ticket, productos y canal, que salen de
+    // `orders` y son baseline: se degrada, no se rompe.
+    //
+    // Las COHORTES no entran y no se fingen: exigirían seguir a un comprador
+    // identificado en el tiempo, y la analítica de esta app se guarda SIN PII a
+    // propósito. Queda escrito en el ADR 013 en vez de dejar una función vacía
+    // para que la casilla quede marcada.
+    state: 'implemented',
+    grants:
+      'Embudo de conversión sobre los nueve hechos canónicos y términos de ' +
+      'búsqueda con resultados vacíos, exportables.',
   },
   {
     id: 'integrations.enterprise',

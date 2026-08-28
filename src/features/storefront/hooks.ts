@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 import { useOutletContext } from 'react-router-dom'
 import type { SearchQuery, SearchResult, Suggestion } from '@/domain'
@@ -19,6 +20,7 @@ import {
   type StoreContent,
   type StoreNavigationItem,
 } from './content'
+import { track } from './analytics'
 import { createStorefrontSearch } from './search'
 import type {
   CatalogQuery,
@@ -241,7 +243,7 @@ export function useCatalogSearch(
   query: SearchQuery,
   enabled = true,
 ): UseQueryResult<SearchResult> {
-  return useQuery({
+  const result = useQuery({
     queryKey: searchKey(storeSlug ?? '', query),
     queryFn: ({ signal }) =>
       createStorefrontSearch(storeSlug as string).search({ ...query, signal }),
@@ -250,6 +252,28 @@ export function useCatalogSearch(
     placeholderData: (previous) => previous,
     retry: false,
   })
+
+  /**
+   * `search` (P13-SaaS), con su NÚMERO DE RESULTADOS.
+   *
+   * Se emite aquí y no en la caja de texto porque el dato que se acciona no es
+   * qué se tecleó, es qué se tecleó Y NO ENCONTRÓ NADA: un término buscado
+   * cincuenta veces con cero resultados es un producto que falta en el catálogo
+   * o un sinónimo que falta en `search_synonyms` (P11). En la caja aún no se
+   * sabe.
+   *
+   * Solo la primera página (`offset === 0`): paginar es la misma búsqueda, y
+   * contarla otra vez hincharía el denominador con el desplazamiento de quien
+   * SÍ encontró lo que buscaba.
+   */
+  const term = query.term.trim()
+  const total = result.data?.total
+  useEffect(() => {
+    if (!storeSlug || term === '' || total === undefined || query.offset !== 0) return
+    track(storeSlug, { type: 'search', term, result_count: total })
+  }, [storeSlug, term, total, query.offset])
+
+  return result
 }
 
 /** Autocompletado. Solo a partir de dos caracteres: con uno, sugiere el catálogo entero. */

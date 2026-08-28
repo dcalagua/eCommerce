@@ -33,6 +33,7 @@
  * no se pueden rodear desplegando mal esta función.
  */
 import { corsHeaders } from '../_shared/cors.ts'
+import { resolveTrace, traceHeaders } from '../_shared/observability/index.ts'
 import {
   ingestTrackingWebhook,
   type TrackingWebhookPorts,
@@ -54,7 +55,17 @@ function json(body: unknown, status: number, headers: Record<string, string>): R
 }
 
 Deno.serve(async (request: Request): Promise<Response> => {
-  const headers = corsHeaders(request.headers.get('origin'), { methods: ['POST', 'OPTIONS'] })
+  // El HILO tambien aqui, y es el salto que mas importa de todos: el aviso de
+  // la pasarela o del transportista llega MINUTOS despues de la compra, desde
+  // otra maquina y sin sesion. Un proveedor que reenvie la cabecera cose su
+  // aviso al hilo del checkout; uno que no la reenvie abre hilo propio, que
+  // sigue siendo mejor que no tener ninguno — y en los dos casos la fila que
+  // escriba `shipment_track_ingest` o `payment_apply_outcome` lo lleva dentro.
+  const trace = resolveTrace(request)
+  const headers = {
+    ...corsHeaders(request.headers.get('origin'), { methods: ['POST', 'OPTIONS'] }),
+    ...traceHeaders(trace),
+  }
 
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers })
   if (request.method !== 'POST') {
@@ -83,7 +94,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
     )
   }
 
-  const client = serviceClient()
+  const client = serviceClient(trace)
   const ports: TrackingWebhookPorts = {
     async findShipmentByTracking(code, tracking) {
       // Lectura directa con `service_role` y no un RPC: es una consulta por un

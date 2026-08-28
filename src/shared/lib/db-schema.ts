@@ -243,6 +243,24 @@ export const PUBLIC_DELIVERY_METHODS_VIEW = 'public_delivery_methods'
 // dueño: se accede con URL firmada que caduca (P12).
 export const RETURN_EVIDENCE_BUCKET = 'return-evidence'
 
+// --- Analitica, auditoria y operacion (P13-SaaS, migraciones 160000-160500) -
+// Sin `satisfies` por la misma razón que las anteriores: `database.types.ts` se
+// genera contra el proyecto ENLAZADO y estas migraciones todavía no están
+// aplicadas allí. La red mientras tanto es `supabase/tests/analytics.test.ts`,
+// `audit-log.test.ts` y `observability.test.ts`, que comprueban estos mismos
+// nombres contra el esquema construido desde las migraciones.
+//
+// De las tres tablas el backoffice NO ESCRIBE NINGUNA, y eso es la fase entera:
+// un hecho de analítica, un registro de auditoría y un incidente son cosas que
+// se producen, no que se editan. Las tres son append-only en la base —la
+// auditoría y la analítica con un trigger que rechaza UPDATE y DELETE incluso
+// para `service_role`— y lo único que la pantalla puede hacer sobre un
+// incidente es ATENDERLO, por `ops_resolve_event`, que no es un `update`.
+export const ANALYTICS_EVENTS_TABLE = 'analytics_events'
+export const AUDIT_LOG_TABLE = 'audit_log'
+export const OPS_EVENTS_TABLE = 'ops_events'
+export const OPS_INCIDENT_OVERVIEW_VIEW = 'ops_incident_overview'
+
 // --- Vistas del modelo de lectura público ----------------------------------
 // `security_invoker` sobre policies `to anon`: filtran filas, y el GRANT por
 // columna es lo que evita que `anon` vea `stock` o `config` (P02, §4.3).
@@ -380,6 +398,27 @@ export const RETURN_INSPECT_RPC = 'return_inspect'
 export const RETURN_COMPLETE_RPC = 'return_complete'
 export const RETURN_CANCEL_RPC = 'return_cancel'
 export const RETURN_EVIDENCE_ATTACH_RPC = 'return_evidence_attach'
+
+// Analitica, auditoria y operacion (P13-SaaS). `track_events_for_slug` es la
+// puerta ANÓNIMA de la vitrina —hermana de `price_quote_for_slug`— y solo
+// admite tres tipos de hecho: los seis de servidor los emite un trigger y
+// pedirlos desde el navegador es un error explícito.
+//
+// `ops_record_event` y `audit_record` NO están aquí a propósito: solo se pueden
+// llamar con `service_role` desde una Edge Function —si el navegador pudiera
+// escribir incidentes o entradas de auditoría, la bitácora sería redactable por
+// quien la protagoniza— y listarlas invitaría a intentarlo desde el bundle. Es
+// la misma decisión que P07 tomó con el pipeline de checkout.
+export const TRACK_EVENTS_PUBLIC_RPC = 'track_events_for_slug'
+export const ANALYTICS_KPIS_RPC = 'analytics_kpis'
+export const ANALYTICS_TOP_PRODUCTS_RPC = 'analytics_top_products'
+export const ANALYTICS_CHANNELS_RPC = 'analytics_channel_performance'
+export const ANALYTICS_TIMESERIES_RPC = 'analytics_timeseries'
+export const ANALYTICS_FUNNEL_RPC = 'analytics_funnel'
+export const ANALYTICS_SEARCH_TERMS_RPC = 'analytics_search_terms'
+export const OPS_HEALTH_RPC = 'ops_health'
+export const OPS_RESOLVE_EVENT_RPC = 'ops_resolve_event'
+export const TRACE_BY_CORRELATION_RPC = 'trace_by_correlation'
 
 // --- Edge Functions --------------------------------------------------------
 export const BOOTSTRAP_FUNCTION = 'bootstrap-tenant'

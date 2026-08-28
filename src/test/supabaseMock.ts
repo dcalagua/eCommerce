@@ -211,6 +211,29 @@ class FakeQuery implements PromiseLike<QueryResult> {
   }
 
   /**
+   * `is('col', null)` y su negación. Los usa la pestaña de incidentes de P13
+   * para separar lo abierto de lo atendido, que en la base es exactamente eso:
+   * `resolved_at is null`.
+   *
+   * Se implementan de verdad —y no como un no-op— por la misma razón que `or`:
+   * un filtro que no filtra daría por buena una pestaña «Abiertos» que enseña
+   * también los cerrados, que es justo el fallo que haría inservible el
+   * tablero.
+   */
+  is(column: string, value: unknown): this {
+    this.rows = this.rows.filter((row) => (row[column] ?? null) === value)
+    return this
+  }
+
+  not(column: string, operator: string, value: unknown): this {
+    if (operator !== 'is') {
+      throw new Error(`FakeQuery.not solo implementa 'is'; llegó '${operator}'`)
+    }
+    this.rows = this.rows.filter((row) => (row[column] ?? null) !== value)
+    return this
+  }
+
+  /**
    * `gte` sobre texto ISO: es como filtra el listado de pedidos por fecha, y
    * comparar dos ISO como cadenas ordena igual que compararlos como instantes.
    */

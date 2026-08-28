@@ -1,6 +1,8 @@
 import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined'
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined'
+import InsightsOutlinedIcon from '@mui/icons-material/InsightsOutlined'
 import MonitorHeartOutlinedIcon from '@mui/icons-material/MonitorHeartOutlined'
+import HealthAndSafetyOutlinedIcon from '@mui/icons-material/HealthAndSafetyOutlined'
 import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined'
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
 import LocalOfferOutlinedIcon from '@mui/icons-material/LocalOfferOutlined'
@@ -111,12 +113,31 @@ export const NAV_ITEMS: NavItem[] = [
     capability: 'promotions',
   },
   {
+    // P13: ventas, embudo y búsquedas. Va DESPUÉS del contenido porque se mira
+    // cuando ya hay algo que medir, y su capacidad es baseline: la entrada se
+    // ve siempre.
+    to: '/app/analytics',
+    label: 'nav.analytics',
+    icon: <InsightsOutlinedIcon fontSize="small" />,
+    capability: 'analytics.basic',
+  },
+  {
     to: '/app/content',
     label: 'nav.content',
     icon: <ArticleOutlinedIcon fontSize="small" />,
     capability: 'content.cms',
   },
   { to: '/app/settings', label: 'nav.settings', icon: <SettingsOutlinedIcon fontSize="small" /> },
+  {
+    // P13: salud, incidentes, rastro y auditoría. SIN capacidad —igual que
+    // Ajustes— y CON permiso: quien no administra el tenant no tiene nada que
+    // hacer en la bitácora de operaciones, que lleva dentro el correo de cada
+    // operador.
+    to: '/app/operations',
+    label: 'nav.operations',
+    icon: <HealthAndSafetyOutlinedIcon fontSize="small" />,
+    permission: 'tenant.manage',
+  },
   {
     to: '/app/diagnostics',
     label: 'nav.diagnostics',

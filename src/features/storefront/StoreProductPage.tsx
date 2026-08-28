@@ -22,6 +22,7 @@ import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/states'
 import { R, T } from '@/theme/tokens'
 import { StorefrontNotFoundError } from './api'
 import { MAX_LINE_QUANTITY } from './cart/cart'
+import { track } from './analytics'
 import { useCart } from './cart/cart-context'
 import { ProductGallery } from './components/ProductGallery'
 import { ProductGrid } from './components/ProductGrid'
@@ -74,6 +75,16 @@ export function StoreProductPage() {
   const catalog = usePublicProducts(relatedQuery)
   const related = product.data ? pickRelated(catalog.data ?? [], product.data) : []
   const relatedThumbs = useThumbnails(related)
+
+  // `product_view` (P13-SaaS). Se emite cuando la ficha ya se resolvió y por
+  // producto, no por render: sin la dependencia en el id, cada cambio de
+  // variante o de galería contaría una vista nueva y el numerador del embudo
+  // subiría solo. Dispara y olvida: si falla, la ficha no se entera.
+  const viewedProductId = product.data?.product_id ?? null
+  useEffect(() => {
+    if (!storeSlug || !viewedProductId) return
+    track(storeSlug, { type: 'product_view', product_id: viewedProductId })
+  }, [storeSlug, viewedProductId])
 
   if (product.isPending) return <LoadingState />
 
@@ -248,6 +259,7 @@ function AddToCart({
   variantsPending: boolean
 }) {
   const { t, locale } = useI18n()
+  const { storeSlug } = useStorefront()
   const { add } = useCart()
   const [quantity, setQuantity] = useState(1)
   const [variantId, setVariantId] = useState('')
@@ -342,7 +354,20 @@ function AddToCart({
           variant="contained"
           startIcon={<ShoppingCartOutlinedIcon />}
           disabled={!canBuy}
-          onClick={() => add(product, quantity, selected)}
+          onClick={() => {
+            add(product, quantity, selected)
+            // `add_to_cart` es el ÚNICO de los tres hechos de vitrina que
+            // corresponde a una decisión y no a una visita, y por eso se emite
+            // aquí y no en el carrito: el carrito se reescribe entero al
+            // recotizar (P07) y contar allí convertiría un refresco de precio
+            // en una intención de compra.
+            track(storeSlug, {
+              type: 'add_to_cart',
+              product_id: product.product_id,
+              ...(selected ? { variant_id: selected.variant_id } : {}),
+              quantity,
+            })
+          }}
         >
           {t('store.product.addToCart')}
         </Button>

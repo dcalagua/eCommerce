@@ -26,6 +26,7 @@ import { assertNotSuiteOperator, requireProvisioningKey, requireTenantContext } 
 import { parseAllowedOrigins } from '../_shared/cors.ts'
 import { fromDatabaseError } from '../_shared/errors.ts'
 import { serveJson } from '../_shared/http.ts'
+import type { Trace } from '../_shared/observability/index.ts'
 import {
   contextMode,
   hubContextUrl,
@@ -72,8 +73,8 @@ async function readHubContext(organizationId: string): Promise<unknown> {
   }
 }
 
-async function applySync(rows: ContextSync[]): Promise<void> {
-  const client = serviceClient()
+async function applySync(rows: ContextSync[], trace?: Trace): Promise<void> {
+  const client = serviceClient(trace)
   for (const row of rows) {
     const { error } = await client.rpc('sync_platform_context', {
       p_organization_id: row.organizationId,
@@ -88,12 +89,15 @@ async function applySync(rows: ContextSync[]): Promise<void> {
 }
 
 const handler = serveJson(
-  { allowedOrigins: parseAllowedOrigins(Deno.env.get('EBIM_ADMIN_ORIGINS')) },
-  async ({ request, body }) => {
+  {
+    allowedOrigins: parseAllowedOrigins(Deno.env.get('EBIM_ADMIN_ORIGINS')),
+    service: 'platform-context',
+  },
+  async ({ request, body, trace }) => {
     if (contextMode(request) === 'provisioning') {
       requireProvisioningKey(request, Deno.env.get('EBIM_PROVISIONING_KEY'))
       const row = parseProvisioningSync(body)
-      await applySync([row])
+      await applySync([row], trace)
       return {
         status: 200,
         body: {
@@ -115,7 +119,7 @@ const handler = serveJson(
 
     const payload = await readHubContext(context.organizationId)
     const rows = syncFromHubContext(payload, context.organizationId)
-    await applySync(rows)
+    await applySync(rows, trace)
 
     return {
       status: 200,

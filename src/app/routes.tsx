@@ -67,6 +67,12 @@ const PromotionsPage = lazy(() =>
 const ContentPage = lazy(() =>
   import('@/features/content/ContentPage').then((m) => ({ default: m.ContentPage })),
 )
+const AnalyticsPage = lazy(() =>
+  import('@/features/analytics/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })),
+)
+const OperationsPage = lazy(() =>
+  import('@/features/ops/OperationsPage').then((m) => ({ default: m.OperationsPage })),
+)
 const DiagnosticsPage = lazy(() =>
   import('@/features/capabilities/DiagnosticsPage').then((m) => ({ default: m.DiagnosticsPage })),
 )
@@ -132,6 +138,12 @@ export const routes: RouteObject[] = [
         element: withSuspense(<AdminLayout />),
         children: [
           { index: true, element: gated('analytics.basic', <DashboardPage />) },
+          // P13: ventas, embudo y términos de búsqueda. Gateada por
+          // `analytics.basic`, que es BASELINE: cualquier tenant entra. Lo
+          // vendible es la SEGUNDA pestaña, y se gatea en la base
+          // (`SIN_MODULO`), no aquí — así el comportamiento es el mismo si
+          // alguien llama a la función desde fuera de la aplicación.
+          { path: 'analytics', element: gated('analytics.basic', <AnalyticsPage />) },
           { path: 'products', element: gated('catalog', <ProductsPage />) },
           { path: 'categories', element: gated('catalog', <CategoriesPage />) },
           // El vocabulario del PIM es del módulo vendible, no del baseline.
@@ -169,6 +181,12 @@ export const routes: RouteObject[] = [
           // Ajustes y diagnóstico NO se gatean por capacidad: son la salida de
           // un tenant sin nada contratado y el sitio donde se ve por qué.
           { path: 'settings', element: withSuspense(<SettingsPage />) },
+          // Operación NO se gatea por capacidad, igual que Ajustes y
+          // Diagnóstico y por la misma razón (P02): quien no puede ver por qué
+          // fallan sus cobros acaba llamando por teléfono. Quien decide aquí es
+          // el ROL, y lo decide la base: policy de `ops_events` y de
+          // `audit_log`, más la comprobación dentro de `ops_health`.
+          { path: 'operations', element: withSuspense(<OperationsPage />) },
           { path: 'diagnostics', element: withSuspense(<DiagnosticsPage />) },
         ],
       },

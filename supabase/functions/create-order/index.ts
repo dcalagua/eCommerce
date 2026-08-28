@@ -41,8 +41,11 @@ const ALLOWED_FIELDS = [
 
 const handler = serveJson(
   // Storefront público: cualquier origen. No viaja `Authorization`.
-  { allowedOrigins: parseAllowedOrigins(Deno.env.get('EBIM_STOREFRONT_ORIGINS')) },
-  async ({ body }) => {
+  {
+    allowedOrigins: parseAllowedOrigins(Deno.env.get('EBIM_STOREFRONT_ORIGINS')),
+    service: 'create-order',
+  },
+  async ({ body, trace }) => {
     assertNoTenantInPayload(body)
     // `store_id` ya no está en la lista: si llega, la petición se cae aquí.
     // La tienda se resuelve en la base a partir del slug de la URL pública.
@@ -60,7 +63,7 @@ const handler = serveJson(
       p_notes: optionalText(body, 'notes', 1000),
     }
 
-    const { data, error } = await serviceClient().rpc('create_order_for_slug', payload)
+    const { data, error } = await serviceClient(trace).rpc('create_order_for_slug', payload)
     if (error) throw fromDatabaseError(error)
 
     return { status: 201, body: { data } }

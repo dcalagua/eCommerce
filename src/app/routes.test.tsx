@@ -69,17 +69,20 @@ describe('rutas base', () => {
     // P04 anade Categorias, P02-SaaS anade Diagnostico, P03-SaaS anade el
     // catalogo avanzado (PIM), P04-SaaS anade Precios, P05-SaaS anade Clientes,
     // P06-SaaS anade Inventario, P09-SaaS anade Pagos, P10-SaaS anade
-    // Promociones, P11-SaaS anade Contenido y P12-SaaS anade Entregas: panel,
-    // productos, categorias, clientes, contenido, entregas, inventario, PIM,
-    // pagos, precios, pedidos, promociones, configuracion y diagnostico.
+    // Promociones, P11-SaaS anade Contenido, P12-SaaS anade Entregas y P13-SaaS
+    // anade Analitica y Operacion: panel, analitica, productos, categorias,
+    // clientes, contenido, entregas, inventario, operacion, PIM, pagos,
+    // precios, pedidos, promociones, configuracion y diagnostico.
     expect(paths(admin?.children ?? [], '/app').sort()).toEqual([
       '/app',
+      '/app/analytics',
       '/app/categories',
       '/app/content',
       '/app/customers',
       '/app/diagnostics',
       '/app/fulfillment',
       '/app/inventory',
+      '/app/operations',
       '/app/orders',
       '/app/payments',
       '/app/pim',

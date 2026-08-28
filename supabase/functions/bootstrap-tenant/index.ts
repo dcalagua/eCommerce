@@ -28,8 +28,11 @@ import { serviceClient } from '../_runtime/clients.ts'
 import { verifyHubToken } from '../_runtime/verify.ts'
 
 const handler = serveJson(
-  { allowedOrigins: parseAllowedOrigins(Deno.env.get('EBIM_ADMIN_ORIGINS')) },
-  async ({ request, body }) => {
+  {
+    allowedOrigins: parseAllowedOrigins(Deno.env.get('EBIM_ADMIN_ORIGINS')),
+    service: 'bootstrap-tenant',
+  },
+  async ({ request, body, trace }) => {
     let payload
     if (bootstrapMode(request) === 'provisioning') {
       requireProvisioningKey(request, Deno.env.get('EBIM_PROVISIONING_KEY'))
@@ -38,7 +41,7 @@ const handler = serveJson(
       payload = buildSelfServicePayload(body, await verifyHubToken(request))
     }
 
-    const { data, error } = await serviceClient().rpc('bootstrap_tenant', payload)
+    const { data, error } = await serviceClient(trace).rpc('bootstrap_tenant', payload)
 
     if (error) throw fromDatabaseError(error)
 

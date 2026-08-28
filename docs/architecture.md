@@ -46,7 +46,7 @@ El **hub EBIM** es el emisor de identidad y dueño del catálogo/billing. eComme
 escribe en él. La identidad del comprador final del storefront es **local** a este proyecto (patrón §2.5,
 igual que los proveedores externos de eSupplier); los usuarios del tenant llegan por SSO del hub.
 
-## Modelo de datos (implementado hasta P12-SaaS)
+## Modelo de datos (implementado hasta P13-SaaS)
 
 Nueve tablas en `supabase/migrations`, todas con `organization_id uuid` + `company_id uuid` (uuids del hub),
 `created_at`/`updated_at`, PK uuid y RLS default deny **forzada**:
@@ -78,11 +78,13 @@ tenants (PK = organization_id del hub)
   **generada** (`stock > 0`): `anon` la lee, pero nunca lee `stock` (P05). Desde P06 la vista
   publica un booleano calculado por ATP, y la cifra exacta sigue sin salir a `anon`.
 - Sin forks de schema por cliente: diferencias por `store_settings.config` + `products.custom_fields` (JSONB).
-- Pendiente de fases siguientes: `audit_log`. (`customers` llegó en P05-SaaS; los almacenes y las
-  reservas, en P06-SaaS; `carts`, `checkout_intents` y `domain_events`, en P07-SaaS; la línea de
-  tiempo del pedido, sus anotaciones y sus referencias externas, en P08-SaaS; las siete tablas del
-  cobro, en P09-SaaS; las campañas, los cupones y las tarjetas regalo, en P10-SaaS;
-  las páginas, los bloques y los sinónimos de búsqueda, en P11-SaaS.)
+- El recorrido de las tablas: `customers` llegó en P05-SaaS; los almacenes y las reservas, en
+  P06-SaaS; `carts`, `checkout_intents` y `domain_events`, en P07-SaaS; la línea de tiempo del
+  pedido, sus anotaciones y sus referencias externas, en P08-SaaS; las siete tablas del cobro, en
+  P09-SaaS; las campañas, los cupones y las tarjetas regalo, en P10-SaaS; las páginas, los bloques y
+  los sinónimos de búsqueda, en P11-SaaS; las quince de la entrega y la devolución, en P12-SaaS; y
+  `analytics_events`, `audit_log` y `ops_events` en P13-SaaS. **`audit_log` deja de ser un
+  pendiente**: existe desde P13 y es append-only para todos, incluido `service_role`.
 
 ### PIM: variantes, atributos, unidades y kits (P03-SaaS)
 
@@ -605,6 +607,52 @@ LA DEVOLUCIÓN
 - **`products.shipping_weight`** (y el de variante) nacen aquí: sin peso no hay tarifa por kilo, y
   esa es la mitad de las tarifas reales de esta región.
 
+### Analítica, auditoría y observabilidad (P13-SaaS)
+
+Tres tablas más, migraciones `20260828160000`–`20260828160500`. Decisiones completas en
+[`adr/013-analytics-audit-observability.md`](adr/013-analytics-audit-observability.md).
+
+```
+EL HILO (ninguna tabla nueva: una COLUMNA en las ocho del camino de una compra)
+  checkout_intents · orders · payment_intents · payment_events · fulfillments
+  domain_events · integration_outbox · integration_inbox
+        └── correlation_id  default ebim.correlation_id()
+
+LO QUE PASA (comercio)
+  analytics_events        los nueve hechos canónicos, append-only y SIN PII
+
+QUIÉN LO HIZO (transversal)
+  audit_log               actor, acción, entidad, momento, tenant e hilo. Sin FK
+
+QUÉ SE ROMPIÓ (operación)
+  ops_events ──── ops_incident_overview   edad y repeticiones ya calculadas
+```
+
+- **El `correlation_id` es un DEFAULT de columna, no un parámetro.** Es lo que permite coser una
+  petición entera sin tocar `create_order` ni ninguna de las otras once funciones de dominio.
+  `ebim.correlation_id()` lo lee de `set_config` o de la cabecera `x-correlation-id` que PostgREST
+  publica en `request.headers`; **no lo inventa**: sin hilo, la columna queda en NULL.
+- **Seis de los nueve hechos los emite un TRIGGER del servidor** —checkout iniciado y completado,
+  pedido creado y entregado, carrito abandonado y campaña canjeada—; la vitrina solo puede declarar
+  `product_view`, `search` y `add_to_cart`, y `public.track_events_for_slug` rechaza el resto con
+  `ANALYTICS_EVENTO_NO_PERMITIDO`. Un embudo que el navegador puede falsear no sirve para decidir.
+- **La analítica no puede guardar a una persona**: sin columna de correo, nombre ni cliente; lo que
+  identifica una visita es el **sha256** de un identificador opaco. `props` y `search_term` pasan por
+  `ebim.redact_pii` en la puerta Y por un CHECK en la tabla.
+- **Toda razón devuelve NULL sin denominador**, nunca `0 %`: conversión (sobre `checkout_intents`),
+  abandono (sobre `carts` con desenlace) y ticket promedio. Misma regla que la moneda mezclada de
+  `dashboard_kpis` desde P03.
+- **La auditoría son triggers sobre once tablas sensibles**, no llamadas dentro de cada comando: un
+  trigger registra la escritura venga de donde venga. El actor sale del JWT y `ebim.audit` no tiene
+  parámetro de actor. Quedan fuera —y por escrito— los dominios que ya llevan su propia bitácora.
+- **`ops_events` es una proyección**, no una segunda verdad: la fila que manda sigue siendo la del
+  dominio. Existe para que los cuatro fallos tengan la MISMA forma y para dar sitio a las dos señales
+  que solo ocurren en el borde —operación lenta y webhook rechazado—.
+- **`ops_health` no acepta tenant**: lo deriva del JWT, así que no hay parámetro que validar. La
+  lectura exige `owner`/`admin`, igual que `audit_log` y `ops_events`.
+- **`public.trace_by_correlation`** une once tablas y siete dominios en una consulta, filtrando cada
+  rama por `ebim.can_access`. Es la Definition of Done de la fase escrita como función.
+
 ### Capacidades y entitlements (P02-SaaS)
 
 Cuatro tablas más, migración `20260827160000`. Decisiones completas en
@@ -699,7 +747,7 @@ Estructura real (organización por features; storefront y backoffice siguen sien
 ```
 src/
   domain/               PURO: fronteras, puertos, errores, dinero. Sin React, MUI ni Supabase (P01-SaaS)
-    boundaries.ts         los 12 dominios + 6 areas de plataforma, con su estado real
+    boundaries.ts         los 12 dominios + 7 areas de plataforma, con su estado real (P13 anade `observability`)
     capabilities.ts       los 16 modulos del producto y la resolucion efectiva (P02-SaaS)
     flags.ts              interruptores tecnicos: solo restan, nunca conceden
     errors.ts             AppError con discriminante `kind`
@@ -745,11 +793,24 @@ src/
                         vigencia/canal/segmento, colecciones con buscador de
                         producto, vista previa con reloj y sinónimos de búsqueda.
                         Gateada por la capacidad `content.cms`
+  features/analytics/   el cuadro de mando (P13-SaaS): ventas, pedidos, ticket, conversión,
+                        abandono, productos y canal —todo de `orders`, baseline— y el embudo
+                        con los términos de búsqueda, gateados por `analytics.advanced` DESDE
+                        LA BASE. No escribe ninguna tabla: la analítica se lee
+  features/ops/         la operación (P13-SaaS): salud del tenant, incidentes con su edad ya
+                        calculada, RASTRO por correlation id y auditoría. SIN capacidad —igual
+                        que Ajustes y Diagnóstico— y con permiso de rol. Lo único que escribe
+                        es atender un incidente, y no es un `update`: es un comando
   features/storefront/  vitrina pública: resolución por slug, catálogo, ficha, carrito/checkout
                         (P07-SaaS: carrito de servidor con fusión al iniciar sesión y
                          checkout idempotente con etapas)
                         + StoreAccountPage: área de cuenta del comprador B2B (P05-SaaS),
                           resuelta por `my_business_accounts()` y no por la URL
+                        + analytics.ts (P13-SaaS): los TRES hechos que solo existen en la
+                          pantalla —vista de ficha, búsqueda con su número de resultados y
+                          añadido al carrito—, con un identificador de visita opaco en
+                          `sessionStorage` que el servidor hashea antes de guardar. Dispara y
+                          olvida: si la analítica falla, la tienda no se entera
                         + delivery.ts / DeliveryPicker (P12-SaaS): envío, recojo, reparto
                           y entrega digital en la MISMA lista del MISMO checkout; el
                           importe llega resuelto del servidor y aquí no se calcula nada
@@ -757,6 +818,9 @@ src/
 supabase/
   migrations/  SQL versionado (tabla nueva = tabla + RLS + policies en la misma migración)
   functions/   Edge Functions (Deno) + _shared/
+               _shared/observability: el hilo, la redacción, el logger con SINKS y el
+               puente con `ops_events`. Sin un solo vendor dentro: cambiar de
+               proveedor es registrar un sink más
   tests/       PGlite: RLS, invariantes de esquema y contrato de integraciones
 ```
 

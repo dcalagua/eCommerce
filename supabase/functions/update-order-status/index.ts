@@ -20,8 +20,11 @@ import { userClient } from '../_runtime/clients.ts'
 const ALLOWED_FIELDS = ['order_id', 'status', 'notes'] as const
 
 const handler = serveJson(
-  { allowedOrigins: parseAllowedOrigins(Deno.env.get('EBIM_ADMIN_ORIGINS')) },
-  async ({ request, body }) => {
+  {
+    allowedOrigins: parseAllowedOrigins(Deno.env.get('EBIM_ADMIN_ORIGINS')),
+    service: 'update-order-status',
+  },
+  async ({ request, body, trace }) => {
     const { context } = requireTenantContext(request)
     assertNotSuiteOperator(context.email)
     assertNoTenantInPayload(body)
@@ -31,7 +34,7 @@ const handler = serveJson(
     const nextStatus = requireEnum(body, 'status', ORDER_STATUSES) as OrderStatus
     const notes = optionalText(body, 'notes', 1000)
 
-    const client = userClient(request)
+    const client = userClient(request, trace)
 
     const { data: current, error: readError } = await client
       .from('orders')

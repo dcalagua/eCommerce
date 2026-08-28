@@ -5,6 +5,16 @@
  */
 import { corsHeaders, type CorsOptions } from './cors.ts'
 import { AppError, badRequest, methodNotAllowed, toAppError } from './errors.ts'
+import {
+  createLogger,
+  consoleSink,
+  errorCode,
+  resolveTrace,
+  traceHeaders,
+  type LogSink,
+  type Logger,
+  type Trace,
+} from './observability/index.ts'
 
 export type JsonBody = Record<string, unknown>
 
@@ -44,6 +54,15 @@ export type HandlerContext = {
   request: Request
   body: JsonBody
   headers: Record<string, string>
+  /**
+   * El HILO de esta peticion (P13-SaaS). Se pasa a los clientes de Supabase
+   * como cabecera, y de ahi lo recoge `ebim.correlation_id()` en la base: cada
+   * fila escrita durante la peticion queda cosida al mismo incidente sin que
+   * ninguna funcion de dominio acepte un parametro nuevo.
+   */
+  trace: Trace
+  /** Log estructurado con el hilo dentro. Ver `_shared/observability`. */
+  logger: Logger
 }
 
 /**
@@ -51,28 +70,59 @@ export type HandlerContext = {
  * convierte cualquier excepción en una respuesta de error uniforme.
  */
 export function serveJson(
-  options: CorsOptions & { method?: 'POST' | 'GET' },
+  options: CorsOptions & {
+    method?: 'POST' | 'GET'
+    /** Nombre de la funcion, para el campo `service` del log. */
+    service?: string
+    /**
+     * Sinks del log. Por defecto, la consola. Se inyectan para poder probar lo
+     * que se escribe —«el correo no sale en el log»— sin capturar la salida
+     * estandar del proceso, que es lo que hace que esa prueba no exista nunca.
+     */
+    sinks?: readonly LogSink[]
+  },
   handler: (ctx: HandlerContext) => Promise<{ status: number; body: unknown }>,
 ): (request: Request) => Promise<Response> {
   const method = options.method ?? 'POST'
+  const service = options.service ?? 'edge'
 
   return async (request: Request): Promise<Response> => {
-    const headers = corsHeaders(request.headers.get('origin'), options)
+    const trace = resolveTrace(request)
+    // El hilo viaja en la RESPUESTA, incluida la de error y la del preflight.
+    // Es lo que permite que quien abre una incidencia pegue un identificador en
+    // vez de una hora aproximada: sin devolverlo, el rastro existe y nadie
+    // sabe cual pedir.
+    const headers = { ...corsHeaders(request.headers.get('origin'), options), ...traceHeaders(trace) }
 
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers })
     }
 
+    const logger = createLogger({
+      service,
+      trace,
+      sinks: options.sinks ?? [consoleSink()],
+    })
+
     try {
       if (request.method !== method) throw methodNotAllowed(request.method)
       const body = method === 'POST' ? await readJsonBody(request) : {}
-      const result = await handler({ request, body, headers })
+      const result = await logger.measure(service, () =>
+        handler({ request, body, headers, trace, logger }),
+      )
       return jsonResponse(result.body, result.status, headers)
     } catch (error) {
       const appError = toAppError(error)
-      if (appError.status === 500) {
-        console.error('[edge] error no controlado', error)
-      }
+      // `logger.measure` ya registro el fallo con su duracion y su hilo. Lo que
+      // se anade aqui es la TRADUCCION: que codigo y que estado vio el cliente,
+      // que es lo que hace falta para casar una queja con un registro. El
+      // `console.error` crudo de antes se retira: escribia el error entero, sin
+      // hilo y sin redactar.
+      logger.error('request.failed', {
+        code: appError.code,
+        status: appError.status,
+        original_code: errorCode(error),
+      })
       return jsonResponse(errorPayload(appError), appError.status, headers)
     }
   }

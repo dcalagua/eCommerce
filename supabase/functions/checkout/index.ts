@@ -98,15 +98,18 @@ function looksLikeUserSession(request: Request): boolean {
 
 const handler = serveJson(
   // Storefront público: cualquier origen, igual que `create-order`.
-  { allowedOrigins: parseAllowedOrigins(Deno.env.get('EBIM_STOREFRONT_ORIGINS')) },
-  async ({ request, body }) => {
+  {
+    allowedOrigins: parseAllowedOrigins(Deno.env.get('EBIM_STOREFRONT_ORIGINS')),
+    service: 'checkout',
+  },
+  async ({ request, body, trace }) => {
     assertNoTenantInPayload(body)
     const parsed = await parseCheckoutBody(body)
 
     const hasSession = looksLikeUserSession(request)
     const ports = createDbPorts({
-      service: rpcCaller(serviceClient()),
-      caller: rpcCaller(hasSession ? userClient(request) : anonClient()),
+      service: rpcCaller(serviceClient(trace)),
+      caller: rpcCaller(hasSession ? userClient(request, trace) : anonClient(trace)),
       hasSession,
     })
 

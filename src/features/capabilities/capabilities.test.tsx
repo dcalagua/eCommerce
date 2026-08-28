@@ -213,10 +213,19 @@ describe('navegación del backoffice', () => {
     expect(items.map((i) => i.to)).toContain('/app/orders')
   })
 
-  /** Configuración es la salida de un tenant sin nada: nunca se esconde. */
-  it('Configuración sigue estando aunque no haya ni un módulo activo', () => {
+  /**
+   * Configuración es la salida de un tenant sin nada: nunca se esconde. Desde
+   * P13-SaaS la acompañan Operación y Diagnóstico, y por el mismo motivo: quien
+   * no puede ver por qué le fallan los cobros acaba llamando por teléfono. Las
+   * tres van sin capacidad y con permiso de administración.
+   */
+  it('Configuración, Operación y Diagnóstico siguen estando sin ni un módulo activo', () => {
     const items = visibleNavItems(NAV_ITEMS, { can: allow, has: deny, capabilitiesReady: true })
-    expect(items.map((i) => i.to)).toEqual(['/app/settings', '/app/diagnostics'])
+    expect(items.map((i) => i.to)).toEqual([
+      '/app/settings',
+      '/app/operations',
+      '/app/diagnostics',
+    ])
   })
 
   it('Diagnóstico es de quien administra el espacio, no de todo el mundo', () => {

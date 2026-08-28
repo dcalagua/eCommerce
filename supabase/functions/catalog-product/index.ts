@@ -75,15 +75,18 @@ function requireStock(body: Record<string, unknown>): number {
 }
 
 const handler = serveJson(
-  { allowedOrigins: parseAllowedOrigins(Deno.env.get('EBIM_ADMIN_ORIGINS')) },
-  async ({ request, body }) => {
+  {
+    allowedOrigins: parseAllowedOrigins(Deno.env.get('EBIM_ADMIN_ORIGINS')),
+    service: 'catalog-product',
+  },
+  async ({ request, body, trace }) => {
     const { context } = requireTenantContext(request)
     assertNotSuiteOperator(context.email)
     assertNoTenantInPayload(body)
     rejectUnknownFields(body, ALLOWED_FIELDS)
 
     const action = requireEnum(body, 'action', ['create', 'update'] as const)
-    const client = userClient(request)
+    const client = userClient(request, trace)
     const status = body.status === undefined ? 'draft' : requireEnum(body, 'status', PRODUCT_STATUS)
 
     if (action === 'create') {

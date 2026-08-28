@@ -43,6 +43,13 @@ export const PLATFORM_AREA_IDS = [
   'entitlements',
   'provisioning',
   'configuration',
+  // P13-SaaS. Es área de PLATAFORMA y no un dominio de comercio ni un módulo
+  // vendible, y las dos cosas importan: la salud operativa sostiene a los doce
+  // dominios (por eso no cabe dentro de ninguno) y no se cobra aparte (por eso
+  // no es un dominio con capacidad). Un tenant que no pudiera ver por qué
+  // fallan sus cobros porque no pagó el addon de observabilidad es un tenant
+  // que llama por teléfono.
+  'observability',
   'shell',
 ] as const
 export type PlatformAreaId = (typeof PLATFORM_AREA_IDS)[number]
@@ -261,11 +268,31 @@ export const BOUNDARIES: readonly Boundary[] = [
   {
     id: 'analytics',
     kind: 'domain',
-    state: 'partial',
+    // P13-SaaS. Deja de ser `partial`: hay una serie temporal de hechos
+    // canónicos con su propia puerta pública, indicadores con denominador real
+    // y una pantalla con exportación. Lo que faltaba para dejar de ser parcial
+    // no era más agregados sobre `orders` —eso ya estaba—, era que existiera un
+    // HECHO de comercio como dato de primera clase.
+    state: 'implemented',
     responsibility:
-      'Qué está pasando en la tienda: indicadores agregados y, más adelante, la bitácora transversal.',
-    paths: ['features/admin/useDashboardKpis.ts', 'features/admin/DashboardPage.tsx'],
-    serverSide: ['dashboard_kpis, SECURITY INVOKER (091000)'],
+      'Qué está pasando en la tienda: los nueve hechos canónicos de comercio, sin PII, y los indicadores que se derivan de ellos y de los pedidos.',
+    paths: [
+      'features/analytics',
+      // El emisor de los tres hechos de vitrina vive en `storefront` porque es
+      // ahí donde ocurren, pero pertenece a ESTA frontera: gana el prefijo más
+      // largo, igual que el carrito sale de `content` hacia `checkout`.
+      'features/storefront/analytics.ts',
+      'features/admin/useDashboardKpis.ts',
+      'features/admin/DashboardPage.tsx',
+    ],
+    serverSide: [
+      'dashboard_kpis, SECURITY INVOKER (091000)',
+      'analytics_events — los nueve hechos, append-only y sin PII (160100)',
+      'track_events_for_slug — la puerta ANÓNIMA; solo tres tipos (160100)',
+      'seis triggers de servidor: checkout, pedido, carrito y canje (160100)',
+      'analytics_kpis, analytics_top_products, analytics_channel_performance, analytics_timeseries (160200)',
+      'analytics_funnel y analytics_search_terms, gateadas por analytics.advanced (160200)',
+    ],
   },
   {
     id: 'integrations',
@@ -325,6 +352,23 @@ export const BOUNDARIES: readonly Boundary[] = [
       'Lo que el tenant activa y personaliza sin tocar código: branding, impuestos y ajustes de tienda.',
     paths: ['features/admin/settings'],
     serverSide: ['store_settings (091500)', 'tax_categories y set_tax_rate (091600, 091800)'],
+  },
+  {
+    id: 'observability',
+    kind: 'platform',
+    state: 'implemented',
+    responsibility:
+      'Que se pueda saber qué pasó: el hilo (correlation id) que cose una petición de punta a punta, la bitácora de operaciones sensibles y la salud operativa del tenant.',
+    paths: ['features/ops'],
+    serverSide: [
+      'ebim.correlation_id y ebim.request_id — el hilo, como DEFAULT de ocho tablas (160000)',
+      'las guardas de PII: pii_json_keys, looks_like_email, jsonb_is_pii_free, redact_pii (160000)',
+      'audit_log — append-only para todos, con actor derivado del JWT (160300)',
+      'ebim.audit_row — el trigger genérico sobre once tablas sensibles (160300)',
+      'ops_events + cuatro triggers de proyección; ops_health y ops_resolve_event (160400)',
+      'trace_by_correlation — la línea de tiempo de un hilo por once tablas (160400)',
+      'supabase/functions/_shared/observability — logger con sinks, sin vendor',
+    ],
   },
   {
     id: 'shell',
