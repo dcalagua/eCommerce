@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   APP_ROLES as EDGE_ROLES,
-  ROLE_CAPABILITIES as EDGE_CAPABILITIES,
+  ROLE_PERMISSIONS as EDGE_PERMISSIONS,
   can as edgeCan,
 } from '../../../supabase/functions/_shared/roles'
-import { APP_ROLES, ROLE_CAPABILITIES, can } from './roles'
+import { APP_ROLES, ROLE_PERMISSIONS, can } from './roles'
 
 /**
  * El front y el borde llevan copias separadas de la matriz de roles: una la usa
@@ -17,36 +17,36 @@ describe('matriz de roles', () => {
     expect([...APP_ROLES]).toEqual([...EDGE_ROLES])
   })
 
-  it('cada capacidad concede exactamente los mismos roles en las dos copias', () => {
-    expect(Object.keys(ROLE_CAPABILITIES).sort()).toEqual(Object.keys(EDGE_CAPABILITIES).sort())
-    for (const capability of Object.keys(ROLE_CAPABILITIES) as Array<
-      keyof typeof ROLE_CAPABILITIES
+  it('cada permiso concede exactamente los mismos roles en las dos copias', () => {
+    expect(Object.keys(ROLE_PERMISSIONS).sort()).toEqual(Object.keys(EDGE_PERMISSIONS).sort())
+    for (const permission of Object.keys(ROLE_PERMISSIONS) as Array<
+      keyof typeof ROLE_PERMISSIONS
     >) {
-      expect([...ROLE_CAPABILITIES[capability]]).toEqual([...EDGE_CAPABILITIES[capability]])
+      expect([...ROLE_PERMISSIONS[permission]]).toEqual([...EDGE_PERMISSIONS[permission]])
     }
   })
 
   it('`can` responde igual en las dos para toda combinación', () => {
     for (const role of APP_ROLES) {
-      for (const capability of Object.keys(ROLE_CAPABILITIES) as Array<
-        keyof typeof ROLE_CAPABILITIES
+      for (const permission of Object.keys(ROLE_PERMISSIONS) as Array<
+        keyof typeof ROLE_PERMISSIONS
       >) {
-        expect(can(role, capability)).toBe(edgeCan(role, capability))
+        expect(can(role, permission)).toBe(edgeCan(role, permission))
       }
     }
   })
 
-  it('sin rol no hay ninguna capacidad', () => {
+  it('sin rol no hay ningun permiso', () => {
     expect(can(null, 'store.manage')).toBe(false)
     expect(can(undefined, 'catalog.write')).toBe(false)
   })
 
   it('`viewer` no escribe nada y `owner` puede todo', () => {
-    for (const capability of Object.keys(ROLE_CAPABILITIES) as Array<
-      keyof typeof ROLE_CAPABILITIES
+    for (const permission of Object.keys(ROLE_PERMISSIONS) as Array<
+      keyof typeof ROLE_PERMISSIONS
     >) {
-      expect(can('viewer', capability)).toBe(false)
-      expect(can('owner', capability)).toBe(true)
+      expect(can('viewer', permission)).toBe(false)
+      expect(can('owner', permission)).toBe(true)
     }
   })
 

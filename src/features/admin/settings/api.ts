@@ -98,6 +98,15 @@ export interface SaveSettingsInput {
   /** Nombre actual en `stores`: solo se escribe si cambió. */
   currentName: string
   values: StoreFormValues
+  /**
+   * ¿La sociedad tiene `content.white_label` (contrato §4.3)?
+   *
+   * Sin ella el campo NO se envía en vez de enviarse en `false`: el guardado de
+   * un nombre comercial no puede apagar de paso una marca blanca que el tenant
+   * tenía. Si alguien lo forzara igualmente, la policy
+   * `store_settings_update_admin` lo rechaza — esto solo evita el 403.
+   */
+  canWhiteLabel: boolean
 }
 
 /**
@@ -134,6 +143,7 @@ export async function saveStoreSettings(input: SaveSettingsInput): Promise<void>
     contact_address: orNull(values.contact_address),
     logo_url: values.logo_url,
     banner_url: values.banner_url,
+    ...(input.canWhiteLabel ? { white_label: values.white_label } : {}),
   }
 
   const { data, error } = await supabase

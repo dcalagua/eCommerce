@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { emailFromSession, tenantFromSession } from '@/features/auth/session'
 import { useSessionContext } from '@/features/auth/session-context'
-import { can as roleCan, type Capability } from '@/shared/lib/roles'
+import { can as roleCan, type Permission } from '@/shared/lib/roles'
 import { TenantCtx, type TenantContextValue } from './tenant-context'
 import type { Workspace } from './types'
 import { fetchWorkspace, resolveTenantSelection, workspaceKey } from './workspace'
@@ -60,7 +60,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       error: query.error instanceof Error ? query.error : null,
       setActiveCompany,
       setActiveStore: setStoreOverride,
-      can: (capability: Capability) => roleCan(selection.role, capability),
+      can: (permission: Permission) => roleCan(selection.role, permission),
       refetch: () => void query.refetch(),
     }),
     [selection, email, query, setActiveCompany],

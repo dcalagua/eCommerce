@@ -21,13 +21,16 @@ Usuario del tenant ──┘      ├─ /s/:storeSlug  storefront público (ten
                             ├─ catalog-product    (alta/edición con el JWT del usuario)
                             └─ update-order-status (transiciones con el JWT del usuario)
 
-                            [PENDIENTES, no existen todavía]
-                            ├─ platform-context ──► HUB EBIM (sociedades, addons, config)
-                            └─ sso              ──► HUB EBIM (verifica JWT contra JWKS)
+                            ├─ platform-context   ──► HUB EBIM (addons y config, §5)
+                            │                        [escrita y probada; el hub todavía
+                            │                         no conoce esta app → HUB_NO_CONFIGURADO]
+                            │
+                            └─ sso  [PENDIENTE]    ──► HUB EBIM (verifica JWT contra JWKS)
 ```
 
-> **Estado real de la identidad.** `platform-context` y `sso` estaban en este diagrama como si
-> existieran; no existen. La identidad efectiva de DEV/QAS es Supabase Auth más el hook
+> **Estado real de la identidad.** `sso` sigue sin existir; `platform-context` sí existe desde
+> P02-SaaS, pero su camino hacia el hub nunca se ha ejercitado contra un hub real porque
+> `ecommerce` no está dado de alta en la suite (`SAAS_ROADMAP` §5.1). La identidad efectiva de DEV/QAS es Supabase Auth más el hook
 > `ebim.demo_access_token_hook` (migraciones `20260827120000` y `..._121000`), y el camino contra el
 > hub no se ha ejercitado nunca. Corregido en P01-SaaS por ser un error de documentación; el cambio
 > de identidad en sí está bloqueado (contrato §2, cambios breaking al buzón) y corresponde a
@@ -67,6 +70,28 @@ tenants (PK = organization_id del hub)
 - Sin forks de schema por cliente: diferencias por `store_settings.config` + `products.custom_fields` (JSONB).
 - Pendiente de fases siguientes: `product_variants`, `price_lists`, `customers`, `carts`, `payments`, `audit_log`.
 
+### Capacidades y entitlements (P02-SaaS)
+
+Cuatro tablas más, migración `20260827160000`. Decisiones completas en
+[`adr/002-capabilities-entitlements.md`](adr/002-capabilities-entitlements.md).
+
+```
+app_capabilities          registro TÉCNICO del producto (global, sin tenant, como integration_providers)
+tenant_platform_context   cache de la respuesta del hub (§5): app_active, plan, origen, sincronización
+tenant_entitlements       cache de los addons ACTIVOS por sociedad (§6). Solo lectura para el backoffice
+tenant_feature_flags      interruptores técnicos del tenant. Solo restan; nunca conceden
+```
+
+- **`ebim.has_capability(org, company, cap)`** = `can_access` **y** `company_is_entitled`. Es la
+  autoridad: se usa dentro de las policies, no solo en la UI.
+- **`public.effective_capabilities(company)`** es lo que lee la app; la sociedad es alcance y el JWT
+  sigue decidiendo (`can_access` antes de devolver nada, y `SIN_PERMISO` si no).
+- **`public.sync_platform_context(...)`** es la única puerta de escritura: `service_role`, con
+  `REVOKE EXECUTE` a `anon`/`authenticated`/`public`. Reemplaza el conjunto entero, así que un addon
+  que el hub deja de devolver se apaga.
+- Enforcement real hoy: `store_settings.white_label` exige `content.white_label` (addon premium del
+  contrato §4.3) y escribir `tenant_integrations` exige `integrations.enterprise`.
+
 ## Operaciones de servidor y Edge Functions (P02)
 
 | Función | Autoriza | Cliente | Por qué |
@@ -75,6 +100,7 @@ tenants (PK = organization_id del hub)
 | `create-order` | ninguna (comprador anónimo) | `service_role` | el pedido no puede insertarse desde el navegador |
 | `catalog-product` | JWT del usuario | clave publicable + `Authorization` | **decide la RLS**, no la función |
 | `update-order-status` | JWT del usuario | clave publicable + `Authorization` | idem, más el trigger de transiciones |
+| `platform-context` | JWT del usuario **o** clave de aprovisionamiento | `service_role` | es la única que tiene la credencial del hub; el navegador nunca habla con el hub |
 
 `supabase/functions/_shared/` (auth, CORS, errores, validación, reglas de pedido, roles) es TypeScript puro:
 lo compila el `tsc` del repo y lo cubren los tests. `_runtime/clients.ts` queda aparte porque importa el SDK
@@ -98,7 +124,9 @@ Estructura real (organización por features; storefront y backoffice siguen sien
 ```
 src/
   domain/               PURO: fronteras, puertos, errores, dinero. Sin React, MUI ni Supabase (P01-SaaS)
-    boundaries.ts         los 12 dominios + 5 areas de plataforma, con su estado real
+    boundaries.ts         los 12 dominios + 6 areas de plataforma, con su estado real
+    capabilities.ts       los 16 modulos del producto y la resolucion efectiva (P02-SaaS)
+    flags.ts              interruptores tecnicos: solo restan, nunca conceden
     errors.ts             AppError con discriminante `kind`
     money.ts              importe = decimal en TEXTO, nunca number
     ports/                PricingPort, InventoryPort, PaymentProvider, ErpProvider, ...
@@ -108,6 +136,7 @@ src/
                         lib (env, supabase, db-schema, format, search, slug)
   features/auth/        login (anatomía de suite §4.5), sesión, guard RequireSession
   features/tenant/      contexto de tenant del backoffice, derivado del JWT
+  features/capabilities/ que modulos tiene la sociedad: provider, gate, diagnostico
   features/admin/       AdminLayout, dashboard, configuración
   features/catalog/     productos del backoffice
   features/orders/      pedidos del backoffice
@@ -124,9 +153,11 @@ supabase/
 Decisiones completas en [`adr/001-domain-boundaries.md`](adr/001-domain-boundaries.md). En resumen:
 
 - **Doce dominios de negocio** —catalog, pricing, customers, inventory, checkout, orders, payments,
-  promotions, content, fulfillment, analytics, integrations— y **cinco áreas de plataforma**
-  —identity, tenancy, provisioning, configuration, shell—, declarados en `src/domain/boundaries.ts`
-  con su estado real (`implemented` / `partial` / `declared`) y su ruta en `src/`.
+  promotions, content, fulfillment, analytics, integrations— y **seis áreas de plataforma**
+  —identity, tenancy, entitlements, provisioning, configuration, shell—, declarados en
+  `src/domain/boundaries.ts` con su estado real (`implemented` / `partial` / `declared`) y su ruta
+  en `src/`. (`entitlements` la añade P02-SaaS: no es un módulo vendible, es la que decide qué
+  módulos hay.)
 - **Un puerto existe solo si hay una segunda implementación ya declarada**: una fila de
   `integration_providers` con esa operación, o dos llamantes concretos hoy. Por eso hay
   `PricingPort`, `InventoryPort`, `PaymentProvider`, `FulfillmentProvider`, `NotificationProvider`,
@@ -145,6 +176,14 @@ Decisiones completas en [`adr/001-domain-boundaries.md`](adr/001-domain-boundari
 - **Nombres de persistencia en un solo sitio**: `shared/lib/db-schema.ts`, tipado con `satisfies`
   contra `database.types.ts` (generado por `npm run db:types` → `scripts/gen-db-types.mjs`).
 
+- **Tres ejes de autorización, tres nombres** (P02-SaaS): `Permission` es lo que puede un ROL
+  (`shared/lib/roles.ts`, `ebim.has_role`); `Capability` es el módulo que la sociedad CONTRATÓ
+  (`src/domain/capabilities.ts`, `ebim.has_capability`); `FeatureFlags` son interruptores técnicos
+  del tenant que solo pueden restar. Se componen: hacen falta los tres.
+- **Ningún uuid literal ni nombre de plan comercial en código de producción.** Un
+  `if (org === '3f2a…')` es la versión del anti-patrón que sobrevive a la regla de los nombres
+  propios, y es igual de mortal.
+
 Todas estas reglas las comprueba `src/architecture.test.ts`: no son convenciones, son tests.
 
 - Theming por tokens; el acento proviene del branding del tenant (`accent_color`), nunca hardcodeado.
@@ -153,6 +192,8 @@ Todas estas reglas las comprueba `src/architecture.test.ts`: no son convenciones
 
 ## Integración con la suite
 
-- Registro de `ecommerce` en el hub (`apps`, `workspace_apps`) y lectura de addons por sociedad para gating.
+- Registro de `ecommerce` en el hub (`apps`, `workspace_apps`): **pendiente del operador**
+  (`SAAS_ROADMAP` §5.1). La lectura de addons por sociedad ya está construida (P02-SaaS) y responde
+  `HUB_NO_CONFIGURADO` mientras tanto; el tenant se queda con lo baseline.
 - Vitrina cruzada (§6.1): momento contextual hacia eExpense/eSupplier cuando el tenant no las tiene contratadas.
 - Coordinación por el buzón `coordinacion\` en Drive; cambios a interfaces compartidas = propuesta al contrato.

@@ -3,7 +3,7 @@
 GUIDELINES_STATUS: VERIFIED (**por lectura directa** en la 2ª pasada de P00-SaaS: contrato v1.15,
 `PROTOCOLO.md`, `BANDEJA.md` y `EBIM-CREW-ROSTER.md`). La unidad montada es `G:`, no `H:`.
 Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
-Última actualización: 2026-08-27 (P01 de productización SaaS)
+Última actualización: 2026-08-27 (P02 de productización SaaS)
 
 > **Dos numeraciones de fase.** Lo que sigue como «P00…P12» es el trabajo histórico de este repo. A
 > partir del 2026-08-27 arranca un segundo recorrido, **P00–P17 de productización SaaS**
@@ -11,6 +11,142 @@ Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
 > serie: el P12 histórico es el framework de integraciones; el P12-SaaS será fulfillment y devoluciones.
 
 ## Fase actual
+**P02-SaaS — Módulos, entitlements, feature flags y control plane. COMPLETA. Gate: PASS.**
+Decisiones completas en [`docs/adr/002-capabilities-entitlements.md`](adr/002-capabilities-entitlements.md).
+
+### Gates (2026-08-27, partiendo de `5bd6246`)
+
+| Comando | Antes de P02 | Después |
+|---|---|---|
+| `npm run typecheck` | PASS | **PASS** |
+| `npm run lint` | PASS, 0 problemas | **PASS**, 0 problemas |
+| `npm run test` | 611 / 44 archivos | **702 / 49 archivos** |
+| `npm run test:db` | 308 / 16 | **360 / 18** |
+| `npm run build` | 744,91 kB (221,15 gzip) | **PASS**, 764,32 kB (227,62 gzip) |
+
+91 tests nuevos: 17 de dominio, 20 de UI, 16 del parser del hub, 2 de arquitectura y 36 contra
+Postgres real. **Ningún test existente se borró ni se debilitó**; tres se ajustaron y se explican
+abajo.
+
+### El bloqueo que el roadmap decía que podía parar la fase, y por qué no la paró
+
+`SAAS_ROADMAP` §5.1: **`ecommerce` no está dado de alta en la suite** y sin catálogo de addons en el
+hub, «un control plane de entitlements construido ahora tendría que inventarse un catálogo local».
+Sigue siendo cierto y **sigue sin resolverse desde este repositorio** (lo hace el operador vía GMAO).
+
+Lo que se comprobó al mirarlo de cerca es que ese bloqueo impide **conocer los códigos de addon
+definitivos**, no construir el mecanismo. La parte que depende del hub es una columna
+(`app_capabilities.entitlement_code`) y una constante (`ENTITLEMENT_PREFIX`). Así que se construyó
+todo lo demás y se dejó la dependencia aislada en un sitio: cuando el hub defina su catálogo y no
+coincida, cambia un `UPDATE` y una constante, no una línea de gating.
+
+Esperar habría dejado la fase en FAIL con cero código y habría bloqueado además a P03–P14, que
+gatean contra esto.
+
+### Tres ejes, tres nombres — se cierra la deuda de vocabulario de P01
+
+| Eje | Pregunta | Quién decide | Nombre |
+|---|---|---|---|
+| Permiso | ¿este ROL puede hacerlo? | esta app | `Permission` (antes `Capability`) |
+| Entitlement | ¿la cuenta CONTRATÓ el módulo? | el **hub** (§5/§6) | `EntitlementCode` |
+| Flag técnico | ¿está encendido? | el administrador del tenant | `FeatureFlags` |
+
+`Capability` pasa a ser la unidad técnica que se gatea. El renombrado de los roles tocó cinco
+archivos y sus tests, sin cambiar comportamiento; el ADR 001 ya lo había asignado a esta fase.
+
+### Lo que se decidió, y las tres reglas que lo sostienen
+
+**El registro de capacidades es TÉCNICO y es de esta app; el catálogo comercial es del hub.** Aquí
+vive qué sabe hacer eCommerce (16 módulos: 5 baseline + 11 vendibles), con su frontera, su estado
+real y qué se pierde sin él. En el hub viven el precio, el plan y la vigencia. `plan` se guarda y se
+enseña en diagnóstico, pero **nada decide con él**: una prueba de arquitectura falla si aparece un
+`plan === '…'` o una constante `PLANS`.
+
+**La composición, escrita una vez y comprobada tres veces:**
+
+```
+capacidad efectiva = app_active AND (baseline OR entitlement) AND (baseline OR flag ≠ false)
+```
+
+- `app_active: false` no deja **ni lo baseline**: no es un plan mínimo, es un no-cliente.
+- **Un flag jamás concede.** Si pudiera, los ajustes del propio cliente serían una caja registradora.
+- **Un flag no apaga lo baseline**: sería un botón de caída dentro de la pantalla de ajustes.
+
+La regla vive en TypeScript y en SQL, y `supabase/tests/capabilities.test.ts` corre **siete
+escenarios** contra Postgres real comparando las dos listas capacidad por capacidad.
+
+**La seguridad está en las policies; el gating de la UI es cortesía.** Dos superficies vendibles
+reales cerradas en la base, elegidas porque ya existían y no se inventaron para la demostración:
+
+| Superficie | Capacidad | Sin ella |
+|---|---|---|
+| `store_settings.white_label` | `content.white_label` (**addon premium del contrato §4.3**) | el UPDATE viola la policy |
+| `tenant_integrations` INSERT/UPDATE | `integrations.enterprise` | habilitar un conector viola la policy |
+
+Y retirar el addon **apaga el efecto, no solo el botón**: `sync_platform_context` pone
+`white_label = false` en la misma transacción en la que el hub deja de declararlo. Sin eso, quien
+deja de pagar conserva la vitrina sin la firma de la suite para siempre.
+
+### Nadie se concede un módulo a sí mismo
+
+`tenant_entitlements` y `tenant_platform_context` son de **solo lectura** para el backoffice, con dos
+capas que no son la misma repetida: no hay GRANT de escritura para `authenticated` **y** no hay una
+sola policy de escritura. La escritura pasa por `sync_platform_context`, con `REVOKE EXECUTE` a
+`public`/`anon`/`authenticated` y GRANT solo a `service_role` (lección esupplier-030). Lo único que
+pertenece al tenant son los flags, y ahí sí escribe `owner`/`admin`.
+
+### El gate de la UI tiene cuatro estados, y el tercero es el que importa
+
+Cargando → esqueleto. **Error → error de verdad, con reintento.** Sin capacidad → «este módulo no
+está en tu plan» (`role="status"`, no `alert`: aquí no falló nada). Con capacidad → el módulo.
+
+El estado de error existe separado porque un 403 al leer capacidades **no** es «no lo tienes».
+Degradarlo a «no contratado» es exactamente cómo un problema de autorización del servidor se vuelve
+invisible durante semanas: el usuario ve una pantalla plausible y nadie abre una incidencia. Hay un
+test que monta un 42501 y exige que salga un `role="alert"` y no el candado.
+
+### Diagnóstico: `/app/diagnostics`, solo para `tenant.manage`
+
+Origen de la configuración (`hub` / `provisioning` / `sin-contexto`), organización, sociedad y tienda
+activas, producto y versión, host del proyecto, plan (informativo), última sincronización y los 16
+módulos con tres estados distinguibles: activo, apagado por interruptor y no contratado. Los códigos
+de addon que el hub manda y esta versión no conoce **se enseñan**: es la señal de que el catálogo va
+por delante del binario. **Ni una credencial**, y un test lo comprueba sobre el DOM.
+
+### Los tres tests existentes que se ajustaron (y por qué no es debilitarlos)
+
+- `schema-invariants`: `app_capabilities` entra en la lista **nominal** de catálogos globales, junto
+  a `currencies` e `integration_providers`. Esa lista tiene su propia prueba —sin columnas de tenant,
+  RLS activada, sin GRANT de escritura a anon/authenticated— así que la exención no es una puerta
+  trasera: es un requisito que se verifica.
+- `routes.test`: suma `/app/diagnostics` a la lista exacta de rutas del backoffice.
+- `SettingsPage.test`: monta el `CapabilitiesProvider`, porque la pestaña de Marca ahora pregunta si
+  la sociedad tiene marca blanca.
+
+### Lo que P02 NO resuelve, dicho claramente
+
+- **El camino hacia el hub nunca se ha ejercitado contra un hub real.** Está escrito y su parser
+  está probado con 16 tests, pero mientras `ecommerce` no esté dado de alta, `platform-context`
+  responde `HUB_NO_CONFIGURADO` y el origen efectivo es `sin-contexto`.
+- **Once de las dieciséis capacidades son `declared`**: gatean algo que todavía no existe. Es
+  correcto —el gating tiene que existir antes que el módulo— pero la primera validación real de
+  este diseño llega con P03.
+- **El camino de aprovisionamiento por clave del operador es deuda con fecha de caducidad.** Existe
+  para que un módulo se pueda activar hoy sin desplegar; `source: 'provisioning'` no debería existir
+  en régimen normal.
+- **`database.types.ts` no se regeneró**: la migración 160000 no está aplicada en el proyecto
+  enlazado y esta fase no despliega. Las cuatro constantes nuevas de `db-schema.ts` van **sin**
+  `satisfies`, y la red mientras tanto es un test que comprueba esos mismos nombres contra el
+  esquema construido desde las migraciones — más fuerte, porque no depende de que alguien regenere.
+  Al aplicar: `npm run db:types` y añadir el `satisfies`.
+- **R2 (canales sin superficie) sigue abierto.** El roadmap lo asignaba a «P02/P03»; P02 no le da
+  superficie porque un canal no es una capacidad contratada, es una dimensión del catálogo. Pasa
+  entero a **P03-SaaS**.
+
+Siguiente: **P03-SaaS** (PIM: variantes y atributos), que ya tiene contra qué gatear
+(`catalog.advanced`).
+
+## Fase anterior
 **P01-SaaS — Arquitectura modular, contratos de dominio y extensibilidad. COMPLETA. Gate: PASS.**
 Decisiones completas en [`docs/adr/001-domain-boundaries.md`](adr/001-domain-boundaries.md).
 
@@ -687,10 +823,13 @@ inicial `pending` (estándar EBIM, migración 04). Nada desplegado: sigue sin pr
 
 ### Abiertos por la auditoría P00-SaaS (2026-08-27)
 Detalle y evidencia en `docs/SAAS_BASELINE.md` §4; asignación de fase en `docs/SAAS_ROADMAP.md` §4.
-- [ ] **R1 — Sin entitlements ni capacidades.** Cero referencias a `addon` en `src/`. Bloqueante para
-      vender el mismo producto con módulos distintos. → **P02-SaaS**.
+- [x] ~~**R1 — Sin entitlements ni capacidades.**~~ → **cerrado en P02-SaaS**: registro técnico de 16
+      módulos, cache de entitlements del hub, flags técnicos separados, `ebim.has_capability` dentro de
+      las policies y diagnóstico en `/app/diagnostics`. ADR 002. **Queda la mitad que no es de este
+      repositorio**: el alta de `ecommerce` y su catálogo de addons en el hub (§5.1).
 - [ ] **R2 — Canales sin superficie.** `channels`/`product_channels`/`orders.channel_id` completos y
-      probados; `grep -ri channel src/` = 0. Un tenant no puede crear ni administrar un canal. → **P02/P03-SaaS**.
+      probados; `grep -ri channel src/` = 0. Un tenant no puede crear ni administrar un canal.
+      → **P03-SaaS** (P02 no lo tocó: un canal no es una capacidad contratada, es una dimensión del catálogo).
 - [ ] **R3 — Outbox sin consumidor.** `integration_enqueue` solo lo invocan los tests: el transporte
       nunca ha entregado un mensaje real, así que el contrato canónico está escrito pero no validado.
       → primer consumidor en **P07/P08-SaaS**, superficie enterprise en **P14-SaaS**.
@@ -698,15 +837,20 @@ Detalle y evidencia en `docs/SAAS_BASELINE.md` §4; asignación de fase en `docs
       defensa contra el doble envío es solo del navegador. → **P07-SaaS**.
 - [ ] **R5 — Sin impuesto ni descuento por línea en `order_items`.** El desglose fiscal de un carrito con
       dos tasas no es reconstruible desde la base. Prerrequisito de facturación. → **P08-SaaS**.
-- [ ] **R6 — Identidad del hub sin ejercitar.** `platform-context` y `sso` están en
-      `docs/architecture.md` y no existen en `supabase/functions/`. **Requiere decisión del operador**
-      (Modo A vs B) y retirada del `demo_access_token_hook`. → **P02/P16-SaaS**.
+- [ ] **R6 — Identidad del hub sin ejercitar.** P02-SaaS **construyó `platform-context`** (proxy del
+      §5, con su parser probado) pero nunca se ha ejercitado contra un hub real: sin el alta de
+      `ecommerce` responde `HUB_NO_CONFIGURADO`. `sso` sigue sin existir. **Requiere decisión del
+      operador** (Modo A vs B) y retirada del `demo_access_token_hook`. → **P16-SaaS**.
 - [ ] **R7 — Sin `audit_log` transversal**, pese a exigirlo `CLAUDE.md`. → **P13-SaaS**, adelantable.
-- [ ] **R10 — `H:\…\EBIM-Plataforma\` no montada en esta sesión.** Remontar **antes de P02-SaaS y
-      P16-SaaS**; `coordinacion\BANDEJA.md` sigue sin leerse.
+- [x] ~~**R10 — `H:\…\EBIM-Plataforma\` no montada.**~~ → resuelto: la unidad es `G:` y el contrato
+      se releyó en P00-SaaS y de nuevo en P02-SaaS (§4.3, §5, §6, §7 para esta fase).
 - [ ] **Alinear `CLAUDE.md` con la estructura real de `src/`** (`src/features/*` en vez de
       `src/storefront` + `src/admin`). La divergencia está declarada en `docs/architecture.md` y respeta
       lo que la regla protege, pero el texto normativo debería decir lo que el repo hace.
+- [ ] **Regenerar `database.types.ts` y poner el `satisfies`** a las cuatro tablas y la RPC de la
+      migración 160000, cuando esa migración esté aplicada en el proyecto enlazado (P02-SaaS).
+- [ ] **Retirar el camino de aprovisionamiento por clave** (`source: 'provisioning'`) cuando el hub
+      responda de verdad. Existe solo mientras `ecommerce` no esté dado de alta (P02-SaaS).
 - [ ] **Nota de higiene:** la entrada «Rate limiting de `create-order`» que aparece más abajo quedó
       **cerrada en P10** (mig. 22-23, `checkout-rate-limit.test.ts`) y su casilla no se marcó.
 

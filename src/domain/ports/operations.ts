@@ -18,10 +18,13 @@
  * documentación y no código.
  *
  * Nota de vocabulario (§5.3 del baseline): la base llama `capabilities` a esto
- * y `shared/lib/roles.ts` llama `Capability` a los permisos de ROL. Son ejes
+ * y `shared/lib/roles.ts` llama `Permission` a los permisos de ROL. Son ejes
  * ortogonales y aquí se evita la palabra a propósito: esto son
- * `ProviderOperation`. La otra colisión —lo que el tenant CONTRATÓ— la resuelve
- * P02, que es quien introduce ese tercer eje.
+ * `ProviderOperation`. El tercer eje —lo que el tenant CONTRATÓ— lo resolvió
+ * P02: se llama `Capability` (`domain/capabilities.ts`) y por eso el de los
+ * roles pasó a llamarse `Permission`. Que un proveedor sepa hacer
+ * `stock.read` no significa que la sociedad tenga contratado
+ * `inventory.multiwarehouse`, ni que este usuario pueda tocarlo.
  */
 
 /** Familias de proveedor. Espejo del enum `public.integration_kind`. */

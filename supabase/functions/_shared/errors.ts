@@ -6,7 +6,13 @@
  * un código HTTP estable, sin filtrar detalle interno de Postgres al cliente.
  */
 
-export type ErrorStatus = 400 | 401 | 403 | 404 | 405 | 409 | 422 | 429 | 500
+/**
+ * `502`/`503` entran en la lista con el proxy del Platform Context API
+ * (P02-SaaS): «el hub no esta configurado» y «el hub no contesta» no son
+ * errores de esta app, y devolverlos como 500 haria que el cliente reintentara
+ * contra un problema que no se arregla reintentando.
+ */
+export type ErrorStatus = 400 | 401 | 403 | 404 | 405 | 409 | 422 | 429 | 500 | 502 | 503
 
 export class AppError extends Error {
   readonly code: string

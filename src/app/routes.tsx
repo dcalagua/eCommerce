@@ -1,6 +1,8 @@
 import { lazy, Suspense, type ReactNode } from 'react'
 import { createBrowserRouter, type RouteObject } from 'react-router-dom'
+import type { CapabilityId } from '@/domain'
 import { ProtectedArea } from '@/features/auth/ProtectedArea'
+import { CapabilityGate } from '@/features/capabilities/CapabilityGate'
 import { LoadingState } from '@/shared/ui/states'
 import { NotFoundPage } from './NotFoundPage'
 import { RootErrorRoute } from './RootErrorRoute'
@@ -41,6 +43,9 @@ const CategoriesPage = lazy(() =>
 const OrdersPage = lazy(() =>
   import('@/features/orders/OrdersPage').then((m) => ({ default: m.OrdersPage })),
 )
+const DiagnosticsPage = lazy(() =>
+  import('@/features/capabilities/DiagnosticsPage').then((m) => ({ default: m.DiagnosticsPage })),
+)
 const StorefrontLayout = lazy(() =>
   import('@/features/storefront/StorefrontLayout').then((m) => ({ default: m.StorefrontLayout })),
 )
@@ -67,6 +72,18 @@ function withSuspense(node: ReactNode): ReactNode {
   return <Suspense fallback={<LoadingState />}>{node}</Suspense>
 }
 
+/**
+ * Ruta gateada por capacidad (P02-SaaS).
+ *
+ * Esconder la entrada del menú no basta: una URL se escribe a mano y se comparte
+ * por correo. Con esto, entrar directo a `/app/products` sin el módulo enseña
+ * «no contratado» en vez de un listado vacío, que es lo que hoy parecería un
+ * fallo de la aplicación. Sigue sin ser seguridad: la autoridad es la RLS.
+ */
+function gated(capability: CapabilityId, node: ReactNode): ReactNode {
+  return <CapabilityGate capability={capability}>{withSuspense(node)}</CapabilityGate>
+}
+
 export const routes: RouteObject[] = [
   { path: '/', element: withSuspense(<LandingPage />), errorElement: <RootErrorRoute /> },
   { path: '/login', element: withSuspense(<LoginPage />), errorElement: <RootErrorRoute /> },
@@ -84,11 +101,14 @@ export const routes: RouteObject[] = [
         path: '/app',
         element: withSuspense(<AdminLayout />),
         children: [
-          { index: true, element: withSuspense(<DashboardPage />) },
-          { path: 'products', element: withSuspense(<ProductsPage />) },
-          { path: 'categories', element: withSuspense(<CategoriesPage />) },
-          { path: 'orders', element: withSuspense(<OrdersPage />) },
+          { index: true, element: gated('analytics.basic', <DashboardPage />) },
+          { path: 'products', element: gated('catalog', <ProductsPage />) },
+          { path: 'categories', element: gated('catalog', <CategoriesPage />) },
+          { path: 'orders', element: gated('orders', <OrdersPage />) },
+          // Ajustes y diagnóstico NO se gatean por capacidad: son la salida de
+          // un tenant sin nada contratado y el sitio donde se ve por qué.
           { path: 'settings', element: withSuspense(<SettingsPage />) },
+          { path: 'diagnostics', element: withSuspense(<DiagnosticsPage />) },
         ],
       },
     ],

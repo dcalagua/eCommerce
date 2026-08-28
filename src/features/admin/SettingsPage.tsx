@@ -5,8 +5,10 @@ import {
   Button,
   Card,
   CardContent,
+  FormControlLabel,
   Link as MuiLink,
   Stack,
+  Switch,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
@@ -15,6 +17,8 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, type ReactNode } from 'react'
 import { Controller, useForm } from 'react-hook-form'
+import { CapabilityFeature } from '@/features/capabilities/CapabilityGate'
+import { useCapabilities } from '@/features/capabilities/capabilities-context'
 import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
@@ -128,6 +132,10 @@ export function SettingsPage() {
   const { notify } = useFeedback()
   const { activeStore, activeCompanyId, tenant, status: tenantStatus, can } = useTenant()
   const canManage = can('store.manage')
+  // Dos ejes distintos: `can` es el ROL y `has` es lo que la sociedad CONTRATÓ.
+  // Hacen falta los dos, y la base los vuelve a comprobar por separado.
+  const { has } = useCapabilities()
+  const canWhiteLabel = has('content.white_label')
 
   const storeId = activeStore?.id ?? null
   const settings = useStoreSettings(canManage ? storeId : null)
@@ -155,6 +163,7 @@ export function SettingsPage() {
         companyId: activeCompanyId,
         currentName: activeStore?.name ?? '',
         values,
+        canWhiteLabel,
       })
       notify(t('settings.toast.saved'))
       form.reset(values)
@@ -364,6 +373,35 @@ export function SettingsPage() {
                             />
                           )}
                         />
+
+                        {/* Marca blanca: addon premium de suite (contrato §4.3).
+                            Es el primer módulo vendible con superficie real, y
+                            está aquí explicado en vez de escondido: un control
+                            que desaparece sin dejar rastro es la forma más
+                            rápida de que nadie descubra que existe. */}
+                        <CapabilityFeature capability="content.white_label">
+                          <Controller
+                            control={form.control}
+                            name="white_label"
+                            render={({ field }) => (
+                              <Stack spacing={0.5}>
+                                <FormControlLabel
+                                  control={
+                                    <Switch
+                                      checked={field.value}
+                                      disabled={busy}
+                                      onChange={(event) => field.onChange(event.target.checked)}
+                                    />
+                                  }
+                                  label={t('settings.whiteLabel')}
+                                />
+                                <Typography sx={{ color: 'var(--muted)', fontSize: 13 }}>
+                                  {t('settings.whiteLabelHelp')}
+                                </Typography>
+                              </Stack>
+                            )}
+                          />
+                        </CapabilityFeature>
                       </Stack>
                     )}
                   </ManagedSection>

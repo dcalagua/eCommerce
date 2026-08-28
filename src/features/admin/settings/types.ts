@@ -97,6 +97,12 @@ export const storeFormSchema = z.object({
     .refine((value) => value === '' || (value.length >= 3 && value.length <= 240), 'settings.error.address'),
   logo_url: z.string().nullable(),
   banner_url: z.string().nullable(),
+  /**
+   * Marca blanca. Addon premium de suite (contrato §4.3), así que el campo
+   * existe siempre en el formulario pero solo se ENVÍA si la sociedad tiene la
+   * capacidad `content.white_label` — ver `saveStoreSettings`.
+   */
+  white_label: z.boolean(),
 })
 export type StoreFormValues = z.infer<typeof storeFormSchema>
 
@@ -111,6 +117,7 @@ export function toForm(name: string, settings: StoreSettings | null): StoreFormV
     contact_address: settings?.contact_address ?? '',
     logo_url: settings?.logo_url ?? null,
     banner_url: settings?.banner_url ?? null,
+    white_label: settings?.white_label ?? false,
   }
 }
 

@@ -22,6 +22,7 @@ vi.mock('@/shared/lib/supabase', () => ({
 }))
 
 const { TenantProvider } = await import('@/features/tenant/TenantProvider')
+const { CapabilitiesProvider } = await import('@/features/capabilities/CapabilitiesProvider')
 const { SettingsPage } = await import('./SettingsPage')
 const { validateAssetFile } = await import('./settings/types')
 
@@ -69,10 +70,18 @@ function defaultSettings() {
   ]
 }
 
+/**
+ * El `CapabilitiesProvider` va aqui porque la pestana de Marca pregunta si la
+ * sociedad tiene `content.white_label` (P02-SaaS). Por defecto el doble sirve
+ * un contexto sin nada contratado, que es el caso normal: la marca blanca es
+ * un addon premium (contrato §4.3), no algo que venga de serie.
+ */
 function renderPage() {
   return renderWithProviders(
     <TenantProvider>
-      <SettingsPage />
+      <CapabilitiesProvider>
+        <SettingsPage />
+      </CapabilitiesProvider>
     </TenantProvider>,
     { session: makeSession() },
   )

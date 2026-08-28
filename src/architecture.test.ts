@@ -226,6 +226,40 @@ describe('el core no conoce a ningún cliente ni proveedor por su nombre', () =>
   })
 })
 
+describe('un módulo se activa por configuración, nunca por quién es el cliente', () => {
+  /**
+   * Los tres anti-patrones que P02-SaaS tiene que hacer imposibles, escritos
+   * como reglas que fallan:
+   *
+   *  1. **Ningún uuid literal en producción.** `if (org === '3f2a…')` es la
+   *     versión que sobrevive a la regla de arriba —no lleva el nombre del
+   *     cliente dentro— y es exactamente igual de mortal: el mismo binario
+   *     deja de servir a dos clientes. Los uuid de prueba viven en fixtures.
+   *  2. **Ningún plan comercial en el código.** Los nombres de plan y el
+   *     catálogo de addons son del hub (contrato §6); una tabla local de
+   *     planes es el catálogo duplicado que el principio 2 prohíbe.
+   */
+  it('ningún uuid literal en código de producción', () => {
+    const UUID = /['"`][0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}['"`]/
+    const offenders = PRODUCTION.filter((f) => !f.path.startsWith('test/'))
+      .filter((f) => UUID.test(f.code))
+      .map((f) => f.path)
+    expect(offenders).toEqual([])
+  })
+
+  /**
+   * `plan` se guarda y se enseña en diagnóstico, pero NADA decide con él: la
+   * traducción plan → módulos vive en el hub. El día que aparezca aquí una
+   * lista de planes, esta app tendrá dos fuentes de verdad comerciales y la
+   * segunda irá siempre por detrás de la facturación.
+   */
+  it('ningún nombre de plan comercial decide nada en el código', () => {
+    const PLAN_DECISION = /\bplan\s*===?\s*['"`]|\bPLANS?\b\s*[:=]\s*[[{]/
+    const offenders = PRODUCTION.filter((f) => PLAN_DECISION.test(f.code)).map((f) => f.path)
+    expect(offenders).toEqual([])
+  })
+})
+
 describe('el mapa de fronteras describe el código que hay', () => {
   /**
    * Protege el mapa de la obsolescencia. Una carpeta nueva bajo `features/`

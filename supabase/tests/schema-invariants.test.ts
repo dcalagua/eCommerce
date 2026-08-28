@@ -24,13 +24,17 @@ const TENANT_ANCHOR = ['tenants']
  * codigo de 3 letras; `integration_providers` es el catalogo de conectores del
  * producto —que exista un adaptador para SAP R/3 es una capacidad del producto,
  * no un dato de cliente— y su clave natural es el codigo del conector.
+ * `app_capabilities` (P02-SaaS) entra por lo mismo: es el registro tecnico de
+ * modulos del producto, con la clave natural del modulo. Lo que una sociedad
+ * tenga CONTRATADO no vive ahi, vive en `tenant_entitlements`, que si lleva
+ * tenant y si esta en este test.
  *
  * La exencion es NOMINAL a proposito (lista de tablas, no un patron): el dia que
  * alguien meta aqui una tabla de negocio, el aislamiento se rompe en silencio.
  * Requisito para entrar: sin columnas de tenant, RLS activada, y sin GRANT de
  * escritura a anon/authenticated.
  */
-const REFERENCE_CATALOG = ['currencies', 'integration_providers']
+const REFERENCE_CATALOG = ['app_capabilities', 'currencies', 'integration_providers']
 
 beforeAll(async () => {
   db = await createTestDatabase()

@@ -13,6 +13,30 @@ export const SUPABASE_PUBLISHABLE_KEY = readEnv('VITE_SUPABASE_PUBLISHABLE_KEY')
 export const EBIM_HUB_URL = readEnv('VITE_EBIM_HUB_URL')
 export const EBIM_APP_SLUG = readEnv('VITE_EBIM_APP_SLUG') || 'ecommerce'
 export const APP_NAME = readEnv('VITE_APP_NAME') || 'eCommerce'
+/**
+ * Versión del build. La inyecta el despliegue; en local es `dev`.
+ *
+ * Existe para el área de diagnóstico (P02-SaaS): la primera pregunta de
+ * cualquier incidencia es «¿qué versión estás viendo?», y la respuesta no puede
+ * ser que el usuario mire el hash de un archivo en las herramientas del
+ * navegador.
+ */
+export const APP_VERSION = readEnv('VITE_APP_VERSION') || 'dev'
+
+/**
+ * Host del proyecto Supabase, sin esquema ni ruta. Para diagnóstico.
+ * Es el HOST, nunca la clave: la URL ya viaja en cada petición del navegador,
+ * y una clave publicable pintada en pantalla es una clave publicable que
+ * termina en una captura de pantalla en un chat.
+ */
+export function supabaseHost(url: string = SUPABASE_URL): string {
+  if (!url) return ''
+  try {
+    return new URL(url).host
+  } catch {
+    return ''
+  }
+}
 
 /** El proyecto arranca sin backend (P01); las pantallas muestran estado vacío. */
 export const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY)

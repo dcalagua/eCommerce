@@ -40,6 +40,7 @@ export type DomainId = (typeof DOMAIN_IDS)[number]
 export const PLATFORM_AREA_IDS = [
   'identity',
   'tenancy',
+  'entitlements',
   'provisioning',
   'configuration',
   'shell',
@@ -215,6 +216,19 @@ export const BOUNDARIES: readonly Boundary[] = [
       'Qué organización, sociedad y tienda están activas. Siempre derivado del JWT, nunca declarado por el cliente.',
     paths: ['features/tenant'],
     serverSide: ['ebim.can_access y ebim.has_role (090000)', 'tenant_members (090100)'],
+  },
+  {
+    id: 'entitlements',
+    kind: 'platform',
+    state: 'implemented',
+    responsibility:
+      'Qué módulos tiene contratados y activos la sociedad. Lo contratado lo decide el hub (contrato §5/§6); esta área lo resuelve, lo cachea y lo hace cumplir. No es un módulo vendible: es el que decide qué módulos hay.',
+    paths: ['features/capabilities'],
+    serverSide: [
+      'app_capabilities, tenant_platform_context, tenant_entitlements, tenant_feature_flags (160000)',
+      'ebim.has_capability y public.effective_capabilities (160000)',
+      'supabase/functions/platform-context',
+    ],
   },
   {
     id: 'provisioning',

@@ -1,4 +1,5 @@
 import type { Session } from '@supabase/supabase-js'
+import { resolveCapabilities } from '@/domain'
 
 /**
  * Cliente Supabase falso para los tests del frontend.
@@ -84,6 +85,7 @@ type QueryResult = { data: Row[] | null; error: { message: string } | null }
 type Mutation =
   | { kind: 'select' }
   | { kind: 'insert'; payload: Row }
+  | { kind: 'upsert'; payload: Row; onConflict: string[] }
   | { kind: 'update'; patch: Row }
   | { kind: 'delete' }
 
@@ -126,6 +128,18 @@ class FakeQuery implements PromiseLike<QueryResult> {
 
   insert(payload: Row): this {
     this.mutation = { kind: 'insert', payload }
+    return this
+  }
+
+  /**
+   * `upsert` con `onConflict`, como lo usa la escritura de flags técnicos
+   * (P02-SaaS). La clave de conflicto se respeta de verdad en vez de insertar
+   * siempre: un test que afirmara «se guardó» sobre una tabla que acumula
+   * duplicados no probaría nada.
+   */
+  upsert(payload: Row, options?: { onConflict?: string }): this {
+    const onConflict = (options?.onConflict ?? 'id').split(',').map((column) => column.trim())
+    this.mutation = { kind: 'upsert', payload, onConflict }
     return this
   }
 
@@ -201,6 +215,19 @@ class FakeQuery implements PromiseLike<QueryResult> {
       const row = { id: fakeId(), ...this.mutation.payload }
       table.push(row)
       this.rows = [row]
+    } else if (this.mutation.kind === 'upsert') {
+      const { payload, onConflict } = this.mutation
+      const existing = table.find((row) =>
+        onConflict.every((column) => row[column] === payload[column]),
+      )
+      if (existing) {
+        Object.assign(existing, payload)
+        this.rows = [existing]
+      } else {
+        const row = { id: fakeId(), ...payload }
+        table.push(row)
+        this.rows = [row]
+      }
     } else if (this.mutation.kind === 'update') {
       const patch = this.mutation.patch
       this.rows = this.rows.map((row) => Object.assign(row, patch))
@@ -235,6 +262,54 @@ class FakeQuery implements PromiseLike<QueryResult> {
   }
 }
 
+/**
+ * Contexto de plataforma por defecto: la cuenta tiene eCommerce activo y NADA
+ * contratado más allá de lo baseline.
+ *
+ * Es el default correcto para los tests que no hablan de entitlements: refleja
+ * al tenant que existe hoy —catálogo, vitrina, carrito y pedidos— y hace que
+ * las rutas gateadas por capacidad se comporten como antes de P02. Un test que
+ * quiera hablar de módulos vendibles pasa su propio `rpc`.
+ *
+ * `capabilities` la calcula la BASE en producción; aquí se calcula con la misma
+ * función pura del dominio para que el doble no pueda contradecir la regla.
+ */
+export function makePlatformContext(
+  overrides: {
+    entitlements?: string[]
+    flags?: Record<string, boolean>
+    appActive?: boolean
+    source?: 'hub' | 'provisioning' | 'sin-contexto'
+    organizationId?: string
+    companyId?: string
+    plan?: string | null
+  } = {},
+): Record<string, unknown> {
+  const {
+    entitlements = [],
+    flags = {},
+    appActive = true,
+    source = 'sin-contexto',
+    organizationId = ORG,
+    companyId = COMPANY_A,
+    plan = null,
+  } = overrides
+
+  const { capabilities } = resolveCapabilities({ appActive, entitlements, flags })
+
+  return {
+    organization_id: organizationId,
+    company_id: companyId,
+    source,
+    app_active: appActive,
+    plan,
+    synced_at: source === 'sin-contexto' ? null : '2026-08-27T12:00:00.000Z',
+    entitlements,
+    flags,
+    capabilities,
+  }
+}
+
 export class FunctionsHttpErrorLike extends Error {
   readonly context: Response
 
@@ -249,7 +324,10 @@ export function createFakeSupabase(initial: Partial<FakeState> = {}) {
   const state: FakeState = {
     session: initial.session ?? null,
     tables: initial.tables ?? {},
-    rpc: initial.rpc ?? {},
+    // El contexto de plataforma se sirve por defecto para que montar cualquier
+    // pantalla del backoffice no exija declararlo. Un test lo pisa pasando el
+    // suyo en `rpc`.
+    rpc: { effective_capabilities: () => makePlatformContext(), ...(initial.rpc ?? {}) },
     functions: initial.functions ?? {},
     invocations: [],
     storage: initial.storage ?? {},
@@ -295,7 +373,15 @@ export function createFakeSupabase(initial: Partial<FakeState> = {}) {
       if (!handler) {
         return Promise.resolve({ data: null, error: { message: `rpc ${name} no simulada` } })
       }
-      return Promise.resolve({ data: handler(args), error: null })
+      try {
+        return Promise.resolve({ data: handler(args), error: null })
+      } catch (error) {
+        // Un handler que LANZA simula el fallo de PostgREST: es como se prueba
+        // un 42501 de RLS o una funcion de la base que levanta
+        // `CODIGO: mensaje`. Sin esto, el unico error simulable era «rpc no
+        // simulada», que no distingue un fallo de autorizacion de un olvido.
+        return Promise.resolve({ data: null, error: error as { message?: string; code?: string } })
+      }
     },
     storage: {
       from: (bucket: string) => {

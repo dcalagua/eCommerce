@@ -22,20 +22,29 @@ import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { ErrorBoundary } from '@/app/ErrorBoundary'
 import { useSessionContext } from '@/features/auth/session-context'
+import { useCapabilities } from '@/features/capabilities/capabilities-context'
 import { RequireTenant } from '@/features/tenant/RequireTenant'
 import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { AppBreadcrumbs } from '@/shared/ui/AppBreadcrumbs'
 import { BrandLockup } from '@/shared/ui/BrandLockup'
 import { useAppearance } from '@/theme/appearance-context'
-import { NAV_ITEMS, crumbsForPath } from './navigation'
+import { NAV_ITEMS, crumbsForPath, visibleNavItems } from './navigation'
 import { CompanySwitcher, StoreSwitcher } from './StoreSwitcher'
 
 const SIDEBAR_WIDTH = 244
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { t } = useI18n()
-  const { tenant } = useTenant()
+  const { tenant, can } = useTenant()
+  const { has, status } = useCapabilities()
+  // Se calcula aqui y no en el modulo: el menu depende del rol Y de lo que la
+  // sociedad tenga contratado, y las dos cosas cambian con el selector.
+  const items = visibleNavItems(NAV_ITEMS, {
+    can,
+    has,
+    capabilitiesReady: status === 'ready',
+  })
 
   return (
     <Box
@@ -55,7 +64,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <BrandLockup variant="white" size={30} />
       </Box>
       <Stack spacing={0.5}>
-        {NAV_ITEMS.map((item) => (
+        {items.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

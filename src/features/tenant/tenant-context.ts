@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { Capability } from '@/shared/lib/roles'
+import type { Permission } from '@/shared/lib/roles'
 import type { TenantSelection } from './workspace'
 
 export interface TenantContextValue extends TenantSelection {
@@ -10,8 +10,12 @@ export interface TenantContextValue extends TenantSelection {
   setActiveCompany: (companyId: string) => void
   /** Selector de tienda: preparado para varias tiendas por sociedad. */
   setActiveStore: (storeId: string) => void
-  /** Gating de UI. La autoridad sigue siendo la RLS. */
-  can: (capability: Capability) => boolean
+  /**
+   * Gating por PERMISO de rol. La autoridad sigue siendo la RLS.
+   * Lo que la cuenta CONTRATÓ es el otro eje y se pregunta con
+   * `useCapabilities().has(...)` (P02-SaaS).
+   */
+  can: (permission: Permission) => boolean
   refetch: () => void
 }
 

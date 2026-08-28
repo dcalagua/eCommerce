@@ -47,6 +47,19 @@ Relectura directa: 2026-08-27 (P00-SaaS) — contrato v1.15, `PROTOCOLO.md`, `BA
 14. **Git**: rama `dev`, commits locales convencionales, sin push/PR/deploy sin orden del operador.
 15. **Buzón obligatorio**: leer `coordinacion\` cada sesión; eCommerce debe declarar sus canales de integración con la suite.
 
+## Relectura directa para P02-SaaS (2026-08-27)
+
+Se volvieron a leer desde la fuente, no por traza, las secciones que gobiernan entitlements:
+
+| Sección | Qué se extrajo para P02 |
+|---|---|
+| §5 Platform Context API | Forma exacta de la respuesta (`organization`, `companies`, `addons`, `app_active`) y que es servicio-a-servicio. El parser del proxy acepta esa forma y solo esa |
+| §6 Addons | Catálogo y activación viven en `platform.*`; la app pregunta `context.addons[active_company]`. Ninguna app define catálogo local |
+| §7 Qué vive dónde | «Lectura de addons/config (**cache del context**)» es lo que vive en cada app. Es la línea que autoriza `tenant_entitlements` como cache y prohíbe replicar el catálogo |
+| §4.3 Branding | **`white_label` es addon premium** por contrato. Por eso es la capacidad vendible que P02 gatea de verdad: no se inventó nada |
+| §4.1 Config en 3 capas | `features` es el nombre del contrato para flags dentro de la config. Los flags técnicos locales van bajo el namespace de la app, no en las claves comunes |
+| §13 Doble enforcement | Guard en servidor **y** en UI: es la forma de las dos superficies cerradas en policies |
+
 ## Hallazgo de la relectura directa (2026-08-27, P00-SaaS)
 
 **`ecommerce` no figura en ninguna de las fuentes.** No está en el contrato v1.15 (cabecera «Apps»:

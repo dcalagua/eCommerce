@@ -28,7 +28,7 @@ import {
   normalizeOrderItems,
   normalizeShippingAddress,
 } from '../functions/_shared/orders.ts'
-import { ROLE_CAPABILITIES, can } from '../functions/_shared/roles.ts'
+import { ROLE_PERMISSIONS, can } from '../functions/_shared/roles.ts'
 import { rejectUnknownFields, requireUuid } from '../functions/_shared/validation.ts'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -253,22 +253,22 @@ describe('matriz de roles', () => {
       ),
     ]
     expect(rolesEnPolicy).toEqual(['owner,admin,catalog'])
-    expect(ROLE_CAPABILITIES['catalog.write']).toEqual(['owner', 'admin', 'catalog'])
+    expect(ROLE_PERMISSIONS['catalog.write']).toEqual(['owner', 'admin', 'catalog'])
   })
 
   it('viewer no escribe nada', () => {
-    for (const capability of Object.keys(ROLE_CAPABILITIES) as Array<
-      keyof typeof ROLE_CAPABILITIES
+    for (const permission of Object.keys(ROLE_PERMISSIONS) as Array<
+      keyof typeof ROLE_PERMISSIONS
     >) {
-      expect(can('viewer', capability)).toBe(false)
+      expect(can('viewer', permission)).toBe(false)
     }
   })
 
   it('owner puede todo', () => {
-    for (const capability of Object.keys(ROLE_CAPABILITIES) as Array<
-      keyof typeof ROLE_CAPABILITIES
+    for (const permission of Object.keys(ROLE_PERMISSIONS) as Array<
+      keyof typeof ROLE_PERMISSIONS
     >) {
-      expect(can('owner', capability)).toBe(true)
+      expect(can('owner', permission)).toBe(true)
     }
   })
 })

@@ -45,6 +45,21 @@ export const ORDER_EVENTS_TABLE = 'order_status_events' satisfies TableName
 export const CURRENCIES_TABLE = 'currencies' satisfies TableName
 export const TAX_CATEGORIES_TABLE = 'tax_categories' satisfies TableName
 
+// --- Capacidades y entitlements (P02-SaaS, migración 160000) ---------------
+// SIN `satisfies`: `database.types.ts` se genera contra el proyecto Supabase
+// ENLAZADO y la migración 160000 todavía no está aplicada allí (esta fase no
+// despliega, contrato de ejecución §11). Poner el `satisfies` ahora sería
+// romper el typecheck; escribir los tipos a mano sería romper la convención
+// que R11 acaba de cerrar. La red de seguridad mientras tanto es
+// `supabase/tests/capabilities.test.ts`, que comprueba estos mismos nombres
+// contra el esquema real construido desde las migraciones — una verificación
+// MÁS fuerte que el `satisfies`, porque no depende de que alguien regenere.
+// Al aplicar la migración: `npm run db:types` y añadir el `satisfies`.
+export const APP_CAPABILITIES_TABLE = 'app_capabilities'
+export const TENANT_PLATFORM_CONTEXT_TABLE = 'tenant_platform_context'
+export const TENANT_ENTITLEMENTS_TABLE = 'tenant_entitlements'
+export const TENANT_FEATURE_FLAGS_TABLE = 'tenant_feature_flags'
+
 // --- Vistas del modelo de lectura público ----------------------------------
 // `security_invoker` sobre policies `to anon`: filtran filas, y el GRANT por
 // columna es lo que evita que `anon` vea `stock` o `config` (P02, §4.3).
@@ -67,9 +82,12 @@ export const SET_PRIMARY_IMAGE_RPC = 'set_primary_product_image' satisfies Funct
 export const REORDER_IMAGES_RPC = 'reorder_product_images' satisfies FunctionName
 export const SET_TAX_RATE_RPC = 'set_tax_rate' satisfies FunctionName
 export const ORDER_BY_TOKEN_RPC = 'order_by_token' satisfies FunctionName
+// Ídem que las tablas de 160000: sin `satisfies` hasta que se regeneren.
+export const EFFECTIVE_CAPABILITIES_RPC = 'effective_capabilities'
 
 // --- Edge Functions --------------------------------------------------------
 export const BOOTSTRAP_FUNCTION = 'bootstrap-tenant'
 export const CATALOG_PRODUCT_FUNCTION = 'catalog-product'
 export const CREATE_ORDER_FUNCTION = 'create-order'
 export const UPDATE_ORDER_STATUS_FUNCTION = 'update-order-status'
+export const PLATFORM_CONTEXT_FUNCTION = 'platform-context'
