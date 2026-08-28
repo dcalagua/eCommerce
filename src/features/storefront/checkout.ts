@@ -58,6 +58,16 @@ export const checkoutSchema = z.object({
     .min(3, 'store.checkout.error.address')
     .max(300, 'store.checkout.error.address'),
   reference: z.string().trim().max(200, 'store.checkout.error.reference').optional(),
+  /**
+   * El cupón que el comprador teclea (P10-SaaS).
+   *
+   * **Un solo campo, no cinco.** El motor admite hasta cinco códigos por
+   * compra, pero un formulario que ofrece cinco casillas es un formulario que
+   * invita a probar códigos; el caso real es uno. Y lo que se manda es TEXTO:
+   * ni importe, ni campaña, ni «ya aplicado». Cuánto descuenta —o si descuenta
+   * algo— lo decide el servidor cuando ya tiene la fila delante y bloqueada.
+   */
+  couponCode: z.string().trim().max(40, 'store.checkout.error.coupon').optional(),
 })
 export type CheckoutValues = z.infer<typeof checkoutSchema>
 
@@ -73,7 +83,20 @@ export const orderResultSchema = z.object({
   currency: z.string().length(3),
   subtotal: moneyText,
   tax_total: moneyText,
+  // P10. Con cero campañas es '0.00', que es lo que devolvía P07: una respuesta
+  // anterior al despliegue simplemente no lo trae y el resumen no lo pinta.
+  discount_total: moneyText.default('0.00'),
   grand_total: moneyText,
+  /** Qué campañas rebajaron el pedido. Solo etiqueta e importe. */
+  promotions: z
+    .array(z.object({ code: z.string(), label: z.string(), amount: moneyText }))
+    .default([]),
+  /**
+   * Qué pasó con el código tecleado. Es la mitad que casi nunca se devuelve, y
+   * la única forma de que el comprador sepa por qué su cupón no hizo nada en
+   * vez de suponer que el comercio se lo comió.
+   */
+  coupons: z.array(z.object({ code: z.string(), status: z.string() })).default([]),
   items: z
     .array(
       z.object({
@@ -186,6 +209,32 @@ export function mapCheckoutCode(code: string): MessageKey {
   }
 }
 
+/**
+ * Qué pasó con el cupón, en texto humano.
+ *
+ * Devuelve una CLAVE de i18n, nunca el estado crudo del servidor: los estados
+ * son vocabulario del motor (`no_aplicable`, `agotado_para_ti`) y sirven para
+ * diagnosticar, no para enseñárselos a quien está pagando.
+ */
+export function mapCouponStatus(status: string): MessageKey {
+  switch (status) {
+    case 'aplicado':
+      return 'store.checkout.coupon.applied'
+    case 'no_existe':
+      return 'store.checkout.coupon.unknown'
+    case 'inactivo':
+    case 'fuera_de_vigencia':
+      return 'store.checkout.coupon.expired'
+    case 'agotado':
+    case 'agotado_para_ti':
+      return 'store.checkout.coupon.usedUp'
+    case 'no_aplicable':
+      return 'store.checkout.coupon.notApplicable'
+    default:
+      return 'store.checkout.coupon.unknown'
+  }
+}
+
 /** Qué se estaba haciendo. Es la mitad del mensaje que un comprador entiende. */
 export function mapCheckoutStage(stage: CheckoutStage | null): MessageKey | null {
   switch (stage) {
@@ -261,6 +310,9 @@ export async function startCheckout(input: StartCheckoutInput): Promise<OrderRes
         : { address: input.address },
       items,
       accept_price_changes: input.acceptPriceChanges === true,
+      // P10. La lista viaja vacía cuando no se tecleó nada: un `[]` es «no hay
+      // cupón», que es distinto de «no se preguntó».
+      coupon_codes: input.couponCode ? [input.couponCode] : [],
     },
   })
 

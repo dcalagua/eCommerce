@@ -126,7 +126,7 @@ export interface PriceDrift {
 }
 
 // ---------------------------------------------------------------------------
-// 4 · Promociones (gancho estable; P10)
+// 4 · Promociones (P10-SaaS: el gancho de P07 ya tiene motor detrás)
 // ---------------------------------------------------------------------------
 export interface PromotionAdjustment {
   readonly code: string
@@ -135,9 +135,49 @@ export interface PromotionAdjustment {
   readonly productId: string | null
 }
 
+/** Un cupón tecleado y qué pasó con él. Nunca «el cliente dice que se aplicó». */
+export interface CouponOutcome {
+  readonly code: string
+  /** `aplicado`, `no_existe`, `inactivo`, `fuera_de_vigencia`, `agotado`… */
+  readonly status: string
+}
+
+/** Una campaña que NO se aplicó, y por qué. Es la mitad que nadie devuelve. */
+export interface PromotionSkip {
+  readonly code: string
+  readonly reason: string
+}
+
+/** El descuento de una línea, con las campañas que lo compusieron. */
+export interface PromotionLine {
+  readonly lineKey: number
+  readonly discount: MoneyText
+  readonly adjustments: readonly PromotionAdjustment[]
+}
+
+/**
+ * Los totales YA recalculados por el servidor.
+ *
+ * `undefined` = quien contestó no tiene motor de promociones detrás (el gancho
+ * neutro de P07 sigue existiendo y sigue siendo válido para un comercio sin el
+ * módulo). Con motor SIEMPRE vienen, y el pipeline los transporta sin
+ * rehacerlos: rehacer el impuesto en TypeScript crearía una segunda autoridad
+ * fiscal que discreparía de la primera el día que alguien cambie un redondeo.
+ */
+export interface PromotionTotals {
+  readonly subtotal: MoneyText
+  readonly discountTotal: MoneyText
+  readonly taxTotal: MoneyText
+  readonly grandTotal: MoneyText
+}
+
 export interface PromotionResult {
   readonly adjustments: readonly PromotionAdjustment[]
   readonly discountTotal: MoneyText
+  readonly lines: readonly PromotionLine[]
+  readonly coupons: readonly CouponOutcome[]
+  readonly skipped: readonly PromotionSkip[]
+  readonly totals?: PromotionTotals
 }
 
 // ---------------------------------------------------------------------------
@@ -146,6 +186,8 @@ export interface PromotionResult {
 export interface TaxResult {
   readonly taxInclusive: boolean
   readonly subtotal: MoneyText
+  /** P10. Con cero descuentos es `0.00`, que es lo que devolvía P07. */
+  readonly discountTotal: MoneyText
   readonly taxTotal: MoneyText
   readonly grandTotal: MoneyText
 }
@@ -170,6 +212,33 @@ export interface DeliveryContext {
   readonly deliverable: boolean
   /** Motivo cuando no lo es. Sin nombres de transportista. */
   readonly reason: string | null
+}
+
+// ---------------------------------------------------------------------------
+// 7 bis · Tarjeta regalo (P10-SaaS)
+//
+// **No es un descuento, es un MEDIO DE PAGO.** Por eso vive aquí, junto al
+// cobro, y no en el bloque de promociones: no baja el subtotal, no baja el
+// impuesto y no toca `discount_total`. Lo único que hace es reducir cuánto hay
+// que pedirle a la pasarela.
+//
+// Deja rastro FUERA de la transacción del pedido —el saldo ya se movió—, así
+// que como la reserva de existencia y como el cobro, tiene compensación.
+// ---------------------------------------------------------------------------
+export interface GiftCardRedemption {
+  readonly giftCardId: string
+  /** Los cuatro últimos. El código entero no vuelve a salir de la base. */
+  readonly last4: string
+  readonly applied: MoneyText
+  /** La misma referencia con la que se canjeó: es lo que hace idempotente el deshacer. */
+  readonly reference: string
+}
+
+export interface GiftCardTender {
+  readonly redemptions: readonly GiftCardRedemption[]
+  readonly applied: MoneyText
+  /** Lo que queda por cobrar por otra vía. Lo calcula el adaptador, no el pipeline. */
+  readonly remaining: MoneyText
 }
 
 // ---------------------------------------------------------------------------
@@ -271,6 +340,23 @@ export interface CheckoutRequest {
    * `null` = la tienda no cobra en línea.
    */
   readonly paymentMethodCode: string | null
+  /**
+   * Los códigos de cupón que el comprador tecleó. P10.
+   *
+   * Es lo ÚNICO de las promociones que entra desde fuera, y entra como TEXTO:
+   * ni importe, ni campaña, ni «ya aplicada». Que descuente y cuánto lo decide
+   * `ebim.evaluate_promotions` dentro de la transacción del pedido.
+   */
+  readonly couponCodes: readonly string[]
+  /**
+   * Los códigos de tarjeta regalo. P10.
+   *
+   * Van aparte de los cupones porque son otra cosa: un cupón cambia el PRECIO y
+   * una tarjeta paga una PARTE del precio. Mezclarlos en un solo campo
+   * obligaría al servidor a adivinar cuál es cuál, y adivinar mal significa
+   * cobrar de menos o falsear la base imponible.
+   */
+  readonly giftCardCodes: readonly string[]
 }
 
 export interface IntentClaim {
@@ -306,6 +392,11 @@ export interface CheckoutPorts {
     context: CheckoutContext
     account: AccountContext
     quote: Quote
+    /** Lo que el comprador tecleó. El servidor decide si vale. */
+    couponCodes: readonly string[]
+    /** Para el tope por cliente, que no se puede cumplir sin saber quién compra. */
+    customerEmail: string
+    items: readonly OrderItemInput[]
   }): Promise<PromotionResult>
   reserveInventory(input: {
     storeSlug: string
@@ -318,6 +409,19 @@ export interface CheckoutPorts {
     address: ShippingAddress
     account: AccountContext
   }): Promise<DeliveryContext>
+  /**
+   * Etapa 8a · la tarjeta regalo, ANTES de la pasarela.
+   *
+   * Antes y no después porque lo que se le pide a la pasarela es el RESTO: al
+   * revés habría que cobrar el total y devolver la diferencia, que es un
+   * movimiento de dinero de más y una comisión de más en cada compra.
+   */
+  applyGiftCards(input: {
+    storeSlug: string
+    codes: readonly string[]
+    amount: MoneyText
+    idempotencyKey: string
+  }): Promise<GiftCardTender>
   authorizePayment(request: PaymentRequest): Promise<PaymentOutcome>
   /**
    * Solo se pregunta cuando hay cuenta B2B. Un comprador anónimo no tiene a
@@ -333,10 +437,20 @@ export interface CheckoutPorts {
     payment: PaymentOutcome
     account: AccountContext
     approval: PurchaseApproval | null
+    /** P10. `null` = no se canjeó ninguna; el pedido no cambia por ello. */
+    giftCards: GiftCardTender | null
   }): Promise<PlacedOrder>
 
   // Compensaciones. Existen porque las etapas 6 y 8 dejan rastro fuera de la
   // transacción del pedido, y ese rastro hay que poder deshacerlo.
   releaseReservation(storeSlug: string, token: string): Promise<void>
   voidPayment(outcome: PaymentOutcome): Promise<void>
+  /**
+   * Deshacer el canje de tarjeta regalo. Saldo gastado sin pedido detrás es
+   * dinero del comprador que se quedó el comercio, y es el único de los tres
+   * efectos compensables que el comprador NO puede reclamar por su cuenta: una
+   * reserva caduca sola y un cobro se ve en el extracto, pero un saldo perdido
+   * no deja rastro que el comprador pueda enseñar.
+   */
+  releaseGiftCards(input: { storeSlug: string; tender: GiftCardTender }): Promise<void>
 }

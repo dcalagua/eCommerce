@@ -44,6 +44,11 @@ export const CHECKOUT_ALLOWED_FIELDS = [
   // P09: QUE medio de pago eligio el comprador. Un codigo del comercio, no una
   // instruccion de cobro: sin importe, sin proveedor y sin credencial.
   'payment_method_code',
+  // P10: los codigos que el comprador tecleo. Dos listas y no una porque son
+  // dos cosas distintas: el cupon cambia el PRECIO y la tarjeta paga una PARTE
+  // del precio. Ninguno de los dos lleva importe.
+  'coupon_codes',
+  'gift_card_codes',
 ] as const
 
 /** Mismo formato que `checkout_intents_key_fmt` en la base. */
@@ -97,6 +102,50 @@ export function optionalPaymentMethodCode(body: Record<string, unknown>): string
 }
 
 /**
+ * Los códigos tecleados por el comprador (P10).
+ *
+ * Se normalizan aquí IGUAL que en la base —mayúsculas y solo alfanumérico, la
+ * misma regla que `coupons.code_normalized`— por una razón concreta: el hash de
+ * la petición se calcula sobre esta lista, y si «verano-25» y «VERANO25»
+ * dieran resúmenes distintos, el mismo carrito con el mismo cupón parecería dos
+ * compras distintas según cómo lo hubiera tecleado el comprador.
+ *
+ * La validez NO se comprueba aquí: que el código exista, esté vigente y le
+ * quede uso lo decide la base con la fila delante. Comprobarlo en el borde
+ * sería una segunda autoridad sobre el mismo dato, y la del borde siempre acaba
+ * desactualizada respecto a la de la fila.
+ */
+function codeList(
+  body: Record<string, unknown>,
+  field: 'coupon_codes' | 'gift_card_codes',
+  max: number,
+): string[] {
+  const raw = body[field]
+  if (raw === undefined || raw === null) return []
+  if (!Array.isArray(raw)) {
+    throw badRequest('CAMPO_INVALIDO', `\`${field}\` tiene que ser una lista de codigos`)
+  }
+  const seen = new Set<string>()
+  for (const entry of raw) {
+    if (typeof entry !== 'string') {
+      throw badRequest('CAMPO_INVALIDO', `\`${field}\` solo admite texto`)
+    }
+    const normalized = entry.toUpperCase().replace(/[^A-Z0-9]/g, '')
+    if (normalized === '') continue
+    if (normalized.length > 40) {
+      throw badRequest('CAMPO_INVALIDO', `Un codigo de \`${field}\` es demasiado largo`)
+    }
+    seen.add(normalized)
+  }
+  if (seen.size > max) {
+    throw badRequest('CODIGOS_EXCESIVOS', `Como maximo ${max} codigos en \`${field}\``)
+  }
+  // Ordenados: la lista es un CONJUNTO, y el orden en que el comprador los
+  // tecleo no puede cambiar el resumen de la peticion.
+  return [...seen].sort()
+}
+
+/**
  * Serialización CANÓNICA: claves ordenadas y líneas ordenadas por su terna.
  * Es lo que hace que el mismo carrito dé siempre el mismo resumen aunque el
  * navegador reserialice en otro orden.
@@ -147,6 +196,8 @@ export async function requestHash(input: {
   shippingAddress: Record<string, unknown>
   billingAddress: Record<string, unknown> | null
   notes: string | null
+  /** Omitirlo y pasar `[]` dan el MISMO resumen: no hay dos formas de «sin cupón». */
+  couponCodes?: readonly string[]
 }): Promise<string> {
   const ordered = [...input.items].sort((a, b) => (itemKey(a) < itemKey(b) ? -1 : 1))
   return await sha256Hex(
@@ -167,6 +218,16 @@ export async function requestHash(input: {
       // respuesta guardada del pedido anterior.
       billing_address: input.billingAddress,
       notes: input.notes,
+      // Los cupones SÍ entran en el resumen: añadir un cupón cambia lo que se
+      // paga, así que es otra petición. Reusar la misma clave con otro cupón
+      // tiene que dar conflicto y no devolver el pedido anterior —que se
+      // cobró por otro importe—.
+      //
+      // Las tarjetas regalo NO entran, por la misma razón que
+      // `payment_method_code`: son CÓMO se paga, no QUÉ se compra. Si entraran,
+      // un comprador cuya tarjeta se quedó sin saldo no podría reintentar con
+      // otra sin que el intento se leyera como una compra distinta.
+      coupon_codes: input.couponCodes ?? [],
     }),
   )
 }
@@ -197,6 +258,12 @@ export async function parseCheckoutBody(
       : normalizeShippingAddress(body.billing_address)
   const notes = optionalText(body, 'notes', 1000)
   const paymentMethodCode = optionalPaymentMethodCode(body)
+  // Cinco cupones es el mismo tope que impone `ebim.evaluate_promotions`, y no
+  // es una limitación técnica: más de cinco códigos en un carrito es un intento
+  // de probar códigos, no una compra. Tres tarjetas regalo es lo que cabe en un
+  // pago partido razonable.
+  const couponCodes = codeList(body, 'coupon_codes', 5)
+  const giftCardCodes = codeList(body, 'gift_card_codes', 3)
 
   const hash = await requestHash({
     storeSlug,
@@ -207,6 +274,7 @@ export async function parseCheckoutBody(
     shippingAddress: { ...shippingAddress },
     billingAddress: billingAddress === null ? null : { ...billingAddress },
     notes: notes ?? null,
+    couponCodes,
   })
 
   return {
@@ -222,6 +290,8 @@ export async function parseCheckoutBody(
     notes: notes ?? null,
     items,
     paymentMethodCode,
+    couponCodes,
+    giftCardCodes,
     acceptPriceChanges: body.accept_price_changes === true,
   }
 }

@@ -65,6 +65,7 @@ export function StoreOrderPage() {
           currency: tracked.data.currency,
           subtotal: tracked.data.subtotal,
           tax_total: tracked.data.tax_total,
+          discount_total: tracked.data.discount_total,
           grand_total: tracked.data.grand_total,
           items: tracked.data.items.map((item) => ({
             product_id: '',
@@ -73,6 +74,12 @@ export function StoreOrderPage() {
             unit_price: item.unit_price,
             quantity: item.quantity,
           })),
+          // El enlace permanente devuelve el descuento del pedido y la
+          // etiqueta de cada campaña por línea, pero no el desglose de la
+          // respuesta del checkout —que incluye los cupones tecleados—: eso es
+          // de ESA compra, no del pedido, y no se guarda.
+          promotions: [],
+          coupons: [],
           // Recuperar un pedido por su enlace no es un reintento del checkout:
           // no hubo intento y no hubo repetición. `false` es el dato correcto.
           replay: false,
@@ -147,6 +154,16 @@ export function StoreOrderPage() {
           <Divider sx={{ my: 1.5 }} />
 
           <Amount label={t('store.cart.subtotal')} value={order.subtotal} currency={order.currency} />
+          {/* P10 · el descuento solo se pinta si lo hubo. Una línea de «−0,00»
+              en cada pedido es ruido; su ausencia cuando sí hubo rebaja es un
+              total que el comprador no puede cuadrar. */}
+          {Number(order.discount_total) > 0 && (
+            <Amount
+              label={t('store.order.discount')}
+              value={`-${order.discount_total}`}
+              currency={order.currency}
+            />
+          )}
           <Amount label={t('store.order.tax')} value={order.tax_total} currency={order.currency} />
           <Divider sx={{ my: 1 }} />
           <Amount

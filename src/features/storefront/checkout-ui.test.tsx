@@ -333,6 +333,9 @@ describe('checkout', () => {
     })
     expect(body.items).toEqual([{ product_id: P_SILLA, quantity: 2 }])
     expect(body.accept_price_changes).toBe(false)
+    // P10: sin cupón tecleado viaja la lista VACÍA, que es «no hay cupón» y no
+    // «no se preguntó». Y sigue sin viajar ni un importe de descuento.
+    expect(body.coupon_codes).toEqual([])
 
     // Ni el tenant ni el dinero salen del navegador. Se miran las CLAVES, a
     // cualquier profundidad: es la forma exacta de la regla.
@@ -355,6 +358,37 @@ describe('checkout', () => {
     // 32 bytes en hexadecimal. Es lo que impide que dos pestañas abiertas en el
     // mismo milisegundo compartan clave — y con ella, pedido.
     expect(fake.state.invocations[0]?.body.idempotency_key).toMatch(/^[a-f0-9]{64}$/)
+  })
+
+  it('el cupón viaja como TEXTO y sin un solo importe (P10)', async () => {
+    const user = userEvent.setup()
+    const fake = backend()
+    sembrarCarrito([LINEA_SILLA])
+    renderStorefront(fake, '/s/casa-nordica/checkout')
+
+    await rellenar(user)
+    await user.type(screen.getByLabelText(/Cupón de descuento/), 'verano-25')
+    await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+
+    await waitFor(() => expect(fake.state.invocations).toHaveLength(1))
+    const { body } = fake.state.invocations[0]!
+
+    // Lo que se tecleó, tal cual: normalizarlo aquí sería una segunda regla que
+    // un día deja de coincidir con la columna generada de la base.
+    expect(body.coupon_codes).toEqual(['verano-25'])
+
+    // Y NADA más: el cuerpo sigue sin llevar descuento, campaña ni «aplicada».
+    const claves = todasLasClaves(body)
+    for (const prohibida of [
+      'discount',
+      'discount_total',
+      'discount_amount',
+      'promotion_id',
+      'promotion_code',
+      'coupon_id',
+    ]) {
+      expect(claves, `clave prohibida en el cuerpo: ${prohibida}`).not.toContain(prohibida)
+    }
   })
 
   it('la referencia es opcional: sin ella, no viaja el campo', async () => {

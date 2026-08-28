@@ -219,8 +219,9 @@ export const CAPABILITIES: readonly Capability[] = [
     id: 'promotions',
     boundary: 'promotions',
     entitlement: `${ENTITLEMENT_PREFIX}promotions`,
-    state: 'declared',
-    grants: 'Campañas, cupones y desglose de descuento sobre el precio base (P10).',
+    state: 'implemented',
+    grants:
+      'Campañas con prioridad y combinación explícitas, cupones, tarjetas regalo y desglose de descuento sobre el precio base (P10).',
   },
   {
     id: 'content.cms',

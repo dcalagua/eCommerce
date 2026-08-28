@@ -18,16 +18,19 @@
  * consultar.
  */
 import type { OrderItemInput } from '../orders.ts'
-import { alwaysDeliverable, noPromotions } from './hooks.ts'
+import { alwaysDeliverable } from './hooks.ts'
 import { createPaymentGateway } from '../payments/gateway.ts'
 import type {
   AccountContext,
   CheckoutContext,
   CheckoutPorts,
   CheckoutRequest,
+  GiftCardRedemption,
+  GiftCardTender,
   IntentClaim,
   PlacedOrder,
   PriceDrift,
+  PromotionResult,
   PurchaseApproval,
   Quote,
   QuotedLine,
@@ -240,7 +243,30 @@ export function createDbPorts(options: DbPortOptions): CheckoutPorts {
       }
     },
 
-    resolvePromotions: noPromotions,
+    /**
+     * P10 · el gancho vacío de P07 pasa a preguntar a la base.
+     *
+     * `promotion_quote_for_slug` es la MISMA función que usa el carrito de la
+     * vitrina, y devuelve la cotización entera con el descuento aplicado y los
+     * totales ya recalculados. Aquí no se suma ni se redondea nada: cualquier
+     * aritmética en este archivo sería un segundo sitio donde el importe puede
+     * salir distinto del que se cobra.
+     *
+     * Lo que este resultado NO es: una autorización. `create_order` vuelve a
+     * evaluar, con los cerrojos puestos, y es su resultado el que se cobra.
+     * Éste sirve para enseñárselo al comprador y para que el pipeline pueda
+     * comprobar que los totales cuadran antes de llamar a una pasarela.
+     */
+    async resolvePromotions(input): Promise<PromotionResult> {
+      const raw = record(
+        await service('promotion_quote_for_slug', {
+          p_store_slug: input.context.storeSlug,
+          p_items: itemPayload(input.items),
+          p_coupon_codes: input.couponCodes.length > 0 ? input.couponCodes : null,
+        }),
+      )
+      return toPromotionResult(raw)
+    },
 
     async reserveInventory(input): Promise<Reservation> {
       const raw = record(
@@ -260,6 +286,55 @@ export function createDbPorts(options: DbPortOptions): CheckoutPorts {
     },
 
     validateDelivery: alwaysDeliverable,
+
+    /**
+     * P10 · canjear saldo de tarjeta regalo, de una en una y en orden.
+     *
+     * En orden y no en paralelo a propósito: dos canjes simultáneos contra dos
+     * tarjetas distintas repartirían mal el resto —cada uno creería que le toca
+     * cubrir el total— y el comercio acabaría cobrando de menos.
+     *
+     * La referencia es la clave de idempotencia del checkout más el índice de
+     * la tarjeta: un reintento de la misma compra no vuelve a gastar saldo, y
+     * dos tarjetas de la misma compra no comparten referencia.
+     */
+    async applyGiftCards(input): Promise<GiftCardTender> {
+      const redemptions: GiftCardRedemption[] = []
+      let pending = Math.round(Number(input.amount) * 100)
+
+      for (const [index, code] of input.codes.entries()) {
+        if (pending <= 0) break
+        const reference = `${input.idempotencyKey}:gc:${index}`
+        const raw = record(
+          await service('gift_card_redeem', {
+            p_store_slug: input.storeSlug,
+            p_code: code,
+            p_amount: (pending / 100).toFixed(2),
+            p_reference: reference,
+            p_order_id: null,
+          }),
+        )
+        const applied = text(raw, 'applied', '0.00')
+        if (Math.round(Number(applied) * 100) <= 0) continue
+        redemptions.push({
+          giftCardId: text(raw, 'gift_card_id'),
+          last4: text(raw, 'last4'),
+          applied,
+          reference,
+        })
+        pending -= Math.round(Number(applied) * 100)
+      }
+
+      const total = redemptions.reduce(
+        (acc, entry) => acc + Math.round(Number(entry.applied) * 100),
+        0,
+      )
+      return {
+        redemptions,
+        applied: (total / 100).toFixed(2),
+        remaining: (Math.max(pending, 0) / 100).toFixed(2),
+      }
+    },
 
     authorizePayment: (request) => gateway.authorizePayment(request),
 
@@ -290,6 +365,11 @@ export function createDbPorts(options: DbPortOptions): CheckoutPorts {
             input.approval === null
               ? null
               : { required: input.approval.required, reason: input.approval.reason },
+          // P10 · los códigos tecleados. Ni un importe: cuánto descuentan lo
+          // decide `create_order`, que vuelve a evaluar con las filas delante
+          // y bloqueadas. El navegador no puede declarar un descuento.
+          p_coupon_codes:
+            input.request.couponCodes.length > 0 ? [...input.request.couponCodes] : null,
         }),
       )
       const orderId = text(raw, 'order_id')
@@ -310,6 +390,25 @@ export function createDbPorts(options: DbPortOptions): CheckoutPorts {
           })
         } catch (error) {
           console.error('[checkout] no se pudo atar el cobro al pedido', error)
+        }
+      }
+
+      // P10 · el canje de tarjeta regalo se ata al pedido AQUÍ, por la misma
+      // razón que el cobro: se canjea en la etapa 8 y el pedido nace en la 9.
+      // Y tampoco puede tumbar la compra: el pedido existe y el saldo ya se
+      // movió; si el enlace falla queda un asiento sin `order_id` que el
+      // backoffice ve y una persona ata, no una venta perdida.
+      if (orderId !== '' && input.giftCards) {
+        for (const entry of input.giftCards.redemptions) {
+          try {
+            await service('gift_card_attach_order', {
+              p_gift_card_id: entry.giftCardId,
+              p_reference: entry.reference,
+              p_order_id: orderId,
+            })
+          } catch (error) {
+            console.error('[checkout] no se pudo atar el canje al pedido', error)
+          }
         }
       }
 
@@ -337,5 +436,73 @@ export function createDbPorts(options: DbPortOptions): CheckoutPorts {
     },
 
     voidPayment: (outcome) => gateway.voidPayment(outcome),
+
+    async releaseGiftCards(input) {
+      // Cada devolución en su propio `try`: si una falla, las otras tienen que
+      // intentarse igual. Es la misma regla que `unwind` aplica entre
+      // compensaciones, aquí dentro de una sola.
+      for (const entry of input.tender.redemptions) {
+        try {
+          await service('gift_card_release', {
+            p_gift_card_id: entry.giftCardId,
+            p_amount: entry.applied,
+            p_reference: `${entry.reference}:release`,
+          })
+        } catch (error) {
+          console.error('[checkout] no se pudo devolver el saldo de la tarjeta', error)
+        }
+      }
+    },
+  }
+}
+
+/** Traduce la respuesta de `promotion_quote_for_slug`. Traduce y nada más. */
+function toPromotionResult(source: Record<string, unknown>): PromotionResult {
+  const promos = record(source.promotions)
+  const applied = Array.isArray(promos.applied) ? promos.applied : []
+  const lines = Array.isArray(source.lines) ? source.lines : []
+
+  return {
+    adjustments: applied.map((entry) => {
+      const item = record(entry)
+      return {
+        code: text(item, 'code'),
+        label: text(item, 'label'),
+        amount: text(item, 'amount', '0.00'),
+        productId: null,
+      }
+    }),
+    discountTotal: text(source, 'discount_total', '0.00'),
+    lines: lines.map((entry, index) => {
+      const line = record(entry)
+      const adjustments = Array.isArray(line.adjustments) ? line.adjustments : []
+      return {
+        lineKey: Number(line.line_key ?? index + 1),
+        discount: text(line, 'discount', '0'),
+        adjustments: adjustments.map((raw) => {
+          const item = record(raw)
+          return {
+            code: text(item, 'code'),
+            label: text(item, 'label'),
+            amount: text(item, 'amount', '0.00'),
+            productId: nullableText(line, 'product_id'),
+          }
+        }),
+      }
+    }),
+    coupons: (Array.isArray(promos.coupons) ? promos.coupons : []).map((entry) => {
+      const item = record(entry)
+      return { code: text(item, 'code'), status: text(item, 'status') }
+    }),
+    skipped: (Array.isArray(promos.skipped) ? promos.skipped : []).map((entry) => {
+      const item = record(entry)
+      return { code: text(item, 'code'), reason: text(item, 'reason') }
+    }),
+    totals: {
+      subtotal: text(source, 'subtotal', '0.00'),
+      discountTotal: text(source, 'discount_total', '0.00'),
+      taxTotal: text(source, 'tax_total', '0.00'),
+      grandTotal: text(source, 'grand_total', '0.00'),
+    },
   }
 }

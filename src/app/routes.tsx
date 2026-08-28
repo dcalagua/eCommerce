@@ -58,6 +58,9 @@ const OrdersPage = lazy(() =>
 const PaymentsPage = lazy(() =>
   import('@/features/payments/PaymentsPage').then((m) => ({ default: m.PaymentsPage })),
 )
+const PromotionsPage = lazy(() =>
+  import('@/features/promotions/PromotionsPage').then((m) => ({ default: m.PromotionsPage })),
+)
 const DiagnosticsPage = lazy(() =>
   import('@/features/capabilities/DiagnosticsPage').then((m) => ({ default: m.DiagnosticsPage })),
 )
@@ -140,6 +143,10 @@ export const routes: RouteObject[] = [
           // `payments`: sin el addon la tienda sigue vendiendo con el pago
           // pendiente, que es lo que hacia antes de esta fase.
           { path: 'payments', element: gated('payments', <PaymentsPage />) },
+          // P10: campanas, cupones y tarjetas regalo. Gateado por la capacidad
+          // `promotions`: sin el addon los pedidos cuestan el precio de lista,
+          // que es exactamente lo que costaban antes de esta fase.
+          { path: 'promotions', element: gated('promotions', <PromotionsPage />) },
           // Ajustes y diagnóstico NO se gatean por capacidad: son la salida de
           // un tenant sin nada contratado y el sitio donde se ve por qué.
           { path: 'settings', element: withSuspense(<SettingsPage />) },

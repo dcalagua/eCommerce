@@ -169,6 +169,28 @@ export const PUBLIC_PAYMENT_METHODS_VIEW = 'public_payment_methods'
 // para ofrecer proveedores por su `code`: ninguna marca vive en el código.
 export const INTEGRATION_PROVIDERS_TABLE = 'integration_providers'
 
+// --- Promociones (P10-SaaS, migraciones 130000-130400) ----------------------
+// Sin `satisfies` por la misma razón que las anteriores: `database.types.ts` se
+// genera contra el proyecto ENLAZADO y estas migraciones todavía no están
+// aplicadas allí. La red mientras tanto es `supabase/tests/promotions.test.ts`
+// y `gift-cards.test.ts`. Al aplicar: `npm run db:types` y añadir el `satisfies`.
+//
+// De las nueve tablas, el backoffice ESCRIBE cinco —campaña, alcance,
+// audiencia, escala y cupón, que son configuración comercial—. Los canjes, la
+// bitácora, el saldo de una tarjeta y su libro mayor se LEEN: mover un contador
+// de usos o un saldo es un comando, igual que en pagos y en inventario.
+export const PROMOTIONS_TABLE = 'promotions'
+export const PROMOTION_SCOPES_TABLE = 'promotion_scopes'
+export const PROMOTION_AUDIENCES_TABLE = 'promotion_audiences'
+export const PROMOTION_TIERS_TABLE = 'promotion_tiers'
+export const COUPONS_TABLE = 'coupons'
+export const PROMOTION_REDEMPTIONS_TABLE = 'promotion_redemptions'
+export const PROMOTION_EVENTS_TABLE = 'promotion_events'
+export const GIFT_CARDS_TABLE = 'gift_cards'
+export const GIFT_CARD_TRANSACTIONS_TABLE = 'gift_card_transactions'
+export const PROMOTION_OVERVIEW_VIEW = 'promotion_overview'
+export const GIFT_CARD_OVERVIEW_VIEW = 'gift_card_overview'
+
 // --- Vistas del modelo de lectura público ----------------------------------
 // `security_invoker` sobre policies `to anon`: filtran filas, y el GRANT por
 // columna es lo que evita que `anon` vea `stock` o `config` (P02, §4.3).
@@ -253,6 +275,20 @@ export const MY_BUSINESS_ORDERS_RPC = 'my_business_orders'
 export const REFUND_REQUEST_RPC = 'payment_refund_request'
 export const RECONCILIATION_IMPORT_RPC = 'payment_reconciliation_import'
 export const RECONCILIATION_MATCH_RPC = 'payment_reconciliation_match'
+
+// Promociones (P10-SaaS). `promotion_quote_for_slug` y
+// `gift_card_balance_for_slug` las llama el comprador ANÓNIMO desde la vitrina;
+// `promotion_simulate` y los tres comandos de tarjeta regalo, el backoffice con
+// sesión. `gift_card_redeem`, `gift_card_release` y `expire_gift_cards` NO
+// están aquí a propósito: solo se pueden llamar con `service_role` desde una
+// Edge Function —si el navegador pudiera canjear saldo, el importe a descontar
+// lo decidiría el navegador— y listarlas invitaría a intentarlo.
+export const PROMOTION_QUOTE_PUBLIC_RPC = 'promotion_quote_for_slug'
+export const PROMOTION_SIMULATE_RPC = 'promotion_simulate'
+export const GIFT_CARD_BALANCE_PUBLIC_RPC = 'gift_card_balance_for_slug'
+export const GIFT_CARD_ISSUE_RPC = 'gift_card_issue'
+export const GIFT_CARD_ADJUST_RPC = 'gift_card_adjust'
+export const GIFT_CARD_CANCEL_RPC = 'gift_card_cancel'
 
 // --- Edge Functions --------------------------------------------------------
 export const BOOTSTRAP_FUNCTION = 'bootstrap-tenant'

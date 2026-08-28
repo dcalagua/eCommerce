@@ -17,7 +17,9 @@ Usuario del tenant ──┘      ├─ /s/:storeSlug  storefront público (ten
                        ├─ Storage (imágenes de producto, path por tenant)
                        └─ Edge Functions (Deno)
                             ├─ bootstrap-tenant   (alta de tenant, clave de aprovisionamiento)
-                            ├─ checkout           (pipeline de 11 etapas, idempotente — P07-SaaS)
+                            ├─ checkout           (pipeline de 11 etapas, idempotente — P07-SaaS;
+                            │                      desde P10 la etapa 4 evalua promociones y
+                            │                      la 8a canjea tarjeta regalo antes de cobrar)
                             ├─ create-order       (la puerta de P02-P06; sigue viva)
                             ├─ catalog-product    (alta/edición con el JWT del usuario)
                             └─ update-order-status (transiciones con el JWT del usuario)
@@ -73,9 +75,10 @@ tenants (PK = organization_id del hub)
   **generada** (`stock > 0`): `anon` la lee, pero nunca lee `stock` (P05). Desde P06 la vista
   publica un booleano calculado por ATP, y la cifra exacta sigue sin salir a `anon`.
 - Sin forks de schema por cliente: diferencias por `store_settings.config` + `products.custom_fields` (JSONB).
-- Pendiente de fases siguientes: `payments`, `audit_log`. (`customers` llegó en P05-SaaS; los
-  almacenes y las reservas, en P06-SaaS; `carts`, `checkout_intents` y `domain_events`, en P07-SaaS;
-  la línea de tiempo del pedido, sus anotaciones y sus referencias externas, en P08-SaaS.)
+- Pendiente de fases siguientes: `audit_log`. (`customers` llegó en P05-SaaS; los almacenes y las
+  reservas, en P06-SaaS; `carts`, `checkout_intents` y `domain_events`, en P07-SaaS; la línea de
+  tiempo del pedido, sus anotaciones y sus referencias externas, en P08-SaaS; las siete tablas del
+  cobro, en P09-SaaS; las campañas, los cupones y las tarjetas regalo, en P10-SaaS.)
 
 ### PIM: variantes, atributos, unidades y kits (P03-SaaS)
 
@@ -405,6 +408,57 @@ La Edge Function `payments-webhook` no usa `serveJson` —necesita el cuerpo cru
 acepta `Authorization` (quien llama es un servidor, y la autenticación es la firma) y responde 200
 casi siempre, porque a un webhook al que se contesta con error se le reintenta para siempre.
 
+### Promociones, cupones y tarjetas regalo (P10-SaaS)
+
+Nueve tablas más, migraciones `20260828130000`-`130400`. Decisiones completas en
+[`adr/010-promotions-engine.md`](adr/010-promotions-engine.md).
+
+```
+LA CAMPANA (de la tienda)
+  promotions ──── promotion_scopes      SOBRE QUE: todo/producto/variante/categoria/marca.
+             │                          is_exclusion RESTA y gana siempre.
+             ├─── promotion_audiences   A QUIEN: canal/segmento/cliente/cuenta. SIN filas = a todos.
+             ├─── promotion_tiers       las ESCALAS de las campanas por volumen
+             └─── coupons               EL CODIGO. code_normalized es GENERATED y el indice va sobre el
+
+LO QUE PASO
+  promotion_redemptions  quien la uso, en que pedido y cuanto se llevo
+  promotion_events       BITACORA con el estado que la campana tenia en ese momento
+
+EL MEDIO DE PAGO (no es un descuento)
+  gift_cards ──── gift_card_transactions   libro mayor: delta con signo y saldo resultante
+```
+
+- **Precio y promoción son dos capas, y el orden es una regla**: `precio base → promociones →
+  impuesto → total`. `ebim.evaluate_promotions` recibe líneas YA cotizadas por
+  `ebim.resolve_prices` y les resta; ni una línea de las cinco tablas de precios de P04 cambia.
+- **El alcance va en columnas TIPADAS, no en un `rules jsonb`.** Sin FK, una regla que apunta a una
+  categoría borrada se queda viva decidiendo dinero. El coste asumido: añadir un tipo de campaña es
+  escribir código, y por eso `promotion_kind` tiene cinco valores y no veinte.
+- **Orden TOTAL de evaluación** (`priority desc, created_at, id`) y stacking explícito: exclusiva →
+  grupo excluyente → remanente. Que cada campaña se aplique sobre lo que QUEDA es lo que impide que
+  dos del 60 % sumen 120 %; no hace falta un CHECK, el modelo no puede expresarlo.
+- **Los límites de uso se cuentan con la fila BLOQUEADA.** `evaluate_promotions(p_lock := true)`
+  bloquea solo lo que puede agotarse, en orden de `id`; `ebim.redeem_promotions` gasta el uso en la
+  MISMA transacción que crea el pedido. Entre contar y gastar no cabe otra compra.
+- **La normalización del cupón es un DATO**: `code_normalized` es GENERATED y el índice único está
+  sobre ella, así que «Verano 25» y «verano-25» son el mismo cupón.
+- **Una sola autoridad fiscal con descuento**: `ebim.promotion_totals` construye la identidad
+  `subtotal + impuesto − descuento = total` en las dos modalidades, y con descuento cero devuelve
+  EXACTAMENTE los números que devolvía P09. El pipeline la comprueba antes de llamar a una pasarela.
+- **La respuesta trae lo que NO se aplicó y por qué** —diez motivos estables—, con una excepción: una
+  campaña que exige cupón y no lo trae no se reporta, o la respuesta pública sería el folleto de las
+  campañas secretas de la tienda.
+- **La tarjeta regalo NO es una promoción**: es un medio de pago con saldo. No toca subtotal,
+  impuesto ni `discount_total`; vive en la etapa 8a del pipeline, antes de la pasarela, y a la
+  pasarela se le pide el RESTO. El código son 96 bits sin GRANT de lectura para nadie y sale de la
+  base una sola vez.
+- **El saldo no se escribe, se mueve**: ni un GRANT de escritura, y `ebim.gift_card_move` bloquea,
+  comprueba caducidad y saldo, y escribe asiento y saldo juntos. La caducidad se comprueba AL MOVER,
+  no por un proceso periódico: no hay cron garantizado.
+- `order_items.discount_amount` y `discount_snapshot` —que P08 creó para esto— se llenan por fin: un
+  pedido explica su descuento incluso después de borrar la campaña.
+
 ### Capacidades y entitlements (P02-SaaS)
 
 Cuatro tablas más, migración `20260827160000`. Decisiones completas en
@@ -458,6 +512,15 @@ Desde P05-SaaS hay tres más, y la primera es la que sostiene la regla del vínc
 y su cuenta la resuelve el servidor), `public.purchase_approval` (definer, con su autorización
 dentro: o vínculo con la cuenta, o membresía del tenant) y `public.customer_orders` /
 `public.customer_deletion_usage` (invoker: la RLS decide qué ve quien pregunta).
+
+Desde P10-SaaS hay dos puertas públicas más y cinco comandos, agrupados por llamante porque cada
+grupo trae su propia autorización: del **comprador anónimo**, `promotion_quote_for_slug` (la
+cotización con descuento y cupones, hermana de `price_quote_for_slug`) y `gift_card_balance_for_slug`
+(devuelve saldo, nunca código, y no distingue «no existe» de «es de otra tienda»); del **backoffice
+con sesión** (rol `owner`/`admin` y capacidad `promotions`, comprobados dentro), `promotion_simulate`,
+`gift_card_issue`, `gift_card_adjust` y `gift_card_cancel`; y del **servidor** (`service_role`,
+revocadas a `authenticated`) `gift_card_redeem`, `gift_card_release` y `expire_gift_cards` — si el
+navegador pudiera canjear saldo, el importe a descontar lo decidiría el navegador.
 
 Desde P08-SaaS hay tres funciones más y un permiso nuevo. `public.order_transition` (el COMANDO de los
 tres ejes: `authenticated`, con la autorización dentro y el tenant sacado de la fila del pedido),
@@ -521,6 +584,11 @@ src/
   features/payments/    cobros, medios de pago y conciliacion (P09-SaaS). Escribe UNA
                         tabla —los medios, que son configuracion—; devolver y cuadrar
                         son comandos. Gateada por la capacidad `payments`
+  features/promotions/  campanas, cupones, tarjetas regalo, simulador y bitacora
+                        (P10-SaaS). Escribe CINCO tablas —campana, alcance, audiencia,
+                        escala y cupon, que son configuracion comercial—; el contador
+                        de usos y el saldo de una tarjeta son comandos. Gateada por la
+                        capacidad `promotions`
   features/storefront/  vitrina pública: resolución por slug, catálogo, ficha, carrito/checkout
                         (P07-SaaS: carrito de servidor con fusión al iniciar sesión y
                          checkout idempotente con etapas)

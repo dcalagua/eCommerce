@@ -224,6 +224,9 @@ export const trackedOrderSchema = z.object({
   customer_name: z.string().nullable(),
   subtotal: z.string(),
   tax_total: z.string(),
+  // P10. `.default('0.00')` y no obligatorio: un pedido anterior al despliegue
+  // de esta fase no lo trae, y esa respuesta tiene que seguir pintándose.
+  discount_total: z.string().default('0.00'),
   grand_total: z.string(),
   shipping_address: z.record(z.unknown()).default({}),
   items: z
@@ -233,6 +236,11 @@ export const trackedOrderSchema = z.object({
         name: z.string(),
         unit_price: z.string(),
         quantity: z.union([z.number(), z.string()]).transform((v) => Number(v)),
+        discount: z.string().default('0.00'),
+        /** Solo ETIQUETA e importe: ni el id de la campaña ni el cupón ajeno. */
+        discounts: z
+          .array(z.object({ label: z.string(), amount: z.string() }))
+          .default([]),
       }),
     )
     .default([]),

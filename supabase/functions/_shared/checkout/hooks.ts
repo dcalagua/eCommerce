@@ -22,27 +22,71 @@ import type {
   AccountContext,
   CheckoutContext,
   DeliveryContext,
+  GiftCardTender,
   PaymentOutcome,
   PaymentRequest,
   PromotionResult,
   Quote,
 } from './ports.ts'
-import type { ShippingAddress } from '../orders.ts'
+import type { OrderItemInput, ShippingAddress } from '../orders.ts'
 
 /**
  * Etapa 4 · sin promociones.
  *
- * Devuelve cero descuentos SIEMPRE, y `calculateTaxes` comprueba que sea cero
- * antes de seguir: si algún día esta implementación devolviera un importe sin
- * que el motor de impuesto sepa recalcular la base, el pipeline se para en vez
- * de cobrar un total inconsistente.
+ * P10 le puso motor detrás (`serverPromotions`, en `dbPorts.ts`), pero esta
+ * función NO se retira y no es código muerto: es el elemento neutro con el que
+ * se prueba que el pipeline se comporta igual cuando el comercio no tiene el
+ * módulo contratado, que es el caso de todo tenant recién dado de alta. Ese
+ * camino tiene que seguir existiendo y tiene que seguir estando probado.
+ *
+ * Devuelve cero descuentos SIEMPRE y **sin `totals`**, y `calculateTaxes`
+ * comprueba las dos cosas: un importe de descuento sin totales recalculados
+ * detrás sería un error de programación que no debe llegar a un cobro.
  */
 export function noPromotions(_input: {
   context: CheckoutContext
   account: AccountContext
   quote: Quote
+  couponCodes: readonly string[]
+  customerEmail: string
+  items: readonly OrderItemInput[]
 }): Promise<PromotionResult> {
-  return Promise.resolve({ adjustments: [], discountTotal: '0.00' })
+  return Promise.resolve({
+    adjustments: [],
+    discountTotal: '0.00',
+    lines: [],
+    coupons: [],
+    skipped: [],
+  })
+}
+
+/**
+ * Etapa 8a · sin tarjetas regalo.
+ *
+ * El elemento neutro no es «cero»: es «no se aplicó nada y queda por cobrar
+ * todo». Devolver `applied: '0.00'` sin `remaining` obligaría a la etapa 8 a
+ * acordarse de que, cuando no hay tarjeta, el importe a autorizar es el total —
+ * y una rama que hay que recordar es una rama que un día se olvida.
+ */
+export function noGiftCards(input: {
+  storeSlug: string
+  codes: readonly string[]
+  amount: string
+  idempotencyKey: string
+}): Promise<GiftCardTender> {
+  return Promise.resolve({ redemptions: [], applied: '0.00', remaining: input.amount })
+}
+
+/**
+ * Compensación del canje. Sin tarjeta no hay saldo que devolver, y por eso no
+ * lanza: una compensación que falla cuando no había nada que deshacer taparía
+ * el error real que la disparó.
+ */
+export function noGiftCardRelease(_input: {
+  storeSlug: string
+  tender: GiftCardTender
+}): Promise<void> {
+  return Promise.resolve()
 }
 
 /**

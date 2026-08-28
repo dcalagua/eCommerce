@@ -38,6 +38,7 @@ import type {
   CheckoutPorts,
   CheckoutRequest,
   DeliveryContext,
+  GiftCardTender,
   PaymentOutcome,
   PlacedOrder,
   PromotionResult,
@@ -69,6 +70,10 @@ export interface CheckoutSuccess {
   readonly order: PlacedOrder
   readonly quote: Quote | null
   readonly payment: PaymentOutcome | null
+  /** Qué campañas se aplicaron y cuáles no. `null` en un reintento servido de caché. */
+  readonly promotions: PromotionResult | null
+  /** Qué saldo de tarjeta regalo se consumió. `null` = no se canjeó ninguna. */
+  readonly giftCards: GiftCardTender | null
   /** `null` cuando no hay cuenta B2B: no se pregunto, que no es «no hacia falta». */
   readonly approval: PurchaseApproval | null
   readonly stagesRun: readonly CheckoutStage[]
@@ -85,33 +90,70 @@ function isEmptyItems(items: readonly OrderItemInput[]): boolean {
 }
 
 /**
+ * Céntimos enteros. Existe para COMPARAR y para restar, nunca para decidir un
+ * importe: los importes los sigue calculando el servidor. Un `0.1 + 0.2` en
+ * coma flotante da 0.30000000000000004, y aquí eso sería la diferencia entre
+ * pedirle a la pasarela lo que toca y pedirle un céntimo de más.
+ */
+function cents(amount: string): number {
+  return Math.round(Number(amount) * 100)
+}
+
+/**
  * Etapa 5 · el impuesto NO se recalcula aquí, y es deliberado.
  *
- * La base ya lo redondea POR GRUPO DE TASA dentro de `ebim.build_quote` y de
- * `create_order`, que es la única forma de que la cotización y el pedido den el
- * mismo céntimo. Rehacerlo en TypeScript crearía una segunda autoridad fiscal
- * que discreparía de la primera el día que alguien cambiara un redondeo. Lo que
- * esta etapa hace es lo que sí le toca: comprobar que los totales que llegaron
- * son coherentes entre sí y arrastrar el efecto de las promociones.
+ * La base ya lo redondea POR GRUPO DE TASA dentro de `ebim.promotion_totals`
+ * —la misma función que usa `create_order`—, que es la única forma de que la
+ * cotización y el pedido den el mismo céntimo. Rehacerlo en TypeScript crearía
+ * una segunda autoridad fiscal que discreparía de la primera el día que alguien
+ * cambiara un redondeo.
+ *
+ * Lo que esta etapa hace es lo que sí le toca: **comprobar la identidad**
+ * `subtotal + impuesto − descuento = total` antes de que ese total viaje a una
+ * pasarela. No es una comprobación decorativa: es el único punto entre el
+ * cálculo y el cobro donde un descuadre se puede parar, y pararlo aquí cuesta
+ * un error 500; no pararlo cuesta un cargo mal hecho.
  */
 function calculateTaxes(quote: Quote, promotions: PromotionResult): TaxResult {
-  if (Number(promotions.discountTotal) !== 0) {
-    // P10 traerá descuentos y con ellos la base imponible cambia. Hasta
-    // entonces esto no puede pasar, y si pasara sería un error de programación
-    // que no debe llegar a un importe cobrado.
+  const totals = promotions.totals
+
+  if (!totals) {
+    // Sin motor detrás (el gancho neutro), un descuento no puede existir: no
+    // hay quien recalcule la base imponible. Si pasara sería un error de
+    // programación que no debe llegar a un importe cobrado.
+    if (Number(promotions.discountTotal) !== 0) {
+      throw new CheckoutStageError({
+        stage: 'calculate_taxes',
+        code: 'PROMOCION_NO_SOPORTADA',
+        message: 'Llegó un descuento sin totales recalculados detrás',
+        status: 500,
+      })
+    }
+    return {
+      taxInclusive: quote.taxInclusive,
+      subtotal: quote.subtotal,
+      discountTotal: '0.00',
+      taxTotal: quote.taxTotal,
+      grandTotal: quote.grandTotal,
+    }
+  }
+
+  const expected = cents(totals.subtotal) + cents(totals.taxTotal) - cents(totals.discountTotal)
+  if (expected !== cents(totals.grandTotal)) {
     throw new CheckoutStageError({
       stage: 'calculate_taxes',
-      code: 'PROMOCION_NO_SOPORTADA',
-      message: 'Todavía no hay motor de promociones que recalcule el impuesto',
+      code: 'TOTALES_INCOHERENTES',
+      message: 'Los totales con descuento no cuadran entre sí',
       status: 500,
     })
   }
 
   return {
     taxInclusive: quote.taxInclusive,
-    subtotal: quote.subtotal,
-    taxTotal: quote.taxTotal,
-    grandTotal: quote.grandTotal,
+    subtotal: totals.subtotal,
+    discountTotal: totals.discountTotal,
+    taxTotal: totals.taxTotal,
+    grandTotal: totals.grandTotal,
   }
 }
 
@@ -149,6 +191,8 @@ export async function runCheckout(
       order: toPlacedOrder(claim.result, true),
       quote: null,
       payment: null,
+      promotions: null,
+      giftCards: null,
       approval: null,
       stagesRun: [],
     }
@@ -158,6 +202,7 @@ export async function runCheckout(
   const stagesRun: CheckoutStage[] = []
   let current: CheckoutStage = 'resolve_context'
   let approval: PurchaseApproval | null = null
+  let giftCards: GiftCardTender | null = null
 
   const stage = async <T>(name: CheckoutStage, run: () => Promise<T>): Promise<T> => {
     current = name
@@ -221,9 +266,20 @@ export async function runCheckout(
       return resolved
     })
 
-    // --- 4 · Promociones (gancho estable) ----------------------------------
+    // --- 4 · Promociones ---------------------------------------------------
+    // El pipeline NO sabe qué es un cupón: transporta lo que el comprador
+    // tecleó y recibe un resultado ya decidido. No existe forma de que esta
+    // etapa marque una promoción como aplicada, porque no hay parámetro que lo
+    // exprese (regla 6 de la fase).
     const promotions: PromotionResult = await stage('resolve_promotions', () =>
-      ports.resolvePromotions({ context, account, quote }),
+      ports.resolvePromotions({
+        context,
+        account,
+        quote,
+        couponCodes: input.couponCodes,
+        customerEmail: input.customerEmail,
+        items: input.items,
+      }),
     )
 
     // --- 5 · Impuesto ------------------------------------------------------
@@ -269,7 +325,7 @@ export async function runCheckout(
       return resolved
     })
 
-    // --- 8 · Cobro y autorización de compra --------------------------------
+    // --- 8 · Tarjeta regalo, cobro y autorización de compra ----------------
     const payment: PaymentOutcome = await stage('authorize_payment', async () => {
       // El límite de la persona es una autorización de COMPRA, y solo se puede
       // comprobar cuando ya hay total. Por eso vive aquí y no en la etapa 2.
@@ -298,8 +354,46 @@ export async function runCheckout(
         }
       }
 
+      // ---- 8a · La tarjeta regalo, ANTES de la pasarela -------------------
+      //
+      // Es un medio de pago, no un descuento: no ha tocado el subtotal ni el
+      // impuesto. Lo único que hace es que a la pasarela se le pida el RESTO.
+      // Al revés —cobrar el total y devolver la diferencia— sería un movimiento
+      // de dinero de más y una comisión de más en cada compra.
+      if (input.giftCardCodes.length > 0) {
+        const tender = await ports.applyGiftCards({
+          storeSlug: input.storeSlug,
+          codes: input.giftCardCodes,
+          amount: taxes.grandTotal,
+          idempotencyKey: input.idempotencyKey,
+        })
+        if (tender.redemptions.length > 0) {
+          giftCards = tender
+          // Saldo gastado y todavía sin pedido: si lo que viene falla, hay que
+          // devolverlo. Es el mismo trato que la reserva y que el cobro.
+          compensations.push({
+            label: `release_gift_cards:${tender.redemptions.length}`,
+            run: () => ports.releaseGiftCards({ storeSlug: input.storeSlug, tender }),
+          })
+        }
+      }
+
+      const toAuthorize = giftCards === null ? taxes.grandTotal : giftCards.remaining
+
+      // Pagado entero con saldo: no hay nada que pedirle a ninguna pasarela, y
+      // llamarla igual por «coherencia» sería un cargo de cero que algunas
+      // rechazan y todas cobran.
+      if (cents(toAuthorize) === 0) {
+        return {
+          status: 'not_required' as const,
+          providerCode: null,
+          providerReference: null,
+          providerMessage: null,
+        }
+      }
+
       const outcome = await ports.authorizePayment({
-        amount: taxes.grandTotal,
+        amount: toAuthorize,
         currency: quote.currency,
         idempotencyKey: input.idempotencyKey,
         customerEmail: input.customerEmail,
@@ -338,6 +432,7 @@ export async function runCheckout(
         payment,
         account,
         approval,
+        giftCards,
       })
       // A partir de aquí no se compensa: el pedido existe y deshacerlo no es
       // «soltar una reserva», es cancelar una venta. Eso lo decide una persona
@@ -368,6 +463,8 @@ export async function runCheckout(
       order,
       quote,
       payment,
+      promotions,
+      giftCards,
       approval,
       stagesRun,
     }

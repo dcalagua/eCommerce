@@ -3,7 +3,7 @@
 GUIDELINES_STATUS: VERIFIED (**por lectura directa** en la 2ª pasada de P00-SaaS: contrato v1.15,
 `PROTOCOLO.md`, `BANDEJA.md` y `EBIM-CREW-ROSTER.md`). La unidad montada es `G:`, no `H:`.
 Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
-Última actualización: 2026-08-28 (RECOVERY → P09 de productización SaaS)
+Última actualización: 2026-08-28 (P10-SaaS: promociones, cupones y tarjetas regalo)
 
 > **Dos numeraciones de fase.** Lo que sigue como «P00…P12» es el trabajo histórico de este repo. A
 > partir del 2026-08-27 arranca un segundo recorrido, **P00–P17 de productización SaaS**
@@ -32,6 +32,123 @@ pantalla y sin un solo test propio. Se conservó tal cual y se continuó desde a
 ---
 
 ## Fase actual
+**P10-SaaS — Promociones: motor determinista, cupones y tarjetas regalo. COMPLETA. Gate: PASS.**
+Decisiones completas en [`docs/adr/010-promotions-engine.md`](adr/010-promotions-engine.md).
+
+### Gates (2026-08-28, partiendo de `6e656eb`)
+
+| Comando | Antes de P10 | Después |
+|---|---|---|
+| `npm run typecheck` | PASS | **PASS** |
+| `npm run lint` | PASS, 0 problemas | **PASS**, 0 problemas |
+| `npm run test` | 1472 / 71 archivos | **1642 / 76 archivos** |
+| `npm run test:db` | 925 / 30 | **1050 / 33** |
+| `npm run build` | 860,88 kB (254,06 gzip) | **PASS**, 891,18 kB (262,18 gzip) |
+
+170 tests nuevos, repartidos así:
+
+| Dónde | Cuántos | Qué defienden |
+|---|---|---|
+| `supabase/tests/promotions.test.ts` | 62 | el motor contra Postgres real: alcance, vigencia, prioridad, exclusión, grupo, volumen, 3x2, combo, cupones, límites, aritmética fiscal, aislamiento y bitácora |
+| `supabase/tests/promotions-checkout.test.ts` | 23 | el motor decidiendo dinero: cotización = pedido, canje apuntado, contador movido, límites bajo el cerrojo y las ocho claves prohibidas del payload |
+| `supabase/tests/gift-cards.test.ts` | 29 | el saldo: emisión, secreto del código, canje idempotente, caducidad, ajuste, anulación y aislamiento |
+| `supabase/tests/checkout-orchestrator.test.ts` | +11 | el pipeline: el total del servidor llega a la pasarela, los totales incoherentes la detienen, la tarjeta paga primero y su saldo se devuelve si el pedido falla |
+| `src/features/promotions/promotions.test.ts` | 28 | validación del formulario espejo de los CHECK, normalización del cupón y que ningún importe pasa por un `number` |
+| `src/features/promotions/promotions-ui.test.tsx` | 16 | la pantalla: cinco tabs, gating por capacidad y por rol, las columnas del encargo y el alta sin campos de tenant |
+| `src/features/storefront/checkout-ui.test.tsx` | +1 | el cupón viaja como texto y el cuerpo sigue sin llevar un céntimo |
+
+**Ningún test existente se borró ni se debilitó**; tres expectativas se ampliaron porque el repo
+cambió de verdad: la lista de rutas de `/app`, el cuerpo del checkout —que ahora lleva
+`coupon_codes`— y el constructor de puertos del orquestador.
+
+### El criterio de aceptación, comprobado
+
+> «PASS si un comercio puede crear campañas comunes sin deploy y el resultado es determinístico,
+> server-side y auditable.»
+
+Las cuatro mitades, cada una con su prueba:
+
+| Exigencia | Dónde se comprueba |
+|---|---|
+| **sin deploy** | `promotions.test.ts` monta las cinco clases de campaña —porcentaje, importe fijo, volumen, 3x2 y combo— desde cero, con filas y sin una línea de SQL nueva |
+| **determinístico** | «el orden lo manda la PRIORIDAD y el resultado es reproducible»: dos cotizaciones idénticas del mismo carrito, comparadas entera contra entera |
+| **server-side** | ocho tests, uno por clave prohibida (`discount`, `discount_total`, `promotion_id`, `coupon_id`, …), más el del cuerpo del checkout en la vitrina |
+| **auditable** | la bitácora anota el cambio **con el estado que la campaña tenía**, el canje guarda quién y cuánto, y `discount_snapshot` sobrevive al borrado de la campaña |
+
+### Qué se construyó
+
+**Cinco migraciones, todas nuevas (ninguna aplicada se tocó):**
+
+| Migración | Qué trae |
+|---|---|
+| `130000_promotions_core` | las 7 tablas de campañas, los 4 enums, las FK compuestas que hacen imposibles las formas inválidas, la bitácora DEFINER y RLS *default deny* con GRANT POR COLUMNA sobre `usage_count` |
+| `130100_promotions_engine` | `ebim.normalize_promo_code`, `ebim.distribute_amount` (resto mayor), `ebim.promotion_totals` (la única autoridad fiscal con descuento), `ebim.evaluate_promotions`, `ebim.apply_promotions`, `ebim.redeem_promotions` y las dos puertas públicas |
+| `130200_gift_cards` | las 2 tablas del saldo, `ebim.gift_card_move` (el único sitio donde el saldo cambia) y los seis comandos |
+| `130300_create_order_promotions` | `create_order` evalúa con los cerrojos puestos, escribe `discount_amount`/`discount_snapshot` por línea y apunta el canje; `order_by_token` devuelve el descuento al comprador |
+| `130400_promotions_capability` | `promotions → implemented` y las vistas `promotion_overview` y `gift_card_overview` con el estado EFECTIVO |
+
+**Backoffice** `/app/promotions`, gateado por la capacidad `promotions`, con cinco tabs
+(`#campanas`, `#cupones`, `#tarjetas`, `#simulador`, `#bitacora`), buscador general único por listado
+y sin un solo panel de filtros multi-campo.
+
+**Vitrina**: un campo de cupón en el checkout y el descuento explicado en la confirmación. El cuerpo
+de la petición gana `coupon_codes` y sigue sin llevar ni un importe.
+
+### Las decisiones que más cuesta revertir
+
+1. **Precio y promoción son dos capas.** El motor recibe líneas ya cotizadas y les resta; ni una
+   línea de las cinco tablas de P04 cambia. Mezclarlas da un motor que nadie sabe explicar el día
+   que un importe sale mal, que es el día en que hay que explicarlo.
+2. **El alcance va en columnas tipadas, no en un `rules jsonb`.** Sin FK, una regla que apunta a una
+   categoría borrada se queda viva decidiendo dinero. El coste asumido y escrito: añadir un tipo de
+   campaña es escribir código, y por eso el enum tiene cinco valores y no veinte.
+3. **Orden total y stacking explícito.** `priority desc, created_at, id`, y luego exclusiva → grupo
+   → remanente. Que cada campaña caiga sobre lo que QUEDA es lo que impide que dos del 60 % sumen
+   120 %: no hace falta un CHECK, el modelo no puede expresarlo.
+4. **Los límites se cuentan con la fila bloqueada**, y solo se bloquea lo que puede agotarse: una
+   campaña sin tope no necesita cerrojo y bloquearla serializaría todos los checkouts de la tienda.
+5. **La normalización del cupón es una columna GENERADA.** «Verano 25» y «verano-25» son el mismo
+   cupón porque el índice único está sobre ella, no porque tres sitios se acuerden de normalizar.
+6. **Una sola autoridad fiscal.** El reparto del impuesto sale de `create_order` y pasa a
+   `ebim.promotion_totals`, la misma que usa la vitrina. Con descuento cero da EXACTAMENTE los
+   números de P09 — por eso ningún test de P02 a P09 cambió una línea.
+7. **La tarjeta regalo no es un descuento.** Es un medio de pago: no toca subtotal, impuesto ni
+   `discount_total`, y a la pasarela se le pide el RESTO. Tratarla como descuento falsearía el
+   ingreso, el impuesto y el pasivo a la vez.
+8. **La respuesta trae lo que NO se aplicó**, con diez motivos estables — salvo las campañas que
+   exigen cupón sin traerlo, que no se reportan: enumerarlas sería regalar el folleto.
+
+### Lo que NO se hizo, y por qué
+
+- **Envío gratis como tipo de campaña.** No hay motor de coste de envío hasta P12: sería una casilla
+  que no hace nada. El enum crece el día que exista el sumando.
+- **Reglas por «usuario».** Un descuento por `sub` sería un `if` por persona dentro del core
+  (principio 2 del contrato). El eje comercial es el segmento; el individual, el cliente o la cuenta.
+- **`promotions.gift_cards` como capacidad vendible aparte.** El catálogo comercial es del hub
+  (§6): esta app no inventa un SKU que el hub no conoce.
+- **3x2 que cruza líneas eligiendo la unidad más barata.** Se calcula por línea: con precios
+  distintos habría que elegir cuál sale gratis, y esa elección no la toma el motor sin que el
+  comercio la haya escrito.
+- **Buscador de producto en el editor de alcance.** Hoy se pega el identificador. Hacerlo aquí
+  crearía el cuarto buscador de producto del repositorio; el disparador es un componente compartido.
+
+- **Auditoría de secretos sobre `dist/`**: las únicas coincidencias de `service_role`/`sb_secret_`
+  siguen siendo la regex del guard `assertNoServiceKey` y el chequeo de prefijo del propio SDK. Sin
+  claves de servicio.
+- Sin push, sin PR, **sin deploy remoto**: sigue sin existir project ref y ninguna migración de P10
+  está aplicada. Por eso las cinco se pudieron corregir dentro de la fase; a partir del primer
+  `db push`, la regla vuelve a ser la del encargo — migración aplicada es inmutable.
+
+- **Buzón EBIM**: revisado el 2026-08-28 en `G:\.shortcut-targets-by-id\…\EBIM-Plataforma\`. El
+  mensaje más reciente de `coordinacion/pendientes/` sigue siendo del 2026-08-20 y ninguno va `to:
+  ecommerce`. Nada que responder en esta fase, y sigue sin poderse: `ecommerce` no es todavía un
+  `from` válido del `PROTOCOLO.md` (§5.1 del roadmap, bloqueo del operador).
+
+Siguiente: **P11-SaaS**.
+
+---
+
+## Fase anterior
 **P09-SaaS — Pagos: contrato canónico de pasarela, comandos e idempotencia. COMPLETA. Gate: PASS.**
 Decisiones completas en [`docs/adr/009-payments-provider-contract.md`](adr/009-payments-provider-contract.md).
 

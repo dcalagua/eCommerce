@@ -21,6 +21,11 @@
  *  · `expected_prices`: lo que el navegador CREÍA que costaba cada línea. No se
  *    cobra con ello jamás — solo sirve para detenerse y avisar si el precio
  *    cambió mientras el comprador rellenaba el formulario.
+ *  · `coupon_codes` y `gift_card_codes` (P10): lo que el comprador tecleó. Son
+ *    CÓDIGOS, no descuentos: no llevan importe, no dicen qué campaña activan y
+ *    no pueden marcar nada como aplicado. Cuánto descuenta cada uno lo decide
+ *    la base, dos veces —una para enseñárselo al comprador y otra, con las
+ *    filas bloqueadas, para cobrarle—.
  *
  * ## Dos clientes, y no es un descuido
  *
@@ -121,6 +126,18 @@ const handler = serveJson(
             subtotal: result.order.subtotal,
             tax_total: result.order.taxTotal,
             grand_total: result.order.grandTotal,
+            // P10: el desglose. Un total con descuento y sin explicación es lo
+            // que hace que un comprador llame por teléfono para preguntar por
+            // qué le cobraron eso.
+            discount_total: result.promotions?.totals?.discountTotal ?? '0.00',
+            promotions: result.promotions?.adjustments ?? [],
+            coupons: result.promotions?.coupons ?? [],
+            gift_cards: (result.giftCards?.redemptions ?? []).map((entry) => ({
+              // Los cuatro últimos y el importe. El código entero no vuelve a
+              // salir de la base ni siquiera aquí.
+              last4: entry.last4,
+              applied: entry.applied,
+            })),
             items: result.order.items,
             replay: result.replay,
             intent_id: result.intentId,

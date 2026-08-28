@@ -116,6 +116,7 @@ export function StoreCheckoutPage() {
       customerPhone: '',
       address: '',
       reference: '',
+      couponCode: '',
     },
   })
 
@@ -283,6 +284,22 @@ export function StoreCheckoutPage() {
                   : t('store.checkout.referenceHint')
               }
               {...register('reference')}
+            />
+            {/* P10 · el cupón. Un solo campo, y lo que se manda es TEXTO: si
+                descuenta y cuánto lo decide el servidor, que vuelve a evaluar
+                con la fila delante y bloqueada. Aquí no se valida contra nada:
+                comprobarlo en el navegador sería una segunda autoridad sobre el
+                mismo dato, y la del navegador siempre acaba desactualizada. */}
+            <TextField
+              label={t('store.checkout.coupon')}
+              error={Boolean(errors.couponCode)}
+              helperText={
+                errors.couponCode
+                  ? t(errors.couponCode.message as MessageKey)
+                  : t('store.checkout.couponHint')
+              }
+              inputProps={{ style: { textTransform: 'uppercase' } }}
+              {...register('couponCode')}
             />
           </Stack>
         </Card>

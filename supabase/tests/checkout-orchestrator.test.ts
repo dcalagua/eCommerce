@@ -19,6 +19,8 @@ import { CHECKOUT_STAGES, type CheckoutStage } from '../functions/_shared/checko
 import { runCheckout, type CheckoutInput } from '../functions/_shared/checkout/pipeline.ts'
 import {
   alwaysDeliverable,
+  noGiftCardRelease,
+  noGiftCards,
   noPaymentGateway,
   noPaymentVoid,
   noPromotions,
@@ -88,6 +90,10 @@ function input(overrides: Partial<CheckoutInput> = {}): CheckoutInput {
     // P09: la tienda de este banco de pruebas no cobra en linea salvo que el
     // caso lo diga. `null` es el mismo camino que tenia P07 y sigue valiendo.
     paymentMethodCode: null,
+    // P10: sin codigos tecleados. Es el carrito de la mayoria de las compras, y
+    // el camino que tiene que seguir dando exactamente los mismos importes.
+    couponCodes: [],
+    giftCardCodes: [],
     ...overrides,
   }
 }
@@ -97,13 +103,17 @@ interface Recorder {
   stages: CheckoutStage[]
   released: string[]
   voided: number
+  /** P10: cuantas tarjetas regalo se devolvieron al deshacer. */
+  giftCardsReleased: number
   failures: Array<{ stage: CheckoutStage; code: string; detail: string }>
 }
 
 function ports(
   overrides: Partial<CheckoutPorts> = {},
 ): { ports: CheckoutPorts; log: Recorder } {
-  const log: Recorder = { stages: [], released: [], voided: 0, failures: [] }
+  const log: Recorder = {
+    stages: [], released: [], voided: 0, giftCardsReleased: 0, failures: [],
+  }
 
   const base: CheckoutPorts = {
     begin: () =>
@@ -143,6 +153,7 @@ function ports(
         created: true,
       }),
     validateDelivery: alwaysDeliverable,
+    applyGiftCards: noGiftCards,
     authorizePayment: noPaymentGateway,
     placeOrder: () => Promise.resolve(ORDER_RESULT),
     releaseReservation: (_slug, token) => {
@@ -157,6 +168,10 @@ function ports(
         providerReference: null,
         providerMessage: null,
       })
+    },
+    releaseGiftCards: (release) => {
+      log.giftCardsReleased += release.tender.redemptions.length
+      return noGiftCardRelease(release)
     },
     ...overrides,
   }
@@ -672,5 +687,243 @@ describe('la aprobacion B2B', () => {
     expect(result.approval).toBeNull()
     const arg = (place.mock.calls as unknown as unknown[][])[0]?.[0] as { approval: unknown }
     expect(arg.approval).toBeNull()
+  })
+})
+
+
+// ===========================================================================
+// P10-SaaS · promociones y tarjeta regalo en el pipeline
+// ===========================================================================
+describe('promociones (P10)', () => {
+  /** Lo que devuelve un motor de promociones de verdad: totales ya recalculados. */
+  const withDiscount = (overrides: Partial<CheckoutPorts> = {}) =>
+    ports({
+      resolvePromotions: () =>
+        Promise.resolve({
+          adjustments: [{ code: 'verano', label: 'Verano', amount: '20.00', productId: null }],
+          discountTotal: '20.00',
+          lines: [
+            {
+              lineKey: 1,
+              discount: '20.00',
+              adjustments: [
+                { code: 'verano', label: 'Verano', amount: '20.00', productId: PRODUCT },
+              ],
+            },
+          ],
+          coupons: [{ code: 'VERANO', status: 'aplicado' }],
+          skipped: [],
+          totals: {
+            subtotal: '200.00',
+            discountTotal: '20.00',
+            taxTotal: '32.40',
+            grandTotal: '212.40',
+          },
+        }),
+      ...overrides,
+    })
+
+  it('el total que llega a la pasarela es el del SERVIDOR, con el descuento dentro', async () => {
+    const authorize = vi.fn(() =>
+      Promise.resolve({
+        status: 'authorized' as const,
+        providerCode: 'sandbox',
+        providerReference: 'auth-1',
+        providerMessage: null,
+      }),
+    )
+    const { ports: p } = withDiscount({
+      authorizePayment: authorize as unknown as CheckoutPorts['authorizePayment'],
+    })
+
+    await runCheckout(p, input({ couponCodes: ['VERANO'] }))
+
+    const request = (authorize.mock.calls as unknown as unknown[][])[0]?.[0] as { amount: string }
+    // 200 − 20 = 180 de base, 18 % = 32.40, total 212.40. Ni el pipeline ni el
+    // navegador han hecho esa cuenta: la trajo hecha el servidor.
+    expect(request.amount).toBe('212.40')
+  })
+
+  it('los codigos tecleados llegan al puerto tal cual, sin importe ninguno', async () => {
+    const resolve = vi.fn(() =>
+      Promise.resolve({
+        adjustments: [], discountTotal: '0.00', lines: [], coupons: [], skipped: [],
+        totals: { subtotal: '200.00', discountTotal: '0.00', taxTotal: '36.00', grandTotal: '236.00' },
+      }),
+    )
+    const { ports: p } = ports({
+      resolvePromotions: resolve as unknown as CheckoutPorts['resolvePromotions'],
+    })
+
+    await runCheckout(p, input({ couponCodes: ['VERANO', 'BIENVENIDA'] }))
+
+    const arg = (resolve.mock.calls as unknown as unknown[][])[0]?.[0] as Record<string, unknown>
+    expect(arg.couponCodes).toEqual(['VERANO', 'BIENVENIDA'])
+    // Y nada mas del dinero: el puerto no recibe ni un importe de descuento.
+    expect(Object.keys(arg).sort()).toEqual([
+      'account', 'context', 'couponCodes', 'customerEmail', 'items', 'quote',
+    ])
+  })
+
+  it('el desglose viaja en la respuesta, incluido lo que NO se aplico', async () => {
+    const { ports: p } = withDiscount()
+    const result = await runCheckout(p, input())
+
+    expect(result.promotions?.adjustments).toHaveLength(1)
+    expect(result.promotions?.coupons[0]?.status).toBe('aplicado')
+    expect(result.promotions?.lines[0]?.discount).toBe('20.00')
+  })
+
+  /**
+   * Esta es la comprobacion cara: el ULTIMO punto entre el calculo y el cobro
+   * donde un descuadre se puede parar. Cuesta un 500; no pararlo cuesta un
+   * cargo mal hecho.
+   */
+  it('unos totales que no cuadran entre si detienen la compra ANTES de cobrar', async () => {
+    const authorize = vi.fn(() => Promise.resolve({
+      status: 'authorized' as const, providerCode: null,
+      providerReference: null, providerMessage: null,
+    }))
+    const { ports: p } = ports({
+      authorizePayment: authorize as unknown as CheckoutPorts['authorizePayment'],
+      resolvePromotions: () =>
+        Promise.resolve({
+          adjustments: [], discountTotal: '20.00', lines: [], coupons: [], skipped: [],
+          // 200 + 32.40 − 20 = 212.40, y aqui dice 999.99.
+          totals: {
+            subtotal: '200.00', discountTotal: '20.00',
+            taxTotal: '32.40', grandTotal: '999.99',
+          },
+        }),
+    })
+
+    const error = await expectStageFailure(() => runCheckout(p, input()))
+
+    expect(error.code).toBe('TOTALES_INCOHERENTES')
+    expect(error.stage).toBe('calculate_taxes')
+    expect(authorize).not.toHaveBeenCalled()
+  })
+
+  it('un descuento SIN totales detras no llega a un importe cobrado', async () => {
+    const { ports: p } = ports({
+      resolvePromotions: () =>
+        Promise.resolve({
+          adjustments: [], discountTotal: '20.00', lines: [], coupons: [], skipped: [],
+        }),
+    })
+
+    const error = await expectStageFailure(() => runCheckout(p, input()))
+
+    expect(error.code).toBe('PROMOCION_NO_SOPORTADA')
+    expect(error.stage).toBe('calculate_taxes')
+  })
+
+  it('sin motor (el gancho neutro) los importes son EXACTAMENTE los de P07', async () => {
+    const authorize = vi.fn(() => Promise.resolve({
+      status: 'not_required' as const, providerCode: null,
+      providerReference: null, providerMessage: null,
+    }))
+    const { ports: p } = ports({
+      authorizePayment: authorize as unknown as CheckoutPorts['authorizePayment'],
+    })
+
+    const result = await runCheckout(p, input())
+
+    expect(result.ok).toBe(true)
+    const request = (authorize.mock.calls as unknown as unknown[][])[0]?.[0] as { amount: string }
+    expect(request.amount).toBe('236.00')
+  })
+})
+
+describe('tarjeta regalo (P10)', () => {
+  const TENDER = {
+    redemptions: [
+      { giftCardId: 'gc-1', last4: '9821', applied: '100.00', reference: 'k:gc:0' },
+    ],
+    applied: '100.00',
+    remaining: '136.00',
+  }
+
+  const withCard = (overrides: Partial<CheckoutPorts> = {}) =>
+    ports({ applyGiftCards: () => Promise.resolve(TENDER), ...overrides })
+
+  it('a la pasarela se le pide el RESTO, no el total', async () => {
+    const authorize = vi.fn(() => Promise.resolve({
+      status: 'authorized' as const, providerCode: 'sandbox',
+      providerReference: 'auth-1', providerMessage: null,
+    }))
+    const { ports: p } = withCard({
+      authorizePayment: authorize as unknown as CheckoutPorts['authorizePayment'],
+    })
+
+    const result = await runCheckout(p, input({ giftCardCodes: ['ABCD1234'] }))
+
+    const request = (authorize.mock.calls as unknown as unknown[][])[0]?.[0] as { amount: string }
+    expect(request.amount).toBe('136.00')
+    expect(result.giftCards?.applied).toBe('100.00')
+  })
+
+  it('si el saldo cubre todo, no se llama a ninguna pasarela', async () => {
+    const authorize = vi.fn()
+    const { ports: p } = ports({
+      applyGiftCards: () =>
+        Promise.resolve({
+          redemptions: [
+            { giftCardId: 'gc-1', last4: '9821', applied: '236.00', reference: 'k:gc:0' },
+          ],
+          applied: '236.00',
+          remaining: '0.00',
+        }),
+      authorizePayment: authorize as unknown as CheckoutPorts['authorizePayment'],
+    })
+
+    const result = await runCheckout(p, input({ giftCardCodes: ['ABCD1234'] }))
+
+    // Un cargo de cero lo rechazan unas pasarelas y lo cobran todas.
+    expect(authorize).not.toHaveBeenCalled()
+    expect(result.payment?.status).toBe('not_required')
+  })
+
+  it('sin codigos no se pregunta por ninguna tarjeta', async () => {
+    const apply = vi.fn()
+    const { ports: p } = ports({
+      applyGiftCards: apply as unknown as CheckoutPorts['applyGiftCards'],
+    })
+
+    await runCheckout(p, input())
+
+    expect(apply).not.toHaveBeenCalled()
+  })
+
+  it('si el pedido falla DESPUES de canjear, el saldo se devuelve', async () => {
+    const { ports: p, log } = withCard({
+      placeOrder: () => Promise.reject(new Error('PEDIDO_FALLIDO: la base dijo que no')),
+    })
+
+    const error = await expectStageFailure(() =>
+      runCheckout(p, input({ giftCardCodes: ['ABCD1234'] })),
+    )
+
+    // Saldo gastado sin pedido detras es dinero del comprador que se quedo el
+    // comercio, y es el unico de los tres efectos que el comprador no puede
+    // reclamar por su cuenta.
+    expect(log.giftCardsReleased).toBe(1)
+    expect(error.compensations.some((entry) => entry.startsWith('release_gift_cards'))).toBe(true)
+    // Y la reserva de existencia tambien se solto, en orden inverso.
+    expect(log.released).toHaveLength(1)
+  })
+
+  it('el canje llega a `placeOrder` para poder atarlo al pedido', async () => {
+    const place = vi.fn(() => Promise.resolve(ORDER_RESULT))
+    const { ports: p } = withCard({
+      placeOrder: place as unknown as CheckoutPorts['placeOrder'],
+    })
+
+    await runCheckout(p, input({ giftCardCodes: ['ABCD1234'] }))
+
+    const arg = (place.mock.calls as unknown as unknown[][])[0]?.[0] as {
+      giftCards: { redemptions: unknown[] } | null
+    }
+    expect(arg.giftCards?.redemptions).toHaveLength(1)
   })
 })

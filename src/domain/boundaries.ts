@@ -194,11 +194,20 @@ export const BOUNDARIES: readonly Boundary[] = [
   {
     id: 'promotions',
     kind: 'domain',
-    state: 'declared',
+    // P10-SaaS. El motor existe entero y **no toca el de precios**: recibe
+    // líneas ya cotizadas por `ebim.resolve_prices` y les resta. Añadir un tipo
+    // de campaña es una rama en `ebim.evaluate_promotions`, no un cambio en
+    // ninguna de las cinco tablas de P04.
+    state: 'implemented',
     responsibility:
-      'Descuento sobre el precio base ya resuelto: campañas, cupones y su desglose.',
-    paths: [],
-    serverSide: ['orders.discount_total existe y vale siempre 0 (090400)'],
+      'Descuento sobre el precio base ya resuelto: campañas, cupones, tarjetas regalo y su desglose.',
+    paths: ['features/promotions'],
+    serverSide: [
+      'siete tablas del dominio con RLS default deny y bitácora DEFINER (130000)',
+      'motor determinista con orden total y stacking explícito: evaluate_promotions (130100)',
+      'tarjetas regalo: saldo, libro mayor y caducidad (130200)',
+      'create_order evalúa con los cerrojos puestos y apunta el canje (130300)',
+    ],
   },
   {
     id: 'content',
