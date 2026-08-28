@@ -41,7 +41,7 @@ El **hub EBIM** es el emisor de identidad y dueño del catálogo/billing. eComme
 escribe en él. La identidad del comprador final del storefront es **local** a este proyecto (patrón §2.5,
 igual que los proveedores externos de eSupplier); los usuarios del tenant llegan por SSO del hub.
 
-## Modelo de datos (implementado hasta P08-SaaS)
+## Modelo de datos (implementado hasta P09-SaaS)
 
 Nueve tablas en `supabase/migrations`, todas con `organization_id uuid` + `company_id uuid` (uuids del hub),
 `created_at`/`updated_at`, PK uuid y RLS default deny **forzada**:
@@ -356,6 +356,55 @@ LO QUE ESCRIBEN OTROS SISTEMAS
   `order_external_refs` como lote de origen. `order_schedules` y `order_batches` **no se crean**;
   el ADR escribe el disparador de cada una, igual que P06 con `warehouse_locations`.
 
+### Pagos: contrato de pasarela, comandos y conciliación (P09-SaaS)
+
+Siete tablas más, migraciones `20260828120000`-`120200`. Decisiones completas en
+[`adr/009-payments-provider-contract.md`](adr/009-payments-provider-contract.md).
+
+```
+payment_methods        QUE puede elegir el comprador. Config PUBLICA; sin credenciales.
+  └── payment_intents  LA INTENCION de cobrar. Nace ANTES que el pedido y se ata despues.
+        ├── payment_attempts  CADA llamada al proveedor, con su resultado. Append-only.
+        ├── payments          EL DINERO cobrado. ── refunds  LA DEVOLUCION, con idempotencia propia.
+        └── payment_events    la bitacora del dominio. Append-only, incluso para service_role.
+reconciliation_records LO QUE EL PROVEEDOR DICE QUE LIQUIDO. De la SOCIEDAD, no de la tienda.
+```
+
+- **El dominio de pedidos no se enteró de nada.** `orders` y `order_items` no ganaron ni una columna:
+  el cobro apunta al pedido y el pedido no apunta al cobro. Tres FK en un sentido, cero en el otro, y
+  un test que lo comprueba contra `pg_constraint` en vez de contra el diff.
+- **`orders.payment_status` es un ESPEJO**, escrito por `ebim.payment_sync_order`. Y **no propaga la
+  excepción**: si el eje del pedido no admite la transición —un pedido B2B pendiente de aprobación—
+  el cobro se escribe igual y el comando devuelve `order_synced: false`. Perder el registro de un
+  dinero que ya se movió, para salvar la coherencia de una etiqueta, es el intercambio equivocado.
+- **Nadie con sesión escribe dinero**: seis de las siete tablas sin GRANT de escritura para
+  `authenticated` ni `anon`. La séptima, `payment_methods`, es configuración. Mover dinero es un
+  comando `SECURITY DEFINER`, igual que los ejes del pedido en P08.
+- **Un único punto de entrada**, `public.payment_apply_outcome`, para la respuesta síncrona, el
+  webhook y el operador. Ahí viven las tres reglas caras: el retorno del navegador **no decide**
+  (`RETORNO_NO_DECIDE`), un webhook sin firma verificada **no mueve dinero**
+  (`FIRMA_NO_VERIFICADA`), y un aviso repetido no duplica nada.
+- **Idempotencia en tres cerrojos** independientes —evento del proveedor, llamada al proveedor, cobro
+  por referencia— más la máquina de estados como cuarto tope: `captured` es terminal para el intento.
+- **PCI por delegación es verificable, no una promesa**: `ebim.jsonb_is_card_safe` es un CHECK con
+  Luhn que rechaza un PAN a cualquier profundidad **incluso insertado por `service_role`**, y
+  `provider_token_ref` solo admite el formato de un nombre de variable del vault.
+- **`timeout` es de primera clase**: no dice que no se cobró, dice que no se sabe. Deja el intento en
+  `processing` y el checkout devuelve `PAGO_NO_DISPONIBLE` (503, reintentable), nunca «rechazado».
+- **La conciliación cruza por referencia externa dentro del tenant**, que sale del JWT. Ningún banco
+  aparece nombrado: el proveedor es una fila de `integration_providers`.
+
+El lado TypeScript vive en `supabase/functions/_shared/payments/`: el contrato canónico
+(`provider.ts`, con capacidades explícitas porque no toda pasarela implementa todos los modos), el
+conector determinista `sandbox.ts`, la verificación de firma (`signature.ts`, HMAC-SHA256 sobre el
+cuerpo **crudo** y comparación en tiempo constante), el gancho de la etapa 8 (`gateway.ts`) y la
+ingesta de avisos (`webhook.ts`). **`registry.ts` es el único sitio del repositorio donde se escribe
+el código de una pasarela**: añadir una real es un archivo y una línea en ese mapa.
+
+La Edge Function `payments-webhook` no usa `serveJson` —necesita el cuerpo crudo para la firma—, no
+acepta `Authorization` (quien llama es un servidor, y la autenticación es la firma) y responde 200
+casi siempre, porque a un webhook al que se contesta con error se le reintenta para siempre.
+
 ### Capacidades y entitlements (P02-SaaS)
 
 Cuatro tablas más, migración `20260827160000`. Decisiones completas en
@@ -469,6 +518,9 @@ src/
   features/orders/      pedidos del backoffice (P08-SaaS: listado paginado en servidor,
                         cuatro ejes de estado con comando de transicion, linea de tiempo,
                         notas internas, etiquetas, referencias externas y aprobacion B2B)
+  features/payments/    cobros, medios de pago y conciliacion (P09-SaaS). Escribe UNA
+                        tabla —los medios, que son configuracion—; devolver y cuadrar
+                        son comandos. Gateada por la capacidad `payments`
   features/storefront/  vitrina pública: resolución por slug, catálogo, ficha, carrito/checkout
                         (P07-SaaS: carrito de servidor con fusión al iniciar sesión y
                          checkout idempotente con etapas)

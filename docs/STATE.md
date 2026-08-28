@@ -3,14 +3,133 @@
 GUIDELINES_STATUS: VERIFIED (**por lectura directa** en la 2ª pasada de P00-SaaS: contrato v1.15,
 `PROTOCOLO.md`, `BANDEJA.md` y `EBIM-CREW-ROSTER.md`). La unidad montada es `G:`, no `H:`.
 Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
-Última actualización: 2026-08-28 (P08 de productización SaaS)
+Última actualización: 2026-08-28 (RECOVERY → P09 de productización SaaS)
 
 > **Dos numeraciones de fase.** Lo que sigue como «P00…P12» es el trabajo histórico de este repo. A
 > partir del 2026-08-27 arranca un segundo recorrido, **P00–P17 de productización SaaS**
 > (`claude-saas-opus/config/phases.json`), que se identifica siempre como «P0x-SaaS». No son la misma
 > serie: el P12 histórico es el framework de integraciones; el P12-SaaS será fulfillment y devoluciones.
 
+## Recuperación de la ejecución interrumpida (2026-08-28)
+
+El runner (`claude-saas-opus`) se detuvo con `phase: RECOVERY` después de P08. **El punto real de
+recuperación era P09-SaaS**, y se determinó por evidencia, no por el número del `runner-state.json`:
+
+| Señal | Qué decía |
+|---|---|
+| `logs/*-P00…P08-attempt-1.log` | los nueve terminan en `PHASE_RESULT: PASS` y con sus cinco `RUNNER_GATE_RESULT: PASS` |
+| `git log` | nueve commits, uno por fase, `608ab65` = P08 |
+| gates en HEAD | typecheck, lint, `test` (1373/68), `test:db` (839/28) y `build` **verdes antes de tocar nada** |
+| `git status` | un único artefacto sin seguimiento: `supabase/migrations/20260828120000_payments_core.sql` |
+| ese archivo | 984 líneas, cabecera **«P09-SaaS · 1/3»**, `mtime` 02:53 — posterior al commit de P08 (02:38) |
+| `logs/` | **no existe log de P09**: el proceso murió antes de que el runner lo cerrara |
+
+Conclusión: P00–P08 estaban terminadas y validadas —no se rehizo ni una— y P09 estaba **a un tercio**,
+con la migración del modelo escrita y aplicable (el banco de pruebas la aplicaba sin error y
+`schema-invariants` seguía verde con ella dentro) pero sin comandos, sin dominio en TypeScript, sin
+pantalla y sin un solo test propio. Se conservó tal cual y se continuó desde ahí.
+
+---
+
 ## Fase actual
+**P09-SaaS — Pagos: contrato canónico de pasarela, comandos e idempotencia. COMPLETA. Gate: PASS.**
+Decisiones completas en [`docs/adr/009-payments-provider-contract.md`](adr/009-payments-provider-contract.md).
+
+### Gates (2026-08-28, partiendo de `608ab65`)
+
+| Comando | Antes de P09 | Después |
+|---|---|---|
+| `npm run typecheck` | PASS | **PASS** |
+| `npm run lint` | PASS, 0 problemas | **PASS**, 0 problemas |
+| `npm run test` | 1373 / 68 archivos | **1472 / 71 archivos** |
+| `npm run test:db` | 839 / 28 | **925 / 30** |
+| `npm run build` | 847,46 kB (250,33 gzip) | **PASS**, 860,88 kB (254,06 gzip) |
+
+99 tests nuevos: 55 contra Postgres real (`payments.test.ts`), 31 del contrato de pasarela con puertos
+falsos (`payments-provider.test.ts`) y 13 de la capa de datos del backoffice
+(`features/payments/payments.test.ts`). **Ningún test existente se borró ni se debilitó**; tres
+expectativas se ampliaron porque el repo cambió de verdad: la lista de rutas de `/app`, el mapa de
+fronteras y el constructor de entradas del orquestador de checkout.
+
+### El criterio de aceptación, comprobado
+
+> «PASS si el checkout puede usar un provider fake mediante contrato canónico y **añadir un proveedor
+> real no requiere modificar el dominio de pedidos**.»
+
+La segunda mitad se comprueba **contra el catálogo de Postgres**, no contra el diff:
+
+- `P09 no anadio ni una columna a orders ni a order_items` — de todas las columnas de las dos tablas
+  que nombran pago, proveedor, pasarela o intento, la única que existe es `payment_status`, que ya
+  estaba en P08.
+- `la FK va del cobro al pedido, nunca del pedido al cobro` — 3 claves ajenas desde
+  `payment_intents`/`payments`/`refunds` hacia `orders`, y **0** en sentido contrario.
+
+Y la primera mitad, de punta a punta: el conector `sandbox` es un adaptador normal, con fila en
+`integration_providers` y registrado en el mismo mapa que usaría uno real. Los tests del gancho del
+checkout recorren el mismo camino que la producción.
+
+### Qué se construyó
+
+**Tres migraciones, todas nuevas (ninguna aplicada se tocó):**
+
+| Migración | Qué trae |
+|---|---|
+| `120000_payments_core` (ya estaba, de la ejecución interrumpida) | las 7 tablas, los 7 enums, las guardas PCI, la máquina de estados del intento, la bitácora append-only, RLS *default deny* y la vista pública de medios |
+| `120100_payment_commands` | `payment_intent_open`, `payment_intent_attach_order`, `payment_apply_outcome`, `payment_refund_request`, `payment_refund_settle`, `payment_reconciliation_import` y `_match`, más `ebim.assert_payment_operator` y `ebim.payment_sync_order` |
+| `120200_payments_capability` | el conector `sandbox`, `app_capabilities.payments → implemented` y la vista `payment_intent_overview` |
+
+**Dominio en TypeScript** (`supabase/functions/_shared/payments/`): `provider.ts` (contrato canónico
+con capacidades explícitas), `sandbox.ts` (simulador determinista), `registry.ts` (el ÚNICO sitio del
+repo donde se escribe el código de una pasarela), `signature.ts` (HMAC-SHA256 sobre el cuerpo crudo,
+comparación en tiempo constante), `gateway.ts` (el gancho de la etapa 8) y `webhook.ts` (la ingesta).
+
+**Edge Function** `payments-webhook`: no usa `serveJson` —necesita el cuerpo CRUDO para la firma—,
+no acepta `Authorization` y responde 200 casi siempre, porque a un webhook al que se contesta con
+error se le reintenta para siempre.
+
+**Backoffice** `/app/payments`, gateado por la capacidad `payments`, con tres tabs (`#cobros`,
+`#medios`, `#conciliacion`), buscador general único y sin un solo panel de filtros multi-campo.
+
+### Las decisiones que más cuesta revertir
+
+1. **El pedido no sabe que existe una pasarela.** Un cobro apunta al pedido; el pedido no apunta al
+   cobro. `orders.payment_status` es un espejo escrito desde `ebim.payment_sync_order`.
+2. **El espejo no propaga excepciones.** Si el eje del pedido no admite la transición —un pedido B2B
+   pendiente de aprobación, que P08 congela a propósito— el cobro **se escribe igual**, el comando
+   devuelve `order_synced: false` y lo anota en la bitácora. Hay test.
+3. **Nadie con sesión escribe dinero.** 6 de las 7 tablas sin GRANT de escritura. La séptima,
+   `payment_methods`, es configuración.
+4. **Un solo punto de entrada** (`payment_apply_outcome`) para la respuesta síncrona, el webhook y el
+   operador. Con dos, uno de los dos acabaría sin alguna de las reglas.
+5. **Idempotencia en tres cerrojos** + la máquina de estados como cuarto tope. Los cinco casos del
+   encargo —éxito, rechazo, tiempo agotado, webhook repetido y devolución— tienen su test.
+6. **`timeout` no es `failed`.** No dice que no se cobró, dice que no se sabe. Sale como
+   `PAGO_NO_DISPONIBLE` (503, reintentable) y el intento queda en `processing`.
+7. **Un PAN no entra en esta base**, ni como `service_role`: es un CHECK con Luhn, no una convención.
+
+### Lo que NO se hizo, y por qué
+
+- **Elegir pasarela.** Sigue siendo decisión del operador (§5.2.3 del roadmap). El contrato se valida
+  contra `sandbox`; el adaptador de un banco que nadie ha elegido no se inventa.
+- **Secreto de webhook por SOCIEDAD.** Hoy es por conector y por despliegue
+  (`EBIM_PAYMENT_WEBHOOK_SECRET_<CONECTOR>`). Uno por sociedad exige que la URL de callback
+  identifique al tenant, y esa forma depende de qué pasarela se contrate. Está anotado en riesgos.
+- **Botón de capturar en dos pasos.** El modelo y el comando lo soportan; el botón no se pone porque
+  no se puede probar contra nada hasta que haya pasarela real.
+- **Subir el extracto como fichero.** Exige bucket, política por tenant y antivirus: tres decisiones
+  que no son de pagos. Se pega el extracto.
+
+- **Buzón EBIM**: revisado el 2026-08-28 en `G:\.shortcut-targets-by-id\…\EBIM-Plataforma\`. El
+  mensaje más reciente de `coordinacion/pendientes/` sigue siendo del 2026-08-20 y ninguno va `to:
+  ecommerce`. Nada que responder en esta fase, y sigue sin poderse: `ecommerce` no es todavía un
+  `from` válido del `PROTOCOLO.md` (§5.1 del roadmap, bloqueo del operador).
+
+Siguiente: **P10-SaaS** (promociones), que se apoya en el paso 4 del pipeline y **no** se mezcla con
+el motor de precios base.
+
+---
+
+## Fase anterior
 **P08-SaaS — OMS: pedidos, estados, fulfillment y snapshots inmutables. COMPLETA. Gate: PASS.**
 Decisiones completas en [`docs/adr/008-oms-order-axes-snapshots.md`](adr/008-oms-order-axes-snapshots.md).
 
@@ -2053,6 +2172,30 @@ Detalle y evidencia en `docs/SAAS_BASELINE.md` §4; asignación de fase en `docs
       responda de verdad. Existe solo mientras `ecommerce` no esté dado de alta (P02-SaaS).
 - [ ] **Nota de higiene:** la entrada «Rate limiting de `create-order`» que aparece más abajo quedó
       **cerrada en P10** (mig. 22-23, `checkout-rate-limit.test.ts`) y su casilla no se marcó.
+
+### Abiertos por P09-SaaS (pagos)
+- [ ] **Secreto de webhook por SOCIEDAD, no por despliegue.** `payments-webhook` resuelve el secreto en
+      `EBIM_PAYMENT_WEBHOOK_SECRET_<CONECTOR>`: uno por conector y por entorno. Lo deseable es uno por
+      sociedad, y `tenant_integrations.secret_ref` ya está para eso, pero exige que la **URL de
+      callback identifique al tenant** —la pasarela no puede declararlo, y si lo declarara sería un
+      tenant declarado por un tercero, que el contrato prohíbe— y esa forma de URL depende de qué
+      pasarela se contrate. **Bloqueado por §5.2.3 del roadmap**, no por código: cuando se decida, lo
+      único que cambia es de dónde sale `secret` en `payments-webhook/index.ts`.
+- [ ] **Ningún adaptador de pasarela REAL.** El único desplegado es `sandbox`, que es el simulador
+      determinista del producto. El contrato canónico está validado contra él de punta a punta, pero
+      hasta que exista un adaptador real no se ha ejercitado contra una firma, un formato de webhook ni
+      un código de rechazo de verdad. Es el mismo tipo de riesgo que R3 con el outbox.
+- [ ] **Captura en dos pasos sin superficie.** El modelo la soporta entera (`capture_mode`,
+      `authorized` como estado propio, `payment.capture` como operación del comando) y el backoffice
+      **no tiene botón**: no se puede probar contra nada sin pasarela contratada. Entra con el
+      adaptador real, no antes.
+- [ ] **El extracto de conciliación se pega, no se sube.** Fichero → bucket + política por tenant +
+      antivirus: tres decisiones que no son de pagos. El día que llegue por integración, el parseo del
+      formato ya está aislado en la pantalla y el comando de la base no cambia.
+- [ ] **Regenerar `database.types.ts` y poner el `satisfies`** a las siete tablas, las dos vistas y las
+      tres RPC de pagos en `db-schema.ts`, cuando las migraciones 120000-120200 estén aplicadas en el
+      proyecto enlazado. Mientras tanto la red es `supabase/tests/payments.test.ts`, que comprueba esos
+      nombres contra el esquema construido desde las migraciones.
 
 ### Anteriores
 - [x] ~~Confirmar el **project ref de Supabase**~~ → **cerrado en P09**: `ehxlxbhtlmfgneiagdcj`, enlazado,

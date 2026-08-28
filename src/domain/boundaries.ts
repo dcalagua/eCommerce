@@ -175,12 +175,21 @@ export const BOUNDARIES: readonly Boundary[] = [
   {
     id: 'payments',
     kind: 'domain',
-    state: 'declared',
+    // P09-SaaS. El dominio existe entero y no toca el de pedidos: un cobro
+    // apunta al pedido y el pedido no apunta al cobro. Añadir una pasarela real
+    // es registrar un adaptador en `_shared/payments/registry.ts`.
+    state: 'implemented',
     responsibility:
       'Cobro y su conciliación: intento de pago, autorización, captura, devolución y webhooks.',
-    paths: [],
+    paths: ['features/payments'],
     port: 'PaymentProvider',
-    serverSide: ['solo el catálogo de proveedores en integration_providers (150000)'],
+    serverSide: [
+      'catálogo de proveedores en integration_providers (150000) y conector `sandbox` (120200)',
+      'siete tablas del dominio, guardas PCI y RLS default deny (120000)',
+      'comandos: intent_open, apply_outcome, refund_request/settle y conciliación (120100)',
+      'contrato canónico y adaptadores: supabase/functions/_shared/payments',
+      'Edge Function payments-webhook: firma verificada e ingesta idempotente',
+    ],
   },
   {
     id: 'promotions',

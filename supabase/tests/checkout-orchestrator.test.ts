@@ -85,6 +85,9 @@ function input(overrides: Partial<CheckoutInput> = {}): CheckoutInput {
     billingAddress: null,
     notes: null,
     items: [{ product_id: PRODUCT, quantity: 2 }],
+    // P09: la tienda de este banco de pruebas no cobra en linea salvo que el
+    // caso lo diga. `null` es el mismo camino que tenia P07 y sigue valiendo.
+    paymentMethodCode: null,
     ...overrides,
   }
 }

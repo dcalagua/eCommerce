@@ -3,6 +3,7 @@ import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined'
 import MonitorHeartOutlinedIcon from '@mui/icons-material/MonitorHeartOutlined'
 import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined'
 import PriceChangeOutlinedIcon from '@mui/icons-material/PriceChangeOutlined'
+import PaymentsOutlinedIcon from '@mui/icons-material/PaymentsOutlined'
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import SpaceDashboardOutlinedIcon from '@mui/icons-material/SpaceDashboardOutlined'
@@ -84,6 +85,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'nav.orders',
     icon: <ReceiptLongOutlinedIcon fontSize="small" />,
     capability: 'orders',
+  },
+  {
+    to: '/app/payments',
+    label: 'nav.payments',
+    icon: <PaymentsOutlinedIcon fontSize="small" />,
+    capability: 'payments',
   },
   { to: '/app/settings', label: 'nav.settings', icon: <SettingsOutlinedIcon fontSize="small" /> },
   {

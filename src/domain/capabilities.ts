@@ -208,7 +208,11 @@ export const CAPABILITIES: readonly Capability[] = [
     id: 'payments',
     boundary: 'payments',
     entitlement: `${ENTITLEMENT_PREFIX}payments`,
-    state: 'declared',
+    // P09-SaaS: el dominio existe entero —intento, intentos de llamada, cobro,
+    // devolución, bitácora y conciliación—, con su contrato canónico de
+    // pasarela y el conector `sandbox` desplegado. Lo que falta para cobrar de
+    // verdad es una decisión del operador (qué pasarela), no código.
+    state: 'implemented',
     grants: 'Cobro en línea: autorización, captura, devolución y conciliación (P09).',
   },
   {

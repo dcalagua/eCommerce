@@ -181,7 +181,18 @@ export interface DeliveryContext {
  * dato. Con `null` habría que preguntarse en cada rama si es que no hay
  * pasarela o si es que falló la que hay.
  */
-export type PaymentStatus = 'not_required' | 'authorized' | 'pending' | 'declined'
+/**
+ * `captured` entra con P09: una pasarela configurada en un solo paso cobra y
+ * autoriza a la vez, y llamar a eso `authorized` obligaría a preguntar en otro
+ * sitio si el dinero está retenido o cobrado. La compensación es distinta
+ * —anular contra devolver— y por eso el estado tiene que serlo también.
+ */
+export type PaymentStatus =
+  | 'not_required'
+  | 'authorized'
+  | 'captured'
+  | 'pending'
+  | 'declined'
 
 export interface PaymentRequest {
   readonly amount: MoneyText
@@ -189,6 +200,14 @@ export interface PaymentRequest {
   /** La misma que ancla el intento. Viaja hasta el proveedor. */
   readonly idempotencyKey: string
   readonly customerEmail: string
+  /** La tienda resuelve el tenant y el medio. Sale del contexto, no del cuerpo. */
+  readonly storeSlug: string
+  /**
+   * Medio elegido por el comprador (`payment_methods.code` de ESA tienda).
+   * `null` = la tienda no cobra en línea, que es lo que hacía P07 y sigue
+   * siendo válido para un comercio sin pasarela contratada.
+   */
+  readonly methodCode: string | null
 }
 
 export interface PaymentOutcome {
@@ -198,6 +217,10 @@ export interface PaymentOutcome {
   readonly providerReference: string | null
   /** Código del proveedor tal cual, para conciliar. El texto del comprador es i18n. */
   readonly providerMessage: string | null
+  /** Intento de pago de ESTE sistema (P09). `undefined` = no hubo dominio detrás. */
+  readonly intentId?: string | null
+  /** A dónde mandar al comprador si la pasarela exige 3DS. Lo compone el servidor. */
+  readonly redirectUrl?: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -239,6 +262,15 @@ export interface CheckoutRequest {
   readonly billingAddress: ShippingAddress | null
   readonly notes: string | null
   readonly items: readonly OrderItemInput[]
+  /**
+   * Medio de pago elegido (`payment_methods.code` de esta tienda). P09.
+   *
+   * Es un CÓDIGO del comercio, no una instrucción de cobro: no lleva importe,
+   * ni proveedor, ni credencial. Cuánto se cobra lo sigue decidiendo el motor
+   * de precios y con qué pasarela lo dice la fila del medio, no el navegador.
+   * `null` = la tienda no cobra en línea.
+   */
+  readonly paymentMethodCode: string | null
 }
 
 export interface IntentClaim {

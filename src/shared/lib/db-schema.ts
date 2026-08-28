@@ -147,6 +147,28 @@ export const ORDER_NOTES_TABLE = 'order_notes'
 export const ORDER_TAGS_TABLE = 'order_tags'
 export const ORDER_EXTERNAL_REFS_TABLE = 'order_external_refs'
 
+// --- Pagos (P09-SaaS, migraciones 120000-120200) ----------------------------
+// Sin `satisfies` por la misma razón que las anteriores: `database.types.ts` se
+// genera contra el proyecto ENLAZADO y estas migraciones todavía no están
+// aplicadas allí. La red mientras tanto es `supabase/tests/payments.test.ts`,
+// que comprueba estos nombres contra el esquema construido desde las
+// migraciones. Al aplicar: `npm run db:types` y añadir el `satisfies`.
+//
+// De las siete tablas, el backoffice ESCRIBE una sola —`payment_methods`, que
+// es configuración—. Las otras seis se leen: mover dinero es un comando.
+export const PAYMENT_METHODS_TABLE = 'payment_methods'
+export const PAYMENT_INTENTS_TABLE = 'payment_intents'
+export const PAYMENT_ATTEMPTS_TABLE = 'payment_attempts'
+export const PAYMENTS_TABLE = 'payments'
+export const REFUNDS_TABLE = 'refunds'
+export const PAYMENT_EVENTS_TABLE = 'payment_events'
+export const RECONCILIATION_TABLE = 'reconciliation_records'
+export const PAYMENT_OVERVIEW_VIEW = 'payment_intent_overview'
+export const PUBLIC_PAYMENT_METHODS_VIEW = 'public_payment_methods'
+// Catálogo GLOBAL de conectores (P12 histórico). Lo lee la pantalla de pagos
+// para ofrecer proveedores por su `code`: ninguna marca vive en el código.
+export const INTEGRATION_PROVIDERS_TABLE = 'integration_providers'
+
 // --- Vistas del modelo de lectura público ----------------------------------
 // `security_invoker` sobre policies `to anon`: filtran filas, y el GRANT por
 // columna es lo que evita que `anon` vea `stock` o `config` (P02, §4.3).
@@ -221,6 +243,16 @@ export const CART_ABANDON_RPC = 'cart_abandon'
 export const ORDER_TRANSITION_RPC = 'order_transition'
 export const ORDER_APPROVAL_DECIDE_RPC = 'order_approval_decide'
 export const MY_BUSINESS_ORDERS_RPC = 'my_business_orders'
+
+// Pagos (P09-SaaS). Las TRES que puede llamar el navegador con sesión, y su
+// autorización vive dentro de cada una. Las del servidor —`payment_intent_open`,
+// `payment_intent_attach_order`, `payment_apply_outcome`, `payment_refund_settle`—
+// NO están aquí a propósito: solo se pueden llamar con `service_role` desde una
+// Edge Function, y listarlas invitaría a intentarlo desde el bundle. Es la
+// misma decisión que con el pipeline de checkout en P07.
+export const REFUND_REQUEST_RPC = 'payment_refund_request'
+export const RECONCILIATION_IMPORT_RPC = 'payment_reconciliation_import'
+export const RECONCILIATION_MATCH_RPC = 'payment_reconciliation_match'
 
 // --- Edge Functions --------------------------------------------------------
 export const BOOTSTRAP_FUNCTION = 'bootstrap-tenant'

@@ -18,7 +18,8 @@
  * consultar.
  */
 import type { OrderItemInput } from '../orders.ts'
-import { alwaysDeliverable, noPaymentGateway, noPaymentVoid, noPromotions } from './hooks.ts'
+import { alwaysDeliverable, noPromotions } from './hooks.ts'
+import { createPaymentGateway } from '../payments/gateway.ts'
 import type {
   AccountContext,
   CheckoutContext,
@@ -109,6 +110,10 @@ export interface DbPortOptions {
 
 export function createDbPorts(options: DbPortOptions): CheckoutPorts {
   const { service, caller, hasSession } = options
+  // P09: el gancho de la etapa 8 deja de ser un `not_required` fijo. El
+  // pipeline no se entera —misma firma, mismo puerto— y el dominio de pedidos
+  // tampoco: quien conoce la pasarela es este adaptador, y solo por su `code`.
+  const gateway = createPaymentGateway({ service })
 
   return {
     async begin(request: CheckoutRequest): Promise<IntentClaim> {
@@ -256,7 +261,7 @@ export function createDbPorts(options: DbPortOptions): CheckoutPorts {
 
     validateDelivery: alwaysDeliverable,
 
-    authorizePayment: noPaymentGateway,
+    authorizePayment: (request) => gateway.authorizePayment(request),
 
     async placeOrder(input): Promise<PlacedOrder> {
       const raw = record(
@@ -287,8 +292,29 @@ export function createDbPorts(options: DbPortOptions): CheckoutPorts {
               : { required: input.approval.required, reason: input.approval.reason },
         }),
       )
+      const orderId = text(raw, 'order_id')
+
+      // P09 · el cobro se ata al pedido AQUÍ, después de crearlo, porque ese es
+      // el orden real: se cobra en la etapa 8 y el pedido nace en la 9.
+      //
+      // Está en el adaptador y no en el pipeline a propósito: el pipeline no
+      // conoce el dominio de pagos y no debería aprender a conocerlo para
+      // esto. Y **no puede tumbar la compra**: el pedido ya existe y el cobro
+      // también; si el enlace falla, lo que hay es una fila sin `order_id` que
+      // el backoffice ve y una persona ata, no una venta perdida.
+      if (orderId !== '' && input.payment.intentId) {
+        try {
+          await service('payment_intent_attach_order', {
+            p_intent_id: input.payment.intentId,
+            p_order_id: orderId,
+          })
+        } catch (error) {
+          console.error('[checkout] no se pudo atar el cobro al pedido', error)
+        }
+      }
+
       return {
-        orderId: text(raw, 'order_id'),
+        orderId,
         orderNumber: text(raw, 'order_number'),
         accessToken: nullableText(raw, 'access_token'),
         status: text(raw, 'status'),
@@ -310,6 +336,6 @@ export function createDbPorts(options: DbPortOptions): CheckoutPorts {
       })
     },
 
-    voidPayment: noPaymentVoid,
+    voidPayment: (outcome) => gateway.voidPayment(outcome),
   }
 }

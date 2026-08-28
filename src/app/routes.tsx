@@ -55,6 +55,9 @@ const CustomersPage = lazy(() =>
 const OrdersPage = lazy(() =>
   import('@/features/orders/OrdersPage').then((m) => ({ default: m.OrdersPage })),
 )
+const PaymentsPage = lazy(() =>
+  import('@/features/payments/PaymentsPage').then((m) => ({ default: m.PaymentsPage })),
+)
 const DiagnosticsPage = lazy(() =>
   import('@/features/capabilities/DiagnosticsPage').then((m) => ({ default: m.DiagnosticsPage })),
 )
@@ -133,6 +136,10 @@ export const routes: RouteObject[] = [
           // CUENTA B2B, y su pestaña se gatea dentro de la pantalla.
           { path: 'customers', element: gated('customers', <CustomersPage />) },
           { path: 'orders', element: gated('orders', <OrdersPage />) },
+          // P09: cobros, medios y conciliacion. Gateado por la capacidad
+          // `payments`: sin el addon la tienda sigue vendiendo con el pago
+          // pendiente, que es lo que hacia antes de esta fase.
+          { path: 'payments', element: gated('payments', <PaymentsPage />) },
           // Ajustes y diagnóstico NO se gatean por capacidad: son la salida de
           // un tenant sin nada contratado y el sitio donde se ve por qué.
           { path: 'settings', element: withSuspense(<SettingsPage />) },

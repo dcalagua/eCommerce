@@ -303,6 +303,8 @@ export async function runCheckout(
         currency: quote.currency,
         idempotencyKey: input.idempotencyKey,
         customerEmail: input.customerEmail,
+        storeSlug: input.storeSlug,
+        methodCode: input.paymentMethodCode,
       })
 
       if (outcome.status === 'declined') {
@@ -313,9 +315,11 @@ export async function runCheckout(
         })
       }
 
-      if (outcome.status === 'authorized') {
-        // Autorizado y todavía sin pedido: si lo que viene falla, hay que
-        // anularlo. Un cobro retenido sin pedido detrás es dinero de alguien.
+      if (outcome.status === 'authorized' || outcome.status === 'captured') {
+        // Cobrado o retenido, y todavía sin pedido: si lo que viene falla, hay
+        // que deshacerlo. Dinero retenido sin pedido detrás es de alguien, y
+        // dinero capturado sin pedido detrás lo es todavía más — por eso
+        // `captured` entra aquí desde P09 y no solo `authorized`.
         compensations.push({
           label: `void_payment:${outcome.providerReference ?? 'sin-referencia'}`,
           run: () => ports.voidPayment(outcome),

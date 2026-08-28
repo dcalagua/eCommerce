@@ -41,6 +41,9 @@ export const CHECKOUT_ALLOWED_FIELDS = [
   'billing_address',
   'notes',
   'accept_price_changes',
+  // P09: QUE medio de pago eligio el comprador. Un codigo del comercio, no una
+  // instruccion de cobro: sin importe, sin proveedor y sin credencial.
+  'payment_method_code',
 ] as const
 
 /** Mismo formato que `checkout_intents_key_fmt` en la base. */
@@ -65,6 +68,32 @@ export function optionalCartToken(body: Record<string, unknown>): string | null 
     throw badRequest('CAMPO_INVALIDO', '`cart_token` no tiene la forma de un token de carrito')
   }
   return raw.toLowerCase()
+}
+
+/** Mismo formato que `payment_methods_code_fmt` en la base (P09). */
+const METHOD_CODE_RE = /^[a-z0-9][a-z0-9_-]{0,40}$/
+
+/**
+ * El medio de pago elegido.
+ *
+ * Se valida la FORMA aquí y la EXISTENCIA en la base: que el código
+ * corresponda a un medio activo de esa tienda lo decide `payment_intent_open`,
+ * que es quien tiene delante la fila y el tenant. Comprobarlo aquí sería una
+ * segunda autoridad sobre el mismo dato, y la del borde siempre acaba
+ * desactualizada respecto a la de la fila.
+ *
+ * NO entra en el `request_hash`: el medio de pago es CÓMO se paga, no QUÉ se
+ * compra. Si entrara, un comprador cuya tarjeta se rechaza no podría reintentar
+ * con transferencia sin que el intento se leyera como otra compra.
+ */
+export function optionalPaymentMethodCode(body: Record<string, unknown>): string | null {
+  const raw = typeof body.payment_method_code === 'string' ? body.payment_method_code.trim() : ''
+  if (raw === '') return null
+  const normalized = raw.toLowerCase()
+  if (!METHOD_CODE_RE.test(normalized)) {
+    throw badRequest('CAMPO_INVALIDO', '`payment_method_code` no tiene la forma de un medio de pago')
+  }
+  return normalized
 }
 
 /**
@@ -167,6 +196,7 @@ export async function parseCheckoutBody(
       ? null
       : normalizeShippingAddress(body.billing_address)
   const notes = optionalText(body, 'notes', 1000)
+  const paymentMethodCode = optionalPaymentMethodCode(body)
 
   const hash = await requestHash({
     storeSlug,
@@ -191,6 +221,7 @@ export async function parseCheckoutBody(
     billingAddress,
     notes: notes ?? null,
     items,
+    paymentMethodCode,
     acceptPriceChanges: body.accept_price_changes === true,
   }
 }
