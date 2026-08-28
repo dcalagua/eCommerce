@@ -265,6 +265,13 @@ describe('create_order — el precio lo pone la base', () => {
         expect(signature).toMatch(/:uuid$/)
       } else if (name === 'price_source') {
         expect(signature).toMatch(/:text$/)
+      } else if (name.endsWith('_code')) {
+        // P08-SaaS: el snapshot de la linea guarda el CODIGO de la lista que
+        // fijo el precio (`price_list_code`), que sobrevive al borrado de la
+        // lista. Es un identificador legible, no un importe. Igual que arriba,
+        // no se saca del filtro: se le exige ser `text`, asi que un importe
+        // llamado `..._code` seguiria fallando aqui.
+        expect(signature).toMatch(/:text$/)
       } else {
         expect(signature).toMatch(/:numeric$/)
       }

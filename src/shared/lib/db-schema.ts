@@ -131,6 +131,22 @@ export const CART_ITEMS_TABLE = 'cart_items'
 export const CHECKOUT_INTENTS_TABLE = 'checkout_intents'
 export const DOMAIN_EVENTS_TABLE = 'domain_events'
 
+// --- OMS (P08-SaaS, migraciones 110000-110600) ------------------------------
+// Sin `satisfies` por la misma razón que las anteriores: `database.types.ts` se
+// genera contra el proyecto ENLAZADO y estas migraciones todavía no están
+// aplicadas allí. La red mientras tanto es `supabase/tests/orders-oms.test.ts`,
+// que comprueba estos nombres contra el esquema construido desde las
+// migraciones. Al aplicar: `npm run db:types` y añadir el `satisfies`.
+//
+// `ORDER_EVENTS_TABLE` (arriba) sigue apuntando a `order_status_events`, que no
+// se retira: es la bitácora de P07 histórico y la leen consultas existentes. La
+// línea de tiempo COMPLETA —los cuatro ejes en un solo relato— es esta otra, y
+// se llama distinto justamente para que nadie confunda una con otra.
+export const ORDER_TIMELINE_TABLE = 'order_events'
+export const ORDER_NOTES_TABLE = 'order_notes'
+export const ORDER_TAGS_TABLE = 'order_tags'
+export const ORDER_EXTERNAL_REFS_TABLE = 'order_external_refs'
+
 // --- Vistas del modelo de lectura público ----------------------------------
 // `security_invoker` sobre policies `to anon`: filtran filas, y el GRANT por
 // columna es lo que evita que `anon` vea `stock` o `config` (P02, §4.3).
@@ -195,6 +211,16 @@ export const SEED_INVENTORY_RPC = 'seed_inventory_from_catalog'
 export const CART_OPEN_RPC = 'cart_open'
 export const CART_REPLACE_LINES_RPC = 'cart_replace_lines'
 export const CART_ABANDON_RPC = 'cart_abandon'
+
+// OMS (P08-SaaS). Los COMANDOS del pedido. No hay ningún `update` directo sobre
+// `orders` en `features/orders`: los tres ejes nuevos no tienen GRANT de
+// escritura, así que `order_transition` no es la forma recomendada — es la
+// única. `my_business_orders` no acepta id de cuenta, igual que
+// `my_business_accounts`: es la puerta del aprobador B2B, que no es miembro del
+// tenant y no ve una sola fila de `orders` por PostgREST.
+export const ORDER_TRANSITION_RPC = 'order_transition'
+export const ORDER_APPROVAL_DECIDE_RPC = 'order_approval_decide'
+export const MY_BUSINESS_ORDERS_RPC = 'my_business_orders'
 
 // --- Edge Functions --------------------------------------------------------
 export const BOOTSTRAP_FUNCTION = 'bootstrap-tenant'

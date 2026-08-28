@@ -3,7 +3,7 @@
 GUIDELINES_STATUS: VERIFIED (**por lectura directa** en la 2ª pasada de P00-SaaS: contrato v1.15,
 `PROTOCOLO.md`, `BANDEJA.md` y `EBIM-CREW-ROSTER.md`). La unidad montada es `G:`, no `H:`.
 Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
-Última actualización: 2026-08-28 (P07 de productización SaaS)
+Última actualización: 2026-08-28 (P08 de productización SaaS)
 
 > **Dos numeraciones de fase.** Lo que sigue como «P00…P12» es el trabajo histórico de este repo. A
 > partir del 2026-08-27 arranca un segundo recorrido, **P00–P17 de productización SaaS**
@@ -11,6 +11,141 @@ Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
 > serie: el P12 histórico es el framework de integraciones; el P12-SaaS será fulfillment y devoluciones.
 
 ## Fase actual
+**P08-SaaS — OMS: pedidos, estados, fulfillment y snapshots inmutables. COMPLETA. Gate: PASS.**
+Decisiones completas en [`docs/adr/008-oms-order-axes-snapshots.md`](adr/008-oms-order-axes-snapshots.md).
+
+### Gates (2026-08-28, partiendo de `12f4967`)
+
+| Comando | Antes de P08 | Después |
+|---|---|---|
+| `npm run typecheck` | PASS | **PASS** |
+| `npm run lint` | PASS, 0 problemas | **PASS**, 0 problemas |
+| `npm run test` | 1289 / 67 archivos | **1373 / 68 archivos** |
+| `npm run test:db` | 781 / 27 | **839 / 28** |
+| `npm run build` | 838,45 kB (248,14 gzip) | **PASS**, 847,46 kB (250,33 gzip) |
+
+84 tests nuevos: 58 contra Postgres real (los cuatro ejes y sus máquinas, la inmutabilidad del
+snapshot incluso como `service_role`, el comando de transición, la aprobación B2B, el aislamiento de
+las cuatro tablas nuevas y la puerta del comprador), 4 del orquestador con puertos falsos y 22 del
+navegador. **Ningún test existente se borró ni se debilitó**; tres se reescribieron y se explican
+abajo.
+
+### El criterio de aceptación, comprobado
+
+> «PASS si el historial de un pedido sigue siendo correcto aunque cambien producto, precio, impuestos
+> o configuración después de comprar.»
+
+El test lo hace **literalmente**: compra, guarda lo que dice el pedido, y después cambia todo lo que
+ese pedido «miraba» en el catálogo —precio, nombre, SKU, categoría fiscal, la tasa de esa categoría y
+el `tax_inclusive` de la tienda—. Vuelve a leer y compara: `expect(despues).toEqual(antes)`.
+
+Dos más, del mismo criterio:
+
+- `borrar el producto entero deja la linea intacta, solo sin enlace` — `product_id` queda a NULL por
+  la FK y el SKU, el nombre, el precio, la tasa y el código de categoría fiscal siguen ahí.
+- `el impuesto de las lineas suma EXACTAMENTE el del pedido` — con tres importes que no se reparten
+  redondo (3,33 · 7,77 × 3 · 11,11 × 7). La factura cuadra consigo misma por construcción.
+
+### Lo que faltaba para que eso fuera cierto
+
+`order_items` era snapshot **parcial**: sobrevivía a que subiera el precio y no a lo demás.
+
+| Dato | Antes | Ahora |
+|---|---|---|
+| tasa e importe de IVA | solo el total del pedido | también por LÍNEA |
+| categoría fiscal | uuid vivo en `products` | código congelado en la línea |
+| variante | dentro del texto `name` | `variant_label` + `variant_attributes` |
+| receta del kit | nada | `components_snapshot` |
+| código de lista de precio | uuid que se anula al borrarla | código que sobrevive |
+| impuesto incluido | `store_settings` (vivo) | `orders.tax_inclusive` |
+| dirección del comprador | editable | + copia inmutable |
+| dirección fiscal | no existía | congelada |
+| cliente | correo suelto | snapshot con razón social y documento |
+| origen del pedido | no existía | `source_channel` |
+| aprobación B2B | no existía | `approval_status` |
+
+Y la inmutabilidad **no es un comentario**: dos triggers (`ebim.assert_order_item_immutable` y
+`ebim.assert_order_snapshot_immutable`) detienen también a `service_role`, que sí tiene GRANT y no
+pasa por ninguna policy. Es la misma idea que el CHECK de sobreventa de P06, y hay un test que lo
+intenta con siete UPDATE distintos.
+
+### La decisión que ordena la fase: un pedido tiene CUATRO estados
+
+`order_status` mezclaba tres preguntas —¿llegó el dinero?, ¿salió la mercancía?, ¿en qué punto
+comercial está?—. Mientras la tienda cobraba contra entrega se sostenía; deja de sostenerse con un
+pedido pagado y no despachado, uno despachado a crédito o uno reembolsado en parte.
+
+`status` **no se renombra ni cambia de significado**. Se le suman `payment_status`,
+`fulfillment_status` y `approval_status`, cada uno con su máquina de estados en trigger. La
+compatibilidad la garantiza `ebim.sync_order_axes`: cuando `status` se mueve por el camino de siempre
+—la Edge Function `update-order-status`, que sigue viva—, adelanta los ejes que la sentencia no tocó.
+El estado «marcado `paid` con `payment_status` diciendo `pending`» no es improbable: es imposible.
+
+**Los ejes nuevos no tienen GRANT de escritura.** El GRANT por columna de P02 no se amplía, así que
+la única puerta es el comando `public.order_transition`, que reúne en una operación atómica
+autorización + máquina de estados + línea de tiempo + hecho de dominio. Un test enumera las columnas
+con `UPDATE` para `authenticated` y falla si aparece una cuarta.
+
+### La aprobación B2B no contamina B2C
+
+`approval_status` nace `not_required` en todo pedido y ese valor es **terminal**: un pedido sin cuenta
+corporativa no entra al circuito a posteriori. Lo que lo hace útil es que **frena** — con la
+aprobación pendiente no se mueve ningún eje, salvo cancelar.
+
+La decisión está repartida a propósito: el **umbral de la cuenta** lo impone `create_order` con la
+fila delante (no depende de que ningún llamante se acuerde); el **límite de la persona** lo resuelve
+el borde con el JWT del comprador, porque `service_role` no tiene sesión de la que sacarlo. Y lo que
+el borde aporta **solo puede añadir una aprobación, nunca quitarla**.
+
+El aprobador **no es miembro del tenant**: `can_access` es falso para él y PostgREST no le devuelve ni
+una fila de `orders`. Su puerta es `public.my_business_orders()`, **sin parámetro de cuenta**, igual
+que `my_business_accounts()` en P05. El test lo comprueba de las dos formas: la consulta directa
+devuelve `[]` y la función devuelve su pedido.
+
+### Los tres tests que se reescribieron, y por qué no se debilitó ninguno
+
+1. **`orders.test.ts` · «no se escribe por PostgREST».** Decía `not.toMatch(/\.insert\(/)` sobre el
+   archivo entero. Desde P08 el módulo SÍ inserta —en las tres tablas de anotaciones, que nacieron
+   con su policy de rol para eso—. La regla no se afloja: **se hace más precisa**. Ahora recorre cada
+   `.from(TABLA)` y exige que `insert/update/delete` solo caigan sobre las tres permitidas, y que
+   `orders`, `order_items` y `order_events` no tengan ni una escritura. Un `not.toMatch` global habría
+   dejado de decir nada sobre `orders` en cuanto el módulo tocara cualquier otra tabla.
+2. **`OrdersPage.test.tsx`.** El panel de detalle pasó a tener pestañas y el camino de escritura pasó
+   de la Edge Function al comando. Los asertos equivalentes se conservan (el payload no lleva tenant
+   ni importes, el rol sin permiso no puede mover) y se añaden ocho: la cola de aprobación, el cambio
+   de eje, el total del filtro frente al de la página, la normalización de etiquetas y que un `viewer`
+   ya no ve el botón de exportar.
+3. **`server-operations.test.ts` · «todo el dinero es numeric».** El filtro por nombre atrapa ahora
+   `price_list_code`, que es un código y no un importe. En vez de sacarlo del filtro —que dejaría un
+   hueco por donde colar un importe con ese nombre—, se le exige ser `text`. La regla queda **más
+   fuerte**: un importe llamado `..._code` también falla.
+
+### Lo que se preparó sin construir, y con disparador escrito
+
+Pedidos programados, repetición e importación masiva entran como **capacidad** (`orders.advanced`,
+`declared`) y como enganches de modelo —los tres valores en el enum `order_source_channel`,
+`order_external_refs` para el lote de origen, `checkout_intents` para la idempotencia de la carga—.
+**No se crean `order_schedules` ni `order_batches`**: mismo criterio y mismo precedente que P06 con
+`warehouse_locations`. El ADR 008 §9 escribe el disparador de cada una.
+
+### Deuda declarada de esta fase
+
+- **Cancelar no devuelve la existencia al almacén.** Es el comportamiento que `status = 'cancelled'`
+  ya tenía desde P02; cambiarlo aquí sería decidir de pasada la política de devoluciones. → **P12**.
+- **El límite personal sigue siendo un tope duro** (`LIMITE_DE_AUTORIZACION`) y no una ruta hacia la
+  aprobación. Convertirlo cambia una garantía ya probada en P07; se deja escrito para que la fase de
+  pagos lo decida a propósito. → **P09**.
+- **`order_status_events` no se retira.** Sigue viva y su historial se copió a `order_events`. Un día
+  habrá que decidir si se jubila; hoy no aporta nada hacerlo.
+- **Buzón EBIM**: revisado el 2026-08-28. `coordinacion/pendientes/` no tiene ningún mensaje `to:
+  ecommerce` ni `to: all` posterior al último atendido (2026-08-20). Nada que responder en esta fase.
+
+Siguiente: **P09-SaaS** (pagos), que es quien sustituye el gancho `noPaymentGateway` y quien empieza
+a mover `payment_status` desde la pasarela en vez de a mano.
+
+---
+
+## Fase anterior
 **P07-SaaS — Carrito persistente y checkout como pipeline idempotente. COMPLETA. Gate: PASS.**
 Decisiones completas en [`docs/adr/007-cart-checkout-pipeline.md`](adr/007-cart-checkout-pipeline.md).
 
@@ -1891,10 +2026,17 @@ Detalle y evidencia en `docs/SAAS_BASELINE.md` §4; asignación de fase en `docs
 - [ ] **R3 — Outbox sin consumidor.** `integration_enqueue` solo lo invocan los tests: el transporte
       nunca ha entregado un mensaje real, así que el contrato canónico está escrito pero no validado.
       → primer consumidor en **P07/P08-SaaS**, superficie enterprise en **P14-SaaS**.
+      **Al día de P08**: `domain_events` ya tiene PRODUCTOR real por dos caminos —el checkout (P07) y
+      los comandos de transición y aprobación (P08)—, y sus hechos están probados contra Postgres.
+      Lo que sigue sin existir es el CONSUMIDOR que los entregue a un sistema externo, que es
+      exactamente lo que este riesgo mide. Sigue abierto.
 - [ ] **R4 — Checkout no idempotente frente a la red.** `create_order` sin clave de idempotencia; la
       defensa contra el doble envío es solo del navegador. → **P07-SaaS**.
-- [ ] **R5 — Sin impuesto ni descuento por línea en `order_items`.** El desglose fiscal de un carrito con
-      dos tasas no es reconstruible desde la base. Prerrequisito de facturación. → **P08-SaaS**.
+- [x] ~~**R5 — Sin impuesto ni descuento por línea en `order_items`.**~~ → **cerrado en P08-SaaS**:
+      la línea guarda `tax_rate`, `tax_amount`, `tax_inclusive`, `tax_category_code`,
+      `discount_amount` y `discount_snapshot`, y el impuesto se reparte por línea con resto mayor, de
+      forma que la suma de las líneas es EXACTAMENTE el `tax_total` del pedido. ADR 008 §5. Las dos
+      columnas de descuento nacen vacías a propósito: el motor que las llena es **P10**.
 - [ ] **R6 — Identidad del hub sin ejercitar.** P02-SaaS **construyó `platform-context`** (proxy del
       §5, con su parser probado) pero nunca se ha ejercitado contra un hub real: sin el alta de
       `ecommerce` responde `HUB_NO_CONFIGURADO`. `sso` sigue sin existir. **Requiere decisión del

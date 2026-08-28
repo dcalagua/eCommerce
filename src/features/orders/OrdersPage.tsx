@@ -11,12 +11,13 @@ import {
   TableBody,
   TableCell,
   TableHead,
+  TablePagination,
   TableRow,
   Tabs,
   TextField,
   Typography,
 } from '@mui/material'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
@@ -27,9 +28,18 @@ import { TableSkeleton } from '@/shared/ui/TableSkeleton'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import { EmptyState, ErrorState } from '@/shared/ui/states'
 import { OrderDrawer } from './OrderDrawer'
+import { fetchOrdersForExport } from './api'
 import { downloadCsv, ordersToCsv } from './exportCsv'
-import { STATUS_COLOR, STATUS_LABEL } from './status'
 import {
+  FULFILLMENT_COLOR,
+  FULFILLMENT_LABEL,
+  PAYMENT_COLOR,
+  PAYMENT_LABEL,
+  STATUS_COLOR,
+  STATUS_LABEL,
+} from './status'
+import {
+  ORDERS_PAGE_SIZE,
   ORDER_DATE_RANGES,
   ORDER_STATUSES,
   type Order,
@@ -41,6 +51,8 @@ import { useOrders } from './useOrders'
 const TABS: Array<{ value: OrderStatusFilter; label: MessageKey }> = [
   { value: 'all', label: 'common.all' },
   ...ORDER_STATUSES.map((status) => ({ value: status, label: STATUS_LABEL[status] })),
+  // Última y aparte: no es un estado más, es una cola de trabajo pendiente.
+  { value: 'awaiting_approval', label: 'orders.tab.awaitingApproval' },
 ]
 
 const RANGE_LABEL: Record<OrderDateRange, MessageKey> = {
@@ -66,31 +78,57 @@ function todayKey(): string {
  * encargo pide además filtrar por fecha: se resuelve con UN control de rangos
  * cerrados, no con un panel de filtros multi-campo.
  *
- * La pantalla no toca Supabase ni cambia estados: pide a los hooks y delega el
- * cambio de estado en el panel de detalle, que llama a `update-order-status`.
+ * **Pagina en el SERVIDOR** desde P08: `range()` + `count: 'exact'`. Traerse
+ * todo y cortar en el navegador es una consulta que crece con el negocio del
+ * cliente hasta que un día no vuelve — y hasta ese día no da ninguna señal.
+ *
+ * La pantalla no toca Supabase para escribir ni cambia estados: pide a los
+ * hooks y delega las acciones en el panel de detalle, que llama al comando.
  */
 export function OrdersPage() {
   const { t, locale } = useI18n()
   const { notify } = useFeedback()
   const { activeStore, status: tenantStatus, can } = useTenant()
   const canWrite = can('orders.write')
+  const canExport = can('orders.export')
 
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<OrderStatusFilter>('all')
   const [range, setRange] = useState<OrderDateRange>('all')
+  const [page, setPage] = useState(0)
   const [selected, setSelected] = useState<Order | null>(null)
+  const [exporting, setExporting] = useState(false)
 
   const storeId = activeStore?.id ?? null
   const today = useMemo(todayKey, [])
-  const orders = useOrders({ storeId, search, status, range, today })
-  const rows = orders.data ?? []
+  const filter = { storeId, search, status, range, today, page }
+  const orders = useOrders(filter)
+  const rows = orders.data?.rows ?? []
+  const total = orders.data?.total ?? 0
 
-  function exportCsv() {
-    if (rows.length === 0) {
-      notify(t('orders.export.empty'), 'error')
-      return
+  // Cambiar de filtro con la página 4 abierta deja al operador mirando una
+  // página que ya no existe y una tabla vacía que parece un error.
+  useEffect(() => {
+    setPage(0)
+  }, [search, status, range, storeId])
+
+  async function exportCsv() {
+    setExporting(true)
+    try {
+      // Se exporta LO FILTRADO, no la página. La consulta se repite sin
+      // `range`: exportar 25 filas cuando el filtro tiene 900 es un error que
+      // nadie nota hasta abrir el archivo.
+      const all = await fetchOrdersForExport(filter)
+      if (all.length === 0) {
+        notify(t('orders.export.empty'), 'error')
+        return
+      }
+      downloadCsv(`pedidos-${today}.csv`, ordersToCsv(all))
+    } catch {
+      notify(t('orders.error.generic'), 'error')
+    } finally {
+      setExporting(false)
     }
-    downloadCsv(`pedidos-${today}.csv`, ordersToCsv(rows))
   }
 
   // Mientras el espacio de trabajo se resuelve NO se dice "no tienes tiendas":
@@ -100,7 +138,7 @@ export function OrdersPage() {
       <>
         <PageHeader title={t('admin.orders.title')} />
         <Card>
-          <TableSkeleton columns={5} />
+          <TableSkeleton columns={6} />
         </Card>
       </>
     )
@@ -126,9 +164,11 @@ export function OrdersPage() {
       <PageHeader
         title={t('admin.orders.title')}
         actions={
-          <Button variant="outlined" onClick={exportCsv}>
-            {t('common.export')}
-          </Button>
+          canExport ? (
+            <Button variant="outlined" onClick={() => void exportCsv()} disabled={exporting}>
+              {t('common.export')}
+            </Button>
+          ) : undefined
         }
       />
       <Stack spacing={2}>
@@ -164,7 +204,7 @@ export function OrdersPage() {
         </Stack>
 
         <Card>
-          {orders.isPending && <TableSkeleton columns={5} />}
+          {orders.isPending && <TableSkeleton columns={6} />}
           {orders.isError && (
             <ErrorState error={orders.error} onRetry={() => void orders.refetch()} />
           )}
@@ -176,57 +216,101 @@ export function OrdersPage() {
             />
           )}
           {orders.isSuccess && rows.length > 0 && (
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>{t('common.number')}</TableCell>
-                  <TableCell>{t('common.customer')}</TableCell>
-                  <TableCell>{t('common.status')}</TableCell>
-                  <TableCell>{t('common.date')}</TableCell>
-                  <TableCell align="right">{t('common.total')}</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rows.map((order) => (
-                  <TableRow
-                    key={order.id}
-                    hover
-                    tabIndex={0}
-                    role="button"
-                    aria-label={`${t('orders.open')} ${order.order_number}`}
-                    onClick={() => setSelected(order)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault()
-                        setSelected(order)
-                      }
-                    }}
-                    sx={{ cursor: 'pointer' }}
-                  >
-                    <TableCell sx={{ fontWeight: 700 }}>{order.order_number}</TableCell>
-                    <TableCell>
-                      <Typography sx={{ fontSize: 13, fontWeight: 600 }}>
-                        {order.customer_name ?? order.customer_email}
-                      </Typography>
-                      <Typography sx={{ fontSize: 11, color: 'var(--muted)' }}>
-                        {order.customer_email}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        size="small"
-                        color={STATUS_COLOR[order.status]}
-                        label={t(STATUS_LABEL[order.status])}
-                      />
-                    </TableCell>
-                    <TableCell>{formatDate(order.placed_at, locale)}</TableCell>
-                    <TableCell align="right" className="tnum">
-                      {formatMoney(Number(order.grand_total), order.currency, locale)}
-                    </TableCell>
+            <>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>{t('common.number')}</TableCell>
+                    <TableCell>{t('common.customer')}</TableCell>
+                    <TableCell>{t('common.status')}</TableCell>
+                    <TableCell>{t('orders.axis.payment')}</TableCell>
+                    <TableCell>{t('orders.axis.fulfillment')}</TableCell>
+                    <TableCell>{t('common.date')}</TableCell>
+                    <TableCell align="right">{t('common.total')}</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHead>
+                <TableBody>
+                  {rows.map((order) => (
+                    <TableRow
+                      key={order.id}
+                      hover
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`${t('orders.open')} ${order.order_number}`}
+                      onClick={() => setSelected(order)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          setSelected(order)
+                        }
+                      }}
+                      sx={{ cursor: 'pointer' }}
+                    >
+                      <TableCell sx={{ fontWeight: 700 }}>
+                        <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+                          <span>{order.order_number}</span>
+                          {order.approval_status === 'pending' && (
+                            <Chip
+                              size="small"
+                              color="warning"
+                              variant="outlined"
+                              label={t('orders.approval.pendingShort')}
+                            />
+                          )}
+                        </Stack>
+                      </TableCell>
+                      <TableCell>
+                        <Typography sx={{ fontSize: 13, fontWeight: 600 }}>
+                          {order.customer_name ?? order.customer_email}
+                        </Typography>
+                        <Typography sx={{ fontSize: 11, color: 'var(--muted)' }}>
+                          {order.customer_email}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          size="small"
+                          color={STATUS_COLOR[order.status]}
+                          label={t(STATUS_LABEL[order.status])}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          size="small"
+                          variant="outlined"
+                          color={PAYMENT_COLOR[order.payment_status]}
+                          label={t(PAYMENT_LABEL[order.payment_status])}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          size="small"
+                          variant="outlined"
+                          color={FULFILLMENT_COLOR[order.fulfillment_status]}
+                          label={t(FULFILLMENT_LABEL[order.fulfillment_status])}
+                        />
+                      </TableCell>
+                      <TableCell>{formatDate(order.placed_at, locale)}</TableCell>
+                      <TableCell align="right" className="tnum">
+                        {formatMoney(Number(order.grand_total), order.currency, locale)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <TablePagination
+                component="div"
+                count={total}
+                page={page}
+                onPageChange={(_, next) => setPage(next)}
+                rowsPerPage={ORDERS_PAGE_SIZE}
+                // Sin selector de tamaño: una página de 200 filas es la misma
+                // consulta pesada que la paginación acaba de evitar.
+                rowsPerPageOptions={[ORDERS_PAGE_SIZE]}
+                labelDisplayedRows={({ from, to, count }) => `${from}–${to} / ${count}`}
+                labelRowsPerPage=""
+              />
+            </>
           )}
         </Card>
       </Stack>

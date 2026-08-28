@@ -54,11 +54,16 @@ const QUOTE: Quote = {
   grandTotal: '236.00',
 }
 
+/** Una cuenta B2B cualquiera. No identifica a nadie: solo la resuelve el puerto. */
+const ACCOUNT = '55555555-5555-4555-8555-555555555555'
+
 const ORDER_RESULT: PlacedOrder = {
   orderId: ORDER,
   orderNumber: 'EC-20260828-00001',
   accessToken: 'a'.repeat(64),
   status: 'pending',
+  approvalStatus: 'not_required',
+  sourceChannel: 'storefront',
   currency: 'PEN',
   subtotal: '200.00',
   taxTotal: '36.00',
@@ -77,6 +82,7 @@ function input(overrides: Partial<CheckoutInput> = {}): CheckoutInput {
     customerEmail: 'ana@compradora.com',
     customerPhone: '+51 999 111 222',
     shippingAddress: { address: 'Av. Primavera 120' },
+    billingAddress: null,
     notes: null,
     items: [{ product_id: PRODUCT, quantity: 2 }],
     ...overrides,
@@ -120,6 +126,10 @@ function ports(
     resolveAccount: () =>
       Promise.resolve({ hasSession: false, accountId: null, role: null, spendingLimit: null }),
     resolvePrices: () => Promise.resolve(QUOTE),
+    // Sin cuenta B2B el pipeline no llega a preguntar; el puerto existe igual
+    // porque un puerto opcional obliga a cada llamante a acordarse.
+    resolveApproval: () =>
+      Promise.resolve({ required: false, reason: null, purchaseOrderRequired: false }),
     resolvePriceDrift: () => Promise.resolve({ changed: [] }),
     resolvePromotions: noPromotions,
     reserveInventory: () =>
@@ -282,6 +292,7 @@ describe('el resumen de la peticion', () => {
       customerName: 'Ana',
       customerPhone: '+51 999',
       shippingAddress: { address: 'Av. Primavera 120' },
+      billingAddress: null,
       notes: null,
     })
     const b = await requestHash({
@@ -294,6 +305,7 @@ describe('el resumen de la peticion', () => {
       customerName: 'Ana',
       customerPhone: '+51 999',
       shippingAddress: { address: 'Av. Primavera 120' },
+      billingAddress: null,
       notes: null,
     })
     // Si esto fallara, el reintento del navegador —que reserializa— se leería
@@ -308,6 +320,7 @@ describe('el resumen de la peticion', () => {
       customerName: 'Ana',
       customerPhone: '+51 999',
       shippingAddress: { address: 'Av. Primavera 120' },
+      billingAddress: null,
       notes: null,
     }
     const a = await requestHash({ ...base, items: [{ product_id: PRODUCT, quantity: 2 }] })
@@ -580,5 +593,81 @@ describe('la cuenta B2B y su limite', () => {
 
     const result = await runCheckout(p, input())
     expect(result.ok).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// P08-SaaS · la autorizacion de compra
+// ---------------------------------------------------------------------------
+describe('la aprobacion B2B', () => {
+  const withAccount = (overrides: Partial<CheckoutPorts> = {}) =>
+    ports({
+      resolveAccount: () =>
+        Promise.resolve({
+          hasSession: true,
+          accountId: ACCOUNT,
+          role: 'buyer',
+          spendingLimit: null,
+        }),
+      ...overrides,
+    })
+
+  it('se pregunta con el TOTAL ya calculado, no antes', async () => {
+    const ask = vi.fn(() =>
+      Promise.resolve({ required: true, reason: 'account_threshold', purchaseOrderRequired: false }),
+    )
+    const { ports: p } = withAccount({ resolveApproval: ask })
+
+    const result = await runCheckout(p, input())
+
+    expect(ask).toHaveBeenCalledWith(ACCOUNT, '236.00')
+    expect(result.approval).toEqual({
+      required: true,
+      reason: 'account_threshold',
+      purchaseOrderRequired: false,
+    })
+  })
+
+  it('lo que responde llega a la transaccion del pedido', async () => {
+    const place = vi.fn(() => Promise.resolve(ORDER_RESULT))
+    const { ports: p } = withAccount({
+      resolveApproval: () =>
+        Promise.resolve({ required: true, reason: 'rule', purchaseOrderRequired: true }),
+      placeOrder: place as unknown as CheckoutPorts['placeOrder'],
+    })
+
+    await runCheckout(p, input())
+
+    const arg = (place.mock.calls as unknown as unknown[][])[0]?.[0] as {
+      account: { accountId: string | null }
+      approval: { required: boolean; reason: string | null } | null
+    }
+    expect(arg.account.accountId).toBe(ACCOUNT)
+    expect(arg.approval).toMatchObject({ required: true, reason: 'rule' })
+  })
+
+  it('un comprador SIN cuenta no entra al circuito: no se pregunta nada', async () => {
+    const ask = vi.fn()
+    const { ports: p } = ports({ resolveApproval: ask as unknown as CheckoutPorts['resolveApproval'] })
+
+    const result = await runCheckout(p, input())
+
+    expect(ask).not.toHaveBeenCalled()
+    expect(result.approval).toBeNull()
+  })
+
+  it('si el portal B2B no contesta, la compra sigue: la base impone el umbral', async () => {
+    const place = vi.fn(() => Promise.resolve(ORDER_RESULT))
+    const { ports: p } = withAccount({
+      resolveApproval: () => Promise.reject(new Error('portal caido')),
+      placeOrder: place as unknown as CheckoutPorts['placeOrder'],
+    })
+
+    const result = await runCheckout(p, input())
+
+    expect(result.ok).toBe(true)
+    expect(result.approval).toBeNull()
+    const arg = (place.mock.calls as unknown as unknown[][])[0]?.[0] as { approval: unknown }
+    expect(arg.approval).toBeNull()
   })
 })

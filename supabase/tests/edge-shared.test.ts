@@ -23,8 +23,11 @@ import {
 import { corsHeaders, parseAllowedOrigins, resolveAllowedOrigin } from '../functions/_shared/cors.ts'
 import { AppError, fromDatabaseError, toAppError } from '../functions/_shared/errors.ts'
 import {
+  FULFILLMENT_TRANSITIONS,
   ORDER_TRANSITIONS,
+  PAYMENT_TRANSITIONS,
   canTransition,
+  nextForAxis,
   normalizeOrderItems,
   normalizeShippingAddress,
 } from '../functions/_shared/orders.ts'
@@ -326,6 +329,50 @@ describe('maquina de estados del pedido', () => {
   it('cancelado y reembolsado son estados finales', () => {
     expect(canTransition('cancelled', 'paid')).toBe(false)
     expect(canTransition('refunded', 'fulfilled')).toBe(false)
+  })
+
+  /**
+   * P08-SaaS. Los dos ejes nuevos se comprueban igual que el de P02 y contra el
+   * MISMO trigger que manda en produccion. Sin este test, la copia del borde
+   * podria ofrecer una transicion que la base rechaza, y el operador veria un
+   * 409 sobre un boton que la pantalla le dejo pulsar.
+   */
+  it('los ejes de pago y entrega coinciden con ebim.assert_order_axes', () => {
+    const sql = readFileSync(
+      join(HERE, '..', 'migrations', '20260828110000_oms_order_axes.sql'),
+      'utf8',
+    )
+
+    const machines = { ...PAYMENT_TRANSITIONS, ...FULFILLMENT_TRANSITIONS } as Record<
+      string,
+      readonly string[]
+    >
+
+    for (const [from, targets] of Object.entries(machines)) {
+      if (targets.length === 0) continue
+      // `String.raw` en vez de doblar cada barra: la expresion se lee igual que
+      // el SQL que busca, que es la mitad de por que este test es mantenible.
+      const clause = new RegExp(
+        String.raw`when '${from}'\s+then array\[([^\]]+)\]`,
+        'i',
+      ).exec(sql)
+      expect(clause, `falta la rama '${from}' en ebim.assert_order_axes`).toBeTruthy()
+      const inSql = (clause?.[1] ?? '')
+        .split(',')
+        .map((item) => item.trim().replace(/'/g, ''))
+        .sort()
+      expect(inSql, `la rama '${from}' no dice lo mismo`).toEqual([...targets].sort())
+    }
+  })
+
+  it('nextForAxis no ofrece nunca el estado en el que ya se esta', () => {
+    for (const axis of ['order_status', 'payment_status', 'fulfillment_status'] as const) {
+      const from = axis === 'fulfillment_status' ? 'unfulfilled' : 'pending'
+      expect(nextForAxis(axis, from)).not.toContain(from)
+    }
+    // Un estado final no ofrece nada, y un valor desconocido tampoco revienta.
+    expect(nextForAxis('payment_status', 'refunded')).toEqual([])
+    expect(nextForAxis('payment_status', 'inventado')).toEqual([])
   })
 
   it('un cambio a si mismo es idempotente, no un error', () => {

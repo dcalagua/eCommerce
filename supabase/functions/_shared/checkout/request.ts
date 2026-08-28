@@ -36,6 +36,9 @@ export const CHECKOUT_ALLOWED_FIELDS = [
   'customer_phone',
   'items',
   'shipping_address',
+  // P08: direccion FISCAL. Opcional, y si no viene se factura donde se
+  // entrega. Es una direccion, no un importe: puede venir del comprador.
+  'billing_address',
   'notes',
   'accept_price_changes',
 ] as const
@@ -113,6 +116,7 @@ export async function requestHash(input: {
   customerName: string
   customerPhone: string
   shippingAddress: Record<string, unknown>
+  billingAddress: Record<string, unknown> | null
   notes: string | null
 }): Promise<string> {
   const ordered = [...input.items].sort((a, b) => (itemKey(a) < itemKey(b) ? -1 : 1))
@@ -129,6 +133,10 @@ export async function requestHash(input: {
       customer_name: input.customerName,
       customer_phone: input.customerPhone,
       shipping_address: input.shippingAddress,
+      // Entra en el resumen: cambiar la direccion fiscal ES pedir otra cosa, y
+      // reusar la clave con otra factura tiene que dar conflicto y no la
+      // respuesta guardada del pedido anterior.
+      billing_address: input.billingAddress,
       notes: input.notes,
     }),
   )
@@ -154,6 +162,10 @@ export async function parseCheckoutBody(
   const customerName = requireText(body, 'customer_name', { min: 2, max: 200 })
   const customerPhone = requireText(body, 'customer_phone', { min: 6, max: 40 })
   const shippingAddress = normalizeShippingAddress(body.shipping_address)
+  const billingAddress =
+    body.billing_address === undefined || body.billing_address === null
+      ? null
+      : normalizeShippingAddress(body.billing_address)
   const notes = optionalText(body, 'notes', 1000)
 
   const hash = await requestHash({
@@ -163,6 +175,7 @@ export async function parseCheckoutBody(
     customerName,
     customerPhone,
     shippingAddress: { ...shippingAddress },
+    billingAddress: billingAddress === null ? null : { ...billingAddress },
     notes: notes ?? null,
   })
 
@@ -175,6 +188,7 @@ export async function parseCheckoutBody(
     customerEmail,
     customerPhone,
     shippingAddress,
+    billingAddress,
     notes: notes ?? null,
     items,
     acceptPriceChanges: body.accept_price_changes === true,

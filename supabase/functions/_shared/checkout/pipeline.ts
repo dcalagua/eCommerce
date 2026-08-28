@@ -41,6 +41,7 @@ import type {
   PaymentOutcome,
   PlacedOrder,
   PromotionResult,
+  PurchaseApproval,
   Quote,
   Reservation,
   TaxResult,
@@ -68,6 +69,8 @@ export interface CheckoutSuccess {
   readonly order: PlacedOrder
   readonly quote: Quote | null
   readonly payment: PaymentOutcome | null
+  /** `null` cuando no hay cuenta B2B: no se pregunto, que no es «no hacia falta». */
+  readonly approval: PurchaseApproval | null
   readonly stagesRun: readonly CheckoutStage[]
 }
 
@@ -146,6 +149,7 @@ export async function runCheckout(
       order: toPlacedOrder(claim.result, true),
       quote: null,
       payment: null,
+      approval: null,
       stagesRun: [],
     }
   }
@@ -153,6 +157,7 @@ export async function runCheckout(
   const compensations: Compensation[] = []
   const stagesRun: CheckoutStage[] = []
   let current: CheckoutStage = 'resolve_context'
+  let approval: PurchaseApproval | null = null
 
   const stage = async <T>(name: CheckoutStage, run: () => Promise<T>): Promise<T> => {
     current = name
@@ -276,6 +281,23 @@ export async function runCheckout(
         })
       }
 
+      // ¿Hace falta que alguien de la empresa firme esta compra? Se pregunta
+      // aqui, y no en la etapa 2, por la misma razon que el limite: hasta que
+      // no hay total no hay pregunta que hacer. Y solo si hay cuenta: un
+      // comprador anonimo no tiene a quien pedirle una firma.
+      //
+      // Que la consulta falle NO puede impedir la compra —el umbral de la
+      // cuenta lo impone la base de todas formas, con la fila delante—, asi que
+      // un portal B2B que no conteste degrada a «no se pudo preguntar» y sigue.
+      if (account.accountId !== null) {
+        try {
+          approval = await ports.resolveApproval(account.accountId, taxes.grandTotal)
+        } catch (error) {
+          console.error('[checkout] no se pudo resolver la autorizacion de compra', error)
+          approval = null
+        }
+      }
+
       const outcome = await ports.authorizePayment({
         amount: taxes.grandTotal,
         currency: quote.currency,
@@ -310,6 +332,8 @@ export async function runCheckout(
         request: input,
         reservationToken: reservation.token,
         payment,
+        account,
+        approval,
       })
       // A partir de aquí no se compensa: el pedido existe y deshacerlo no es
       // «soltar una reserva», es cancelar una venta. Eso lo decide una persona
@@ -340,6 +364,7 @@ export async function runCheckout(
       order,
       quote,
       payment,
+      approval,
       stagesRun,
     }
   } catch (error) {
@@ -395,6 +420,8 @@ function toPlacedOrder(result: Record<string, unknown>, replay: boolean): Placed
     orderNumber: text('order_number'),
     accessToken: typeof result.access_token === 'string' ? result.access_token : null,
     status: text('status'),
+    approvalStatus: text('approval_status') || 'not_required',
+    sourceChannel: text('source_channel') || 'storefront',
     currency: text('currency'),
     subtotal: text('subtotal'),
     taxTotal: text('tax_total'),

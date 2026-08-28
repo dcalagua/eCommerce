@@ -27,9 +27,12 @@ const { OrdersPage } = await import('./OrdersPage')
 
 const ORDER_1 = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1'
 const ORDER_2 = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2'
+const ORDER_3 = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3'
 const ITEM_1 = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1'
 const EVENT_1 = 'cccccccc-cccc-4ccc-8ccc-ccccccccccc1'
 const EVENT_2 = 'cccccccc-cccc-4ccc-8ccc-ccccccccccc2'
+const TAG_1 = 'dddddddd-dddd-4ddd-8ddd-ddddddddddd1'
+const REF_1 = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee1'
 
 const TODAY = new Date().toISOString()
 const OLD = new Date(Date.now() - 200 * 86_400_000).toISOString()
@@ -45,13 +48,23 @@ function orderRow(patch: Record<string, unknown> = {}) {
     customer_email: 'ana@compradora.com',
     customer_phone: '+51 999 111 222',
     status: 'pending',
+    payment_status: 'pending',
+    fulfillment_status: 'unfulfilled',
+    approval_status: 'not_required',
+    source_channel: 'storefront',
     currency: 'PEN',
     subtotal: '200.00',
     tax_total: '36.00',
     shipping_total: '0.00',
     discount_total: '0.00',
     grand_total: '236.00',
+    tax_inclusive: false,
     shipping_address: { address: 'Av. Primavera 120', reference: 'Portón verde' },
+    billing_address: { address: 'Av. Primavera 120' },
+    customer_snapshot: { email: 'ana@compradora.com', name: 'Ana Compradora' },
+    approval_reason: null,
+    approval_decided_email: null,
+    approval_decided_at: null,
     notes: null,
     placed_at: TODAY,
     updated_at: TODAY,
@@ -86,8 +99,25 @@ function backend(role: 'admin' | 'viewer' = 'admin'): FakeSupabase {
           customer_name: 'Beto Antiguo',
           customer_email: 'beto@antiguo.com',
           status: 'paid',
+          payment_status: 'paid',
           grand_total: '99.00',
           placed_at: OLD,
+        }),
+        // Pedido B2B esperando la firma de su empresa: es lo que llena la
+        // pestaña «Por aprobar» y lo que bloquea las transiciones.
+        orderRow({
+          id: ORDER_3,
+          order_number: 'MI-000003',
+          customer_name: 'Cecilia Corporativa',
+          customer_email: 'compras@acme.test',
+          approval_status: 'pending',
+          approval_reason: 'account_threshold',
+          customer_snapshot: {
+            email: 'compras@acme.test',
+            name: 'Cecilia Corporativa',
+            account_name: 'Acme',
+            tax_id: '20123456789',
+          },
         }),
       ],
       order_items: [
@@ -97,32 +127,65 @@ function backend(role: 'admin' | 'viewer' = 'admin'): FakeSupabase {
           product_id: null,
           sku: 'SILLA-1',
           name: 'Silla nórdica',
+          variant_label: null,
+          uom_code: null,
           unit_price: '100.00',
           quantity: 2,
           line_total: '200.00',
+          discount_amount: '0.00',
+          tax_rate: '0.1800',
+          tax_amount: '36.00',
+          tax_category_code: 'iva-general',
+          price_source: 'catalog',
+          price_list_code: null,
           created_at: TODAY,
         },
       ],
-      order_status_events: [
+      order_events: [
         {
           id: EVENT_1,
           order_id: ORDER_1,
-          from_status: null,
-          to_status: 'pending',
+          event_type: 'order.created',
+          axis: 'order_status',
+          from_value: null,
+          to_value: 'pending',
           note: null,
+          source: 'storefront',
           actor_email: null,
           created_at: TODAY,
         },
         {
           id: EVENT_2,
           order_id: ORDER_1,
-          from_status: 'pending',
-          to_status: 'paid',
+          event_type: 'order.payment_status_changed',
+          axis: 'payment_status',
+          from_value: 'pending',
+          to_value: 'paid',
           note: 'Depósito verificado',
+          source: 'backoffice',
           actor_email: 'duenio@negocio.com',
           created_at: TODAY,
         },
       ],
+      order_notes: [],
+      order_tags: [{ id: TAG_1, order_id: ORDER_1, tag: 'urgente' }],
+      order_external_refs: [
+        {
+          id: REF_1,
+          order_id: ORDER_1,
+          system_code: 'erp',
+          ref_type: 'invoice',
+          external_id: 'F001-000123',
+          external_url: null,
+        },
+      ],
+    },
+    rpc: {
+      order_transition: (args) => ({ order_id: args.p_order_id, to: args.p_to }),
+      order_approval_decide: (args) => ({
+        order_id: args.p_order_id,
+        approval_status: args.p_approve ? 'approved' : 'rejected',
+      }),
     },
     functions: {
       'update-order-status': (body) => ({ id: String(body.order_id), status: body.status }),
@@ -139,17 +202,31 @@ function renderPage() {
   )
 }
 
+/** Abre el pedido y devuelve el panel, ya en la pestaña pedida. */
+async function openDrawer(
+  user: ReturnType<typeof userEvent.setup>,
+  number: string,
+  tab?: 'Operación' | 'Historial',
+): Promise<HTMLElement> {
+  await user.click(await screen.findByText(number))
+  const drawer = await screen.findByRole('dialog', { name: number })
+  if (tab) await user.click(within(drawer).getByRole('tab', { name: tab }))
+  return drawer
+}
+
 beforeEach(() => {
   holder.client = backend()
 })
 
 describe('OrdersPage — listado', () => {
-  it('muestra numero, cliente, estado, fecha y total del pedido', async () => {
+  it('muestra numero, cliente, los tres ejes de estado, fecha y total', async () => {
     renderPage()
 
     const row = (await screen.findByText('MI-000001')).closest('tr') as HTMLElement
     expect(within(row).getByText('Ana Compradora')).toBeInTheDocument()
     expect(within(row).getByText('Pendiente')).toBeInTheDocument()
+    expect(within(row).getByText('Sin cobrar')).toBeInTheDocument()
+    expect(within(row).getByText('Sin despachar')).toBeInTheDocument()
     expect(within(row).getByText(/236[,.]00/)).toBeInTheDocument()
   })
 
@@ -175,6 +252,21 @@ describe('OrdersPage — listado', () => {
     expect(screen.getByText('MI-000002')).toBeInTheDocument()
   })
 
+  /**
+   * «Por aprobar» no filtra por `status` sino por `approval_status`: es una cola
+   * de trabajo pendiente, no un estado más del pedido.
+   */
+  it('la pestana «Por aprobar» es la cola de firmas pendientes', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByText('MI-000001')
+
+    await user.click(screen.getByRole('tab', { name: 'Por aprobar' }))
+
+    await waitFor(() => expect(screen.queryByText('MI-000001')).not.toBeInTheDocument())
+    expect(screen.getByText('MI-000003')).toBeInTheDocument()
+  })
+
   it('el filtro de fecha deja fuera lo que cae fuera del rango', async () => {
     const user = userEvent.setup()
     renderPage()
@@ -186,80 +278,129 @@ describe('OrdersPage — listado', () => {
     await waitFor(() => expect(screen.queryByText('MI-000002')).not.toBeInTheDocument())
     expect(screen.getByText('MI-000001')).toBeInTheDocument()
   })
+
+  /**
+   * La paginación la hace el SERVIDOR (`range` + `count: 'exact'`). Lo que se
+   * comprueba es que el total que se pinta es el del FILTRO y no el de la
+   * página: si alguien volviera a contar `rows.length`, esto falla.
+   */
+  it('pagina en el servidor y enseña el total del filtro', async () => {
+    renderPage()
+    await screen.findByText('MI-000001')
+    expect(screen.getByText('1–3 / 3')).toBeInTheDocument()
+  })
 })
 
 describe('OrdersPage — detalle en panel lateral', () => {
-  it('abre el pedido con sus lineas, la entrega y el historial', async () => {
+  it('abre el pedido con sus lineas, la entrega y el impuesto congelado', async () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.click(await screen.findByText('MI-000001'))
-    const drawer = await screen.findByRole('dialog', { name: 'MI-000001' })
+    const drawer = await openDrawer(user, 'MI-000001')
 
     expect(within(drawer).getByText('Silla nórdica')).toBeInTheDocument()
-    expect(within(drawer).getByText('SILLA-1')).toBeInTheDocument()
-    expect(within(drawer).getByText('Av. Primavera 120')).toBeInTheDocument()
+    expect(within(drawer).getByText(/SILLA-1/)).toBeInTheDocument()
+    // Dos veces: la dirección de ENTREGA y la de FACTURACIÓN, que en una compra
+    // B2C son la misma y aun así se guardan por separado.
+    expect(within(drawer).getAllByText('Av. Primavera 120')).toHaveLength(2)
     expect(within(drawer).getByText('Portón verde')).toBeInTheDocument()
+    // El impuesto de la línea es snapshot: se pinta desde el pedido, no desde
+    // la configuración fiscal de hoy.
+    expect(within(drawer).getAllByText(/36[,.]00/).length).toBeGreaterThan(0)
+  })
 
-    // Historial: alta del pedido (sin autor) + cambio firmado por su autor.
+  it('la linea de tiempo cuenta los cuatro ejes en un solo hilo', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    const drawer = await openDrawer(user, 'MI-000001', 'Historial')
+
     expect(within(drawer).getByText('Pedido recibido')).toBeInTheDocument()
     expect(within(drawer).getByText('Desde la vitrina')).toBeInTheDocument()
-    expect(within(drawer).getByText('Pendiente → Pagado')).toBeInTheDocument()
+    // Un cambio del eje de PAGO, no del comercial: la pantalla lo etiqueta.
+    expect(within(drawer).getByText('Sin cobrar → Cobrado')).toBeInTheDocument()
+    expect(within(drawer).getByText('Pago')).toBeInTheDocument()
     expect(within(drawer).getByText('Depósito verificado')).toBeInTheDocument()
+  })
+
+  it('el snapshot del cliente B2B enseña cuenta y documento fiscal', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    const drawer = await openDrawer(user, 'MI-000003')
+
+    expect(within(drawer).getByText('Acme')).toBeInTheDocument()
+    expect(within(drawer).getByText('20123456789')).toBeInTheDocument()
   })
 
   it('solo ofrece las transiciones que la base permite desde el estado actual', async () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.click(await screen.findByText('MI-000001'))
-    const drawer = await screen.findByRole('dialog', { name: 'MI-000001' })
+    const drawer = await openDrawer(user, 'MI-000001', 'Operación')
     await user.click(within(drawer).getByRole('combobox', { name: /Nuevo estado/i }))
 
     const options = (await screen.findAllByRole('option')).map((node) => node.textContent)
     expect(options).toEqual(['Pagado', 'Cancelado'])
   })
+
+  it('cambiar de eje cambia el menu de destinos', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    const drawer = await openDrawer(user, 'MI-000001', 'Operación')
+    await user.click(within(drawer).getByRole('combobox', { name: /Qué se mueve/i }))
+    await user.click(await screen.findByRole('option', { name: 'Entrega' }))
+    await user.click(within(drawer).getByRole('combobox', { name: /Nuevo estado/i }))
+
+    const options = (await screen.findAllByRole('option')).map((node) => node.textContent)
+    expect(options).toEqual([
+      'En preparación',
+      'Despachado en parte',
+      'Despachado',
+      'Anulado',
+    ])
+  })
 })
 
-describe('OrdersPage — cambio de estado', () => {
-  it('pasa SIEMPRE por la Edge Function `update-order-status`', async () => {
+describe('OrdersPage — el comando de transicion', () => {
+  it('pasa SIEMPRE por `order_transition`, con eje, destino y motivo', async () => {
     const user = userEvent.setup()
     const client = holder.client as FakeSupabase
     renderPage()
 
-    await user.click(await screen.findByText('MI-000001'))
-    const drawer = await screen.findByRole('dialog', { name: 'MI-000001' })
+    const drawer = await openDrawer(user, 'MI-000001', 'Operación')
     await user.click(within(drawer).getByRole('combobox', { name: /Nuevo estado/i }))
     await user.click(await screen.findByRole('option', { name: 'Pagado' }))
     await user.type(within(drawer).getByLabelText(/Nota del cambio/i), 'Depósito verificado')
     await user.click(within(drawer).getByRole('button', { name: 'Actualizar estado' }))
 
-    await waitFor(() => expect(client.state.invocations).toHaveLength(1))
-    const call = client.state.invocations[0]
-    expect(call?.name).toBe('update-order-status')
-    expect(call?.body).toEqual({
-      order_id: ORDER_1,
-      status: 'paid',
-      notes: 'Depósito verificado',
+    await waitFor(() => expect(client.state.rpcCalls).toHaveLength(1))
+    const call = client.state.rpcCalls[0]
+    expect(call?.name).toBe('order_transition')
+    expect(call?.args).toEqual({
+      p_order_id: ORDER_1,
+      p_axis: 'order_status',
+      p_to: 'paid',
+      p_reason: 'Depósito verificado',
     })
   })
 
-  it('el cuerpo no lleva tenant ni importes: los pone el servidor', async () => {
+  it('el payload no lleva tenant, ni estado anterior, ni importes', async () => {
     const user = userEvent.setup()
     const client = holder.client as FakeSupabase
     renderPage()
 
-    await user.click(await screen.findByText('MI-000001'))
-    const drawer = await screen.findByRole('dialog', { name: 'MI-000001' })
+    const drawer = await openDrawer(user, 'MI-000001', 'Operación')
     await user.click(within(drawer).getByRole('combobox', { name: /Nuevo estado/i }))
     await user.click(await screen.findByRole('option', { name: 'Cancelado' }))
     await user.click(within(drawer).getByRole('button', { name: 'Actualizar estado' }))
 
-    await waitFor(() => expect(client.state.invocations).toHaveLength(1))
-    const body = client.state.invocations[0]?.body ?? {}
-    for (const field of TENANT_FIELDS) expect(body).not.toHaveProperty(field)
-    for (const field of ['store_id', 'grand_total', 'subtotal', 'currency']) {
-      expect(body).not.toHaveProperty(field)
+    await waitFor(() => expect(client.state.rpcCalls).toHaveLength(1))
+    const args = client.state.rpcCalls[0]?.args ?? {}
+    for (const field of TENANT_FIELDS) expect(args).not.toHaveProperty(field)
+    for (const field of ['store_id', 'p_from', 'grand_total', 'subtotal', 'currency']) {
+      expect(args).not.toHaveProperty(field)
     }
   })
 
@@ -268,11 +409,99 @@ describe('OrdersPage — cambio de estado', () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.click(await screen.findByText('MI-000001'))
-    const drawer = await screen.findByRole('dialog', { name: 'MI-000001' })
+    const drawer = await openDrawer(user, 'MI-000001', 'Operación')
 
     expect(within(drawer).getByText(/no cambiar su estado/i)).toBeInTheDocument()
     expect(within(drawer).queryByRole('combobox', { name: /Nuevo estado/i })).not.toBeInTheDocument()
-    expect(within(drawer).getByRole('button', { name: 'Actualizar estado' })).toBeDisabled()
+    expect(
+      within(drawer).queryByRole('button', { name: 'Actualizar estado' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('un rol sin permiso tampoco exporta', async () => {
+    holder.client = backend('viewer')
+    renderPage()
+    await screen.findByText('MI-000001')
+    expect(screen.queryByRole('button', { name: 'Exportar' })).not.toBeInTheDocument()
+  })
+})
+
+describe('OrdersPage — aprobacion B2B', () => {
+  it('un pedido pendiente avisa de que no avanza y ofrece decidir', async () => {
+    const user = userEvent.setup()
+    const client = holder.client as FakeSupabase
+    renderPage()
+
+    const drawer = await openDrawer(user, 'MI-000003')
+    expect(within(drawer).getByText(/espera la firma/i)).toBeInTheDocument()
+
+    await user.type(within(drawer).getByLabelText(/^Motivo/i), 'Presupuesto disponible')
+    await user.click(within(drawer).getByRole('button', { name: 'Autorizar' }))
+
+    await waitFor(() => expect(client.state.rpcCalls).toHaveLength(1))
+    expect(client.state.rpcCalls[0]).toMatchObject({
+      name: 'order_approval_decide',
+      args: { p_order_id: ORDER_3, p_approve: true, p_reason: 'Presupuesto disponible' },
+    })
+  })
+
+  it('rechazar sin motivo no se puede ni intentar: el boton esta deshabilitado', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    const drawer = await openDrawer(user, 'MI-000003')
+    expect(within(drawer).getByRole('button', { name: 'Rechazar' })).toBeDisabled()
+  })
+
+  it('un pedido B2C no enseña la seccion de autorizacion', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    const drawer = await openDrawer(user, 'MI-000001')
+    expect(within(drawer).queryByText(/espera la firma/i)).not.toBeInTheDocument()
+    expect(within(drawer).queryByRole('button', { name: 'Autorizar' })).not.toBeInTheDocument()
+  })
+})
+
+describe('OrdersPage — anotaciones y referencias externas', () => {
+  it('la nota interna se escribe sin declarar tenant ni tienda', async () => {
+    const user = userEvent.setup()
+    const client = holder.client as FakeSupabase
+    renderPage()
+
+    const drawer = await openDrawer(user, 'MI-000001', 'Operación')
+    await user.type(within(drawer).getByLabelText(/Nueva nota/i), 'Llamar antes de despachar')
+    await user.click(within(drawer).getAllByRole('button', { name: 'Añadir' })[1] as HTMLElement)
+
+    await waitFor(() => expect(client.state.tables.order_notes ?? []).toHaveLength(1))
+    const note = (client.state.tables.order_notes ?? [])[0] as Record<string, unknown>
+    expect(note.body).toBe('Llamar antes de despachar')
+    expect(note.order_id).toBe(ORDER_1)
+    for (const field of ['organization_id', 'company_id', 'store_id', 'author_id']) {
+      expect(note).not.toHaveProperty(field)
+    }
+  })
+
+  it('la etiqueta se normaliza antes de salir del navegador', async () => {
+    const user = userEvent.setup()
+    const client = holder.client as FakeSupabase
+    renderPage()
+
+    const drawer = await openDrawer(user, 'MI-000001', 'Operación')
+    await user.type(within(drawer).getByLabelText(/Nueva etiqueta/i), 'Revisar Dirección')
+    await user.click(within(drawer).getAllByRole('button', { name: 'Añadir' })[0] as HTMLElement)
+
+    await waitFor(() => expect(client.state.tables.order_tags ?? []).toHaveLength(2))
+    const added = (client.state.tables.order_tags ?? []).at(-1) as Record<string, unknown>
+    expect(added.tag).toBe('revisar-direccion')
+  })
+
+  it('las referencias externas se listan por sistema y tipo', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    const drawer = await openDrawer(user, 'MI-000001', 'Operación')
+    expect(within(drawer).getByText('F001-000123')).toBeInTheDocument()
+    expect(within(drawer).getByText('erp · invoice')).toBeInTheDocument()
   })
 })

@@ -45,6 +45,7 @@ export const SELLABLE_CAPABILITY_IDS = [
   'fulfillment',
   'integrations.enterprise',
   'inventory.multiwarehouse',
+  'orders.advanced',
   'payments',
   'pricing.lists',
   'promotions',
@@ -119,8 +120,27 @@ export const CAPABILITIES: readonly Capability[] = [
     id: 'orders',
     boundary: 'orders',
     entitlement: null,
+    // BASELINE, y sigue siéndolo tras P08-SaaS. Los cuatro ejes de estado, la
+    // línea de tiempo, los snapshots inmutables y las referencias externas no
+    // son un módulo aparte: son lo que un pedido tiene que ser para que su
+    // historial resista que cambie el catálogo. Cobrar por «la versión que no
+    // miente» no sería vender un módulo.
     state: 'implemented',
-    grants: 'Gestión del pedido: estados, historial y consulta por el comprador.',
+    grants:
+      'Gestión del pedido: estados de pedido, pago y entrega, línea de tiempo, ' +
+      'snapshots inmutables, referencias externas y consulta por el comprador.',
+  },
+  {
+    // VENDIBLE y `declared` (P08-SaaS). Lo que se vende no es gestionar el
+    // pedido, es que los pedidos se creen SOLOS: programados, repetidos e
+    // importados en masa. La capacidad se registra ahora —y las tablas NO— para
+    // que el operador pueda dar de alta el addon en el hub sin esperar al
+    // código; el ADR 008 escribe el disparador de cada una de las tres.
+    id: 'orders.advanced',
+    boundary: 'orders',
+    entitlement: `${ENTITLEMENT_PREFIX}orders.advanced`,
+    state: 'declared',
+    grants: 'Pedidos programados, repetición de pedido e importación masiva.',
   },
   {
     id: 'analytics.basic',

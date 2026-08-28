@@ -41,7 +41,7 @@ El **hub EBIM** es el emisor de identidad y dueño del catálogo/billing. eComme
 escribe en él. La identidad del comprador final del storefront es **local** a este proyecto (patrón §2.5,
 igual que los proveedores externos de eSupplier); los usuarios del tenant llegan por SSO del hub.
 
-## Modelo de datos (implementado hasta P07-SaaS)
+## Modelo de datos (implementado hasta P08-SaaS)
 
 Nueve tablas en `supabase/migrations`, todas con `organization_id uuid` + `company_id uuid` (uuids del hub),
 `created_at`/`updated_at`, PK uuid y RLS default deny **forzada**:
@@ -53,7 +53,10 @@ tenants (PK = organization_id del hub)
         ├── store_settings (1:1 — branding publicable + config interna)
         ├── categories (árbol dentro de la misma tienda)
         ├── products ──── product_images (ruta en Storage)
-        └── orders ────── order_items (snapshot de precio; line_total GENERATED)
+        └── orders ────── order_items (snapshot completo; line_total GENERATED)
+                     ├── order_events        linea de tiempo de los 4 ejes (P08)
+                     ├── order_notes/tags    anotaciones internas (P08)
+                     └── order_external_refs como se llama en otros sistemas (P08)
 ```
 
 - **`organization_id` es el "tenant_id"** del modelo: nombre exacto del contrato §3, sin variantes.
@@ -71,7 +74,8 @@ tenants (PK = organization_id del hub)
   publica un booleano calculado por ATP, y la cifra exacta sigue sin salir a `anon`.
 - Sin forks de schema por cliente: diferencias por `store_settings.config` + `products.custom_fields` (JSONB).
 - Pendiente de fases siguientes: `payments`, `audit_log`. (`customers` llegó en P05-SaaS; los
-  almacenes y las reservas, en P06-SaaS; `carts`, `checkout_intents` y `domain_events`, en P07-SaaS.)
+  almacenes y las reservas, en P06-SaaS; `carts`, `checkout_intents` y `domain_events`, en P07-SaaS;
+  la línea de tiempo del pedido, sus anotaciones y sus referencias externas, en P08-SaaS.)
 
 ### PIM: variantes, atributos, unidades y kits (P03-SaaS)
 
@@ -296,6 +300,62 @@ LOS HECHOS
 - **Ni `anon` ni `authenticated` escriben una sola fila** de las cuatro tablas; el `token` del
   carrito y el `reservation_token` del intento quedan fuera del GRANT por columna del backoffice.
 
+### OMS: cuatro ejes, snapshots inmutables y comandos (P08-SaaS)
+
+Cuatro tablas más, migraciones `20260828110000`-`20260828110600`. Decisiones completas en
+[`adr/008-oms-order-axes-snapshots.md`](adr/008-oms-order-axes-snapshots.md).
+
+```
+EL PEDIDO CRECE (sin renombrar nada de lo que ya habia)
+  orders  + status (comercial, el de siempre)
+          + payment_status · fulfillment_status · approval_status
+          + source_channel   POR QUE PUERTA entro; distinto de channel_id (canal COMERCIAL)
+          + tax_inclusive · billing_address · shipping_address_snapshot · customer_snapshot
+  order_items + tax_rate/tax_amount/tax_category_code · discount_amount/discount_snapshot
+              + variant_label/variant_attributes · components_snapshot · price_list_code
+
+EL RELATO
+  order_events        linea de tiempo de los CUATRO ejes, append-only, un solo escritor
+
+LO QUE ESCRIBE EL EQUIPO
+  order_notes         hilo interno; orders.notes sigue siendo la instruccion del COMPRADOR
+  order_tags          triage plano, normalizado por CHECK y por trigger
+
+LO QUE ESCRIBEN OTROS SISTEMAS
+  order_external_refs (order_id, system_code, ref_type) — atributo, nunca clave
+```
+
+- **`status` no cambia de significado.** Se le suman tres ejes porque una columna que responde «¿llegó
+  el dinero?», «¿salió la mercancía?» y «¿en qué punto comercial está?» a la vez no puede escribir un
+  pedido pagado y no despachado. La compatibilidad la garantiza `ebim.sync_order_axes`, que corre
+  ANTES que la máquina de los ejes (orden alfabético de triggers BEFORE) y adelanta lo que la
+  sentencia no tocó: el estado «`paid` con `payment_status` en `pending`» es imposible, no
+  improbable.
+- **Los tres ejes nuevos NO tienen GRANT de escritura.** El GRANT por columna de P02 no se amplía, así
+  que la única puerta es `public.order_transition`, que reúne en una operación atómica autorización +
+  máquina de estados + línea de tiempo + hecho de dominio. Un test enumera las columnas con `UPDATE`
+  para `authenticated` y falla si aparece una cuarta.
+- **El motivo del cambio viaja por un ajuste LOCAL de transacción** (`set_config(…, true)`) que lee el
+  trigger de la línea de tiempo. Así el escritor de `order_events` sigue siendo único y **no existe un
+  cambio de estado sin evento**, ni siquiera si alguien escribe un UPDATE a mano.
+- **La inmutabilidad es un trigger, no un comentario**: `ebim.assert_order_item_immutable` y
+  `ebim.assert_order_snapshot_immutable` detienen también a `service_role`, que sí tiene GRANT y no
+  pasa por ninguna policy. `shipping_address` sigue siendo corregible y su original vive en
+  `shipping_address_snapshot`, que no tiene GRANT para nadie.
+- **El impuesto se reparte por línea con resto mayor**: el total del grupo de tasa se distribuye en
+  proporción al importe y el residuo va a la línea mayor. La suma de las líneas es EXACTAMENTE el
+  `tax_total` del pedido por construcción, no por suerte.
+- **La aprobación B2B no contamina B2C**: `not_required` es terminal, y con la aprobación pendiente no
+  se mueve ningún eje salvo cancelar. El umbral de la CUENTA lo impone la base con la fila delante; el
+  límite de la PERSONA lo aporta el borde, que es donde hay sesión — y solo puede AÑADIR aprobación,
+  nunca quitarla.
+- **`order_status_events` no se retira**: sigue viva y su historial se copió a `order_events`, para
+  que un pedido anterior a esta fase no aparezca sin memoria.
+- **Pedidos programados, repetición e importación se PREPARAN sin construirse**: capacidad
+  `orders.advanced` (`declared`), los tres valores ya en el enum `order_source_channel` y
+  `order_external_refs` como lote de origen. `order_schedules` y `order_batches` **no se crean**;
+  el ADR escribe el disparador de cada una, igual que P06 con `warehouse_locations`.
+
 ### Capacidades y entitlements (P02-SaaS)
 
 Cuatro tablas más, migración `20260827160000`. Decisiones completas en
@@ -350,6 +410,15 @@ y su cuenta la resuelve el servidor), `public.purchase_approval` (definer, con s
 dentro: o vínculo con la cuenta, o membresía del tenant) y `public.customer_orders` /
 `public.customer_deletion_usage` (invoker: la RLS decide qué ve quien pregunta).
 
+Desde P08-SaaS hay tres funciones más y un permiso nuevo. `public.order_transition` (el COMANDO de los
+tres ejes: `authenticated`, con la autorización dentro y el tenant sacado de la fila del pedido),
+`public.order_approval_decide` (decide una compra B2B pendiente; autoriza al aprobador de la cuenta
+—vínculo resuelto por el servidor— o al personal de pedidos) y `public.my_business_orders()`
+(**sin argumentos**, la puerta del aprobador B2B, que no es miembro del tenant). El permiso es
+`orders.export`, en las dos copias de la matriz de roles: exportar no es «ver el listado en un
+archivo», es una extracción masiva de datos de contacto y fiscales de todos los compradores, y un
+`viewer` no la tiene.
+
 `supabase/functions/_shared/` (auth, CORS, errores, validación, reglas de pedido, roles) es TypeScript puro:
 lo compila el `tsc` del repo y lo cubren los tests. `_runtime/clients.ts` queda aparte porque importa el SDK
 con especificador `npm:` y solo existe dentro de Deno.
@@ -397,7 +466,9 @@ src/
                         con usuarios, sucursales y reglas de autorizacion
   features/inventory/   almacenes, existencias por almacen, libro mayor, reservas y
                         alertas (P06-SaaS), mas los dos adaptadores de `InventoryPort`
-  features/orders/      pedidos del backoffice
+  features/orders/      pedidos del backoffice (P08-SaaS: listado paginado en servidor,
+                        cuatro ejes de estado con comando de transicion, linea de tiempo,
+                        notas internas, etiquetas, referencias externas y aprobacion B2B)
   features/storefront/  vitrina pública: resolución por slug, catálogo, ficha, carrito/checkout
                         (P07-SaaS: carrito de servidor con fusión al iniciar sesión y
                          checkout idempotente con etapas)

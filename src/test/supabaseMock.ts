@@ -76,6 +76,13 @@ export interface FakeState {
   functions: Record<string, (body: Record<string, unknown>) => unknown>
   /** Todo lo que se envió a `functions.invoke`, para poder afirmar sobre ello. */
   invocations: Array<{ name: string; body: Record<string, unknown> }>
+  /**
+   * Ídem para `rpc`. Existe desde P08-SaaS: los comandos del pedido son
+   * funciones de la base y no Edge Functions, así que sin este registro no
+   * había forma de afirmar que el navegador NO manda tenant, estado anterior
+   * ni importes en el payload.
+   */
+  rpcCalls: Array<{ name: string; args: Record<string, unknown> }>
   /** Objetos "subidos" por bucket, para afirmar sobre rutas de Storage. */
   storage: Record<string, Record<string, { size: number; contentType: string }>>
 }
@@ -380,6 +387,7 @@ export function createFakeSupabase(initial: Partial<FakeState> = {}) {
     rpc: { effective_capabilities: () => makePlatformContext(), ...(initial.rpc ?? {}) },
     functions: initial.functions ?? {},
     invocations: [],
+    rpcCalls: [],
     storage: initial.storage ?? {},
   }
 
@@ -419,6 +427,7 @@ export function createFakeSupabase(initial: Partial<FakeState> = {}) {
     },
     from: (table: string) => new FakeQuery(state, table),
     rpc: (name: string, args: Record<string, unknown>) => {
+      state.rpcCalls.push({ name, args })
       const handler = state.rpc[name]
       if (!handler) {
         return Promise.resolve({ data: null, error: { message: `rpc ${name} no simulada` } })

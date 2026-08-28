@@ -59,6 +59,25 @@ export interface AccountContext {
   readonly spendingLimit: MoneyText | null
 }
 
+/**
+ * ¿Esta compra necesita que alguien de la empresa la firme? (P08-SaaS)
+ *
+ * La respuesta la da `public.purchase_approval`, y se pide **con la sesión del
+ * comprador** por la misma razón que la cuenta: el límite de la persona depende
+ * de quién pregunta, y con `service_role` esa pregunta no tiene respuesta.
+ *
+ * Es una CONSULTA, no una decisión: no crea nada y no cambia ningún estado. Lo
+ * que decide de verdad es la base, dentro de `create_order`, que además impone
+ * el umbral de la CUENTA por su cuenta — este resultado solo puede AÑADIR una
+ * aprobación, nunca quitarla.
+ */
+export interface PurchaseApproval {
+  readonly required: boolean
+  /** `user_limit`, `rule` o `account_threshold`. Nunca un texto libre. */
+  readonly reason: string | null
+  readonly purchaseOrderRequired: boolean
+}
+
 // ---------------------------------------------------------------------------
 // 3 · Precio
 // ---------------------------------------------------------------------------
@@ -189,6 +208,9 @@ export interface PlacedOrder {
   readonly orderNumber: string
   readonly accessToken: string | null
   readonly status: string
+  /** P08: `pending` = el pedido existe pero espera la firma de la empresa. */
+  readonly approvalStatus: string
+  readonly sourceChannel: string
   readonly currency: string
   readonly subtotal: MoneyText
   readonly taxTotal: MoneyText
@@ -209,6 +231,12 @@ export interface CheckoutRequest {
   readonly customerEmail: string
   readonly customerPhone: string
   readonly shippingAddress: ShippingAddress
+  /**
+   * Dirección FISCAL. `null` = se factura donde se entrega, que es lo que pasa
+   * en casi toda compra B2C. No es un dato de dinero: es una dirección, y por
+   * eso sí puede venir del comprador.
+   */
+  readonly billingAddress: ShippingAddress | null
   readonly notes: string | null
   readonly items: readonly OrderItemInput[]
 }
@@ -259,11 +287,20 @@ export interface CheckoutPorts {
     account: AccountContext
   }): Promise<DeliveryContext>
   authorizePayment(request: PaymentRequest): Promise<PaymentOutcome>
+  /**
+   * Solo se pregunta cuando hay cuenta B2B. Un comprador anónimo no tiene a
+   * quién pedirle una firma, y preguntarlo igual sería inventar un circuito de
+   * aprobación para el 99% de las compras (regla de la fase: la aprobación B2B
+   * no contamina B2C).
+   */
+  resolveApproval(accountId: string, amount: MoneyText): Promise<PurchaseApproval>
   placeOrder(input: {
     intentId: string
     request: CheckoutRequest
     reservationToken: string | null
     payment: PaymentOutcome
+    account: AccountContext
+    approval: PurchaseApproval | null
   }): Promise<PlacedOrder>
 
   // Compensaciones. Existen porque las etapas 6 y 8 dejan rastro fuera de la

@@ -3,17 +3,33 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
+  FULFILLMENT_STATUSES as EDGE_FULFILLMENT_STATUSES,
+  FULFILLMENT_TRANSITIONS as EDGE_FULFILLMENT,
+  ORDER_AXES as EDGE_AXES,
   ORDER_STATUSES as EDGE_STATUSES,
   ORDER_TRANSITIONS as EDGE_TRANSITIONS,
+  PAYMENT_STATUSES as EDGE_PAYMENT_STATUSES,
+  PAYMENT_TRANSITIONS as EDGE_PAYMENT,
   canTransition as edgeCanTransition,
+  nextForAxis as edgeNextForAxis,
 } from '../../../supabase/functions/_shared/orders'
+import { ORDER_TRANSITION_RPC } from '@/shared/lib/db-schema'
 import { UPDATE_ORDER_STATUS_FUNCTION } from './api'
 import { mapOrderCode } from './errors'
 import { ordersToCsv } from './exportCsv'
 import {
+  FULFILLMENT_STATUSES,
+  FULFILLMENT_TRANSITIONS,
+  ORDER_AXES,
   ORDER_STATUSES,
   ORDER_TRANSITIONS,
+  PAYMENT_STATUSES,
+  PAYMENT_TRANSITIONS,
+  customerSnapshotSchema,
+  nextForAxis,
   nextStatuses,
+  normalizeTag,
+  orderItemSchema,
   orderSchema,
   rangeStart,
   shippingAddressSchema,
@@ -89,6 +105,96 @@ describe('maquina de estados del pedido', () => {
   it('cancelado y reembolsado son finales', () => {
     expect(nextStatuses('cancelled')).toHaveLength(0)
     expect(nextStatuses('refunded')).toHaveLength(0)
+  })
+})
+
+/**
+ * P08-SaaS. Los dos ejes nuevos viven en los mismos TRES sitios y se comprueban
+ * igual: la base manda (`ebim.assert_order_axes`, verificado en
+ * `supabase/tests/edge-shared.test.ts`) y aquí se comparan las copias del borde
+ * y del navegador entre sí.
+ */
+describe('los ejes de pago y entrega', () => {
+  it('los vocabularios del front y del borde son el mismo', () => {
+    expect([...PAYMENT_STATUSES]).toEqual([...EDGE_PAYMENT_STATUSES])
+    expect([...FULFILLMENT_STATUSES]).toEqual([...EDGE_FULFILLMENT_STATUSES])
+    expect([...ORDER_AXES]).toEqual([...EDGE_AXES])
+  })
+
+  it('cada transicion permitida es la misma en las dos copias', () => {
+    for (const status of PAYMENT_STATUSES) {
+      expect([...PAYMENT_TRANSITIONS[status]], status).toEqual([...EDGE_PAYMENT[status]])
+    }
+    for (const status of FULFILLMENT_STATUSES) {
+      expect([...FULFILLMENT_TRANSITIONS[status]], status).toEqual([...EDGE_FULFILLMENT[status]])
+    }
+  })
+
+  it('`nextForAxis` responde igual que la del borde para los tres ejes', () => {
+    const values: Record<(typeof ORDER_AXES)[number], readonly string[]> = {
+      order_status: ORDER_STATUSES,
+      payment_status: PAYMENT_STATUSES,
+      fulfillment_status: FULFILLMENT_STATUSES,
+    }
+    for (const axis of ORDER_AXES) {
+      for (const from of values[axis]) {
+        expect([...nextForAxis(axis, from)], `${axis}:${from}`).toEqual([
+          ...edgeNextForAxis(axis, from),
+        ])
+      }
+    }
+  })
+
+  it('un valor que este bundle no conoce no revienta la pantalla', () => {
+    expect(nextForAxis('payment_status', 'estado_del_futuro')).toEqual([])
+  })
+
+  it('cobrado solo puede ir hacia una devolucion', () => {
+    expect([...PAYMENT_TRANSITIONS.paid]).toEqual(['partially_refunded', 'refunded'])
+  })
+
+  it('despachado solo puede volver como devolucion', () => {
+    expect([...FULFILLMENT_TRANSITIONS.fulfilled]).toEqual(['returned'])
+  })
+})
+
+describe('snapshot de la linea y del cliente', () => {
+  it('el impuesto sin registrar es NULL y no cero: no son lo mismo', () => {
+    const line = orderItemSchema.parse({
+      id: '11111111-1111-4111-8111-111111111111',
+      order_id: '22222222-2222-4222-8222-222222222222',
+      sku: 'SKU-1',
+      name: 'Algo',
+      unit_price: '10.00',
+      quantity: 1,
+      line_total: '10.00',
+    })
+    expect(line.tax_rate).toBeNull()
+    expect(line.tax_amount).toBeNull()
+    // El descuento SÍ es cero por defecto: antes de P10 no existían.
+    expect(line.discount_amount).toBe('0.00')
+  })
+
+  it('un snapshot de cliente con otra forma se lee vacio, no revienta', () => {
+    expect(customerSnapshotSchema.parse('texto suelto')).toEqual({})
+    expect(customerSnapshotSchema.parse({ account_name: 'Acme' })).toMatchObject({
+      account_name: 'Acme',
+    })
+  })
+})
+
+describe('etiquetas', () => {
+  it('normaliza acentos, mayusculas y espacios al formato de la base', () => {
+    expect(normalizeTag('  Revisar Dirección ')).toBe('revisar-direccion')
+    expect(normalizeTag('URGENTE')).toBe('urgente')
+  })
+
+  it('lo que no deja nada utilizable queda vacio y la api lo rechaza', () => {
+    expect(normalizeTag('  ///  ')).toBe('')
+  })
+
+  it('nunca pasa de 40 caracteres, que es el limite del CHECK', () => {
+    expect(normalizeTag('a'.repeat(80))).toHaveLength(40)
   })
 })
 
@@ -184,10 +290,48 @@ describe('el backoffice no escribe pedidos por PostgREST', () => {
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '')
 
-  it('la capa de datos de pedidos no hace update/insert/delete sobre la tabla', () => {
+  /**
+   * Desde P08 el módulo SÍ escribe por PostgREST — pero solo en las tres tablas
+   * de anotaciones (`order_notes`, `order_tags`, `order_external_refs`), que
+   * nacieron con su policy de rol para eso. La regla original —«sobre el pedido
+   * no se escribe»— no se afloja: se hace más precisa, porque un
+   * `not.toMatch(/\.insert\(/)` sobre el archivo entero dejaría de decir nada
+   * sobre `orders` en cuanto el módulo tocara cualquier otra tabla.
+   */
+  const WRITABLE_TABLES = [
+    'ORDER_NOTES_TABLE',
+    'ORDER_TAGS_TABLE',
+    'ORDER_EXTERNAL_REFS_TABLE',
+  ]
+
+  it('ninguna consulta hace `update` — ni sobre el pedido ni sobre nada', () => {
+    // El pedido no se edita nunca desde aquí, y las anotaciones tampoco: una
+    // nota reescrita deja de ser una nota, y una etiqueta es un booleano con
+    // nombre. Lo único editable en la base son las referencias externas, y esa
+    // pantalla todavía no existe.
     expect(source).not.toMatch(/\.update\(/)
-    expect(source).not.toMatch(/\.insert\(/)
-    expect(source).not.toMatch(/\.delete\(/)
+  })
+
+  it('`insert` y `delete` solo caen sobre las tablas de anotaciones', () => {
+    const chains = [...source.matchAll(/\.from\((\w+)\)([\s\S]{0,200})/g)]
+    expect(chains.length).toBeGreaterThan(0)
+    for (const [, table, tail] of chains) {
+      if (!table || !tail) continue
+      if (!/\.(insert|update|delete|upsert)\(/.test(tail)) continue
+      expect(WRITABLE_TABLES, `${table} no puede escribirse desde el navegador`).toContain(table)
+    }
+  })
+
+  it('el pedido y sus lineas se leen y nunca se escriben', () => {
+    for (const table of ['ORDERS_TABLE', 'ORDER_ITEMS_TABLE', 'ORDER_TIMELINE_TABLE']) {
+      const chains = [
+        ...source.matchAll(new RegExp(String.raw`\.from\(${table}\)([\s\S]{0,200})`, 'g')),
+      ]
+      expect(chains.length, table).toBeGreaterThan(0)
+      for (const [, tail] of chains) {
+        expect(tail, table).not.toMatch(/\.(insert|update|delete|upsert)\(/)
+      }
+    }
   })
 
   it('el unico camino de escritura es la Edge Function', () => {
@@ -202,6 +346,30 @@ describe('el backoffice no escribe pedidos por PostgREST', () => {
   it('el cuerpo que sale del navegador no lleva tenant ni importes', () => {
     const body = source.slice(source.indexOf('export async function updateOrderStatus'))
     for (const forbidden of ['organization_id', 'company_id', 'store_id', 'grand_total', 'subtotal']) {
+      expect(body).not.toContain(forbidden)
+    }
+  })
+
+  /**
+   * P08. Los tres ejes nuevos no tienen GRANT de escritura en `orders`, así que
+   * el comando no es «la forma recomendada»: es la única. Esta prueba fija que
+   * la llamada existe y que su payload no declara nada que decida el servidor.
+   */
+  it('las transiciones pasan por el comando `order_transition`, sin tenant', () => {
+    expect(ORDER_TRANSITION_RPC).toBe('order_transition')
+    expect(source).toMatch(/rpc\(ORDER_TRANSITION_RPC/)
+    const body = source.slice(
+      source.indexOf('export async function transitionOrder'),
+      source.indexOf('export interface ApprovalInput'),
+    )
+    for (const forbidden of [
+      'organization_id',
+      'company_id',
+      'store_id',
+      'p_from',
+      'grand_total',
+      'subtotal',
+    ]) {
       expect(body).not.toContain(forbidden)
     }
   })

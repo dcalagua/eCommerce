@@ -21,13 +21,24 @@ export type AppRole = (typeof APP_ROLES)[number]
 
 export const appRoleSchema = z.enum(APP_ROLES)
 
-export type Permission = 'tenant.manage' | 'store.manage' | 'catalog.write' | 'orders.write'
+export type Permission =
+  | 'tenant.manage'
+  | 'store.manage'
+  | 'catalog.write'
+  | 'orders.write'
+  | 'orders.export'
 
 export const ROLE_PERMISSIONS: Record<Permission, readonly AppRole[]> = {
   'tenant.manage': ['owner', 'admin'],
   'store.manage': ['owner', 'admin'],
   'catalog.write': ['owner', 'admin', 'catalog'],
   'orders.write': ['owner', 'admin', 'orders'],
+  // P08-SaaS. Exportar NO es «ver el listado en un archivo»: es una extracción
+  // masiva de correos, teléfonos, direcciones y documentos fiscales de todos
+  // los compradores del tenant. Un `viewer` —el rol de consulta— puede leer un
+  // pedido y no puede llevarse la base de clientes entera; los tres roles que
+  // sí responden por esos datos, sí.
+  'orders.export': ['owner', 'admin', 'orders'],
 }
 
 /** Sin rol no hay permiso: la ausencia de membresía nunca se lee como permiso. */

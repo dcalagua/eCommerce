@@ -125,6 +125,12 @@ const handler = serveJson(
             replay: result.replay,
             intent_id: result.intentId,
             payment_status: result.payment?.status ?? 'not_required',
+            // P08: si la compra espera la firma de la empresa, el comprador
+            // tiene que enterarse AQUI. Descubrirlo dias despues, cuando no
+            // llega nada, es la version cara del mismo dato.
+            approval_status: result.order.approvalStatus,
+            approval_reason: result.approval?.reason ?? null,
+            source_channel: result.order.sourceChannel,
           },
         },
       }

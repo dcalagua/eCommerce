@@ -27,6 +27,7 @@ import type {
   IntentClaim,
   PlacedOrder,
   PriceDrift,
+  PurchaseApproval,
   Quote,
   QuotedLine,
   Reservation,
@@ -189,6 +190,23 @@ export function createDbPorts(options: DbPortOptions): CheckoutPorts {
       }
     },
 
+    async resolveApproval(accountId: string, amount: string): Promise<PurchaseApproval> {
+      // Con el cliente del LLAMANTE, igual que `my_business_accounts`: el
+      // limite de la persona sale de `ebim.user_id()` dentro de la funcion, y
+      // con `service_role` no habria usuario del que sacarlo.
+      const raw = record(
+        await caller('purchase_approval', {
+          p_business_account_id: accountId,
+          p_amount: amount,
+        }),
+      )
+      return {
+        required: raw.required === true,
+        reason: nullableText(raw, 'reason'),
+        purchaseOrderRequired: raw.purchase_order_required === true,
+      }
+    },
+
     async resolvePrices(storeSlug: string, items: readonly OrderItemInput[]): Promise<Quote> {
       return toQuote(
         await service('price_quote_for_slug', {
@@ -259,6 +277,14 @@ export function createDbPorts(options: DbPortOptions): CheckoutPorts {
                   provider_code: input.payment.providerCode,
                   provider_reference: input.payment.providerReference,
                 },
+          // La cuenta B2B la resolvio la SESION del comprador, no el cuerpo de
+          // la peticion. La base vuelve a comprobar que sea de esta tienda.
+          p_business_account_id: input.account.accountId,
+          p_billing_address: input.request.billingAddress,
+          p_approval:
+            input.approval === null
+              ? null
+              : { required: input.approval.required, reason: input.approval.reason },
         }),
       )
       return {
@@ -266,6 +292,8 @@ export function createDbPorts(options: DbPortOptions): CheckoutPorts {
         orderNumber: text(raw, 'order_number'),
         accessToken: nullableText(raw, 'access_token'),
         status: text(raw, 'status'),
+        approvalStatus: text(raw, 'approval_status', 'not_required'),
+        sourceChannel: text(raw, 'source_channel', 'storefront'),
         currency: text(raw, 'currency'),
         subtotal: text(raw, 'subtotal', '0.00'),
         taxTotal: text(raw, 'tax_total', '0.00'),

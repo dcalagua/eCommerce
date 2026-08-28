@@ -31,6 +31,78 @@ export function canTransition(from: OrderStatus, to: OrderStatus): boolean {
   return ORDER_TRANSITIONS[from].includes(to)
 }
 
+/**
+ * P08-SaaS · los otros dos ejes de estado.
+ *
+ * Un pedido dejo de tener UN estado: tiene el ciclo comercial (`status`), el del
+ * dinero (`payment_status`) y el de la mercancia (`fulfillment_status`). Las dos
+ * maquinas de abajo estan DUPLICADAS de `ebim.assert_order_axes` por la misma
+ * razon que `ORDER_TRANSITIONS` lo esta desde P02: la que manda es la de la
+ * base, y esta copia solo existe para devolver un 409 claro antes de ir alla.
+ * El test `edge-shared` compara las tres contra el SQL real.
+ */
+export const PAYMENT_STATUSES = [
+  'pending',
+  'authorized',
+  'paid',
+  'partially_refunded',
+  'refunded',
+  'failed',
+  'voided',
+] as const
+
+export type PaymentStatusValue = (typeof PAYMENT_STATUSES)[number]
+
+export const PAYMENT_TRANSITIONS: Record<PaymentStatusValue, PaymentStatusValue[]> = {
+  pending: ['authorized', 'paid', 'failed', 'voided'],
+  authorized: ['paid', 'failed', 'voided'],
+  paid: ['partially_refunded', 'refunded'],
+  partially_refunded: ['refunded'],
+  failed: ['pending', 'voided'],
+  refunded: [],
+  voided: [],
+}
+
+export const FULFILLMENT_STATUSES = [
+  'unfulfilled',
+  'in_progress',
+  'partially_fulfilled',
+  'fulfilled',
+  'returned',
+  'cancelled',
+] as const
+
+export type FulfillmentStatusValue = (typeof FULFILLMENT_STATUSES)[number]
+
+export const FULFILLMENT_TRANSITIONS: Record<FulfillmentStatusValue, FulfillmentStatusValue[]> = {
+  unfulfilled: ['in_progress', 'partially_fulfilled', 'fulfilled', 'cancelled'],
+  in_progress: ['partially_fulfilled', 'fulfilled', 'cancelled'],
+  partially_fulfilled: ['fulfilled', 'returned', 'cancelled'],
+  fulfilled: ['returned'],
+  returned: [],
+  cancelled: [],
+}
+
+/** Los tres ejes que el comando `public.order_transition` sabe mover. */
+export const ORDER_AXES = ['order_status', 'payment_status', 'fulfillment_status'] as const
+export type OrderAxis = (typeof ORDER_AXES)[number]
+
+/**
+ * Transiciones que se pueden OFRECER desde el estado actual de un eje.
+ *
+ * No incluye el estado en el que ya se esta: `public.order_transition` responde
+ * `TRANSICION_SIN_CAMBIO` a eso, y ofrecerlo en un menu seria ofrecer un error.
+ */
+export function nextForAxis(axis: OrderAxis, from: string): readonly string[] {
+  if (axis === 'order_status') {
+    return ORDER_TRANSITIONS[from as OrderStatus] ?? []
+  }
+  if (axis === 'payment_status') {
+    return PAYMENT_TRANSITIONS[from as PaymentStatusValue] ?? []
+  }
+  return FULFILLMENT_TRANSITIONS[from as FulfillmentStatusValue] ?? []
+}
+
 export type OrderItemInput = {
   product_id: string
   quantity: number
