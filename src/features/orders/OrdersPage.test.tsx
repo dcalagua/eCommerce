@@ -529,3 +529,36 @@ describe('OrdersPage — legibilidad de la tabla', () => {
     expect(fila?.textContent ?? '').toMatch(new RegExp("\\d{1,2}:\\d{2}"))
   })
 })
+
+describe('OrdersPage — la fila enriquecida', () => {
+  it('cada estado lleva icono: es el tercer canal, no un adorno', async () => {
+    // Texto y color no bastan: el validador de paleta deja --red y --amber en
+    // DeltaE 1,8 bajo deuteranopia, asi que quien recorre la columna en
+    // diagonal necesita la silueta.
+    renderPage()
+
+    await screen.findByText('MI-000001')
+    const fila = screen.getByText('MI-000001').closest('tr')
+    // Tres ejes, tres iconos como minimo en la fila.
+    expect((fila?.querySelectorAll('svg').length ?? 0)).toBeGreaterThanOrEqual(3)
+  })
+
+  it('resume cuantos pedidos se ven y cuanto suman', async () => {
+    // Sin esto hay que contar filas para saber cuanto hay y sumar a mano para
+    // saber cuanto es.
+    renderPage()
+
+    expect(await screen.findByText(/pedidos en esta vista/)).toBeInTheDocument()
+    expect(screen.getByText('Suma')).toBeInTheDocument()
+  })
+
+  it('el cliente lleva su inicial como ancla de la fila', async () => {
+    renderPage()
+
+    await screen.findByText('MI-000001')
+    const fila = screen.getByText('MI-000001').closest('tr')
+    expect(fila?.textContent ?? '').toContain('Ana Compradora')
+    // La inicial del avatar, en mayuscula.
+    expect(fila?.querySelector('.MuiAvatar-root')?.textContent).toBe('A')
+  })
+})

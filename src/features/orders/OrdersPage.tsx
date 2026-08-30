@@ -2,6 +2,8 @@ import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded'
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import {
+  Avatar,
+  Box,
   Button,
   Card,
   Chip,
@@ -22,7 +24,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
-import { formatDate, formatMoney, formatTime } from '@/shared/lib/format'
+import { formatDate, formatMoney, formatRelative, formatTime } from '@/shared/lib/format'
+import { STATUS_ICON, PAYMENT_ICON, FULFILLMENT_ICON } from './statusIcons'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { SearchField } from '@/shared/ui/SearchField'
@@ -107,6 +110,15 @@ export function OrdersPage() {
   const orders = useOrders(filter)
   const rows = orders.data?.rows ?? []
   const total = orders.data?.total ?? 0
+
+  const currencies = new Set(rows.map((order) => order.currency))
+  const pageTotal =
+    currencies.size === 1
+      ? {
+          amount: rows.reduce((sum, order) => sum + Number(order.grand_total), 0),
+          currency: [...currencies][0] as string,
+        }
+      : null
 
   // Cambiar de filtro con la página 4 abierta deja al operador mirando una
   // página que ya no existe y una tabla vacía que parece un error.
@@ -217,8 +229,34 @@ export function OrdersPage() {
               icon={<ReceiptLongRoundedIcon fontSize="small" />}
             />
           )}
+          {/* Si la seleccion mezcla monedas no hay total que ensenar: sumar
+              soles con dolares es peor que no dar cifra. Mismo criterio que
+              `dashboard_kpis`. */}
           {orders.isSuccess && rows.length > 0 && (
             <>
+              {/* Resumen de lo que se esta viendo. Una tabla sin cabecera de
+                  contexto obliga a contar filas para saber cuanto hay, y el
+                  importe total solo se puede sacar sumando a mano. */}
+              <Stack
+                direction="row"
+                sx={{
+                  alignItems: 'center', gap: 2, flexWrap: 'wrap',
+                  px: 2, py: 1.5, borderBottom: '1px solid var(--border)',
+                }}
+              >
+                <Typography sx={{ fontSize: 13, fontWeight: 800 }}>
+                  {rows.length} {t('orders.summary.shown')}
+                </Typography>
+                <Box sx={{ flex: 1 }} />
+                <Stack direction="row" spacing={0.75} sx={{ alignItems: 'baseline' }}>
+                  <Typography sx={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    {t('orders.summary.total')}
+                  </Typography>
+                  <Typography className="tnum" sx={{ fontSize: 15, fontWeight: 800 }}>
+                    {pageTotal === null ? '—' : formatMoney(pageTotal.amount, pageTotal.currency, locale)}
+                  </Typography>
+                </Stack>
+              </Stack>
               <Table
                 size="small"
                 stickyHeader
@@ -274,35 +312,53 @@ export function OrdersPage() {
                         </Stack>
                       </TableCell>
                       <TableCell>
-                        <Typography sx={{ fontSize: 13, fontWeight: 600 }}>
-                          {order.customer_name ?? order.customer_email}
-                        </Typography>
-                        <Typography sx={{ fontSize: 11, color: 'var(--muted)' }}>
-                          {order.customer_email}
-                        </Typography>
+                        <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', minWidth: 0 }}>
+                          {/* Ancla visual: recorrer 50 filas de texto plano cuesta
+                              mas que recorrerlas con un punto de apoyo por fila. */}
+                          <Avatar
+                            aria-hidden
+                            sx={{
+                              width: 30, height: 30, fontSize: 12, fontWeight: 800,
+                              bgcolor: 'var(--accent-soft)', color: 'var(--accent-deep)',
+                            }}
+                          >
+                            {(order.customer_name ?? order.customer_email ?? '?').trim().charAt(0).toUpperCase()}
+                          </Avatar>
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography sx={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {order.customer_name ?? order.customer_email}
+                            </Typography>
+                            <Typography sx={{ fontSize: 11, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {order.customer_email}
+                            </Typography>
+                          </Box>
+                        </Stack>
                       </TableCell>
                       <TableCell>
                         <StatusChip
                           tone={STATUS_COLOR[order.status]}
+                          icon={STATUS_ICON[order.status]}
                           label={t(STATUS_LABEL[order.status])}
                         />
                       </TableCell>
                       <TableCell>
                         <StatusChip
                           tone={PAYMENT_COLOR[order.payment_status]}
+                          icon={PAYMENT_ICON[order.payment_status]}
                           label={t(PAYMENT_LABEL[order.payment_status])}
                         />
                       </TableCell>
                       <TableCell>
                         <StatusChip
                           tone={FULFILLMENT_COLOR[order.fulfillment_status]}
+                          icon={FULFILLMENT_ICON[order.fulfillment_status]}
                           label={t(FULFILLMENT_LABEL[order.fulfillment_status])}
                         />
                       </TableCell>
                       <TableCell sx={{ whiteSpace: 'nowrap' }}>
                         <Typography sx={{ fontSize: 13 }}>{formatDate(order.placed_at, locale)}</Typography>
                         <Typography sx={{ fontSize: 11, color: 'var(--muted)' }}>
-                          {formatTime(order.placed_at, locale)}
+                          {formatTime(order.placed_at, locale)} · {formatRelative(order.placed_at, locale)}
                         </Typography>
                       </TableCell>
                       <TableCell align="right" className="tnum" sx={{ fontWeight: 800, whiteSpace: 'nowrap' }}>

@@ -759,6 +759,8 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'admin.orders.emptyBody':
       'When someone buys from your storefront, the order will show up here.',
     'orders.status.pending': 'Pending',
+    'orders.summary.shown': 'orders in this view',
+    'orders.summary.total': 'Sum',
     'orders.status.paid': 'Paid',
     'orders.status.fulfilled': 'Fulfilled',
     'orders.status.cancelled': 'Cancelled',

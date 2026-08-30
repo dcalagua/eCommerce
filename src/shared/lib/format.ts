@@ -41,3 +41,31 @@ export function formatTime(value: string | Date, locale: Locale = 'es'): string 
   if (Number.isNaN(date.getTime())) return ''
   return new Intl.DateTimeFormat(LOCALE_TAG[locale], { timeStyle: 'short' }).format(date)
 }
+
+/**
+ * Tiempo relativo («hace 3 d»). En un listado operativo la pregunta no suele
+ * ser «que dia fue» sino «cuanto lleva ahi»: un pedido de hace cuatro dias sin
+ * cobrar se ve de un vistazo, y una fecha absoluta obliga a restar mentalmente.
+ *
+ * Usa `Intl.RelativeTimeFormat`, que ya sabe decirlo en cada idioma: componerlo
+ * a mano obliga a traducir plurales y a acertar con el genero.
+ */
+export function formatRelative(value: string | Date, locale: Locale = 'es'): string {
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+
+  const seconds = Math.round((date.getTime() - Date.now()) / 1000)
+  const units: Array<[Intl.RelativeTimeFormatUnit, number]> = [
+    ['year', 31_536_000],
+    ['month', 2_592_000],
+    ['day', 86_400],
+    ['hour', 3_600],
+    ['minute', 60],
+  ]
+
+  const rtf = new Intl.RelativeTimeFormat(LOCALE_TAG[locale], { numeric: 'auto' })
+  for (const [unit, size] of units) {
+    if (Math.abs(seconds) >= size) return rtf.format(Math.round(seconds / size), unit)
+  }
+  return rtf.format(Math.round(seconds), 'second')
+}

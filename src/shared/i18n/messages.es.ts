@@ -766,6 +766,8 @@ export const es = {
     // --- P07 · Pedidos -------------------------------------------------------
     'admin.orders.emptyBody': 'Cuando alguien compre en tu vitrina, el pedido aparecerá aquí.',
     'orders.status.pending': 'Pendiente',
+    'orders.summary.shown': 'pedidos en esta vista',
+    'orders.summary.total': 'Suma',
     'orders.status.paid': 'Pagado',
     'orders.status.fulfilled': 'Entregado',
     'orders.status.cancelled': 'Cancelado',

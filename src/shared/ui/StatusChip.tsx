@@ -1,4 +1,5 @@
 import { Box } from '@mui/material'
+import type { ReactNode } from 'react'
 import { T } from '@/theme/tokens'
 
 export type StatusTone = 'default' | 'info' | 'success' | 'warning' | 'error'
@@ -16,7 +17,16 @@ export type StatusTone = 'default' | 'info' | 'success' | 'warning' | 'error'
  * `--red` y `--amber` en ΔE 1,8 bajo deuteranopía, así que la etiqueta de texto
  * no es opcional ni decorativa. Es la que lleva el significado.
  */
-export function StatusChip({ tone = 'default', label }: { tone?: StatusTone; label: string }) {
+export function StatusChip({
+  tone = 'default',
+  label,
+  icon,
+}: {
+  tone?: StatusTone
+  label: string
+  /** Tercer canal, ademas de texto y color. Decorativo: el texto ya nombra. */
+  icon?: ReactNode
+}) {
   const tones: Record<StatusTone, { bg: string; fg: string }> = {
     default: { bg: 'var(--neutral-soft)', fg: 'var(--muted)' },
     info: { bg: 'var(--blue-soft)', fg: 'var(--blue)' },
@@ -42,8 +52,15 @@ export function StatusChip({ tone = 'default', label }: { tone?: StatusTone; lab
         fontWeight: 700,
         lineHeight: 1.4,
         whiteSpace: 'nowrap',
+        gap: 0.5,
+        '& .MuiSvgIcon-root': { fontSize: 14 },
       }}
     >
+      {icon && (
+        <Box component="span" sx={{ display: 'flex' }} aria-hidden>
+          {icon}
+        </Box>
+      )}
       {label}
     </Box>
   )
