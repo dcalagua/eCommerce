@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MESSAGES } from '@/shared/i18n/messages'
+import { MESSAGES } from '@/shared/i18n/messages.all'
 import { mapPromotionsCode } from './errors'
 import {
   AUDIENCE_KINDS,

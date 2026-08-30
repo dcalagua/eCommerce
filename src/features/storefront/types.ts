@@ -194,6 +194,12 @@ export interface CatalogQuery {
   categorySlug: string | null
   availability: AvailabilityFilter
   sort: ProductSort
+  /**
+   * Techo de filas. **Obligatorio desde P15-SaaS**: sin él, `fetchPublicProducts`
+   * pedía la categoría entera para pintar cuatro relacionados, y una categoría
+   * con dos mil referencias se descargaba entera en cada ficha visitada.
+   */
+  limit: number
 }
 
 /** Descuento en % entero, o `null` si el precio tachado no es mayor que el real. */

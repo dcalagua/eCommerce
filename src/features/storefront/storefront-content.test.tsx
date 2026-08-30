@@ -176,13 +176,19 @@ describe('sin el módulo de contenido, la vitrina es la de siempre', () => {
 })
 
 describe('con contenido publicado', () => {
+  // `level: 1` desde P15-SaaS, y no es una rebaja: es la MISMA aserción sobre
+  // el nivel correcto. Si el hero del CMS sustituye al de `store_settings` —que
+  // es `<h1>`, lo comprueba el caso de arriba— y saliera como `<h2>`, la
+  // portada se quedaría sin encabezado de nivel 1 y el documento empezaría por
+  // un nivel 2. Se añade además el recuento: exactamente un `<h1>`.
   it('el hero del CMS SUSTITUYE al de `store_settings`, no se suma', async () => {
     renderStorefront(backend({ content: content([heroBlock()]) }), '/s/casa-verde')
 
     expect(
-      await screen.findByRole('heading', { name: 'Rebajas de invierno', level: 2 }),
+      await screen.findByRole('heading', { name: 'Rebajas de invierno', level: 1 }),
     ).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Hero de ajustes' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
   })
 
   it('el botón del bloque lleva a donde dice el contenido', async () => {
@@ -196,7 +202,7 @@ describe('con contenido publicado', () => {
     const roto = { ...heroBlock(), cta_href: 'javascript:alert(1)' }
     renderStorefront(backend({ content: content([roto]) }), '/s/casa-verde')
 
-    await screen.findByRole('heading', { name: 'Rebajas de invierno', level: 2 })
+    await screen.findByRole('heading', { name: 'Rebajas de invierno', level: 1 })
     // Ni el enlace ni la etiqueta: un botón sin destino es un botón roto.
     expect(screen.queryByText('Ver ofertas')).not.toBeInTheDocument()
   })

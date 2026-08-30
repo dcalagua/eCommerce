@@ -221,3 +221,37 @@ body {
     animation: none;
   }
 }
+
+/* ===== Movimiento reducido, de verdad (P15-SaaS) =====
+   Hasta P14 `prefers-reduced-motion` solo apagaba el isotipo y las
+   transiciones de la tarjeta de producto. El resto —los ~20 componentes de MUI
+   que animan por defecto: Drawer, Dialog, Collapse, Skeleton, Ripple— seguía
+   moviéndose, y esa es justo la lista que marea a quien pide no ver
+   movimiento.
+
+   `0.01ms` y no `0`: con duración cero muchos navegadores NO disparan
+   `transitionend`/`animationend`, y los componentes que esperan ese evento
+   para desmontarse (Drawer, Dialog, Snackbar) se quedan colgados. Un valor
+   mínimo pero distinto de cero termina al instante Y avisa.
+
+   `scroll-behavior: auto` en `html` porque un desplazamiento suave es
+   movimiento aunque no sea una animación declarada; lo pide el mismo usuario
+   por el mismo motivo. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+  /* La onda del botón de MUI no es una transición: es un elemento que crece.
+     Apagarla entera es lo único que la detiene. */
+  .MuiTouchRipple-root {
+    display: none !important;
+  }
+}

@@ -23,10 +23,15 @@ export function ProductGrid({
   products,
   storeSlug,
   thumbnails,
+  onPrefetch,
 }: {
   products: PublicProduct[]
   storeSlug: string
   thumbnails: Record<string, string>
+  /** Se llama al apuntar o enfocar una tarjeta. Opcional a propósito: los
+      relacionados de la ficha no lo pasan, porque ahí el siguiente clic es
+      mucho menos probable que en la rejilla del catálogo. */
+  onPrefetch?: (slug: string) => void
 }) {
   return (
     <Box sx={GRID_SX}>
@@ -38,6 +43,7 @@ export function ProductGrid({
           imageUrl={
             product.primary_image_path ? (thumbnails[product.primary_image_path] ?? null) : null
           }
+          onPrefetch={onPrefetch}
         />
       ))}
     </Box>

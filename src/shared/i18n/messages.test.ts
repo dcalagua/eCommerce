@@ -7,8 +7,17 @@
  * y se cuela hasta producción disfrazada de idioma equivocado. Este test es el
  * que la caza.
  */
-import { describe, expect, it } from 'vitest'
-import { LOCALES, MESSAGES, type Locale } from './messages'
+import { describe, expect, it, vi } from 'vitest'
+import {
+  dictionary,
+  es,
+  loadDictionary,
+  loadedDictionary,
+  LOCALES,
+  type Locale,
+  type MessageKey,
+} from './messages'
+import { MESSAGES } from './messages.all'
 import { translate } from './i18n-context'
 
 const esKeys = Object.keys(MESSAGES.es).sort()
@@ -47,13 +56,86 @@ describe('diccionario ES/EN', () => {
     expect(iguales.length / esKeys.length).toBeLessThan(0.2)
   })
 
-  it('translate devuelve el idioma pedido y nunca la clave cruda', () => {
+  /**
+   * Desde P15-SaaS el inglés llega por `import()`, así que `translate` solo
+   * puede devolver inglés DESPUÉS de que el módulo esté cargado. Se carga aquí
+   * a propósito, en vez de rebajar la aserción: lo que este test defiende —que
+   * ningún idioma acaba enseñando la clave cruda— sigue comprobándose sobre las
+   * dos listas enteras.
+   */
+  it('translate devuelve el idioma pedido y nunca la clave cruda', async () => {
+    for (const locale of LOCALES) await loadDictionary(locale as Locale)
+
     for (const locale of LOCALES) {
       for (const key of esKeys) {
         const value = translate(locale as Locale, key as keyof typeof MESSAGES.es)
+        expect(value, `${locale}:${key}`).toBe(MESSAGES[locale as Locale][key as MessageKey])
         expect(value, `${locale}:${key}`).not.toBe(key)
         expect(value.length, `${locale}:${key}`).toBeGreaterThan(0)
       }
     }
+  })
+})
+
+/**
+ * La carga diferida, con sus dos propiedades: que ES no la necesita y que hasta
+ * que el otro idioma llega se ve ESPAÑOL, no una clave cruda ni un hueco.
+ *
+ * Es el precio explícito de no meter los dos diccionarios en el bundle de
+ * entrada (61,76 kB gzip, la mitad de un idioma que no se lee). Escrito como
+ * test para que sea una decisión y no una sorpresa.
+ */
+describe('carga diferida del diccionario', () => {
+  it('el español está disponible sin esperar a nada', () => {
+    expect(loadedDictionary('es')).toBe(es)
+    expect(dictionary('es')['common.retry']).toBe('Reintentar')
+  })
+
+  it('un idioma que todavía no llegó se traduce en español, no con la clave', async () => {
+    vi.resetModules()
+    const fresh = await import('./messages')
+
+    expect(fresh.loadedDictionary('en')).toBeUndefined()
+    expect(fresh.dictionary('en')['common.retry']).toBe('Reintentar')
+
+    await fresh.loadDictionary('en')
+    expect(fresh.dictionary('en')['common.retry']).toBe('Try again')
+  })
+
+  it('cargar dos veces el mismo idioma devuelve el mismo objeto', async () => {
+    const first = await loadDictionary('en')
+    const second = await loadDictionary('en')
+    expect(second).toBe(first)
+  })
+})
+
+/**
+ * El ahorro solo existe mientras nadie importe los dos diccionarios desde el
+ * código que SÍ se descarga. `messages.all.ts` es para tests; si un módulo de
+ * `app`/`features`/`shared` lo importara, Rollup volvería a meter los dos en el
+ * bundle de entrada y el número de arriba se perdería sin que nadie lo notara.
+ */
+describe('el bundle no se lleva los dos idiomas', () => {
+  it('solo los tests importan messages.all', async () => {
+    const { readFileSync, readdirSync, statSync } = await import('node:fs')
+    const { join } = await import('node:path')
+
+    const offenders: string[] = []
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir)) {
+        const full = join(dir, entry)
+        if (statSync(full).isDirectory()) {
+          walk(full)
+          continue
+        }
+        if (!/\.tsx?$/.test(entry) || /\.test\.tsx?$/.test(entry)) continue
+        // Un `import`, no una mención: los comentarios de `messages.ts` hablan
+        // de este módulo a propósito y no meten nada en el bundle.
+        if (/from\s+'[^']*messages\.all'/.test(readFileSync(full, 'utf8'))) offenders.push(full)
+      }
+    }
+    walk('src')
+
+    expect(offenders).toEqual([])
   })
 })

@@ -10,6 +10,7 @@ import { useCartQuote } from '@/features/pricing/useCartQuote'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { formatMoney } from '@/shared/lib/format'
+import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { EmptyState } from '@/shared/ui/states'
 import { T } from '@/theme/tokens'
@@ -29,6 +30,7 @@ import {
   type CheckoutValues,
 } from './checkout'
 import { useStorefront } from './hooks'
+import { privateMeta } from './seo'
 
 /**
  * Checkout: nombre, correo, teléfono, dirección y una referencia opcional.
@@ -68,10 +70,21 @@ import { useStorefront } from './hooks'
 export function StoreCheckoutPage() {
   const { t, locale } = useI18n()
   const navigate = useNavigate()
-  const { storeSlug } = useStorefront()
+  const { store, storeSlug } = useStorefront()
   const { cart, subtotal, currency, cartToken, clear } = useCart()
   const { status: sessionStatus } = useSessionContext()
   const authenticated = sessionStatus === 'authenticated'
+
+  // Carrito, checkout, cuenta y seguimiento NO se indexan (P15-SaaS). No es
+  // pudor: son estado de una sesión, no contenido. `robots.txt` pide que no se
+  // rastreen; esto impide que se indexen si alguien las enlaza desde fuera.
+  useDocumentMeta(
+    privateMeta(
+      { store, storeSlug, locale, pathname: `/s/${storeSlug}` },
+      t('store.checkout.title'),
+      '/checkout',
+    ),
+  )
 
   const [errorKey, setErrorKey] = useState<MessageKey | null>(null)
   const [errorStage, setErrorStage] = useState<CheckoutStage | null>(null)

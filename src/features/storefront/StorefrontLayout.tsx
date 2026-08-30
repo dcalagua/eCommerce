@@ -12,15 +12,18 @@ import {
   Typography,
 } from '@mui/material'
 import type { ReactNode } from 'react'
-import { Link, Outlet, useParams } from 'react-router-dom'
+import { Link, Outlet, useLocation, useParams } from 'react-router-dom'
 import { ErrorBoundary } from '@/app/ErrorBoundary'
 import { useSessionContext } from '@/features/auth/session-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { EbimMark } from '@/shared/ui/EbimMark'
+import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/states'
+import { SkipToContentLink, CONTENT_ANCHOR } from '@/shared/ui/SkipToContentLink'
 import { AppearanceProvider } from '@/theme/AppearanceProvider'
 import { R, T } from '@/theme/tokens'
 import { StorefrontNotFoundError } from './api'
+import { notFoundMeta } from './seo'
 import { initials } from './branding'
 import { CartDrawer } from './cart/CartDrawer'
 import { CartProvider } from './cart/CartProvider'
@@ -42,12 +45,24 @@ import type { PublicStore } from './types'
  */
 export function StorefrontLayout() {
   const { storeSlug } = useParams<{ storeSlug: string }>()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
+  const { pathname } = useLocation()
   const { data: store, isPending, isError, error, refetch } = usePublicStore(storeSlug)
   // La sesión no cambia NADA de lo que se ve del catálogo —la vitrina se lee
   // siempre con el cliente anónimo— pero sí decide de quién es el carrito: con
   // sesión, el del comprador; sin ella, el del token del navegador.
   const { status: sessionStatus } = useSessionContext()
+
+  // Un slug que no resuelve responde 200 como todo en una SPA. Sin este
+  // `noindex`, la pantalla de «no encontramos esa tienda» se indexa como si
+  // fuera contenido: el «soft 404» clásico. Se declara ANTES de decidir qué
+  // pintar para que también cubra el fallo de red.
+  const failed = !isPending && (isError || !store)
+  useDocumentMeta(
+    failed
+      ? notFoundMeta({ title: t('store.notFound'), pathname, siteName: 'eCommerce by EBIM', locale })
+      : null,
+  )
 
   if (isPending) {
     return (
@@ -95,13 +110,21 @@ export function StorefrontLayout() {
         authenticated={sessionStatus === 'authenticated'}
       >
         <Box sx={{ minHeight: '100dvh', bgcolor: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+          {/* Primer elemento enfocable del documento: sin él, llegar al
+              catálogo con el teclado obliga a pasar por el logo, el menú, la
+              cuenta y el carrito en CADA página. El destino ya existía
+              (`id="contenido"`) y el texto también; faltaba el enlace. */}
+          <SkipToContentLink label={t('store.skipToContent')} />
           <StoreHeader store={store} storeSlug={storeSlug as string} />
 
           <Container
             component="main"
-            id="contenido"
+            id={CONTENT_ANCHOR}
+            // `tabIndex={-1}`: sin esto el salto mueve el scroll pero NO el
+            // foco, y el siguiente Tab vuelve al principio de la cabecera.
+            tabIndex={-1}
             maxWidth="lg"
-            sx={{ flex: 1, py: { xs: 2.5, md: 4 } }}
+            sx={{ flex: 1, py: { xs: 2.5, md: 4 }, '&:focus': { outline: 'none' } }}
           >
             <ErrorBoundary>
               <Outlet context={context} />

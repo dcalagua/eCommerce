@@ -28,8 +28,10 @@ Usuario del tenant ──┘      ├─ /s/:storeSlug  storefront público (ten
                             ├─ fulfillment-webhook (el operador dice dónde va — P12-SaaS)
                             ├─ api                (la API de SOCIO, versionada: /v1/…
                             │                      OAuth client_credentials + scopes — P14-SaaS)
-                            └─ integration-worker (vacía la cola y FIRMA los webhooks;
-                                                   clave de trabajador en cabecera — P14-SaaS)
+                            ├─ integration-worker (vacía la cola y FIRMA los webhooks;
+                            │                      clave de trabajador en cabecera — P14-SaaS)
+                            └─ storefront-seo     (sitemap.xml y robots.txt POR TIENDA;
+                                                   cliente ANÓNIMO, tenant por slug — P15-SaaS)
 
 Sistema de un socio ──► api  ──►  Postgres (el tenant sale de la fila de la credencial)
 Sistema suscrito    ◄── integration-worker ◄── integration_outbox ◄── domain_events
@@ -832,8 +834,15 @@ src/
     ports/                PricingPort, InventoryPort, PaymentProvider, ErpProvider, ...
   app/                  router, providers, ErrorBoundary, queryClient
   theme/                tokens (CSS vars + escalas), createEbimTheme, apariencia por usuario
-  shared/               ui kit (EbimMark, SectionTabs, SearchField, estados), i18n ES/EN,
-                        lib (env, supabase, db-schema, format, search, slug)
+  shared/               ui kit (EbimMark, SectionTabs, SearchField, estados, SkipToContentLink),
+                        i18n ES/EN, lib (env, supabase, db-schema, format, search, slug)
+    seo/                  (P15-SaaS) `meta.ts` PURO decide qué se indexa, con qué identidad
+                          y con qué canonical; `useDocumentMeta` lo escribe en el `<head>` y
+                          —esto es lo que importa en una SPA— lo RETIRA al desmontar
+    i18n/                 `messages.es.ts` viaja siempre (es el suelo del fallback);
+                          `messages.en.ts` entra por `import()` (P15-SaaS: −30 kB gzip de
+                          la entrada). `messages.all.ts` es SOLO para tests de paridad y
+                          hay un test que comprueba que nadie más lo importa
   features/auth/        login (anatomía de suite §4.5), sesión, guard RequireSession
   features/tenant/      contexto de tenant del backoffice, derivado del JWT
   features/capabilities/ que modulos tiene la sociedad: provider, gate, diagnostico
@@ -895,6 +904,10 @@ src/
                         + delivery.ts / DeliveryPicker (P12-SaaS): envío, recojo, reparto
                           y entrega digital en la MISMA lista del MISMO checkout; el
                           importe llega resuelto del servidor y aquí no se calcula nada
+                        + seo.ts (P15-SaaS): los metadatos de cada pantalla de la vitrina,
+                          compuestos sobre el `PublicStore` YA RESUELTO por slug. La marca,
+                          el logo, el contacto y la moneda que ve un buscador son los del
+                          TENANT. Carrito, checkout, cuenta y seguimiento: `noindex`
   architecture.test.ts  las reglas de frontera, comprobadas sobre el codigo real
 supabase/
   migrations/  SQL versionado (tabla nueva = tabla + RLS + policies en la misma migración)
@@ -907,6 +920,9 @@ supabase/
                ORDEN de las comprobaciones, que es una decisión de seguridad
                _shared/webhooks (P14-SaaS): la firma con instante dentro (verificar
                incluido, para poder probar la promesa) y el despachador puro
+               _shared/seo (P15-SaaS): sitemap y robots POR TIENDA, TypeScript puro. El
+               borde (`storefront-seo`) solo cablea, y lee con el cliente ANÓNIMO: lo
+               máximo que puede publicar es lo que ya publica la vitrina
   tests/       PGlite: RLS, invariantes de esquema y contrato de integraciones
 ```
 
@@ -960,6 +976,49 @@ Todas estas reglas las comprueba `src/architecture.test.ts`: no son convenciones
 - Theming por tokens; el acento proviene del branding del tenant (`accent_color`), nunca hardcodeado.
 - Light + dark, densidad configurable, WCAG AA, mobile-first real.
 - Pantallas largas → tabs centrados con deep-link `#hash`; listados → un buscador general.
+
+### Rendimiento, accesibilidad y SEO de la vitrina (P15-SaaS)
+
+**Ni una migración**: es fase de entrega, no de dominio. Decisiones completas en
+[`adr/015-storefront-performance-seo.md`](adr/015-storefront-performance-seo.md); el método de
+medida y los techos vigentes, en [`performance-budget.md`](performance-budget.md).
+
+```
+LO QUE VE UN BUSCADOR
+  shared/seo/meta.ts        PURO: título, canonical, robots, Open Graph, JSON-LD
+        │                   (`Organization`, `Product` con su oferta, `BreadcrumbList`)
+        ▼
+  features/storefront/seo.ts   compone sobre el PublicStore ya resuelto por SLUG
+        │                      → portada y ficha `index`; carrito/checkout/cuenta/
+        │                        seguimiento `noindex`; lo que no resuelve, `noindex`
+        ▼
+  shared/seo/useDocumentMeta   escribe el <head> y lo RETIRA al desmontar
+                               (una SPA no recarga: lo que no se limpia miente)
+
+  public/robots.txt                        el despliegue entero
+  functions/storefront-seo  ──► anon ──►   /s/:slug/sitemap.xml  ·  /s/:slug/robots.txt
+                                           (POR TIENDA, generado, NUNCA service_role)
+```
+
+Tres señales, la misma lista de cuatro rutas privadas —`noindex` en la aplicación, `Disallow` en
+`robots.txt`, ausentes del sitemap— y un test por cada una. `robots.txt` pide que no se RASTREE:
+no impide que se indexe una URL enlazada desde fuera, y por eso las tres.
+
+**Presupuesto medible** (`npm run build && npm run bundle:report`, sale con código 1 si se pasa):
+la entrada compartida baja de **283,38 kB gzip** (P14) a **251,8 kB gzip**, y el recorrido completo
+de la portada queda en 334,6 kB contra un techo de 400. Lo consiguen cuatro cosas: el diccionario
+del idioma que no se lee sale del bundle de entrada (`import()`, −30,09 kB gzip), el proveedor se
+reparte en chunks estables, «ver más» pagina de verdad contra el servidor —antes la tercera página
+descargaba 72 productos para enseñar 24— y `fetchPublicProducts` lleva el techo SIEMPRE.
+
+**Accesibilidad**: enlace de salto al contenido con destino enfocable (`tabIndex={-1}`), un solo
+`<h1>` por página —cuando el hero del CMS sustituye al de `store_settings` es él quien lo lleva—,
+buscador como landmark `role="search"` y `prefers-reduced-motion` aplicado a TODO (`0.01ms`, no `0`:
+con duración cero muchos navegadores no disparan `transitionend` y los componentes que esperan ese
+evento para desmontarse se quedan colgados).
+
+**Lo que NO se declara**: ninguna puntuación de Lighthouse ni Web Vitals de campo. Exigen un
+navegador real contra un despliegue real, y esta fase no despliega (contrato §11).
 
 ## Integración con la suite
 

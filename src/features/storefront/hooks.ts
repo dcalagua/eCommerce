@@ -1,5 +1,13 @@
-import { useEffect } from 'react'
-import { useQuery, type UseQueryResult } from '@tanstack/react-query'
+import { useCallback, useEffect } from 'react'
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+  type InfiniteData,
+  type UseInfiniteQueryResult,
+  type UseQueryResult,
+} from '@tanstack/react-query'
 import { useOutletContext } from 'react-router-dom'
 import type { SearchQuery, SearchResult, Suggestion } from '@/domain'
 import {
@@ -132,6 +140,12 @@ export function useThumbnails(products: PublicProduct[]): Record<string, string>
  * Firma un lote de rutas de imagen y devuelve el mapa `ruta -> URL`. Lo usan el
  * catálogo y el carrito: las rutas se deduplican y se ordenan para que la clave
  * de caché no cambie por el orden en que llegaron.
+ *
+ * `keepPreviousData` (P15-SaaS) no es una comodidad: al pedir la siguiente
+ * página del catálogo el lote crece, la clave cambia y sin esto el mapa se
+ * vaciaba —`data` pasa a `undefined` en una clave nueva— y **todas** las fotos
+ * ya pintadas caían al marcador neutral hasta que llegaba la firma nueva. Se
+ * veía como un parpadeo de la rejilla entera al pulsar «ver más».
  */
 export function useSignedThumbnails(paths: Array<string | null>): Record<string, string> {
   const unique = [...new Set(paths.filter((path): path is string => Boolean(path)))].sort()
@@ -141,6 +155,7 @@ export function useSignedThumbnails(paths: Array<string | null>): Record<string,
     queryFn: () => signPaths(unique),
     enabled: unique.length > 0,
     staleTime: 30 * 60 * 1000,
+    placeholderData: keepPreviousData,
     retry: false,
   })
 
@@ -155,6 +170,24 @@ export interface StorefrontOutlet {
 
 export function useStorefront(): StorefrontOutlet {
   return useOutletContext<StorefrontOutlet>()
+}
+
+/**
+ * El mismo contexto, admitiendo que puede NO haberlo (P15-SaaS).
+ *
+ * `useOutletContext` devuelve `null` cuando el componente se monta fuera del
+ * `<Outlet>` del layout, así que la firma de `useStorefront` miente en ese
+ * caso. Mientras lo único que se leía del contexto era el catálogo daba igual
+ * —esas pantallas no existen fuera de la vitrina—, pero los metadatos de P15
+ * los pide tambien `StoreAccountPage`, que sí se monta suelta (es una pantalla
+ * de `features/customers` probada por su cuenta).
+ *
+ * Se resuelve declarando la verdad en el tipo en vez de obligar a cada llamador
+ * a montar un layout entero para poner un `<title>`: sin tienda resuelta no hay
+ * metadatos que poner, y la pantalla se pinta igual.
+ */
+export function useStorefrontOptional(): StorefrontOutlet | null {
+  return useOutletContext<StorefrontOutlet | null>() ?? null
 }
 
 // ---------------------------------------------------------------------------
@@ -290,4 +323,98 @@ export function useCatalogSuggestions(
     staleTime: CATALOG_STALE,
     retry: false,
   })
+}
+
+// ---------------------------------------------------------------------------
+// Paginación del catálogo y prefetch (P15-SaaS)
+// ---------------------------------------------------------------------------
+
+export const searchPagesKey = (storeSlug: string, query: SearchQuery) =>
+  ['storefront', 'search-pages', storeSlug, query.term, query.filters, query.sort, query.limit] as const
+
+/**
+ * Catálogo paginado DE VERDAD contra el servidor.
+ *
+ * Hasta P14 «ver más» subía el `limit` y volvía a pedir desde el desplazamiento
+ * cero: la segunda página descargaba 48 productos para enseñar 24 nuevos, la
+ * tercera 72 para enseñar 24, y así. Con veinte pulsaciones el navegador se
+ * había traído el catálogo entero varias veces —exactamente lo que P11 quitó de
+ * la carga inicial—. Ahora cada página pide su tramo con `offset` y las
+ * anteriores se quedan donde estaban.
+ *
+ * `getNextPageParam` se apoya en el `total` que devuelve la propia función de
+ * la base: no hace falta pedir una página de más para saber si hay siguiente.
+ */
+export function useCatalogPages(
+  storeSlug: string | undefined,
+  query: SearchQuery,
+): UseInfiniteQueryResult<InfiniteData<SearchResult, unknown>> {
+  const result = useInfiniteQuery({
+    queryKey: searchPagesKey(storeSlug ?? '', query),
+    initialPageParam: 0,
+    queryFn: ({ pageParam, signal }) =>
+      createStorefrontSearch(storeSlug as string).search({ ...query, offset: pageParam, signal }),
+    getNextPageParam: (last, all) => {
+      const loaded = all.reduce((count, page) => count + page.items.length, 0)
+      return loaded < last.total ? loaded : undefined
+    },
+    enabled: Boolean(storeSlug),
+    staleTime: CATALOG_STALE,
+    // Sin esto, cambiar un filtro vacía la rejilla y la página salta al alto de
+    // un esqueleto y vuelve. Con esto se ve lo anterior atenuado hasta que
+    // llega lo nuevo, que es lo que hacía `useCatalogSearch` desde P11.
+    placeholderData: keepPreviousData,
+    retry: false,
+  })
+
+  /**
+   * `search` (P13-SaaS), con su NÚMERO DE RESULTADOS.
+   *
+   * Se emite aquí y no en la caja de texto porque el dato que se acciona no es
+   * qué se tecleó, es qué se tecleó Y NO ENCONTRÓ NADA: un término buscado
+   * cincuenta veces con cero resultados es un producto que falta en el catálogo
+   * o un sinónimo que falta en `search_synonyms` (P11). En la caja aún no se
+   * sabe.
+   *
+   * Solo la PRIMERA página: paginar es la misma búsqueda, y contarla otra vez
+   * hincharía el denominador con el desplazamiento de quien SÍ encontró lo que
+   * buscaba.
+   */
+  const term = query.term.trim()
+  const total = result.data?.pages[0]?.total
+  useEffect(() => {
+    if (!storeSlug || term === '' || total === undefined) return
+    track(storeSlug, { type: 'search', term, result_count: total })
+  }, [storeSlug, term, total])
+
+  return result
+}
+
+/**
+ * Prefetch de una ficha de producto.
+ *
+ * Se dispara al APUNTAR o al ENFOCAR una tarjeta, no al pintarla: precargar las
+ * veinticuatro fichas de la rejilla convertiría un ahorro en veinticuatro
+ * consultas que casi nadie va a usar. Apuntar a una tarjeta es la señal más
+ * barata de intención que hay, y entre el `mouseenter` y el clic caben los
+ * ~150 ms que tarda la consulta.
+ *
+ * `staleTime` largo: si el comprador entra en la ficha justo después, el dato
+ * ya está y no se vuelve a pedir. Y si no entra, no ha costado más que una
+ * fila.
+ */
+export function usePrefetchProduct(storeId: string | null): (slug: string) => void {
+  const client = useQueryClient()
+
+  return useCallback(
+    (slug: string) => {
+      if (!storeId || !slug) return
+      void client.prefetchQuery({
+        queryKey: productKey(storeId, slug),
+        queryFn: () => fetchPublicProduct({ storeId, slug }),
+        staleTime: CATALOG_STALE,
+      })
+    },
+    [client, storeId],
+  )
 }

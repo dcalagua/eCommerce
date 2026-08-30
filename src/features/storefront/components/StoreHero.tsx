@@ -49,6 +49,12 @@ export function StoreHero({ store }: { store: PublicStore }) {
             src={store.banner_url ?? undefined}
             alt=""
             aria-hidden
+            // Lo primero que se ve de la portada, y por tanto el candidato a
+            // LCP: se pide con prioridad alta y sin `lazy`. Las miniaturas del
+            // catálogo, que van debajo, sí son perezosas.
+            loading="eager"
+            fetchPriority="high"
+            decoding="async"
             sx={{
               position: 'absolute',
               inset: 0,

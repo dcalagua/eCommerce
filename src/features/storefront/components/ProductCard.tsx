@@ -17,11 +17,19 @@ export function ProductCard({
   product,
   storeSlug,
   imageUrl = null,
+  onPrefetch,
 }: {
   product: PublicProduct
   storeSlug: string
   /** URL firmada de la imagen principal, o `null` para el marcador neutral. */
   imageUrl?: string | null
+  /**
+   * Aviso de intención (P15-SaaS). Se dispara al APUNTAR y al ENFOCAR, no al
+   * pintar: adelantar las veinticuatro fichas de la rejilla serían veinticuatro
+   * consultas que casi nadie usa. Y va también en `focus` para que quien navega
+   * con teclado gane lo mismo que quien navega con ratón.
+   */
+  onPrefetch?: (slug: string) => void
 }) {
   const { t, locale } = useI18n()
   const discount = discountPercent(product)
@@ -31,6 +39,8 @@ export function ProductCard({
     <Card
       component={Link}
       to={`/s/${storeSlug}/product/${product.slug}`}
+      onMouseEnter={() => onPrefetch?.(product.slug)}
+      onFocus={() => onPrefetch?.(product.slug)}
       sx={{
         display: 'flex',
         flexDirection: 'column',

@@ -54,9 +54,13 @@ describe('LoginPage — anatomía de suite', () => {
     await waitFor(() => expect(screen.getByLabelText('Contraseña')).toHaveAttribute('type', 'text'))
   })
 
-  it('traduce a inglés sin cambiar la estructura', () => {
+  // `findBy*` y no `getBy*` desde P15-SaaS: el diccionario ingles llega por
+  // `import()` (ver `shared/i18n/messages.ts`). La asercion es la misma; lo que
+  // cambio es que ahora hay un tick de por medio, y el primer pintado se ve en
+  // espanol a proposito.
+  it('traduce a inglés sin cambiar la estructura', async () => {
     renderWithProviders(<LoginPage />, { locale: 'en' })
-    expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Sign in' })).toBeInTheDocument()
     expect(screen.getByText(/by EBIM/i)).toBeInTheDocument()
   })
 })

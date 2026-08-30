@@ -5,12 +5,14 @@ import { Link } from 'react-router-dom'
 import { useCartQuote } from '@/features/pricing/useCartQuote'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
+import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { EmptyState } from '@/shared/ui/states'
 import { T } from '@/theme/tokens'
 import { CartLineList } from './cart/CartLineList'
 import { useCart } from './cart/cart-context'
 import { useStorefront } from './hooks'
+import { privateMeta } from './seo'
 
 /**
  * Carrito a página completa: revisar con calma lo que el panel lateral enseña
@@ -26,8 +28,16 @@ import { useStorefront } from './hooks'
  */
 export function StoreCartPage() {
   const { t, locale } = useI18n()
-  const { storeSlug } = useStorefront()
+  const { store, storeSlug } = useStorefront()
   const { cart, count, subtotal, currency } = useCart()
+
+  // Carrito, checkout, cuenta y seguimiento NO se indexan (P15-SaaS). No es
+  // pudor: son estado de una sesión, no contenido, y el seguimiento además
+  // lleva el token del pedido en la URL. `robots.txt` pide que no se rastreen;
+  // esto impide que se indexen si alguien las enlaza desde fuera.
+  useDocumentMeta(
+    privateMeta({ store, storeSlug, locale, pathname: `/s/${storeSlug}` }, t('store.cart.title'), '/cart'),
+  )
 
   // El array entra en la clave de la consulta: uno nuevo por render la
   // invalidaría en bucle. Se arma con la forma del PUERTO, no con la del
@@ -102,23 +112,31 @@ export function StoreCartPage() {
             </Typography>
           </Stack>
 
-          {quoted && Number(quoted.taxTotal) > 0 && (
-            <Stack direction="row" sx={{ justifyContent: 'space-between', mt: 0.5 }}>
-              <Typography sx={{ color: 'var(--muted)' }}>{t('store.cart.tax')}</Typography>
-              <Typography sx={{ color: 'var(--muted)' }}>
-                {formatMoney(Number(quoted.taxTotal), quoted.currency, locale)}
-              </Typography>
-            </Stack>
-          )}
+          {/* Impuesto y total tienen su ALTO RESERVADO desde el primer pintado
+              (P15-SaaS). Hasta P14 las dos filas nacían al llegar la
+              cotización y empujaban hacia abajo el separador y los dos
+              botones: quien ya tenía el dedo sobre «Finalizar compra» acababa
+              pulsando «Seguir comprando». Reservar 56 px cuesta un hueco gris
+              medio segundo; no reservarlos cuesta un pedido. */}
+          <Box sx={{ minHeight: 56 }}>
+            {quoted && Number(quoted.taxTotal) > 0 && (
+              <Stack direction="row" sx={{ justifyContent: 'space-between', mt: 0.5 }}>
+                <Typography sx={{ color: 'var(--muted)' }}>{t('store.cart.tax')}</Typography>
+                <Typography sx={{ color: 'var(--muted)' }}>
+                  {formatMoney(Number(quoted.taxTotal), quoted.currency, locale)}
+                </Typography>
+              </Stack>
+            )}
 
-          {quoted && (
-            <Stack direction="row" sx={{ justifyContent: 'space-between', mt: 1 }}>
-              <Typography sx={{ fontWeight: 800 }}>{t('store.cart.total')}</Typography>
-              <Typography sx={{ fontWeight: 800 }}>
-                {formatMoney(Number(quoted.grossTotal), quoted.currency, locale)}
-              </Typography>
-            </Stack>
-          )}
+            {quoted && (
+              <Stack direction="row" sx={{ justifyContent: 'space-between', mt: 1 }}>
+                <Typography sx={{ fontWeight: 800 }}>{t('store.cart.total')}</Typography>
+                <Typography sx={{ fontWeight: 800 }}>
+                  {formatMoney(Number(quoted.grossTotal), quoted.currency, locale)}
+                </Typography>
+              </Stack>
+            )}
+          </Box>
 
           {discounted && (
             <Chip size="small" color="success" label={t('store.cart.listPrice')} sx={{ mt: 1 }} />

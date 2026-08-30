@@ -28,8 +28,10 @@ describe('estados de pantalla', () => {
     expect(screen.getByText('Nada por aquí todavía')).toBeInTheDocument()
   })
 
-  it('traduce los estados a inglés', () => {
+  // El diccionario ingles se carga bajo demanda desde P15-SaaS: se espera al
+  // `import()`. Lo que se comprueba no cambia.
+  it('traduce los estados a inglés', async () => {
     renderWithProviders(<EmptyState />, { locale: 'en' })
-    expect(screen.getByText('Nothing here yet')).toBeInTheDocument()
+    expect(await screen.findByText('Nothing here yet')).toBeInTheDocument()
   })
 })

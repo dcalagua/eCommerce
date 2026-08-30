@@ -26,6 +26,7 @@ export function ContentBlocks({
   storeSlug,
   assets,
   images,
+  leadingHeading = false,
 }: {
   blocks: readonly ContentBlock[]
   storeSlug: string
@@ -33,8 +34,20 @@ export function ContentBlocks({
   assets: Record<string, string>
   /** Rutas de `product-images` ya firmadas. */
   images: Record<string, string>
+  /**
+   * El primer `hero` de la lista es el ENCABEZADO de la página (P15-SaaS).
+   *
+   * Lo usa la portada, donde el hero del CMS sustituye al de `store_settings`:
+   * sin esto la página se quedaba sin `<h1>` en cuanto el comercio publicaba
+   * una portada, y el documento pasaba a empezar por un `<h2>`. Es `false` por
+   * defecto porque en `/p/:slug` el `<h1>` es el título de la página y un
+   * segundo `<h1>` no ordena nada, lo desordena.
+   */
+  leadingHeading?: boolean
 }) {
   if (blocks.length === 0) return null
+
+  const leadHeroId = leadingHeading ? blocks.find((block) => block.type === 'hero')?.id : undefined
 
   return (
     <Stack sx={{ gap: { xs: 2, md: 3 } }}>
@@ -45,6 +58,7 @@ export function ContentBlocks({
           storeSlug={storeSlug}
           assets={assets}
           images={images}
+          heading={block.id === leadHeroId ? 'h1' : 'h2'}
         />
       ))}
     </Stack>
@@ -63,15 +77,17 @@ function ContentBlockView({
   storeSlug,
   assets,
   images,
+  heading,
 }: {
   block: ContentBlock
   storeSlug: string
   assets: Record<string, string>
   images: Record<string, string>
+  heading: 'h1' | 'h2'
 }) {
   switch (block.type) {
     case 'hero':
-      return <HeroBlock block={block} assets={assets} />
+      return <HeroBlock block={block} assets={assets} heading={heading} />
     case 'banner':
       return <BannerBlock block={block} assets={assets} />
     case 'campaign':
@@ -119,7 +135,15 @@ function BlockCta({ block, contrast = false }: { block: ContentBlock; contrast?:
  * tokens cuando no hay imagen, degradado vertical cuando la hay— para que una
  * portada con CMS y una sin él no parezcan dos productos distintos.
  */
-function HeroBlock({ block, assets }: { block: ContentBlock; assets: Record<string, string> }) {
+function HeroBlock({
+  block,
+  assets,
+  heading = 'h2',
+}: {
+  block: ContentBlock
+  assets: Record<string, string>
+  heading?: 'h1' | 'h2'
+}) {
   const url = mediaUrl(block.mediaUrl, assets)
 
   return (
@@ -144,6 +168,14 @@ function HeroBlock({ block, assets }: { block: ContentBlock; assets: Record<stri
             src={url}
             alt={block.mediaAlt ?? ''}
             aria-hidden={block.mediaAlt ? undefined : true}
+            // El hero es lo primero que se ve: es el candidato a LCP de la
+            // portada. `lazy` aquí lo RETRASA (el navegador espera al layout
+            // para decidir si está en pantalla) y `fetchPriority="high"` le
+            // gana el turno a las miniaturas del catálogo, que sí van
+            // perezosas. Ninguna de las dos cosas cambia lo que se descarga.
+            loading="eager"
+            fetchPriority="high"
+            decoding="async"
             sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
           />
           <Box
@@ -170,7 +202,7 @@ function HeroBlock({ block, assets }: { block: ContentBlock; assets: Record<stri
       >
         {block.title ? (
           <Typography
-            component="h2"
+            component={heading}
             sx={{
               fontSize: { xs: 28, md: 44 },
               fontWeight: 800,
@@ -214,7 +246,18 @@ function BannerBlock({ block, assets }: { block: ContentBlock; assets: Record<st
             src={url}
             alt={block.mediaAlt ?? ''}
             aria-hidden={block.mediaAlt ? undefined : true}
-            sx={{ width: { xs: '100%', md: '40%' }, maxHeight: 260, objectFit: 'cover' }}
+            loading="lazy"
+            decoding="async"
+            // `aspectRatio` (P15-SaaS): sin él el hueco de la imagen valía cero
+            // hasta que la imagen llegaba, y el texto del banner —que en móvil
+            // va DEBAJO— caía de golpe media pantalla. Con la proporción
+            // declarada el navegador reserva el sitio antes de descargarla.
+            sx={{
+              width: { xs: '100%', md: '40%' },
+              aspectRatio: { xs: '16 / 9', md: 'auto' },
+              maxHeight: 260,
+              objectFit: 'cover',
+            }}
           />
         ) : null}
         <Stack sx={{ gap: 1, p: { xs: 2.5, md: 3.5 }, justifyContent: 'center', flex: 1 }}>
@@ -258,7 +301,16 @@ function CampaignBlock({ block, assets }: { block: ContentBlock; assets: Record<
             src={url}
             alt={block.mediaAlt ?? ''}
             aria-hidden={block.mediaAlt ? undefined : true}
-            sx={{ width: { xs: '100%', sm: 200 }, maxHeight: 200, objectFit: 'cover' }}
+            loading="lazy"
+            decoding="async"
+            // Proporción declarada: en móvil la imagen va encima del texto y
+            // sin ella el bloque entero salta cuando la foto llega.
+            sx={{
+              width: { xs: '100%', sm: 200 },
+              aspectRatio: { xs: '16 / 9', sm: 'auto' },
+              maxHeight: 200,
+              objectFit: 'cover',
+            }}
           />
         ) : null}
         <Stack sx={{ gap: 1, p: { xs: 2.5, md: 3 }, flex: 1, justifyContent: 'center' }}>

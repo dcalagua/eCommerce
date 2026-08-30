@@ -1,0 +1,37 @@
+# eCommerce by EBIM — reglas de rastreo (P15-SaaS)
+#
+# Una sola aplicación sirve muchas tiendas bajo /s/<slug>. Lo que se indexa es
+# el catálogo publicado de cada tienda; lo que NO se indexa es el backoffice y
+# el estado de una sesión de compra. Las mismas cuatro rutas llevan además
+# <meta name="robots" content="noindex, nofollow"> desde la aplicación, porque
+# robots.txt pide que no se RASTREE y no impide que se indexe una URL enlazada
+# desde fuera.
+
+User-agent: *
+
+# Backoffice del tenant y todo lo que exige sesión.
+Disallow: /app
+Disallow: /onboarding
+Disallow: /login
+Disallow: /recuperar
+Disallow: /nueva-clave
+
+# Estado de una compra, no contenido. `/order/` además lleva el token del
+# pedido en la cadena de consulta.
+Disallow: /s/*/cart
+Disallow: /s/*/checkout
+Disallow: /s/*/account
+Disallow: /s/*/order/
+
+# La ordenación y el término de búsqueda no crean páginas nuevas: crean la
+# misma página en otro orden. Sin esto, el rastreador se gasta el presupuesto
+# en combinaciones. El canonical de la portada solo conserva `c` y `b`.
+Disallow: /s/*?*sort=
+Disallow: /s/*?*q=
+
+Allow: /
+
+# El sitemap es POR TIENDA y se genera desde el catálogo publicado: no hay una
+# lista estática que pueda quedarse vieja. Cada tienda lo publica en
+#   https://<dominio-de-la-tienda>/s/<slug>/sitemap.xml
+# servido por la Edge Function `storefront-seo`. Ver docs/adr/015.

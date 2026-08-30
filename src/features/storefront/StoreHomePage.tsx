@@ -11,10 +11,11 @@ import {
   Typography,
 } from '@mui/material'
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import type { SearchQuery, SearchSort } from '@/domain'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { useDebouncedValue } from '@/shared/lib/useDebouncedValue'
+import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
 import { EmptyState, ErrorState } from '@/shared/ui/states'
 import { T } from '@/theme/tokens'
 import { CategoryBar } from './components/CategoryBar'
@@ -23,15 +24,17 @@ import { ProductGrid, ProductGridSkeleton } from './components/ProductGrid'
 import { StoreHero } from './components/StoreHero'
 import { StoreSearchField } from './components/StoreSearchField'
 import {
-  useCatalogSearch,
+  useCatalogPages,
   useCatalogSuggestions,
   useContentAssets,
+  usePrefetchProduct,
   usePublicCategories,
   useSignedThumbnails,
   useStoreContent,
   useStorefront,
 } from './hooks'
 import { hitToPublicProduct } from './search'
+import { homeMeta } from './seo'
 
 /** Cuántos resultados por página. El «ver más» suma otra tanda. */
 const PAGE_SIZE = 24
@@ -64,6 +67,7 @@ export function StoreHomePage() {
   const { t, locale } = useI18n()
   const { store, storeSlug } = useStorefront()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const [params, setParams] = useSearchParams()
 
   const categorySlug = params.get('c')
@@ -76,7 +80,6 @@ export function StoreHomePage() {
 
   const [term, setTerm] = useState(() => params.get('q') ?? '')
   const search = useDebouncedValue(term, 300)
-  const [pages, setPages] = useState(1)
 
   // El término sale a la URL solo cuando deja de escribirse, y con `replace`
   // para no dejar una entrada de historial por cada letra.
@@ -92,11 +95,10 @@ export function StoreHomePage() {
     )
   }, [search, setParams])
 
-  // Cambiar de término o de filtro vuelve a la primera página: seguir en la
-  // tercera de la búsqueda anterior enseña resultados que nadie pidió.
-  useEffect(() => {
-    setPages(1)
-  }, [search, categorySlug, brand, availability, sort])
+  // Cambiar de término o de filtro vuelve a la primera página. Ya no hace
+  // falta un `useEffect` que lo fuerce: el filtro entra en la clave de la
+  // consulta paginada, así que otra combinación es otra consulta y empieza en
+  // su primera página por construcción.
 
   function update(key: string, value: string | null) {
     setParams((prev) => {
@@ -121,32 +123,56 @@ export function StoreHomePage() {
         availability,
       },
       sort,
-      limit: PAGE_SIZE * pages,
+      limit: PAGE_SIZE,
       offset: 0,
     }),
-    [search, categorySlug, brand, availability, sort, pages],
+    [search, categorySlug, brand, availability, sort],
   )
 
-  const results = useCatalogSearch(storeSlug, query)
+  const results = useCatalogPages(storeSlug, query)
+  const pages = useMemo(() => results.data?.pages ?? [], [results.data])
   const products = useMemo(
-    () => (results.data?.items ?? []).map((hit) => hitToPublicProduct(hit, store.store_id)),
-    [results.data, store.store_id],
+    () => pages.flatMap((page) => page.items.map((hit) => hitToPublicProduct(hit, store.store_id))),
+    [pages, store.store_id],
   )
   const thumbnails = useSignedThumbnails(products.map((product) => product.primary_image_path))
+  const prefetchProduct = usePrefetchProduct(store.store_id)
 
   const blocks = content.data?.cms ? (content.data.blocks ?? []) : []
   const hasCmsHero = blocks.some((block) => block.type === 'hero')
   const filtered = Boolean(search.trim() || categorySlug || brand || availability === 'in-stock')
-  const total = results.data?.total ?? 0
-  const brandFacets = results.data?.facets.brands ?? []
-  const canLoadMore = products.length < total
+  const first = pages[0]
+  const total = first?.total ?? 0
+  const brandFacets = first?.facets.brands ?? []
+
+  // Metadatos de la portada. Cuelgan de la tienda YA RESUELTA, así que el
+  // nombre, el banner y el contacto que se le enseñan a un buscador son los del
+  // tenant. Se recalculan si cambia el filtro porque el canonical conserva la
+  // categoría y la marca (ver `shared/seo/meta.ts`).
+  useDocumentMeta(
+    homeMeta(
+      { store, storeSlug, locale, pathname, search: params.toString() },
+      t('store.seo.catalogOf'),
+    ),
+  )
 
   return (
     <Stack sx={{ gap: { xs: 2, md: 3 } }}>
       {/* El hero del CMS SUSTITUYE al de `store_settings`, no se suma a él. */}
       {hasCmsHero ? null : <StoreHero store={store} />}
 
-      <ContentBlocks blocks={blocks} storeSlug={storeSlug} assets={assets} images={images} />
+      {/* `leadingHeading`: cuando el hero del CMS sustituye al de
+          `store_settings`, es él quien tiene que llevar el `<h1>`. Sin esto la
+          portada se quedaba sin encabezado de nivel 1 en cuanto el comercio
+          publicaba una portada — y quien navega por encabezados perdía la
+          única referencia de dónde empieza el documento. */}
+      <ContentBlocks
+        blocks={blocks}
+        storeSlug={storeSlug}
+        assets={assets}
+        images={images}
+        leadingHeading={hasCmsHero}
+      />
 
       <CategoryBar
         categories={categories.data ?? []}
@@ -158,6 +184,11 @@ export function StoreHomePage() {
         direction={{ xs: 'column', md: 'row' }}
         sx={{ gap: 1.5, alignItems: { md: 'center' }, justifyContent: 'space-between' }}
       >
+        {/* `role="search"` convierte la caja en un LANDMARK: un lector de
+            pantalla la lista junto a la cabecera y el pie, y se llega a ella
+            sin recorrer la portada. Sin esto, el buscador de una tienda con
+            hero y bloques de contenido queda a diez saltos del principio. */}
+        <Box role="search" sx={{ width: '100%', maxWidth: { sm: 420 } }}>
         <StoreSearchField
           value={term}
           onChange={setTerm}
@@ -176,6 +207,7 @@ export function StoreHomePage() {
             update(suggestion.kind === 'category' ? 'c' : 'b', suggestion.slug)
           }}
         />
+        </Box>
         <Stack direction="row" sx={{ gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
           <FormControlLabel
             control={
@@ -276,25 +308,48 @@ export function StoreHomePage() {
             </Typography>
             {/* Un resultado por tolerancia a erratas no es lo mismo que uno
                 exacto, y decirlo es la diferencia entre ayudar y fingir. */}
-            {results.data?.mode === 'fuzzy' && (
+            {first?.mode === 'fuzzy' && (
               <Typography sx={{ fontSize: T.label, color: 'var(--amber)', fontWeight: 700 }}>
                 {t('store.search.fuzzy')}
               </Typography>
             )}
           </Stack>
 
-          <ProductGrid products={products} storeSlug={storeSlug} thumbnails={thumbnails} />
+          <ProductGrid
+            products={products}
+            storeSlug={storeSlug}
+            thumbnails={thumbnails}
+            onPrefetch={prefetchProduct}
+          />
 
-          {canLoadMore && (
-            <Stack sx={{ alignItems: 'center', mt: 2 }}>
+          {/* La siguiente página se PIDE al servidor: 24 filas, no las 48 o 72
+              que costaba subir el techo y volver a pedir desde cero. */}
+          {results.hasNextPage && (
+            <Stack sx={{ alignItems: 'center', gap: 1, mt: 2 }}>
               <Button
                 variant="outlined"
-                onClick={() => setPages((current) => current + 1)}
-                disabled={results.isFetching}
+                onClick={() => void results.fetchNextPage()}
+                disabled={results.isFetchingNextPage}
               >
                 {t('store.catalog.more')}
               </Button>
+              {/* Que hay más cargando no se puede contar solo con el botón
+                  deshabilitado: quien no ve la pantalla no se entera de nada. */}
+              <Typography
+                aria-live="polite"
+                sx={{ fontSize: T.label, color: 'var(--muted)', minHeight: 18 }}
+              >
+                {results.isFetchingNextPage ? t('store.catalog.loadingMore') : ''}
+              </Typography>
             </Stack>
+          )}
+
+          {!results.hasNextPage && products.length > PAGE_SIZE && (
+            <Typography
+              sx={{ fontSize: T.label, color: 'var(--muted)', textAlign: 'center', mt: 2 }}
+            >
+              {t('store.catalog.endOfList')}
+            </Typography>
           )}
         </Box>
       )}

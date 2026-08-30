@@ -18,9 +18,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
-import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/states'
+import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
+import { EmptyState, ErrorState } from '@/shared/ui/states'
 import { R, T } from '@/theme/tokens'
 import { StorefrontNotFoundError } from './api'
+import { ProductPageSkeleton } from './components/ProductPageSkeleton'
+import { notFoundMeta, productMeta } from './seo'
 import { MAX_LINE_QUANTITY } from './cart/cart'
 import { track } from './analytics'
 import { useCart } from './cart/cart-context'
@@ -51,6 +54,9 @@ import {
  * de devolver. Ese precio es de escaparate: el que se cobra lo vuelve a leer la
  * base al confirmar el pedido.
  */
+/** Filas que se piden para escoger los cuatro relacionados que se pintan. */
+const RELATED_FETCH = 12
+
 export function StoreProductPage() {
   const { t, locale } = useI18n()
   const { store, storeSlug } = useStorefront()
@@ -69,6 +75,13 @@ export function StoreProductPage() {
       categorySlug: product.data?.category_slug ?? null,
       availability: 'all',
       sort: 'recent',
+      // Se piden doce para escoger cuatro. Hasta P14 esta consulta iba SIN
+      // techo: para pintar una fila de relacionados el navegador se descargaba
+      // la categoría entera —en un catálogo de dos mil referencias, dos mil
+      // filas por ficha visitada—. Doce da margen de sobra para descartar el
+      // producto abierto y sigue eligiendo los mismos cuatro, porque el orden
+      // (`published_at desc`) no cambia al recortar.
+      limit: RELATED_FETCH,
     }),
     [product.data, store.store_id],
   )
@@ -86,7 +99,35 @@ export function StoreProductPage() {
     track(storeSlug, { type: 'product_view', product_id: viewedProductId })
   }, [storeSlug, viewedProductId])
 
-  if (product.isPending) return <LoadingState />
+  /**
+   * SEO de la ficha (P15-SaaS).
+   *
+   * La imagen que se declara es la PRIMARIA ya firmada, si llegó: una URL de
+   * bucket privado sin firmar no la puede leer ni un buscador ni el previo de
+   * un chat, y anunciarla sería prometer una foto que nadie va a ver.
+   *
+   * Y una ficha que no resuelve —despublicada, de otra tienda, inventada— se
+   * marca `noindex`: la SPA responde 200 igual, y sin esto el «no encontramos
+   * este producto» entraría al índice como si fuera catálogo.
+   */
+  const heroImage = gallery.data?.find((image) => image.url)?.url ?? null
+  useDocumentMeta(
+    product.data
+      ? productMeta({ store, storeSlug, locale, pathname: `/s/${storeSlug}` }, product.data, heroImage)
+      : product.isError
+        ? notFoundMeta({
+            title: t('store.product.notFound'),
+            pathname: `/s/${storeSlug}/product/${productSlug ?? ''}`,
+            siteName: store.name,
+            locale,
+          })
+        : null,
+  )
+
+  // Esqueleto con la FORMA de la ficha, no un aro girando en el centro: al
+  // llegar los datos la galería y la columna de compra caen donde ya estaba el
+  // hueco, en vez de empujar la página hacia abajo.
+  if (product.isPending) return <ProductPageSkeleton />
 
   if (product.isError || !product.data) {
     if (product.error instanceof StorefrontNotFoundError) {

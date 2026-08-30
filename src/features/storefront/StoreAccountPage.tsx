@@ -17,7 +17,10 @@ import { useSessionContext } from '@/features/auth/session-context'
 import { useMyAccounts } from '@/features/customers/hooks'
 import { formatAddress } from '@/features/customers/types'
 import { useI18n } from '@/shared/i18n/i18n-context'
+import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/states'
+import { useStorefrontOptional } from './hooks'
+import { privateMeta } from './seo'
 
 /**
  * Área de cuenta del comprador B2B (P05-SaaS).
@@ -44,8 +47,34 @@ import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/states'
  * existe es el contexto, y está aquí para que se vea que existe.
  */
 export function StoreAccountPage() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
+  // `useStorefrontOptional`: esta pantalla es la única de la vitrina que
+  // también se monta suelta —vive en la ruta de la tienda pero la prueba
+  // `features/customers`, que es de quien es el dominio—. Sin tienda resuelta
+  // no hay metadatos que declarar, y no tenerlos no puede impedir que el
+  // comprador vea su cuenta.
+  const storefront = useStorefrontOptional()
   const { status } = useSessionContext()
+
+  // Carrito, checkout, cuenta y seguimiento NO se indexan (P15-SaaS). No es
+  // pudor: son estado de una sesión, no contenido, y el seguimiento además
+  // lleva el token del pedido en la URL. `robots.txt` pide que no se rastreen;
+  // esto impide que se indexen si alguien las enlaza desde fuera.
+  useDocumentMeta(
+    storefront
+      ? privateMeta(
+          {
+            store: storefront.store,
+            storeSlug: storefront.storeSlug,
+            locale,
+            pathname: `/s/${storefront.storeSlug}`,
+          },
+          t('account.title'),
+          '/account',
+        )
+      : null,
+  )
+
   const authenticated = status === 'authenticated'
   const query = useMyAccounts(authenticated)
 

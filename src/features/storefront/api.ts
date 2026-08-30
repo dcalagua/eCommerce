@@ -265,7 +265,10 @@ export async function fetchPublicProducts(query: CatalogQuery): Promise<PublicPr
       request = request.order('published_at', { ascending: false })
   }
 
-  const { data, error } = await request
+  // El techo viaja SIEMPRE. PostgREST sin `limit` devuelve lo que la política
+  // del proyecto permita, que puede ser el catálogo entero: la única forma de
+  // que el navegador no se lo traiga es no pedirlo.
+  const { data, error } = await request.limit(query.limit)
   if (error) throw new StorefrontError(error)
   return publicProductSchema.array().parse(data ?? [])
 }

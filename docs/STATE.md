@@ -3,12 +3,51 @@
 GUIDELINES_STATUS: VERIFIED (**por lectura directa** en la 2ª pasada de P00-SaaS: contrato v1.15,
 `PROTOCOLO.md`, `BANDEJA.md` y `EBIM-CREW-ROSTER.md`). La unidad montada es `G:`, no `H:`.
 Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
-Última actualización: 2026-08-28 (P14-SaaS: API empresarial, webhooks e Integration Monitor)
+Última actualización: 2026-08-30 (recuperación: P15-SaaS terminada — rendimiento, accesibilidad y SEO de la vitrina)
 
 > **Dos numeraciones de fase.** Lo que sigue como «P00…P12» es el trabajo histórico de este repo. A
 > partir del 2026-08-27 arranca un segundo recorrido, **P00–P17 de productización SaaS**
 > (`claude-saas-opus/config/phases.json`), que se identifica siempre como «P0x-SaaS». No son la misma
 > serie: el P12 histórico es el framework de integraciones; el P12-SaaS es fulfillment y devoluciones.
+
+## Recuperación de la ejecución interrumpida (2026-08-30)
+
+Segunda parada del runner (`claude-saas-opus`), otra vez con `phase: RECOVERY` en
+`state/runner-state.json` y otra vez con ese número sin valor probatorio. **El punto real de
+recuperación era P15-SaaS a medias**, determinado por evidencia:
+
+| Señal | Qué decía |
+|---|---|
+| `logs/*-P00…P14-attempt-1.log` | terminan en `PHASE_RESULT: PASS`; **no existe log de P15**: el proceso murió antes de que el runner lo abriera |
+| `git log` | quince commits, uno por fase, `8d5547d` = P14. Nada de P15 commiteado |
+| `git status` | 25 archivos modificados y 11 sin seguimiento, todos del área de la vitrina, i18n, `vite.config.ts` y SEO |
+| gates sobre el árbol sucio | `typecheck` PASS · `lint` PASS · `test:db` **1504/47 PASS** · `build` PASS · `test` **5 fallos** |
+| `docs/adr/` | llega hasta el 014. **El 015 no existía** y `public/robots.txt`, `storefront-seo/index.ts` y `seo.ts` ya lo citaban |
+| `docs/performance-budget.md` | **no existía**, y `vite.config.ts` y `scripts/bundle-report.mjs` ya lo citaban como fuente del techo |
+| `docs/STATE.md` | cerraba en «Siguiente: **P15-SaaS**» |
+
+Es decir: P00–P14 terminadas y validadas —no se rehízo ninguna— y P15 con el **producto casi entero
+y la verificación sin hacer**. Se conservó todo el trabajo parcial, que es de buena calidad y está
+medido, y se terminó la fase desde ahí. Lo que faltaba y se hizo:
+
+1. **Una regresión real.** `StoreAccountPage` pasó a exigir el contexto de la vitrina para poner sus
+   metadatos, y esa pantalla también se monta suelta (la prueba `features/customers`, que es de quien
+   es el dominio): `useOutletContext` devolvía `null` y la pantalla reventaba. Se arregló declarando
+   la verdad en el tipo —`useStorefrontOptional()`— en vez de obligar a montar un layout entero para
+   poner un `<title>`. Tres tests recuperados.
+2. **Dos aserciones de nivel de encabezado.** `storefront-content.test.tsx` exigía `level: 2` para el
+   hero del CMS; P15 lo promueve a `<h1>` a propósito, porque si no la portada se queda sin nivel 1
+   en cuanto el comercio publica una portada. Se corrigió el nivel **y se reforzó**: ahora también se
+   comprueba que hay exactamente un `<h1>`.
+3. **La verificación que no existía.** 74 tests nuevos sobre superficie que estaba escrita y sin
+   probar (§ «Fase actual»).
+4. **Los dos documentos que el código ya citaba**: `docs/adr/015-storefront-performance-seo.md` —el
+   ADR que el encargo de la fase exige explícitamente, comparando SPA + prerender, storefront
+   SSR/SSG separado y migración de framework— y `docs/performance-budget.md`.
+
+**Ni una migración tocada ni escrita**: P15 no tiene modelo de datos.
+
+---
 
 ## Recuperación de la ejecución interrumpida (2026-08-28)
 
@@ -32,6 +71,150 @@ pantalla y sin un solo test propio. Se conservó tal cual y se continuó desde a
 ---
 
 ## Fase actual
+**P15-SaaS — Vitrina: rendimiento, accesibilidad y SEO. COMPLETA (recuperada). Gate: PASS.**
+Decisiones completas en [`docs/adr/015-storefront-performance-seo.md`](adr/015-storefront-performance-seo.md).
+Método de medida y techos vigentes en [`docs/performance-budget.md`](performance-budget.md).
+
+> Fase **recuperada**: el runner murió con el producto casi entero y la verificación sin hacer.
+> Qué se encontró, qué se conservó y qué faltaba, en «Recuperación de la ejecución interrumpida
+> (2026-08-30)» al principio de este documento.
+
+### Gates (2026-08-30, partiendo de `8d5547d`)
+
+| Comando | Antes de P15 | Después |
+|---|---|---|
+| `npm run typecheck` | PASS | **PASS** |
+| `npm run lint` | PASS, 0 problemas | **PASS**, 0 problemas |
+| `npm run test` | 2234 / 98 archivos | **2312 / 102 archivos** |
+| `npm run test:db` | 1504 / 47 | **1538 / 48** |
+| `npm run build` | 970,90 kB (283,38 gzip) en UN chunk | **PASS**, mayor chunk 360,72 kB (106,76 gzip) + proveedor repartido |
+| `npm run bundle:report` | no existía | **PASS**, los cuatro recorridos dentro del techo |
+
+> **Nota de método.** Lanzar `test` y `test:db` a la vez en la misma máquina hizo caer dos archivos
+> de base por **agotarse el `hookTimeout`** —cada archivo aplica las 49 migraciones sobre PGlite—
+> con sus 78 casos marcados como saltados, no como fallados. Ejecutados por separado, los dos
+> suites dan verde entero. Se deja escrito porque es contención de recursos y no un fallo del
+> código, y porque volverá a pasar si alguien los paraleliza.
+
+### El criterio de aceptación, comprobado
+
+> «PASS si el storefront mejora de forma verificable, mantiene compatibilidad multi-tenant y existe
+> una estrategia SEO consciente en vez de una migración arbitraria.»
+
+| Exigencia | Dónde se comprueba |
+|---|---|
+| **mejora VERIFICABLE** | `npm run bundle:report`: la entrada compartida baja de **283,38 kB gzip** a **251,8 kB gzip** y los cuatro recorridos quedan por debajo de su techo. El script **sale con código 1** si alguno se pasa: es un gate, no una tabla |
+| **compatibilidad multi-tenant** | `storefront-a11y-seo.test.tsx` → el `Organization` del `<head>` lleva el nombre del TENANT y se comprueba explícitamente que **no** contiene «EBIM»; `seo.test.ts` → todo canonical empieza por `/s/:slug`; `storefront-seo.test.ts` → el sitemap de una tienda no menciona otra, y el origen llega validado en vez de creído |
+| **estrategia SEO consciente** | [ADR 015](adr/015-storefront-performance-seo.md): las tres opciones del encargo comparadas —SPA + prerender, storefront SSR/SSG separado, migración de framework— con la decisión, el motivo y **el disparador que la revierte**. El prerender se descarta por imposible aquí (§1), no por gusto |
+
+### Qué se construyó
+
+**Ni una migración.** P15 es fase de entrega: no toca el modelo de datos.
+
+| Dónde | Qué |
+|---|---|
+| `src/shared/seo/` | `meta.ts` PURO —título, canonical, robots, Open Graph, JSON-LD (`Organization`, `Product` con oferta, `BreadcrumbList`)— y `useDocumentMeta`, que lo escribe en el `<head>` y **lo retira al desmontar** |
+| `src/features/storefront/seo.ts` | los metadatos de cada pantalla, compuestos sobre el `PublicStore` ya resuelto por slug |
+| `supabase/functions/storefront-seo` + `_shared/seo/sitemap.ts` | `sitemap.xml` y `robots.txt` **por tienda**, generados, con el cliente **anónimo** |
+| `public/robots.txt` | el del despliegue: backoffice y las cuatro rutas de sesión fuera del rastreo |
+| `vite.config.ts` | `manualChunks` de proveedor, `preconnect` al proyecto Supabase inyectado desde un plugin (la URL cambia por despliegue) y `manifest: true` |
+| `scripts/bundle-report.mjs` + `npm run bundle:report` | presupuesto por RECORRIDO, no por chunk |
+| `src/shared/i18n/messages.{es,en,all}.ts` | el diccionario partido: ES estático, EN por `import()` |
+| `src/shared/ui/SkipToContentLink.tsx` | «Ir al contenido», oculto con `clip` para seguir siendo enfocable |
+| `src/features/storefront/components/ProductPageSkeleton.tsx` | esqueleto con la FORMA de la ficha |
+| `src/theme/tokens.css` | `prefers-reduced-motion` aplicado a todo |
+
+**74 tests nuevos**, repartidos así:
+
+| Dónde | Cuántos | Qué defienden |
+|---|---|---|
+| `supabase/tests/storefront-seo.test.ts` | 34 | sin base de datos: que el ORIGEN se valida y no se cree —seis formas rechazadas, incluidas `javascript:` y `http` remoto—; que lo que no es un slug **se omite** en vez de romper el documento (`../../etc/passwd`, `silla & mesa`, `<script>`); que una fecha ilegible se omite en vez de inventarse; que el sitemap **no anuncia** carrito, checkout, cuenta ni seguimiento; que hay techo (`SITEMAP_MAX_URLS`); que el XML sale bien formado con tantas aperturas como cierres; y que el robots de una tienda no habla de otra |
+| `src/features/storefront/seo.test.ts` | 26 | la identidad del `<head>` es la del TENANT —nombre, logo, contacto y `og:site_name`—; el canonical conserva SOLO categoría y marca (el término y el orden multiplicarían el catálogo por sus combinaciones); `Organization` y `Product` **omiten** lo que no existe en vez de inventarlo; un producto agotado declara `OutOfStock`; con variantes el precio declarado es el «desde», que es el que se ve; y las cuatro rutas privadas más el «no existe» llevan `noindex` sin `og:image` ni JSON-LD |
+| `src/shared/seo/useDocumentMeta.test.tsx` | 8 | el fallo que da nombre al archivo: **al desmontar se retira todo**, título incluido —sin eso la ficha de un producto agotado hereda el `InStock` de la anterior—; cambiar de página no acumula (un canonical, un JSON-LD); `noindex` viaja siempre con `nofollow`; `null` no toca nada; y un render con el mismo valor **no** reescribe el `<head>` |
+| `src/features/storefront/storefront-a11y-seo.test.tsx` | 6 | montando el árbol: que «Ir al contenido» es el PRIMER enfocable y que al pulsarlo **el foco se mueve** al `<main>` (no solo el scroll); que el `<main>` es `tabindex="-1"`; que el buscador es un landmark `role="search"`; que hay exactamente un `<h1>`; y que un slug que no resuelve sale `noindex, nofollow` — el «soft 404» que si no acaba en el índice de un buscador |
+
+**Ningún test se borró ni se debilitó.** Cinco existentes se tocaron y los cinco quedaron igual de
+fuertes o más:
+
+- `messages.test.ts` **carga los dos diccionarios a propósito** antes de recorrerlos, en vez de
+  rebajar la aserción, y añade una comparación exacta contra `MESSAGES[locale][key]` que antes no
+  hacía. Suma además un test que comprueba que **solo los tests importan `messages.all.ts`**: sin
+  él, un `import` desde `features/` devolvería los dos idiomas al bundle de entrada sin que nadie
+  se enterara.
+- `LoginPage.test.tsx` y `states.test.tsx` pasan de `getBy*` a `findBy*` porque ahora hay un tick
+  de por medio. La aserción es la misma.
+- `promotions.test.ts` importa `MESSAGES` de `messages.all` en vez de `messages`.
+- `storefront-content.test.tsx` cambia `level: 2` por `level: 1` en el hero del CMS —el nivel
+  correcto: si sustituye al hero de `store_settings`, que es `<h1>`, tiene que llevarlo él— y
+  **añade** que haya exactamente un `<h1>`.
+
+### Las decisiones que más cuesta revertir
+
+1. **No se migra de framework.** La comparación está en el ADR 015 §1 con su disparador escrito: el
+   día que un tenant B2C necesite que Bing o una red social vean la ficha sin ejecutar JavaScript,
+   la opción es un storefront SSR **separado**, no Next ni Remix. Nada de lo construido estorba
+   entonces: `meta.ts` es puro y su salida sirve igual para un `<head>` renderizado en servidor.
+2. **El prerender no se descartó por criterio: no puede funcionar aquí.** Exige conocer las rutas en
+   tiempo de build, y las rutas son `/s/:slug` y `/s/:slug/product/:slug` — el conjunto vive en una
+   base a la que el build no se conecta y crece con cada producto que publique cualquier tenant.
+3. **El sitemap se lee con el cliente ANÓNIMO.** Con `service_role`, un despiste publicaría en un
+   buscador el catálogo **sin publicar** de un tenant. Al leer con `anon`, lo máximo que puede
+   enseñar es lo que ya enseña la vitrina: la autoridad sigue siendo la RLS, no la revisión de
+   código.
+4. **Tres señales para la misma lista de cuatro rutas privadas**: `noindex` en la aplicación,
+   `Disallow` en `robots.txt` y ausencia del sitemap. `robots.txt` pide que no se RASTREE y no
+   impide que se indexe una URL enlazada desde fuera; por eso las tres, y un test por cada una.
+5. **Lo que no resuelve sale `noindex`.** Una SPA responde 200 a todo: sin esto, el «no encontramos
+   esa tienda» de un cliente se indexa como página vacía.
+6. **ES viaja siempre y es el suelo del fallback.** El idioma que no es el de suite llega por
+   `import()`; mientras llega se traduce en español. Un texto en el idioma equivocado se entiende;
+   una clave cruda, no.
+7. **`@mui/material` NO se agrupa en `manualChunks`.** Rollup ya lo reparte bien: `TextField`,
+   `Autocomplete`, `Modal`, `Tabs` y `TablePagination` salen en chunks propios porque solo los
+   alcanzan rutas perezosas. Juntarlos los arrastraba al primer pintado — medido, +8,5 kB gzip para
+   quien solo abre la vitrina.
+8. **El presupuesto se mide por RECORRIDO, no por chunk.** Con el proveedor repartido, el chunk
+   mayor dejó de significar nada: puede bajar mientras el recorrido empeora.
+9. **`prefers-reduced-motion` usa `0.01ms`, no `0`.** Con duración cero muchos navegadores **no
+   disparan** `transitionend`/`animationend`, y Drawer, Dialog y Snackbar —que esperan ese evento
+   para desmontarse— se quedan colgados.
+10. **`useStorefrontOptional()` declara la verdad en el tipo.** `useOutletContext` devuelve `null`
+    fuera del `<Outlet>`, así que la firma de `useStorefront` mentía. Sin tienda resuelta no hay
+    metadatos que poner, y no tenerlos no puede impedir que el comprador vea su cuenta.
+11. **`fetchPublicProducts` lleva el techo SIEMPRE.** Sin `limit`, PostgREST devuelve lo que la
+    política del proyecto permita: una categoría de dos mil referencias se descargaba entera para
+    pintar cuatro relacionados.
+12. **El prefetch se dispara al APUNTAR y al ENFOCAR, no al pintar.** Adelantar las 24 fichas de la
+    rejilla convierte un ahorro en 24 consultas que casi nadie usa; y va en `focus` para que quien
+    navega con teclado gane lo mismo que quien navega con ratón.
+
+### Lo que NO se hizo, y por qué
+
+- **Ninguna puntuación de Lighthouse ni Web Vitals de campo.** Exigen un navegador real contra un
+  despliegue real con tráfico, y esta fase no despliega (contrato §11). El encargo pide
+  explícitamente no declarar 100 sin medición. Lo que sí es medible y está automatizado son los
+  bytes.
+- **Publicar `/s/:slug/sitemap.xml` en el dominio de la tienda.** La función existe y está probada;
+  que esa URL llegue a ella es una **regla de reescritura del hosting**. Mismo pendiente de
+  despliegue que el planificador de `integration-worker` desde P14.
+- **E2E con Playwright.** Sigue sin haber navegadores instalados ni decisión sobre cuáles; es un
+  pendiente declarado desde P00-SaaS y asignado a P17. Lo que sí se hizo es cubrir los recorridos
+  críticos de accesibilidad con Testing Library sobre el árbol real.
+- **Retirar `useCatalogSearch`.** Quedó sin llamadores al pasar la portada a `useCatalogPages`. Se
+  conserva: es API exportada del módulo y quitarla es un refactor ajeno al objetivo de la fase.
+  Anotado abajo como higiene.
+- **Versionar `claude-saas-opus/`.** Sigue sin seguimiento, igual que en las quince fases
+  anteriores. Es la herramienta del operador, no producto de este repo.
+
+- **Buzón EBIM**: revisado el 2026-08-30. Sin novedades desde el 2026-08-20; los pendientes son los
+  mismos que registraron P13 y P14, y sigue sin poderse responder porque `ecommerce` no es todavía
+  un `from` válido del `PROTOCOLO.md` (§5.1 del roadmap, bloqueo del operador).
+
+Siguiente: **P16-SaaS** (security & enterprise readiness).
+
+---
+
+## Fase anterior
 **P14-SaaS — API empresarial, webhooks e Integration Monitor. COMPLETA. Gate: PASS.**
 Decisiones completas en [`docs/adr/014-enterprise-api-webhooks-monitor.md`](adr/014-enterprise-api-webhooks-monitor.md).
 
@@ -160,8 +343,6 @@ SIN capacidad y con permiso de rol, igual que `/app/operations`.
   `to: all` nuevos desde el 2026-08-20 —los pendientes son los mismos que
   registró P13— y sigue sin poderse responder: `ecommerce` no es todavía un
   `from` válido del `PROTOCOLO.md` (§5.1 del roadmap, bloqueo del operador).
-
-Siguiente: **P15-SaaS**.
 
 ---
 
@@ -2808,6 +2989,11 @@ Detalle y evidencia en `docs/SAAS_BASELINE.md` §4; asignación de fase en `docs
       `ecommerce` responde `HUB_NO_CONFIGURADO`. `sso` sigue sin existir. **Requiere decisión del
       operador** (Modo A vs B) y retirada del `demo_access_token_hook`. → **P16-SaaS**.
 - [ ] **R7 — Sin `audit_log` transversal**, pese a exigirlo `CLAUDE.md`. → **P13-SaaS**, adelantable.
+- [x] ~~**R9 — Bundle de un solo chunk que lo descargaba todo el mundo.**~~ → **cerrado en
+      P15-SaaS**: proveedor repartido en chunks estables, el diccionario del idioma que no se lee
+      fuera del bundle de entrada y un presupuesto **por recorrido** que falla el proceso si se
+      excede (`npm run bundle:report`). Entrada compartida: 283,38 → **251,8 kB gzip**.
+      Techos y método en `docs/performance-budget.md`.
 - [x] ~~**R10 — `H:\…\EBIM-Plataforma\` no montada.**~~ → resuelto: la unidad es `G:` y el contrato
       se releyó en P00-SaaS y de nuevo en P02-SaaS (§4.3, §5, §6, §7 para esta fase).
 - [ ] **Alinear `CLAUDE.md` con la estructura real de `src/`** (`src/features/*` en vez de
@@ -2819,6 +3005,10 @@ Detalle y evidencia en `docs/SAAS_BASELINE.md` §4; asignación de fase en `docs
       responda de verdad. Existe solo mientras `ecommerce` no esté dado de alta (P02-SaaS).
 - [ ] **Nota de higiene:** la entrada «Rate limiting de `create-order`» que aparece más abajo quedó
       **cerrada en P10** (mig. 22-23, `checkout-rate-limit.test.ts`) y su casilla no se marcó.
+- [ ] **Nota de higiene (P15-SaaS):** `useCatalogSearch` en `features/storefront/hooks.ts` quedó sin
+      llamadores al pasar la portada a `useCatalogPages`. No estorba, pero emite el mismo evento
+      `search` que el hook nuevo: si algún día vuelve a usarse sin mirar, la analítica contaría dos
+      veces. Retirarlo es trabajo de la próxima fase que toque ese archivo.
 
 ### Abiertos por P09-SaaS (pagos)
 - [ ] **Secreto de webhook por SOCIEDAD, no por despliegue.** `payments-webhook` resuelve el secreto en

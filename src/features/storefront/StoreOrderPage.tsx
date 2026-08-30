@@ -5,10 +5,12 @@ import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { formatMoney } from '@/shared/lib/format'
+import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
 import { R, T } from '@/theme/tokens'
 import { fetchOrderByToken } from './api'
 import { orderResultSchema, type OrderResult } from './checkout'
 import { useStorefront } from './hooks'
+import { privateMeta } from './seo'
 
 /**
  * Confirmación del pedido.
@@ -33,6 +35,18 @@ export function StoreOrderPage() {
 
   const [search] = useSearchParams()
   const token = search.get('t') ?? ''
+
+  // Carrito, checkout, cuenta y seguimiento NO se indexan (P15-SaaS). No es
+  // pudor: son estado de una sesión, no contenido, y el seguimiento además
+  // lleva el token del pedido en la URL. `robots.txt` pide que no se rastreen;
+  // esto impide que se indexen si alguien las enlaza desde fuera.
+  useDocumentMeta(
+    privateMeta(
+      { store, storeSlug, locale, pathname: `/s/${storeSlug}` },
+      `${t('store.order.title')} ${orderNumber ?? ''}`.trim(),
+      `/order/${orderNumber ?? ''}`,
+    ),
+  )
 
   const parsed = orderResultSchema.safeParse(
     (location.state as { order?: unknown } | null)?.order,

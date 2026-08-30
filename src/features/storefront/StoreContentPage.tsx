@@ -1,11 +1,12 @@
 import { Card, Stack, Typography } from '@mui/material'
-import { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
+import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/states'
 import { T } from '@/theme/tokens'
 import { ContentBlocks } from './components/ContentBlocks'
 import { useContentAssets, useStoreContent, useStorefront } from './hooks'
+import { contentMeta, notFoundMeta } from './seo'
 
 /**
  * Página administrable con URL propia: `/s/:storeSlug/p/:pageSlug`.
@@ -22,24 +23,43 @@ import { useContentAssets, useStoreContent, useStorefront } from './hooks'
  * página que hoy no puede ver, que es información que nadie le debe.
  */
 export function StoreContentPage() {
-  const { t } = useI18n()
-  const { storeSlug } = useStorefront()
+  const { t, locale } = useI18n()
+  const { store, storeSlug } = useStorefront()
   const { pageSlug } = useParams<{ pageSlug: string }>()
   const content = useStoreContent(storeSlug, pageSlug ?? null)
   const { assets, images } = useContentAssets(content.data)
 
   const page = content.data?.page ?? null
 
-  // El `<title>` es de la página, no de la tienda: es lo que se ve en la
-  // pestaña, en el marcador y en lo que se pega en un chat.
-  useEffect(() => {
-    if (!page) return
-    const previous = document.title
-    document.title = page.seoTitle?.trim() || page.title
-    return () => {
-      document.title = previous
-    }
-  }, [page])
+  /**
+   * El SEO de una página administrable lo escribe el COMERCIO: `seo_title`,
+   * `seo_description` y `og_image_url` existen en `content_pages` desde P11 y
+   * hasta P14 solo se usaba el primero, y solo para el `<title>`.
+   *
+   * Una página que no resuelve —sin `content.cms`, despublicada o fuera de
+   * vigencia— sale `noindex`. Las tres se ven igual a propósito (no se le dice
+   * a un desconocido qué páginas tiene la tienda sin publicar) y las tres
+   * responden 200, así que sin el `noindex` el «no encontramos esta página»
+   * acabaría indexado.
+   */
+  const ogImage = page?.ogImageUrl
+    ? /^https:\/\//i.test(page.ogImageUrl)
+      ? page.ogImageUrl
+      : (assets[page.ogImageUrl] ?? null)
+    : null
+
+  useDocumentMeta(
+    content.isPending
+      ? null
+      : page && content.data?.cms
+        ? contentMeta({ store, storeSlug, locale, pathname: `/s/${storeSlug}` }, page, ogImage)
+        : notFoundMeta({
+            title: t('store.content.notFound'),
+            pathname: `/s/${storeSlug}/p/${pageSlug ?? ''}`,
+            siteName: store.name,
+            locale,
+          }),
+  )
 
   if (content.isPending) return <LoadingState />
 
