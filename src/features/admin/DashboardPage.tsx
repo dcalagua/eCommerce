@@ -16,6 +16,7 @@ import { PageHeader } from '@/shared/ui/PageHeader'
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/states'
 import { T } from '@/theme/tokens'
 import { BarList, type BarRow } from './BarList'
+import { Meter } from './Meter'
 import { useDashboardKpis, type DashboardKpis } from './useDashboardKpis'
 
 /**
@@ -26,6 +27,49 @@ import { useDashboardKpis, type DashboardKpis } from './useDashboardKpis'
  * en el acento: el acento es del dato, y si lo llevan icono y cifra a la vez
  * deja de senalar nada.
  */
+/**
+ * Figura protagonista. La guia de visualizacion reserva este tratamiento para
+ * «la cifra con la que un panel encabeza»: aqui son las ventas. El resto de
+ * tarjetas quedan a su tamano normal para que haya jerarquia y no cuatro
+ * numeros gritando lo mismo.
+ */
+function HeroCard({ label, value, hint, icon }: {
+  label: string
+  value: string
+  hint?: string
+  icon?: ReactNode
+}) {
+  return (
+    <Card sx={{ height: '100%', borderColor: 'var(--accent)' }}>
+      <CardContent>
+        <Stack direction="row" sx={{ alignItems: 'center', gap: 0.75 }}>
+          <Box sx={{ color: 'var(--accent-deep)', display: 'flex' }} aria-hidden>
+            {icon}
+          </Box>
+          <Typography
+            sx={{
+              fontSize: T.label,
+              fontWeight: 800,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              color: 'var(--muted)',
+            }}
+          >
+            {label}
+          </Typography>
+        </Stack>
+        <Typography
+          className="tnum"
+          sx={{ fontSize: { xs: 34, md: 44 }, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.1, mt: 0.5 }}
+        >
+          {value}
+        </Typography>
+        {hint && <Typography sx={{ fontSize: 11.5, color: 'var(--muted)' }}>{hint}</Typography>}
+      </CardContent>
+    </Card>
+  )
+}
+
 function KpiCard({
   label,
   value,
@@ -126,6 +170,16 @@ export function DashboardPage() {
   const money = (raw: string | null) =>
     raw !== null && kpis.currency ? formatMoney(Number(raw), kpis.currency, locale) : '—'
 
+  type Tile = { key: string; label: MessageKey; value: string; hint?: string; icon: ReactNode }
+
+  const hero: Tile = {
+    key: 'sales',
+    label: 'admin.kpi.sales',
+    value: money(kpis.sales),
+    icon: <PaidOutlinedIcon fontSize="small" />,
+    ...(kpis.sales === null ? { hint: t('admin.kpi.sales.none') } : {}),
+  }
+
   const cards: Array<{
     key: string
     label: MessageKey
@@ -133,13 +187,6 @@ export function DashboardPage() {
     hint?: string
     icon: ReactNode
   }> = [
-    {
-      key: 'sales',
-      label: 'admin.kpi.sales',
-      value: money(kpis.sales),
-      icon: <PaidOutlinedIcon fontSize="small" />,
-      ...(kpis.sales === null ? { hint: t('admin.kpi.sales.none') } : {}),
-    },
     {
       key: 'avgTicket',
       label: 'admin.kpi.avgTicket',
@@ -164,6 +211,10 @@ export function DashboardPage() {
     },
   ]
 
+  // Se deriva del desglose, no de otra consulta: dos fuentes para la misma
+  // cifra acaban siempre discrepando.
+  const paidOrders = kpis.by_status.find((row) => row.status === 'paid')?.count ?? 0
+
   const statusRows: BarRow[] = kpis.by_status.map((row) => ({
     id: row.status,
     label: t(`orders.status.${row.status}` as MessageKey),
@@ -187,23 +238,54 @@ export function DashboardPage() {
       <PageHeader title={t('admin.dashboard.title')} subtitle={subtitle} />
       <Stack spacing={3}>
         <Grid container spacing={2}>
+          <Grid item xs={12} md={6}>
+            <HeroCard
+              label={t(hero.label)}
+              value={hero.value}
+              icon={hero.icon}
+              {...(hero.hint ? { hint: hero.hint } : {})}
+            />
+          </Grid>
           {cards.map((card) => (
-            <Grid item xs={12} sm={6} md={3} key={card.key}>
-              <KpiCard label={t(card.label)} value={card.value} {...(card.hint ? { hint: card.hint } : {})} />
+            <Grid item xs={12} sm={4} md={2} key={card.key}>
+              <KpiCard
+                label={t(card.label)}
+                value={card.value}
+                icon={card.icon}
+                {...(card.hint ? { hint: card.hint } : {})}
+              />
             </Grid>
           ))}
         </Grid>
 
         {!isFresh && (
           <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={4}>
               <Panel title={t('admin.dashboard.byStatus')}>
                 <BarList rows={statusRows} emptyLabel={t('admin.dashboard.noOrders')} />
               </Panel>
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={4}>
               <Panel title={t('admin.dashboard.topProducts')}>
                 <BarList rows={productRows} emptyLabel={t('admin.dashboard.noSales')} />
+              </Panel>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Panel title={t('admin.dashboard.health')}>
+                <Stack sx={{ gap: 2.5 }}>
+                  <Meter
+                    label={t('admin.dashboard.meter.published')}
+                    value={kpis.published}
+                    total={kpis.products}
+                    caption={`${kpis.published} / ${kpis.products}`}
+                  />
+                  <Meter
+                    label={t('admin.dashboard.meter.paid')}
+                    value={paidOrders}
+                    total={kpis.orders}
+                    caption={`${paidOrders} / ${kpis.orders}`}
+                  />
+                </Stack>
               </Panel>
             </Grid>
           </Grid>

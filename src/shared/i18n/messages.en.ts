@@ -322,6 +322,9 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'admin.dashboard.topProducts': 'Best-selling products',
     'admin.dashboard.noOrders': 'No orders yet.',
     'admin.dashboard.noSales': 'No product has sold yet.',
+    'admin.dashboard.health': 'Store health',
+    'admin.dashboard.meter.published': 'Published catalogue',
+    'admin.dashboard.meter.paid': 'Paid orders',
     'admin.dashboard.fresh.title': 'Your store is ready for its first product',
     'admin.dashboard.fresh.body':
       'There is no catalog or orders yet: as soon as there are, the numbers show up here.',

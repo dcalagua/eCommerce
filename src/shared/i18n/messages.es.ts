@@ -326,6 +326,9 @@ export const es = {
     'admin.dashboard.topProducts': 'Productos que más venden',
     'admin.dashboard.noOrders': 'Todavía no hay pedidos.',
     'admin.dashboard.noSales': 'Ningún producto se ha vendido aún.',
+    'admin.dashboard.health': 'Salud de la tienda',
+    'admin.dashboard.meter.published': 'Catálogo publicado',
+    'admin.dashboard.meter.paid': 'Pedidos cobrados',
     'admin.dashboard.fresh.title': 'Tu tienda está lista para su primer producto',
     'admin.dashboard.fresh.body':
       'Aún no hay catálogo ni pedidos: en cuanto los haya, las cifras aparecen aquí.',

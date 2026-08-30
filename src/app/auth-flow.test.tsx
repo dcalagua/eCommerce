@@ -203,10 +203,11 @@ describe('flujo login → onboarding → /app', () => {
     renderApp('/app')
 
     expect(await screen.findByRole('heading', { name: 'Resumen' })).toBeInTheDocument()
-    // DOS guiones, no uno: ventas y ticket medio son las dos cifras de dinero,
-    // y sin una moneda unica ninguna de las dos puede afirmarse. Un cero
-    // inventado en cualquiera de ellas se leeria como un dato.
-    expect(await screen.findAllByText('—')).toHaveLength(2)
+    // TRES guiones con este escenario (5 productos, 0 publicados, 0 pedidos):
+    // ventas y ticket medio, que sin moneda unica no se pueden afirmar, y el
+    // medidor de pedidos cobrados, que sin pedidos no tiene sobre que calcular
+    // una razon. En los tres casos un 0 se leeria como un dato.
+    expect(await screen.findAllByText('—')).toHaveLength(3)
     expect(screen.getByText('Sin pedidos con una moneda única todavía')).toBeInTheDocument()
   })
 

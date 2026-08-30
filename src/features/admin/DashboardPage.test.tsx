@@ -108,6 +108,53 @@ describe('cifras del resumen', () => {
 
     expect(await screen.findAllByText('—')).toHaveLength(2)
   })
+
+  it('cada tarjeta lleva su icono', async () => {
+    // El icono se declaraba en los datos y en el componente, pero no se pasaba
+    // en el JSX: se veia bien en el codigo y no salia en pantalla. Los tests
+    // miraban cifras y textos, asi que no lo cazaron.
+    render(() => kpis())
+
+    await screen.findByText('Ventas')
+    for (const testId of [
+      'PaidOutlinedIcon',
+      'TrendingUpOutlinedIcon',
+      'ReceiptLongOutlinedIcon',
+      'LocalMallOutlinedIcon',
+    ]) {
+      expect(screen.getByTestId(testId)).toBeInTheDocument()
+    }
+  })
+})
+
+describe('medidores', () => {
+  it('muestra la razon como porcentaje Y como fraccion', async () => {
+    // Un medidor sin cifra obliga a estimar, y estimar es lo que no debe hacer
+    // quien mira un panel.
+    render(() => kpis())
+
+    expect(await screen.findByText('Salud de la tienda')).toBeInTheDocument()
+    // 9 de 11 publicados = 82 %; 2 pagados de 8 pedidos = 25 %.
+    expect(screen.getByText('82%')).toBeInTheDocument()
+    expect(screen.getByText('9 / 11')).toBeInTheDocument()
+    expect(screen.getByText('25%')).toBeInTheDocument()
+  })
+
+  it('es un meter accesible, con su rango declarado', async () => {
+    render(() => kpis())
+
+    const medidores = await screen.findAllByRole('meter')
+    expect(medidores).toHaveLength(2)
+    expect(medidores[0]).toHaveAttribute('aria-valuenow', '9')
+    expect(medidores[0]).toHaveAttribute('aria-valuemax', '11')
+  })
+
+  it('sin total no inventa un 0 %', async () => {
+    render(() => kpis({ products: 0, published: 0, orders: 8 }))
+
+    await screen.findByText('Salud de la tienda')
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+  })
 })
 
 describe('desgloses', () => {
