@@ -268,7 +268,7 @@ export function OrdersPage() {
                   // de un hex: asi el gris sale del token del tema y funciona
                   // igual en claro que en oscuro, sin cablear dos colores.
                   '& thead th': {
-                    bgcolor: 'color-mix(in srgb, var(--muted) 32%, var(--card))',
+                    bgcolor: 'color-mix(in srgb, var(--muted) 15%, var(--card))',
                     color: 'var(--text)',
                     borderBottom: '1px solid var(--border)',
                   },
