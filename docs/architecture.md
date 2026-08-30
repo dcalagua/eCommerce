@@ -3,6 +3,15 @@
 Compatible con `EBIM-CONTRATO-PLATAFORMA.md` (§0 principios, §1 topología, §2 identidad, §3 jerarquía,
 §5 Platform Context API, §7 qué vive dónde, §8 convenciones).
 
+> **Desde P17-SaaS (2026-08-30)** este documento describe **cómo está construido** el sistema. Para
+> las otras dos preguntas hay documento propio, y conviene no duplicarlas aquí:
+> - **qué está listo, qué es parcial y cómo se extiende para un cliente nuevo** →
+>   [`SAAS_RELEASE_BASELINE.md`](SAAS_RELEASE_BASELINE.md)
+> - **qué falta, clasificado y con responsable** → [`SAAS_GAPS.md`](SAAS_GAPS.md)
+>
+> El mapa de fronteras no vive en prosa: `src/domain/boundaries.ts` lo declara y
+> `src/architecture.test.ts` rompe la suite si el código se sale de él.
+
 ## Topología
 
 ```

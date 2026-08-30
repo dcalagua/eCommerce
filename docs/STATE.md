@@ -3,7 +3,8 @@
 GUIDELINES_STATUS: VERIFIED (**por lectura directa** en la 2ª pasada de P00-SaaS: contrato v1.15,
 `PROTOCOLO.md`, `BANDEJA.md` y `EBIM-CREW-ROSTER.md`). La unidad montada es `G:`, no `H:`.
 Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
-Última actualización: 2026-08-30 (P16-SaaS terminada — línea base de seguridad y preparación enterprise; intento 2 cierra el carrito de invitado sin recogida)
+Última actualización: 2026-08-30 (**P17-SaaS terminada — quality gate final y línea base releaseable**;
+el recorrido SaaS P00–P17 queda cerrado)
 
 > **Dos numeraciones de fase.** Lo que sigue como «P00…P12» es el trabajo histórico de este repo. A
 > partir del 2026-08-27 arranca un segundo recorrido, **P00–P17 de productización SaaS**
@@ -71,6 +72,110 @@ pantalla y sin un solo test propio. Se conservó tal cual y se continuó desde a
 ---
 
 ## Fase actual
+**P17-SaaS — Quality gate final y línea base releaseable. COMPLETA. Gate: PASS.**
+
+Entregables de la fase: [`docs/SAAS_RELEASE_BASELINE.md`](SAAS_RELEASE_BASELINE.md) (qué hay y cómo
+se extiende para un cliente nuevo), [`docs/SAAS_GAPS.md`](SAAS_GAPS.md) (qué falta, sin maquillar) y
+[`docs/adr/017-quality-gate-p17.md`](adr/017-quality-gate-p17.md) (la única decisión que la fase tuvo
+que tomar).
+
+### Los gates, ejecutados de cero sobre `a89a081`
+
+| Comando | Antes de P17 | Después |
+|---|---|---|
+| `npm run typecheck` | PASS | **PASS** |
+| `npm run lint` | PASS, 0 problemas | **PASS**, 0 problemas |
+| `npm run test` | 2 490 / 108 archivos | **2 495 / 109 archivos** |
+| `npm run test:db` | 1 631 / 51 | **1 636 / 52** |
+| `npm run build` | PASS | **PASS**, 1 365 módulos |
+| `npm run bundle:report` | PASS | **PASS**, los cuatro recorridos dentro del techo |
+| `npm run scan:secrets` | PASS | **PASS**, sin hallazgos (616 versionados + 123 del bundle) |
+| `npm audit` | 2 moderadas | **2 moderadas**, analizadas en `SECURITY_BASELINE.md` §7.2 |
+
+**E2E**: no hay Playwright en el árbol. Los recorridos críticos corren con el router real y un
+backend falso dentro de Vitest, que es lo que hay y así se declara — sigue abierto desde P08.
+
+### Lo que P17 encontró y no se sabía
+
+Un solo hallazgo, y no es de seguridad ni de aislamiento: **tres capacidades vendibles se gatean solo
+en la UI**.
+
+La migración 160000 dejó escrito que «`ebim.has_capability` — LA autoridad de gating; la de la UI es
+cortesía». Medido contra `pg_policies` y `pg_proc` del esquema construido, eso es cierto para **ocho**
+de las once capacidades vendibles implementadas y **falso para tres**: `catalog.advanced` (P03),
+`payments` (P09) y `fulfillment` (P12). No es un patrón, es deriva: P03 creó el PIM antes de que P04
+fijara la forma del candado, y P09 y P12 copiaron la estructura de P03.
+
+**Qué NO es**: no hay fuga entre tenants ni escalada de privilegio. RLS por `organization_id` y el
+guard de rol siguen aplicando; el dato no sale de la organización de quien llama. **Qué sí es**: un
+bypass de monetización — un tenant sin el addon de pagos puede crear medios de cobro llamando a la
+API con su propio token de administrador.
+
+**Por qué no se cerró, y qué se hizo en su lugar.** El candado se hace cumplir contra
+`tenant_entitlements`, que hoy está vacío para todo el mundo porque `ecommerce` **no está dado de alta
+en el hub** (R1, mitad abierta desde P00). Ponerlo hoy apagaría PIM, cobros y entregas para **todos**
+los tenants: sería cambiar un hueco comercial por una caída de producto. Y decidir qué se cobra aparte
+es del hub (contrato §5/§6), no de este repositorio.
+
+Lo que sí se hizo: convertir el hueco en **aserción**. `supabase/tests/capability-enforcement.test.ts`
+(5 casos) lee el esquema real y exige que la lista de vendibles sin candado sea *exactamente* esas
+tres, con motivo escrito; que las ocho que sí lo tienen no lo pierdan; y que ninguna capacidad
+baseline dependa de un entitlement. Una capacidad vendible nueva sin candado rompe el gate.
+
+> **Nota de método sobre el propio test.** La primera versión daba un falso positivo: extraía todas
+> las cadenas de la expresión de la policy y contaba `'catalog'` como capacidad cuando en realidad es
+> un **rol** dentro del `has_role(..., '{owner,admin,catalog}')` de al lado. Se corrigió mirando solo
+> dentro del paréntesis de `has_capability(...)` y tomando su última cadena. Vale la pena dejarlo
+> escrito: una medición que se cree sin comprobar produce un inventario falso, que es peor que no
+> tenerlo.
+
+### Lo que se verificó y salió como debía
+
+| Comprobación del encargo | Cómo se midió | Resultado |
+|---|---|---|
+| Migraciones: orden, reproducibilidad, RLS, índices, FK | `schema-invariants` (17) + `security-baseline` (55) | Verde. Dos bases vírgenes dan el mismo esquema |
+| Migraciones: **inmutabilidad** | `git log --diff-filter=M -- supabase/migrations` | **Una sola** modificación histórica (`23e7d7b`, P04, documentada) y **ninguna desde entonces** |
+| `service_role` fuera del bundle | `scan:secrets` + grep sobre `dist/` | Aparece **una vez**: la regex del propio guard que lo prohíbe (`src/shared/lib/env.ts`) |
+| Secretos en versionado | `scan:secrets` sobre 616 archivos | Sin hallazgos. `.env` no está versionado |
+| Hacks por nombre o uuid de cliente | `architecture.test.ts` (18) | Cero. Diez patrones prohibidos, comentarios incluidos |
+| Tenant nunca del navegador | Consulta a `pg_policies` | **112 de 112** policies de escritura referencian `organization_id`. Las 17 de lectura sin alcance son la superficie pública de la vitrina más tres catálogos globales de solo lectura |
+| Checkout/precio/inventario/pago server-authoritative | `pricing-checkout`, `checkout-pipeline`, `inventory`, `payments` | «el navegador no puede declarar un precio», ni canal, ni segmento, ni cliente. `create-order` rechaza `store_id` en el cuerpo |
+| Idempotencia | Índices únicos + test de reintento | Checkout, cobros, devoluciones, envíos, outbox, canje de tarjeta regalo y API de socio |
+| Estados de pantalla | `comm` entre las 82 pantallas, secciones y paneles de `src/` y quienes importan `shared/ui/states` | Tres sin esos estados, las tres con motivo: `ForgotPasswordPage` (formulario sin carga), `SimulatorSection` (no consulta) y `StoreOrderPage` (estado de navegación) |
+| Accesibilidad y móvil | `storefront-a11y-seo` (6) | Verde en la **vitrina**. En el backoffice no hay equivalente: hueco declarado en `SAAS_GAPS.md` §2.3 |
+| Adaptadores vs contrato canónico | Lectura de `_shared/payments` y `_shared/fulfillment` | Ninguna marca en un tipo, capacidades como datos, `timeout` como resultado de primera clase |
+
+### Los once recorridos mínimos
+
+Los once del encargo tienen suite propia y verde; el mapeo recorrido → archivo está en
+`SAAS_RELEASE_BASELINE.md` §6.1. El último —«acceso de otro tenant denegado»— es
+`rls-tenant-isolation.test.ts` (35 casos), que comprueba también el aislamiento de Storage.
+
+### El criterio de aceptación, comprobado
+
+> «PASS solo si todos los gates obligatorios pasan y no hay un bloqueo crítico de integridad,
+> seguridad o multi-tenant oculto.»
+
+Los siete gates pasan. Sobre el bloqueo crítico: se buscó en los cuatro sitios donde habría aparecido
+—aislamiento, integridad del dinero, secretos e idempotencia del cobro— y no hay ninguno
+(`SAAS_GAPS.md` §1, con la medición de cada uno). El único hallazgo de la fase es comercial, no
+crítico, y está medido, declarado y con test que impide que crezca.
+
+**Lo que impide vender hoy no está en el código**: el alta de `ecommerce` en el hub, el modo de
+identidad (A vs B), una pasarela contratada y un despliegue. Los cuatro en `SAAS_GAPS.md` §4, con
+responsable, dependencia y forma de verificar el cierre.
+
+**Buzón EBIM**: revisado el 2026-08-30 (segunda revisión del día). Sin mensajes `to: ecommerce` ni
+`to: all` sin atender; el más reciente de `pendientes/` sigue siendo del 2026-08-20 y ninguno
+interpela a esta app. Sigue pendiente **por nuestra parte** el aviso de alta de eCommerce en la suite
+(`SAAS_GAPS.md` §4.8): la carpeta de lineamientos es de solo lectura para este repositorio.
+
+Siguiente: **customizaciones de cliente sobre esta base**. El recorrido P00–P17 está cerrado. El punto
+de partida para cualquier cliente nuevo es `SAAS_RELEASE_BASELINE.md` §8.
+
+---
+
+## Fase anterior
 **P16-SaaS — Seguridad SaaS y preparación enterprise. COMPLETA. Gate: PASS.**
 Estado por control, con evidencia, en [`docs/SECURITY_BASELINE.md`](SECURITY_BASELINE.md).
 Decisiones en [`docs/adr/016-security-baseline.md`](adr/016-security-baseline.md).
@@ -289,7 +394,7 @@ expectativa previa, porque ninguna dependía del agujero.
   plataforma con hallazgos de seguridad comprobados contra una base real: sus tres hallazgos son
   ahora tests de este repositorio. Traza en `docs/EBIM_GUIDELINES_TRACE.md`.
 
-Siguiente: **P17-SaaS** (gate final).
+Siguiente en su momento: **P17-SaaS** (gate final) — hecho, arriba.
 
 ---
 
@@ -3180,6 +3285,24 @@ inicial `pending` (estándar EBIM, migración 04). Nada desplegado: sigue sin pr
 
 ## Pendientes / riesgos abiertos
 
+> **Desde P17-SaaS, el inventario completo y clasificado vive en
+> [`docs/SAAS_GAPS.md`](SAAS_GAPS.md)** (bloqueante · importante · nice-to-have ·
+> infraestructura/terceros), con evidencia y con qué cierra cada entrada. Lo que sigue aquí abajo es
+> el histórico por fase, que se conserva porque explica **cuándo** apareció cada cosa. Si los dos
+> divergen, manda `SAAS_GAPS.md`.
+
+### Abierto por P17-SaaS (gate final)
+- [ ] **Tres capacidades vendibles gateadas solo en la UI.** `catalog.advanced` (P03), `payments`
+      (P09) y `fulfillment` (P12) no aparecen en ninguna policy ni función con
+      `ebim.has_capability`, contra lo que la migración 160000 dejó escrito. **No es fuga entre
+      tenants** —RLS por `organization_id` y guard de rol siguen aplicando— sino bypass de
+      monetización. No se cierra hoy porque el candado se hace cumplir contra `tenant_entitlements`,
+      vacío mientras `ecommerce` no esté dado de alta en el hub: ponerlo apagaría los tres módulos
+      para todos. Convertido en aserción: `supabase/tests/capability-enforcement.test.ts` exige que
+      la lista sea exactamente esas tres y que las ocho con candado no lo pierdan. Decisión,
+      alternativas descartadas y receta de cierre en `docs/adr/017-quality-gate-p17.md`.
+      → **Cierra con §4.1 de `SAAS_GAPS.md`** (alta en el hub).
+
 ### Abiertos por la auditoría P00-SaaS (2026-08-27)
 Detalle y evidencia en `docs/SAAS_BASELINE.md` §4; asignación de fase en `docs/SAAS_ROADMAP.md` §4.
 - [x] ~~**R1 — Sin entitlements ni capacidades.**~~ → **cerrado en P02-SaaS**: registro técnico de 16
@@ -3200,6 +3323,11 @@ Detalle y evidencia en `docs/SAAS_BASELINE.md` §4; asignación de fase en `docs
       los comandos de transición y aprobación (P08)—, y sus hechos están probados contra Postgres.
       Lo que sigue sin existir es el CONSUMIDOR que los entregue a un sistema externo, que es
       exactamente lo que este riesgo mide. Sigue abierto.
+      **Al día de P17 (reducido, no cerrado)**: el consumidor **existe** —
+      `supabase/functions/integration-worker` vacía la cola, firma los webhooks salientes, respeta el
+      disyuntor por destino y tiene monitor con reintento y reproducción (`integration-monitor` 20
+      casos, `webhooks` 28)—. Lo que sigue sin ocurrir es una entrega a un **endpoint de un tercero de
+      verdad**: mismo tipo de riesgo que «ninguna pasarela real». Ficha en `SAAS_GAPS.md` §4.6.
 - [ ] **R4 — Checkout no idempotente frente a la red.** `create_order` sin clave de idempotencia; la
       defensa contra el doble envío es solo del navegador. → **P07-SaaS**.
 - [x] ~~**R5 — Sin impuesto ni descuento por línea en `order_items`.**~~ → **cerrado en P08-SaaS**:
