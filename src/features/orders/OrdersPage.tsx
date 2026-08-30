@@ -1,4 +1,6 @@
-import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded'
+import CancelRoundedIcon from '@mui/icons-material/CancelRounded'
+import ReceiptRoundedIcon from '@mui/icons-material/ReceiptRounded'
+import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import {
@@ -14,7 +16,6 @@ import {
   TableBody,
   TableCell,
   TableHead,
-  TablePagination,
   TableRow,
   Tabs,
   TextField,
@@ -26,6 +27,8 @@ import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { formatDate, formatMoney, formatRelative, formatTime } from '@/shared/lib/format'
 import { STATUS_ICON, PAYMENT_ICON, FULFILLMENT_ICON } from './statusIcons'
+import { RowActions } from '@/shared/ui/RowActions'
+import { TablePager } from '@/shared/ui/TablePager'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { SearchField } from '@/shared/ui/SearchField'
@@ -262,10 +265,20 @@ export function OrdersPage() {
                 stickyHeader
                 sx={{
                   '& thead th': { bgcolor: 'var(--card)', borderBottom: '2px solid var(--border)' },
+                  // Separadores verticales tenues: guian el ojo por la columna
+                  // sin convertir la tabla en una hoja de calculo. El ultimo no
+                  // lleva, para no dibujar una linea contra el borde del panel.
+                  '& th:not(:last-of-type), & td:not(:last-of-type)': {
+                    borderRight: '1px solid var(--border)',
+                  },
+                  '& tbody td': { borderBottom: '1px solid var(--border)' },
+                  '& tbody tr:last-of-type td': { borderBottom: 0 },
+                  // Franja alterna muy tenue: con filas de dos lineas ayuda a no
+                  // saltar de fila al recorrer la tabla en horizontal.
+                  '& tbody tr:nth-of-type(even)': { bgcolor: 'var(--neutral-soft)' },
                   // La fila entera es pulsable (role=button), pero eso no se
                   // ve: el fondo al pasar y el galon que aparece a la derecha
                   // son la unica pista de que hay algo detras.
-                  '& tbody tr:hover .eb-row-go': { opacity: 1 },
                 }}
               >
                 <TableHead>
@@ -277,8 +290,8 @@ export function OrdersPage() {
                     <TableCell>{t('orders.axis.fulfillment')}</TableCell>
                     <TableCell>{t('common.date')}</TableCell>
                     <TableCell align="right">{t('common.total')}</TableCell>
-                    {/* Columna del galon: sin encabezado porque no es un dato. */}
-                    <TableCell sx={{ width: 36 }} aria-hidden />
+                    {/* Acciones: sin encabezado, porque no es un dato. */}
+                    <TableCell sx={{ width: 96 }} aria-hidden />
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -364,28 +377,46 @@ export function OrdersPage() {
                       <TableCell align="right" className="tnum" sx={{ fontWeight: 800, whiteSpace: 'nowrap' }}>
                         {formatMoney(Number(order.grand_total), order.currency, locale)}
                       </TableCell>
-                      <TableCell sx={{ width: 36, p: 0, color: 'var(--muted)' }} aria-hidden>
-                        <ChevronRightRoundedIcon
-                          className="eb-row-go"
-                          fontSize="small"
-                          sx={{ opacity: 0, transition: 'opacity .15s ease', display: 'block' }}
+                      <TableCell sx={{ width: 96, py: 0.5 }}>
+                        <RowActions
+                          actions={[
+                            {
+                              id: 'open',
+                              icon: <VisibilityRoundedIcon fontSize="small" />,
+                              label: t('orders.open'),
+                              tone: 'neutral',
+                              onClick: () => setSelected(order),
+                            },
+                            {
+                              id: 'invoice',
+                              icon: <ReceiptRoundedIcon fontSize="small" />,
+                              label: t('orders.action.invoice'),
+                              tone: 'accent',
+                              // Solo tiene sentido sobre un pedido cobrado.
+                              disabled: order.payment_status !== 'paid',
+                              onClick: () => setSelected(order),
+                            },
+                            {
+                              id: 'cancel',
+                              icon: <CancelRoundedIcon fontSize="small" />,
+                              label: t('orders.action.cancel'),
+                              tone: 'danger',
+                              // Un pedido ya cerrado no se anula desde el listado.
+                              disabled: order.status === 'cancelled' || order.status === 'refunded',
+                              onClick: () => setSelected(order),
+                            },
+                          ]}
                         />
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-              <TablePagination
-                component="div"
-                count={total}
+              <TablePager
                 page={page}
-                onPageChange={(_, next) => setPage(next)}
-                rowsPerPage={ORDERS_PAGE_SIZE}
-                // Sin selector de tamaño: una página de 200 filas es la misma
-                // consulta pesada que la paginación acaba de evitar.
-                rowsPerPageOptions={[ORDERS_PAGE_SIZE]}
-                labelDisplayedRows={({ from, to, count }) => `${from}–${to} / ${count}`}
-                labelRowsPerPage=""
+                pageSize={ORDERS_PAGE_SIZE}
+                total={total}
+                onPageChange={setPage}
               />
             </>
           )}

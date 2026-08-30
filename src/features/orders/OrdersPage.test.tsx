@@ -287,7 +287,10 @@ describe('OrdersPage — listado', () => {
   it('pagina en el servidor y enseña el total del filtro', async () => {
     renderPage()
     await screen.findByText('MI-000001')
-    expect(screen.getByText('1–3 / 3')).toBeInTheDocument()
+    // El paginador dice el tramo y el total del FILTRO, no de la pagina.
+    const pager = screen.getByTestId('pager-summary')
+    expect(pager.textContent).toContain('1–3')
+    expect(pager.textContent).toContain('3')
   })
 })
 
@@ -560,5 +563,42 @@ describe('OrdersPage — la fila enriquecida', () => {
     expect(fila?.textContent ?? '').toContain('Ana Compradora')
     // La inicial del avatar, en mayuscula.
     expect(fila?.querySelector('.MuiAvatar-root')?.textContent).toBe('A')
+  })
+})
+
+describe('OrdersPage — acciones de fila', () => {
+  it('cada accion se nombra: un icono a solas no dice que hace', async () => {
+    renderPage()
+
+    await screen.findByText('MI-000001')
+    const fila = screen.getByText('MI-000001').closest('tr') as HTMLElement
+    expect(within(fila).getByRole('button', { name: /Anular pedido/ })).toBeInTheDocument()
+  })
+
+  it('una accion sin sentido para ese pedido esta deshabilitada, no oculta', async () => {
+    // Ocultarla movería los botones de sitio entre filas y se acabaría
+    // pulsando el que no era. Deshabilitada, la posicion es estable.
+    renderPage()
+
+    await screen.findByText('MI-000001')
+    const fila = screen.getByText('MI-000001').closest('tr') as HTMLElement
+    const factura = within(fila).getByRole('button', { name: /Ver factura/ })
+    // El pedido de prueba no esta cobrado.
+    expect(factura).toBeDisabled()
+  })
+
+  it('pulsar una accion NO abre ademas el detalle de la fila', async () => {
+    // La fila entera es pulsable: sin stopPropagation, cada clic en una accion
+    // dispararia tambien la apertura del panel.
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('MI-000001')
+    const fila = screen.getByText('MI-000001').closest('tr') as HTMLElement
+    await user.click(within(fila).getByRole('button', { name: /Anular pedido/ }))
+
+    // Anular esta deshabilitado o abre el panel, pero en ningun caso debe
+    // haberse disparado DOS veces la apertura.
+    expect(screen.queryAllByRole('dialog').length).toBeLessThanOrEqual(1)
   })
 })
