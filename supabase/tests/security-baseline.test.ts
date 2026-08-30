@@ -109,11 +109,27 @@ afterAll(async () => {
  *  · `secreto`   — exige un valor con entropía suficiente para que adivinarlo
  *                  no sea un ataque, sino aritmética imposible.
  *  · `techo`     — escribe o revela algo, y por eso lleva límite de tasa.
+ *  · `recogido`  — escribe, y no puede llevar techo sin negar una venta, así que
+ *                  lo que escribe se RECOGE. La cuarta clase nació en P16 al
+ *                  mirar de cerca `cart_open`: estaba clasificada como `secreto`
+ *                  «token de 256 bits» y eso solo es verdad cuando el invitado
+ *                  YA tiene token. Cuando llega sin él —la primera visita— la
+ *                  función no lee: crea la fila y le entrega el token. Es la
+ *                  única de las dieciocho que escribe sin presentar nada, y
+ *                  clasificarla como protegida por un secreto era describir la
+ *                  mitad amable de su contrato.
  */
-const ANON_SURFACE: Record<string, { clase: 'publicado' | 'secreto' | 'techo'; porque: string }> = {
+const ANON_SURFACE: Record<
+  string,
+  { clase: 'publicado' | 'secreto' | 'techo' | 'recogido'; porque: string }
+> = {
   availability_for_slug: { clase: 'publicado', porque: 'disponibilidad calculada de lo publicado' },
   cart_abandon: { clase: 'secreto', porque: 'token de carrito de 256 bits' },
-  cart_open: { clase: 'secreto', porque: 'token de carrito de 256 bits; los carritos caducan solos' },
+  cart_open: {
+    clase: 'recogido',
+    porque:
+      'sin token CREA la fila del invitado; un techo aquí negaría la venta, así que se recoge sola (P16)',
+  },
   cart_price_drift: { clase: 'secreto', porque: 'token de carrito de 256 bits' },
   cart_replace_lines: { clase: 'secreto', porque: 'token de carrito de 256 bits' },
   catalog_search_for_slug: { clase: 'publicado', porque: 'busca en el catálogo publicado' },
@@ -149,10 +165,37 @@ describe('la superficie anónima es una lista cerrada', () => {
    * publica esta tabla; sin este test, el documento y el código se separan en la
    * primera función nueva y nadie se entera hasta la siguiente auditoría.
    */
-  it('el reparto por clase es 8 publicado · 8 secreto · 2 techo', () => {
-    const cuenta = { publicado: 0, secreto: 0, techo: 0 }
+  it('el reparto por clase es 8 publicado · 7 secreto · 2 techo · 1 recogido', () => {
+    const cuenta = { publicado: 0, secreto: 0, techo: 0, recogido: 0 }
     for (const entry of Object.values(ANON_SURFACE)) cuenta[entry.clase] += 1
-    expect(cuenta).toEqual({ publicado: 8, secreto: 8, techo: 2 })
+    expect(cuenta).toEqual({ publicado: 8, secreto: 7, techo: 2, recogido: 1 })
+  })
+
+  /**
+   * La clase `recogido` no es una excusa para no poner techo: obliga a que
+   * exista la recogida. Si alguien clasifica así una función nueva, tiene que
+   * haber una purga que la respalde — y la conducta se compra entera en
+   * `guest-cart-retention.test.ts`.
+   */
+  it('lo clasificado como `recogido` tiene de verdad quien lo recoja', async () => {
+    const recogidas = Object.entries(ANON_SURFACE).filter(([, e]) => e.clase === 'recogido')
+    expect(recogidas.map(([name]) => name)).toEqual(['cart_open'])
+
+    const rows = await sql(`
+      select p.proname as name
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'ebim' and p.proname = 'sweep_empty_guest_carts'
+    `)
+    expect(rows).toHaveLength(1)
+
+    const cuerpo = await sql(`
+      select pg_get_functiondef(p.oid) as src
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.proname = 'cart_open'
+    `)
+    expect(String(cuerpo[0]?.src)).toContain('sweep_empty_guest_carts')
   })
 
   it('cada entrada de la lista dice POR QUÉ puede estar', () => {

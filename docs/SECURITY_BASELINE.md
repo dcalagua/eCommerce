@@ -19,8 +19,8 @@ y el procedimiento de verificación está escrito en §9 para que alguien lo eje
 Comandos que producen la evidencia de este documento:
 
 ```
-npm run test:db            # 1614 pruebas contra Postgres real (PGlite), 50 archivos
-npm run test               # 2470 pruebas en total (aplicación + base)
+npm run test:db            # 1631 pruebas contra Postgres real (PGlite), 51 archivos
+npm run test               # 2490 pruebas en total (aplicación + base)
 npm run scan:secrets       # gate de secretos y `service_role` (repo + bundle)
 npm run build              # genera dist/_headers y la CSP con el hash del script en línea
 npm audit                  # cadena de suministro
@@ -36,13 +36,22 @@ npm audit                  # cadena de suministro
 | 2 · Autenticación e IAM | **PARTIAL** | MFA y SSO dependen del hub; `ecommerce` no está dado de alta (§9.1) |
 | 3 · Web y aplicación | **PARTIAL** | `style-src` necesita `'unsafe-inline'` por Emotion (§3.1); WAF y bot management son de hosting (§9.3) |
 | 4 · Secretos | **PASS** | — |
-| 5 · Datos y privacidad | **PARTIAL** | Cinco purgas automatizadas, pero `audit_log` y `analytics_events` no tienen; el planificador es de despliegue (§9.4) |
+| 5 · Datos y privacidad | **PARTIAL** | Seis purgas automatizadas, pero `audit_log` y `analytics_events` no tienen; el planificador es de despliegue (§9.4) |
 | 6 · Copias y recuperación | **GAP** | Es del proveedor: procedimiento verificable en §9.5 |
 | 7 · Cadena de suministro | **PARTIAL** | Dos avisos moderados de `react-router` v6; el arreglo es un salto mayor (§7.2) |
 | 8 · Pagos y PCI | **PASS** | — |
 
 **Vulnerabilidades críticas conocidas dentro del alcance del repositorio: ninguna.** La que había
 —§3.2, redirector abierto almacenado— se corrigió en esta fase y tiene regresión en tres capas.
+
+**Segundo hallazgo, del intento 2 de la fase (§3.7):** `cart_open` escribía una fila de `carts` por
+**visita anónima** —el proveedor del carrito envuelve la vitrina entera— y nada la recogía nunca.
+No es escalada ni fuga: es abuso y coste, de la misma clase que el techo de analítica de §3.6, y
+además contradecía una invariante que el proyecto ya tenía escrita en dos sitios. Corregido en
+cliente y base, con 19 pruebas nuevas. Lo que deja escrito es un método: **la lista de superficies
+anónimas se auditó por lo que las funciones hacen, no por la etiqueta que se les había puesto** —
+`cart_open` estaba clasificada como «protegida por un token de 256 bits» y esa frase solo describía
+la mitad amable de su contrato.
 
 ---
 
@@ -127,8 +136,18 @@ en el propio test. Una decimonovena pone la suite roja.
 | Clase | Cuántas | Qué las protege |
 |---|---|---|
 | `publicado` | 8 | solo leen lo que la tienda ya publica; la autoridad es la RLS |
-| `secreto` | 8 | exigen un token de 256 bits (pedido, carrito, devolución) o un código de 96 (tarjeta regalo) |
+| `secreto` | 7 | exigen un token de 256 bits (pedido, carrito, devolución) o un código de 96 (tarjeta regalo) |
 | `techo` | 2 | escriben o revelan, y llevan límite de tasa desde P16 (§3.6) |
+| `recogido` | 1 | escribe sin poder llevar techo —sería negar la venta— y por eso lo que escribe se recoge (§3.7) |
+
+> **Corrección de esta fase.** `cart_open` estaba clasificada como `secreto`
+> («token de carrito de 256 bits»), y eso solo es cierto cuando el invitado **ya
+> tiene** token. Cuando llega sin él —la primera visita— la función no lee:
+> **crea** la fila y le entrega el token. Es la única de las dieciocho que
+> escribe sin presentar nada, y llamarla protegida por un secreto describía la
+> mitad amable de su contrato. La cuarta clase existe para no volver a
+> redondear eso, y el test exige que lo clasificado así tenga de verdad quién lo
+> recoja.
 
 Además: ninguna función de `ebim` **alcanzable** por `anon` es volátil —es decir, ninguna escribe—.
 Las funciones de disparador quedan fuera del recuento y el test **demuestra por qué**: Postgres se
@@ -349,6 +368,7 @@ Lo que hay dentro del repositorio, y por qué está donde está:
 | `create_order` (checkout anónimo) | 5 / correo / hora · 20 / tienda / hora (P10) | **Rechaza.** Un pedido basura descuenta existencias y consume el contador de número de pedido |
 | `track_events_for_slug` (analítica anónima) | 600 llamadas / tienda / hora (P16) | **Descarta**: `recorded: 0`, sin excepción |
 | `promotion_quote_for_slug` (cotización con cupón) | 100 **sondeos fallidos** / tienda / hora (P16) | **Degrada**: cotiza igual, sin cupones |
+| `cart_open` (carrito de invitado) | **sin techo, a propósito** — retención acotada (§3.7) | Nada: se recoge lo que quedó vacío |
 | API de socio (`/v1`) | por credencial, atómico en la base (P14) | Rechaza con `429` |
 
 Las dos nuevas cierran huecos reales: la analítica **escribe** hasta 20 filas por llamada sin sesión
@@ -376,12 +396,64 @@ Las otras dieciséis funciones anónimas se dejan **a propósito** sin techo, y 
 no un olvido: `order_by_token` y `returns_by_token` van con 256 bits de entropía y
 `gift_card_balance_for_slug` con 96. Adivinarlos no es un ataque, es una imposibilidad aritmética;
 ponerles un contador compartido solo crearía una forma nueva de dejar sin servicio a un comprador
-legítimo. El resto solo lee catálogo ya publicado.
+legítimo. Trece de esas dieciséis solo leen catálogo ya publicado o exigen un secreto para escribir
+(`cart_replace_lines`, `cart_abandon`, `cart_price_drift` van todas por `ebim.cart_authorize`). La
+que **no** encajaba en esa frase es `cart_open`, y tiene apartado propio: §3.7.
 
 - Evidencia: `supabase/tests/security-baseline.test.ts` (bloques de techo) y
   `supabase/tests/checkout-rate-limit.test.ts`.
 - > **PARTIAL.** Falta lo que no puede vivir en Postgres: límite por IP, WAF, gestión de bots y
   > protección volumétrica. Son de hosting/CDN. Ficha en §9.3.
+
+### 3.7 El carrito de invitado — PASS *(hallazgo corregido en P16, intento 2)*
+
+**Hallazgo, medido: escritura anónima sin recogida, en la ruta más caliente de la vitrina.**
+
+`public.cart_open(slug, null)` está concedida a `anon` y, sin token, **no lee: inserta**. Y
+`ebim.expire_due_carts` solo cambia el **estado**. Medido sobre Postgres real antes de arreglarlo:
+
+```
+40 llamadas anónimas sin token ......... 40 filas en `carts`
+tras caducarlas y volver a llamar ...... 1 active + 40 abandoned   (ninguna se fue)
+```
+
+No hacía falta un atacante. `CartProvider` envuelve el **layout entero** de la vitrina, así que
+llamaba a `cart_open` al montar **cualquier** página: una fila por visita anónima, y una por cada
+paso de un rastreador siguiendo el sitemap que publicó P15. Crecimiento permanente contra la factura
+y el índice del comercio.
+
+Y contradecía de frente lo que el propio proyecto tiene escrito en dos sitios —la cabecera de la
+migración de P07 y `serverCart.ts`—: «nadie crea una fila por visita; la fila nace al iniciar sesión
+o al empezar a comprar». La intención estaba documentada; el código no la cumplía.
+
+**Corregido en las dos capas, y las dos hacen falta:**
+
+| Capa | Qué se hizo |
+|---|---|
+| Cliente | `CartProvider` solo reconcilia cuando hay algo que reconciliar: **sesión**, **token guardado** o **líneas locales**. Sin ninguna de las tres, la llamada devolvía un carrito vacío que el propio `setCart` ya descartaba — se pagaba una fila permanente por una respuesta que no se usaba. Quien añade su primera línea entra en el tercer caso y la fila nace **entonces** |
+| Base (autoridad) | `20260830100300_guest_cart_retention.sql`: `ebim.sweep_empty_guest_carts` recoge, **acotada por llamada**, el carrito de invitado que quedó vacío; `cart_open` la ejecuta después de caducar y antes de crear. Más `public.purge_empty_guest_carts` para el planificador (§9.4) |
+
+El arreglo del cliente no basta y por eso no va solo: `cart_open` es una función **pública**
+concedida a `anon`, así que su límite no puede depender de que el único llamador se porte bien.
+
+**Por qué se RECOGE y no se pone techo.** Un techo por tienda —el mecanismo de §3.6— sería aquí la
+decisión equivocada, y conviene dejar escrito por qué. Ese contador es por tienda porque la base no
+ve la IP, así que quien abusa gasta el presupuesto de todos. En la analítica eso cuesta medición y
+por eso allí se degrada; aquí el carrito es **la puerta de cada venta**, y negarlo convertiría un
+ataque contra el almacenamiento en un ataque contra las ventas — estrictamente peor. Lo que sí puede
+hacer Postgres es que el daño sea **transitorio en vez de permanente**, y que el mismo tráfico que
+crea las filas pague por recogerlas. El límite volumétrico real es por IP y vive en el WAF: §9.3.
+
+**Qué NO se recoge nunca**, porque una limpieza mal acotada es pérdida de datos disfrazada de
+higiene: un carrito con líneas (es material de recuperación y de analítica del comercio), uno con
+dueño, uno activo, uno que llegó a la caja, y el destino de una fusión. Las cinco están compradas
+una por una.
+
+- Evidencia: `supabase/tests/guest-cart-retention.test.ts` (16 pruebas, incluida la que **mide el
+  hecho** —la llamada sin token crea fila— y la que compra la propiedad que importa: 30 llamadas en
+  bucle dejan de acumularse) y `src/features/storefront/checkout-ui.test.tsx` → «cuándo se abre el
+  carrito de servidor» (3 pruebas: sin nada que reconciliar **no** se abre; la primera línea sí; con
+  token guardado también).
 
 ---
 
@@ -431,7 +503,7 @@ saltar el patrón que le toca.
   comprueba de un escáner: **que encuentra**. Se planta cada clase de credencial y se ve saltar el
   patrón que le toca. Ese test ya sirvió para algo: destapó que la expresión regular del detector de
   JWT tenía un carácter de retroceso literal en vez de `\b` y por tanto **no encontraba nada**.
-- Resultado de hoy: `dist/` 123 archivos, repo 600 archivos, **sin hallazgos**.
+- Resultado de hoy: `dist/` 123 archivos, repo 614 archivos, **sin hallazgos**.
 
 ### 4.4 `secret_ref` en vez del secreto — PASS
 
@@ -477,7 +549,7 @@ códigos probados.
 
 ### 5.2 Retención y borrado — PARTIAL
 
-Automatizado en la base (cinco funciones, todas `service_role` y ninguna alcanzable desde el
+Automatizado en la base (seis funciones, todas `service_role` y ninguna alcanzable desde el
 navegador):
 
 | Función | Retención por defecto |
@@ -487,6 +559,7 @@ navegador):
 | `purge_api_requests` | 48 h |
 | `purge_api_idempotency` | 48 h |
 | `purge_api_tokens` | 7 días |
+| `purge_empty_guest_carts` (P16, intento 2) | 24 h — y además hay recogida oportunista sin planificador (§3.7) |
 
 **Lo que no está automatizado, y se dice:** `audit_log` y `analytics_events` son append-only por
 diseño y **no tienen purga**. La consecuencia se asumió al escribirlas (P13) y sigue asumida: la
@@ -625,9 +698,11 @@ Ninguno de estos se puede cerrar dentro del repositorio. Se declaran con **requi
   no queda afectada.
 
 ### 9.4 · Planificador de purgas y política de retención
-- **Requisito.** (a) Un planificador (`pg_cron` o un job del despliegue) que ejecute las cinco
-  `purge_*` a diario. (b) Una política escrita de retención y de borrado a petición del titular para
-  `audit_log` y `analytics_events`, que hoy no tienen purga por diseño.
+- **Requisito.** (a) Un planificador (`pg_cron` o un job del despliegue) que ejecute las seis
+  `purge_*` a diario. `purge_empty_guest_carts` es la menos urgente de las seis: su superficie ya se
+  recoge sola desde `cart_open` (§3.7), que es precisamente lo que la hace no depender de esto.
+  (b) Una política escrita de retención y de borrado a petición del titular para `audit_log` y
+  `analytics_events`, que hoy no tienen purga por diseño.
 - **Responsable.** Operador de la plataforma + responsable de datos (decisión legal, no técnica).
 - **Verificación.** Insertar una fila con `created_at` antigua en `checkout_attempts`, esperar a la
   ventana del planificador y comprobar que desapareció. Para (b), el entregable es el documento
@@ -699,7 +774,7 @@ Ninguno de estos se puede cerrar dentro del repositorio. Se declaran con **requi
 | `npm run build` | PASS, `dist/_headers` y CSP generados |
 | `npm run scan:secrets` | **Sin hallazgos** — 600 archivos versionados, 123 del bundle |
 | `npm audit` | 2 moderadas (§7.2), 0 altas, 0 críticas |
-| Inventario de superficie anónima (`pg_proc`) | 18 funciones, todas clasificadas |
+| Inventario de superficie anónima (`pg_proc`) | 18 funciones, todas clasificadas — una **reclasificada** en el intento 2 (§3.7) |
 | Inventario de claves ajenas (`pg_constraint`) | 218 hacia tablas con tenant; 0 sin ancla |
 | Inventario de PII (`information_schema`) | 40 tablas y vistas, clasificadas en §5.1 |
 
@@ -707,9 +782,10 @@ Ninguno de estos se puede cerrar dentro del repositorio. Se declaran con **requi
 
 ## 11 · Veredicto
 
-**PASS dentro del alcance del repositorio.** No quedan vulnerabilidades críticas conocidas: la que
-existía —el redirector abierto almacenado de §3.2— está corregida en las tres capas y tiene
-regresión automática en las tres. Los controles que no se pueden cerrar aquí están en §9 con
+**PASS dentro del alcance del repositorio.** No quedan vulnerabilidades críticas conocidas. Las dos
+debilidades reales que encontró la fase están corregidas con regresión automática: el redirector
+abierto almacenado de §3.2 (tres capas) y la escritura anónima sin recogida de §3.7 (cliente y
+base). Los controles que no se pueden cerrar aquí están en §9 con
 responsable, dependencia y un procedimiento que alguien puede ejecutar y firmar; **ninguno se ha
 simulado ni se ha dado por bueno**.
 

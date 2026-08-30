@@ -3,7 +3,7 @@
 GUIDELINES_STATUS: VERIFIED (**por lectura directa** en la 2ª pasada de P00-SaaS: contrato v1.15,
 `PROTOCOLO.md`, `BANDEJA.md` y `EBIM-CREW-ROSTER.md`). La unidad montada es `G:`, no `H:`.
 Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
-Última actualización: 2026-08-30 (P16-SaaS terminada — línea base de seguridad y preparación enterprise)
+Última actualización: 2026-08-30 (P16-SaaS terminada — línea base de seguridad y preparación enterprise; intento 2 cierra el carrito de invitado sin recogida)
 
 > **Dos numeraciones de fase.** Lo que sigue como «P00…P12» es el trabajo histórico de este repo. A
 > partir del 2026-08-27 arranca un segundo recorrido, **P00–P17 de productización SaaS**
@@ -81,8 +81,8 @@ Decisiones en [`docs/adr/016-security-baseline.md`](adr/016-security-baseline.md
 |---|---|---|
 | `npm run typecheck` | PASS | **PASS** |
 | `npm run lint` | PASS, 0 problemas | **PASS**, 0 problemas |
-| `npm run test` | 2312 / 102 archivos | **2470 / 107 archivos** |
-| `npm run test:db` | 1538 / 48 | **1614 / 50** |
+| `npm run test` | 2312 / 102 archivos | **2490 / 108 archivos** |
+| `npm run test:db` | 1538 / 48 | **1631 / 51** |
 | `npm run build` | PASS | **PASS** + `dist/_headers` y la CSP generados |
 | `npm run bundle:report` | PASS | **PASS**, los cuatro recorridos dentro del techo |
 | `npm run scan:secrets` | no existía | **PASS**, sin hallazgos (614 archivos versionados + 123 del bundle) |
@@ -109,9 +109,58 @@ Decisiones en [`docs/adr/016-security-baseline.md`](adr/016-security-baseline.md
 
 | Exigencia | Dónde se comprueba |
 |---|---|
-| **sin vulnerabilidades críticas conocidas** | Había una y está corregida: el redirector abierto ALMACENADO de la barra invertida (abajo). Se corrigió en las tres capas y hay regresión automática en las tres |
+| **sin vulnerabilidades críticas conocidas** | Había una y está corregida: el redirector abierto ALMACENADO de la barra invertida (abajo). Se corrigió en las tres capas y hay regresión automática en las tres. El intento 2 encontró y cerró una segunda debilidad —no crítica, de abuso y coste— : el carrito de invitado que nadie recogía (abajo) |
 | **controles externos declarados con honestidad** | `SECURITY_BASELINE.md` §9: ocho fichas con requisito, responsable, dependencia y **procedimiento verificable**. Ninguna se simula: copias de seguridad es **GAP**, no PARTIAL, porque nadie ha ejecutado todavía la restauración |
 | **el estado va respaldado por evidencia** | La tabla de estados define PASS como «existe **y** hay un test que falla si desaparece». Los inventarios (superficie anónima, claves ajenas, PII) se leen de `pg_proc`, `pg_constraint` e `information_schema`, no de la memoria de nadie |
+
+### El segundo hallazgo (intento 2): el carrito de invitado que nadie recogía
+
+`public.cart_open(slug, null)` está concedida a `anon` y, **sin token, no lee: inserta**. Medido
+sobre Postgres real antes de tocar nada:
+
+```
+40 llamadas anónimas sin token ......... 40 filas en `carts`
+tras caducarlas y volver a llamar ...... 1 active + 40 abandoned   (ninguna se fue)
+```
+
+`ebim.expire_due_carts` solo cambia el **estado**. Y no hacía falta un atacante: `CartProvider`
+envuelve el layout entero de la vitrina, así que llamaba a `cart_open` al montar **cualquier**
+página — una fila por visita anónima, y una por cada paso de un rastreador siguiendo el sitemap de
+P15. Crecimiento permanente contra la factura y el índice del comercio.
+
+Lo que lo convierte en un defecto y no en una optimización: **la regla ya estaba escrita en el
+proyecto, en dos sitios, y el código no la cumplía** — «nadie crea una fila por visita; la fila nace
+al iniciar sesión o al empezar a comprar» (cabecera de `20260828100000_carts.sql`, repetida en
+`serverCart.ts`).
+
+**Por qué el intento 1 no lo vio.** Auditó la superficie anónima por su etiqueta y no por su
+conducta: la entrada de `cart_open` decía «token de 256 bits; los carritos caducan solos», y las dos
+mitades son ciertas por separado y engañosas juntas — el token protege a quien **ya lo tiene**, y
+«caducan» significaba «cambian de estado». De ahí sale la corrección de método: una **cuarta clase**
+(`recogido`) y un test que exige que lo clasificado así tenga de verdad quién lo recoja.
+
+**Se corrigió en dos capas, y las dos hacen falta:**
+- Cliente — `CartProvider` solo reconcilia si hay **sesión**, **token guardado** o **líneas
+  locales**. Sin ninguna de las tres, la respuesta ya se descartaba: se pagaba una fila permanente
+  por algo que no se usaba.
+- Base — `20260830100300_guest_cart_retention.sql`: `ebim.sweep_empty_guest_carts` (acotada por
+  llamada, ejecutada desde `cart_open`) y `public.purge_empty_guest_carts` para el planificador. El
+  arreglo del cliente no basta: `cart_open` es pública, y su límite no puede depender de que el
+  único llamador se porte bien.
+
+**Se descartó a propósito poner un techo de tasa**, teniéndolo a mano de esta misma fase: ese
+contador es por tienda, así que negar la creación convertiría un ataque contra el almacenamiento en
+un ataque contra **las ventas**. El carrito es la puerta de cada compra. Lo que sí puede hacer
+Postgres es que el daño sea transitorio y que el mismo tráfico que crea las filas pague por
+recogerlas. El límite volumétrico real sigue siendo por IP, en el WAF (§9.3), y esto no lo sustituye.
+
+**Lo que NO se recoge**, con un test cada uno: el carrito con líneas, el que tiene dueño, el activo,
+el que llegó a la caja y el destino de una fusión. 19 pruebas nuevas
+(`supabase/tests/guest-cart-retention.test.ts` + el bloque «cuándo se abre el carrito de servidor»
+de `checkout-ui.test.tsx`), y la primera de ellas **mide el hecho** antes de defenderlo.
+
+Detalle en [`docs/adr/016-security-baseline.md`](adr/016-security-baseline.md) §9 y en
+[`SECURITY_BASELINE.md`](SECURITY_BASELINE.md) §3.7.
 
 ### El hallazgo: redirector abierto ALMACENADO por barra invertida
 

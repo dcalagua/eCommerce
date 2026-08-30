@@ -36,7 +36,10 @@ import {
  *
  * Dos efectos, y el orden entre ellos es la decisión:
  *
- *  1. **Reconciliar UNA vez** por tienda y por estado de sesión. Al abrir, se
+ *  1. **Reconciliar UNA vez** por tienda y por estado de sesión, y solo cuando
+ *     hay algo que reconciliar —sesión, token o líneas locales—: `cart_open`
+ *     CREA la fila del invitado que llega sin token, así que llamarla en cada
+ *     visita anónima era una fila por visita (P16-SaaS). Al abrir, se
  *     presenta el token del invitado; si hay sesión, el servidor FUSIONA ese
  *     carrito en el del usuario y devuelve el resultado, que es lo que pasa a
  *     verse. Iniciar sesión con dos dispositivos abiertos deja de perder el
@@ -94,8 +97,35 @@ export function CartProvider({
   }, [cart, storeId])
 
   // --- 1 · Reconciliar (y fusionar, si se acaba de iniciar sesión) ----------
+  /**
+   * Cuándo hay algo que reconciliar (P16-SaaS).
+   *
+   * `cart_open` no solo lee: cuando el invitado llega sin token, CREA la fila.
+   * Llamarla al montar el provider —que envuelve el layout entero, o sea todas
+   * las páginas de la vitrina— era una fila de `carts` por VISITA anónima, y
+   * las filas no se recogen solas. Eso contradice de frente lo que este archivo
+   * y la migración de P07 dicen que hacen: «nadie crea una fila por visita; la
+   * fila nace al iniciar sesión o al empezar a comprar».
+   *
+   * Las tres condiciones son exactamente los casos en los que el servidor tiene
+   * algo que aportar:
+   *
+   *  · con sesión — hay que fusionar y traer lo del otro dispositivo;
+   *  · con token — ya existe una fila suya que reconciliar;
+   *  · con líneas locales — hay algo que guardar, así que ya hace falta el ancla.
+   *
+   * Sin ninguna de las tres, la llamada devolvía un carrito vacío que el propio
+   * `setCart` de abajo descartaba (`server.lines.length === 0`): se pagaba una
+   * fila permanente por una respuesta que no se usaba. Quien añade su primera
+   * línea entra en el tercer caso, el efecto se vuelve a evaluar y la fila nace
+   * entonces — que es el momento que el diseño siempre dijo.
+   */
+  const hasLocalLines = cart.store_id === storeId && cart.lines.length > 0
+  const needsServerCart = authenticated || cartToken !== null || hasLocalLines
+
   const reconciled = useRef<string | null>(null)
   useEffect(() => {
+    if (!needsServerCart) return
     const scope = `${storeId}|${authenticated}`
     if (reconciled.current === scope) return
     reconciled.current = scope
@@ -127,7 +157,7 @@ export function CartProvider({
     return () => {
       cancelled = true
     }
-  }, [storeId, storeSlug, authenticated, currency])
+  }, [storeId, storeSlug, authenticated, currency, needsServerCart])
 
   // --- 2 · Empujar lo local, con retardo ------------------------------------
   useEffect(() => {

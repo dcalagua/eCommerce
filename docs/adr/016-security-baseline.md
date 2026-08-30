@@ -224,3 +224,87 @@ desconocido. Queda como trabajo propio, y con la mitigación puesta deja de ser 
   datos con implicación legal, no un `delete` que se escribe en una fase técnica.
 - **Límite por IP y WAF.** Postgres no ve la IP. El techo por tienda no lo sustituye y no se
   presenta como si lo hiciera.
+
+---
+
+## 9 · Addendum del intento 2 · El carrito de invitado que nadie recogía
+
+### El hallazgo
+
+`public.cart_open(slug, null)` está concedida a `anon` y, **sin token, no lee: inserta**. Medido
+sobre Postgres real antes de tocar nada:
+
+```
+40 llamadas anónimas sin token ......... 40 filas en `carts`
+tras caducarlas y volver a llamar ...... 1 active + 40 abandoned   (ninguna se fue)
+```
+
+`ebim.expire_due_carts` solo cambia el **estado**. Nada borraba nunca esa fila.
+
+Y no hacía falta un atacante para llegar ahí: `CartProvider` envuelve el **layout entero** de la
+vitrina, así que llamaba a `cart_open` al montar **cualquier** página. Una fila por visita anónima, y
+una por cada paso de un rastreador siguiendo el sitemap que publicó P15.
+
+Lo que hace este hallazgo distinto de una optimización es que **el proyecto ya tenía la regla
+escrita, en dos sitios, y el código no la cumplía**:
+
+> «El invitado sigue comprando desde `localStorage`. Nadie crea una fila por visita: un carrito de
+> servidor por cada persona que abre el catálogo sería una tabla de basura con un índice caro y un
+> dato personal más que custodiar. La fila nace cuando hace falta de verdad.»
+> — cabecera de `20260828100000_carts.sql` (P07), repetida casi palabra por palabra en `serverCart.ts`
+
+### Por qué el intento 1 no lo vio
+
+Porque auditó la superficie anónima **por su etiqueta y no por su conducta**. La entrada de
+`cart_open` en la lista cerrada decía «token de carrito de 256 bits; los carritos caducan solos», y
+las dos mitades de esa frase son ciertas por separado y engañosas juntas: el token protege a quien
+**ya lo tiene**, y «caducan» resultó significar «cambian de estado». Ninguna de las dos es la
+pregunta que importaba, que era *¿qué pasa cuando llega alguien sin nada?*.
+
+De ahí sale la corrección de método, más valiosa que el parche: se añadió una **cuarta clase**,
+`recogido`, y un test que exige que lo clasificado así tenga de verdad quién lo recoja. Una etiqueta
+que no se puede sostener con una función que exista deja de poder escribirse.
+
+### La decisión: recoger, no poner techo
+
+El mecanismo de límite de tasa de esta misma fase (§3.6) estaba a mano y **se descartó a propósito**.
+Ese contador es por tienda porque la base no ve la IP, así que quien abusa gasta el presupuesto de
+todos. En la analítica ese coste es medición perdida y por eso allí se degrada. Aquí el carrito es
+**la puerta de cada venta**: un techo convertiría un ataque contra el almacenamiento en un ataque
+contra las ventas, que es estrictamente peor. Reusar el mecanismo disponible habría sido la decisión
+cómoda y la equivocada.
+
+Lo que sí puede hacer Postgres es que el daño sea **transitorio en vez de permanente**, y que el
+mismo tráfico que crea las filas pague por recogerlas: `cart_open` barre —acotada por llamada—
+después de caducar y antes de crear. Sin planificador, por la misma razón que ya se llamaba allí a
+`expire_due_carts`: «una caducidad que depende de un job que puede no existir no existe».
+
+El límite volumétrico real es por IP y vive en el WAF. Sigue declarado como control externo (§9.3) y
+esto no lo sustituye.
+
+### Alternativa considerada y descartada: creación perezosa
+
+El arreglo estructural sería que `cart_open` **no persistiera** nada hasta la primera línea. Es más
+limpio y elimina la fila vacía por definición, pero cambia el contrato del carrito —el token *es* la
+fila— y arrastra al checkout, a la reserva y a la idempotencia. Un refactor del carrito dentro de una
+fase de seguridad cambia un riesgo conocido por uno desconocido; la retención acotada consigue el
+mismo límite con una fracción del riesgo. Queda anotado como la salida estructural si algún día el
+carrito se toca por otro motivo.
+
+### Lo que NO se recoge
+
+Una limpieza mal acotada es pérdida de datos disfrazada de higiene. Se excluyen, y cada exclusión
+tiene su test: el carrito **con líneas** (material de recuperación y de analítica del comercio), el
+que tiene **dueño**, el **activo**, el que **llegó a la caja** y el **destino de una fusión**. El
+bucle de abuso crea exclusivamente carritos vacíos, así que ninguna de las cinco le deja un hueco.
+
+Dos índices parciales nuevos (`carts_merged_into`, `checkout_intents_cart`) porque las dos
+comprobaciones de seguridad caían sobre columnas sin índice: sin ellos la limpieza habría sido un
+recorrido secuencial de `carts` dentro de la llamada de un comprador — el cuello de botella que venía
+a evitar.
+
+### Evidencia
+
+`supabase/tests/guest-cart-retention.test.ts` (16) y el bloque «cuándo se abre el carrito de
+servidor» de `src/features/storefront/checkout-ui.test.tsx` (3). El primero **mide el hecho** antes
+de defenderlo: si algún día `cart_open` deja de crear la fila, lo dice el test y no al revés.

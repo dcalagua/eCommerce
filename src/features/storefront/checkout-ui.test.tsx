@@ -233,6 +233,67 @@ beforeEach(() => {
   sessionStorage.clear()
 })
 
+/**
+ * P16-SaaS · La visita anónima no deja fila en la base.
+ *
+ * `cart_open` no solo lee: al invitado que llega sin token le CREA el carrito.
+ * Y `CartProvider` envuelve el layout entero, así que se llamaba al montar
+ * CUALQUIER página de la vitrina — una fila de `carts` por visita, y por cada
+ * paso de un rastreador siguiendo el sitemap de P15. Las filas no se recogían
+ * nunca (`expire_due_carts` solo cambia el estado), así que era crecimiento
+ * permanente contra la factura del comercio.
+ *
+ * Esto contradecía lo que la cabecera de la migración de P07 y `serverCart.ts`
+ * dicen los dos que se hace: «nadie crea una fila por visita; la fila nace al
+ * iniciar sesión o al empezar a comprar». Estos tres tests son esa frase,
+ * ejecutable.
+ *
+ * La otra mitad —que la fila que sí se cree se recoja— vive en la base, porque
+ * `cart_open` es pública: `supabase/tests/guest-cart-retention.test.ts`.
+ */
+describe('cuándo se abre el carrito de servidor', () => {
+  /** Cuenta las llamadas a `cart_open` sin cambiar lo que devuelve. */
+  function backendContando(): { fake: FakeSupabase; llamadas: () => number } {
+    const fake = backend()
+    let n = 0
+    fake.state.rpc.cart_open = () => {
+      n += 1
+      return carritoServidor()
+    }
+    return { fake, llamadas: () => n }
+  }
+
+  it('el visitante anónimo sin nada que reconciliar NO abre carrito de servidor', async () => {
+    const { fake, llamadas } = backendContando()
+    renderStorefront(fake, '/s/casa-nordica/product/silla-roble')
+
+    // Se ancla en la ficha ya pintada: eso prueba que el provider montó y que
+    // sus efectos corrieron. Sin la espera, el test pasaría por llegar antes de
+    // la llamada en vez de por que no la haya.
+    expect(await screen.findByRole('button', { name: 'Agregar al carrito' })).toBeInTheDocument()
+
+    expect(llamadas()).toBe(0)
+  })
+
+  it('la primera línea SÍ lo abre: es cuando hace falta el ancla', async () => {
+    const user = userEvent.setup()
+    const { fake, llamadas } = backendContando()
+    renderStorefront(fake, '/s/casa-nordica/product/silla-roble')
+
+    await user.click(await screen.findByRole('button', { name: 'Agregar al carrito' }))
+
+    await waitFor(() => expect(llamadas()).toBe(1))
+  })
+
+  it('con token guardado lo abre aunque el carrito local esté vacío: hay algo suyo que traer', async () => {
+    const { fake, llamadas } = backendContando()
+    localStorage.setItem(cartTokenStorageKey(STORE), CART_TOKEN)
+    renderStorefront(fake, '/s/casa-nordica/product/silla-roble')
+
+    await waitFor(() => expect(llamadas()).toBe(1))
+  })
+})
+
 describe('de la ficha al carrito', () => {
   it('agregar abre el panel con lo que se acaba de meter', async () => {
     const user = userEvent.setup()

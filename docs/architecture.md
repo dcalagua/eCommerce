@@ -1057,8 +1057,17 @@ GATE    scripts/secret-scan.mjs  ──► `npm run scan:secrets`: repo versiona
 ```
 
 **La superficie anónima es una lista cerrada de 18 funciones**, cada una clasificada por lo que la
-protege (catálogo publicado · secreto de 96-256 bits · techo de tasa). Una decimonovena pone la
-suite roja (`supabase/tests/security-baseline.test.ts`).
+protege (catálogo publicado · secreto de 96-256 bits · techo de tasa · recogida acotada). Una
+decimonovena pone la suite roja (`supabase/tests/security-baseline.test.ts`).
+
+La cuarta clase, `recogido`, la trajo el segundo hallazgo de la fase: `cart_open` **crea** la fila
+del invitado que llega sin token, y estaba clasificada como protegida por «un secreto de 256 bits»,
+que solo es cierto para quien **ya lo tiene**. Como además `CartProvider` envolvía la vitrina
+entera, era una fila de `carts` por visita anónima que nadie recogía nunca. Se corrigió en las dos
+capas —el cliente solo reconcilia si hay sesión, token o líneas; la base recoge lo que quedó vacío,
+acotado por llamada y sin depender de un planificador— y **sin poner techo**: negar la creación de
+un carrito convierte un ataque contra el almacenamiento en un ataque contra las ventas.
+`SECURITY_BASELINE.md` §3.7.
 
 **Lo que NO se declara cubierto**: cabeceras servidas por el hosting, WAF y límite por IP, copias y
 restauración, MFA/SSO (bloqueado: `ecommerce` no está dado de alta en el hub) y CI. Los seis van con
