@@ -505,3 +505,27 @@ describe('OrdersPage — anotaciones y referencias externas', () => {
     expect(within(drawer).getByText('erp · invoice')).toBeInTheDocument()
   })
 })
+
+describe('OrdersPage — legibilidad de la tabla', () => {
+  it('los tres estados pesan igual: ninguno es un bloque relleno', async () => {
+    // Antes el estado era un Chip RELLENO y pago/entrega de contorno, asi que
+    // tres datos del mismo rango gritaban distinto. Ahora los tres son la misma
+    // etiqueta tenue y lo que los distingue es su texto.
+    renderPage()
+
+    await screen.findByText('MI-000001')
+    const fila = screen.getByText('MI-000001').closest('tr')
+    expect(fila).not.toBeNull()
+    // El Chip de MUI deja su clase; la etiqueta propia no.
+    expect(fila?.querySelectorAll('.MuiChip-filled').length).toBe(0)
+  })
+
+  it('muestra la hora, que es lo que distingue pedidos del mismo dia', async () => {
+    renderPage()
+
+    await screen.findByText('MI-000001')
+    const fila = screen.getByText('MI-000001').closest('tr')
+    // Formato corto de hora: dos numeros separados por dos puntos.
+    expect(fila?.textContent ?? '').toMatch(new RegExp("\\d{1,2}:\\d{2}"))
+  })
+})

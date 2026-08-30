@@ -30,3 +30,14 @@ export function formatDateTime(value: string | Date, locale: Locale = 'es'): str
     timeStyle: 'short',
   }).format(date)
 }
+
+/**
+ * Solo la hora. En un listado donde muchas filas comparten dia, repetir la
+ * fecha completa gasta ancho sin distinguir nada: lo que separa un pedido de
+ * otro es la hora.
+ */
+export function formatTime(value: string | Date, locale: Locale = 'es'): string {
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return new Intl.DateTimeFormat(LOCALE_TAG[locale], { timeStyle: 'short' }).format(date)
+}

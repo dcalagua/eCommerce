@@ -1,3 +1,4 @@
+import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded'
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import {
@@ -21,7 +22,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
-import { formatDate, formatMoney } from '@/shared/lib/format'
+import { formatDate, formatMoney, formatTime } from '@/shared/lib/format'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { SearchField } from '@/shared/ui/SearchField'
 import { TableSkeleton } from '@/shared/ui/TableSkeleton'
@@ -217,7 +219,17 @@ export function OrdersPage() {
           )}
           {orders.isSuccess && rows.length > 0 && (
             <>
-              <Table size="small">
+              <Table
+                size="small"
+                stickyHeader
+                sx={{
+                  '& thead th': { bgcolor: 'var(--card)', borderBottom: '2px solid var(--border)' },
+                  // La fila entera es pulsable (role=button), pero eso no se
+                  // ve: el fondo al pasar y el galon que aparece a la derecha
+                  // son la unica pista de que hay algo detras.
+                  '& tbody tr:hover .eb-row-go': { opacity: 1 },
+                }}
+              >
                 <TableHead>
                   <TableRow>
                     <TableCell>{t('common.number')}</TableCell>
@@ -227,6 +239,8 @@ export function OrdersPage() {
                     <TableCell>{t('orders.axis.fulfillment')}</TableCell>
                     <TableCell>{t('common.date')}</TableCell>
                     <TableCell align="right">{t('common.total')}</TableCell>
+                    {/* Columna del galon: sin encabezado porque no es un dato. */}
+                    <TableCell sx={{ width: 36 }} aria-hidden />
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -246,7 +260,7 @@ export function OrdersPage() {
                       }}
                       sx={{ cursor: 'pointer' }}
                     >
-                      <TableCell sx={{ fontWeight: 700 }}>
+                      <TableCell sx={{ fontWeight: 700, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12.5 }}>
                         <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
                           <span>{order.order_number}</span>
                           {order.approval_status === 'pending' && (
@@ -268,31 +282,38 @@ export function OrdersPage() {
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        <Chip
-                          size="small"
-                          color={STATUS_COLOR[order.status]}
+                        <StatusChip
+                          tone={STATUS_COLOR[order.status]}
                           label={t(STATUS_LABEL[order.status])}
                         />
                       </TableCell>
                       <TableCell>
-                        <Chip
-                          size="small"
-                          variant="outlined"
-                          color={PAYMENT_COLOR[order.payment_status]}
+                        <StatusChip
+                          tone={PAYMENT_COLOR[order.payment_status]}
                           label={t(PAYMENT_LABEL[order.payment_status])}
                         />
                       </TableCell>
                       <TableCell>
-                        <Chip
-                          size="small"
-                          variant="outlined"
-                          color={FULFILLMENT_COLOR[order.fulfillment_status]}
+                        <StatusChip
+                          tone={FULFILLMENT_COLOR[order.fulfillment_status]}
                           label={t(FULFILLMENT_LABEL[order.fulfillment_status])}
                         />
                       </TableCell>
-                      <TableCell>{formatDate(order.placed_at, locale)}</TableCell>
-                      <TableCell align="right" className="tnum">
+                      <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                        <Typography sx={{ fontSize: 13 }}>{formatDate(order.placed_at, locale)}</Typography>
+                        <Typography sx={{ fontSize: 11, color: 'var(--muted)' }}>
+                          {formatTime(order.placed_at, locale)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right" className="tnum" sx={{ fontWeight: 800, whiteSpace: 'nowrap' }}>
                         {formatMoney(Number(order.grand_total), order.currency, locale)}
+                      </TableCell>
+                      <TableCell sx={{ width: 36, p: 0, color: 'var(--muted)' }} aria-hidden>
+                        <ChevronRightRoundedIcon
+                          className="eb-row-go"
+                          fontSize="small"
+                          sx={{ opacity: 0, transition: 'opacity .15s ease', display: 'block' }}
+                        />
                       </TableCell>
                     </TableRow>
                   ))}
