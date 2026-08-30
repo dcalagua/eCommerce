@@ -70,3 +70,44 @@ export function useDashboardKpis(storeId: string | null) {
     staleTime: 30_000,
   })
 }
+
+/** Cinco pedidos recientes: lo que un resumen operativo deja MIRAR. */
+export const recentOrderSchema = z.object({
+  order_number: z.string(),
+  status: z.string(),
+  customer: z.string().nullable(),
+  total: z.string(),
+  currency: z.string().length(3),
+  placed_at: z.string(),
+})
+
+export type RecentOrder = z.infer<typeof recentOrderSchema>
+
+export const RECENT_ORDERS_RPC = 'dashboard_recent_orders'
+
+export async function fetchRecentOrders(storeId: string | null): Promise<RecentOrder[]> {
+  const supabase = tryGetSupabaseClient()
+  if (!supabase) {
+    throw new AppError({
+      boundary: 'analytics',
+      code: 'CONFIG_INCOMPLETA',
+      message: 'El proyecto Supabase de eCommerce todavía no está configurado.',
+    })
+  }
+
+  const { data, error } = await supabase.rpc(RECENT_ORDERS_RPC, { p_store_id: storeId })
+  if (error) throw new AppError({ boundary: 'analytics', code: codeFromDbError(error) })
+  return recentOrderSchema.array().parse(data ?? [])
+}
+
+export const recentOrdersKey = (storeId: string | null) => ['recent-orders', storeId] as const
+
+export function useRecentOrders(storeId: string | null) {
+  return useQuery<RecentOrder[]>({
+    queryKey: recentOrdersKey(storeId),
+    queryFn: () => fetchRecentOrders(storeId),
+    enabled: Boolean(storeId),
+    retry: false,
+    staleTime: 30_000,
+  })
+}

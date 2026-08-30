@@ -1,4 +1,10 @@
+import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
+import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded'
+import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded'
 import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
+import QueryStatsRoundedIcon from '@mui/icons-material/QueryStatsRounded'
+import PendingActionsRoundedIcon from '@mui/icons-material/PendingActionsRounded'
+import VisibilityOffRoundedIcon from '@mui/icons-material/VisibilityOffRounded'
 import LocalMallRoundedIcon from '@mui/icons-material/LocalMallRounded'
 import PaidRoundedIcon from '@mui/icons-material/PaidRounded'
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
@@ -17,8 +23,11 @@ import { PageHeader } from '@/shared/ui/PageHeader'
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/states'
 import { T } from '@/theme/tokens'
 import { BarList, type BarRow } from './BarList'
+import { InsightBanner, type Insight } from './dashboard/InsightBanner'
+import { RecentOrders } from './dashboard/RecentOrders'
+import { SectionHeader } from './dashboard/SectionHeader'
 import { Meter } from './Meter'
-import { useDashboardKpis, type DashboardKpis } from './useDashboardKpis'
+import { useDashboardKpis, useRecentOrders, type DashboardKpis } from './useDashboardKpis'
 
 /**
  * Tarjeta de cifra.
@@ -74,11 +83,16 @@ function KpiCard({
   value,
   hint,
   icon,
+  to,
+  actionLabel,
 }: {
   label: string
   value: string
   hint?: string
   icon?: ReactNode
+  /** Adonde lleva la cifra: una cifra sin salida obliga a buscarla en el menu. */
+  to?: string
+  actionLabel?: string
 }) {
   return (
     <Card sx={{ height: '100%' }}>
@@ -101,6 +115,17 @@ function KpiCard({
           {value}
         </Typography>
         {hint && <Typography sx={{ fontSize: 11.5, color: 'var(--muted)' }}>{hint}</Typography>}
+        {to && actionLabel && (
+          <Button
+            component={RouterLink}
+            to={to}
+            size="small"
+            endIcon={<ArrowForwardRoundedIcon />}
+            sx={{ mt: 0.5, ml: -1 }}
+          >
+            {actionLabel}
+          </Button>
+        )}
       </CardContent>
     </Card>
   )
@@ -133,6 +158,7 @@ export function DashboardPage() {
   const { activeStore, tenant } = useTenant()
   const storeId = activeStore?.id ?? null
   const { data, isPending, isError, error, refetch } = useDashboardKpis(storeId)
+  const recentOrders = useRecentOrders(storeId)
 
   const subtitle = [tenant?.name, activeStore?.name].filter(Boolean).join(' · ')
 
@@ -167,7 +193,16 @@ export function DashboardPage() {
   const money = (raw: string | null) =>
     raw !== null && kpis.currency ? formatMoney(Number(raw), kpis.currency, locale) : '—'
 
-  type Tile = { key: string; label: MessageKey; value: string; hint?: string; icon: ReactNode }
+  type Tile = {
+    key: string
+    label: MessageKey
+    value: string
+    hint?: string
+    icon: ReactNode
+    /** Adonde lleva la cifra. Una cifra sin salida obliga a buscarla en el menu. */
+    to?: string
+    actionLabel?: MessageKey
+  }
 
   const hero: Tile = {
     key: 'sales',
@@ -177,13 +212,7 @@ export function DashboardPage() {
     ...(kpis.sales === null ? { hint: t('admin.kpi.sales.none') } : {}),
   }
 
-  const cards: Array<{
-    key: string
-    label: MessageKey
-    value: string
-    hint?: string
-    icon: ReactNode
-  }> = [
+  const cards: Tile[] = [
     {
       key: 'avgTicket',
       label: 'admin.kpi.avgTicket',
@@ -196,12 +225,16 @@ export function DashboardPage() {
       label: 'admin.kpi.orders',
       value: String(kpis.orders),
       icon: <ReceiptLongRoundedIcon fontSize="small" />,
+      to: '/app/orders',
+      actionLabel: 'admin.dashboard.seeOrders',
     },
     {
       key: 'products',
       label: 'admin.kpi.products',
       value: String(kpis.products),
       icon: <LocalMallRoundedIcon fontSize="small" />,
+      to: '/app/products',
+      actionLabel: 'admin.dashboard.seeProducts',
       // Publicados deja de ser una tarjeta propia: como cifra suelta no dice
       // nada, y junto a total responde «cuanto catalogo esta vivo».
       hint: `${kpis.published} ${t('admin.kpi.publishedTotal')}`,
@@ -230,10 +263,41 @@ export function DashboardPage() {
 
   const isFresh = kpis.products === 0 && kpis.orders === 0
 
+  const pending = kpis.by_status.find((row) => row.status === 'pending')?.count ?? 0
+  const unpublished = Math.max(kpis.products - kpis.published, 0)
+
+  // Los avisos se CALCULAN de lo que ya hay; no hay una tabla de avisos que
+  // alguien tenga que mantener al dia. Y solo aparecen cuando hay algo que
+  // decir: un banner permanente de «todo va bien» ensena a ignorar esa zona.
+  const insights: Insight[] = []
+  if (pending > 0) {
+    insights.push({
+      id: 'pending',
+      tone: 'warning',
+      icon: <PendingActionsRoundedIcon />,
+      title: t('admin.dashboard.insight.pending'),
+      body: `${pending} ${t('admin.dashboard.insight.pending.body')}`,
+      action: { label: t('admin.dashboard.review'), to: '/app/orders' },
+    })
+  }
+  if (unpublished > 0) {
+    insights.push({
+      id: 'unpublished',
+      tone: 'info',
+      icon: <VisibilityOffRoundedIcon />,
+      title: t('admin.dashboard.insight.unpublished'),
+      body: `${unpublished} ${t('admin.dashboard.insight.unpublished.body')}`,
+      action: { label: t('admin.dashboard.review'), to: '/app/products' },
+    })
+  }
+
   return (
     <>
       <PageHeader title={t('admin.dashboard.title')} subtitle={subtitle} />
-      <Stack spacing={3}>
+      <Stack spacing={2.5}>
+        <InsightBanner insights={insights} />
+
+        <SectionHeader icon={<QueryStatsRoundedIcon fontSize="small" />} title={t('admin.dashboard.section.sales')} />
         <Grid container spacing={2}>
           <Grid item xs={12} md={6}>
             <HeroCard
@@ -250,42 +314,55 @@ export function DashboardPage() {
                 value={card.value}
                 icon={card.icon}
                 {...(card.hint ? { hint: card.hint } : {})}
+                {...(card.to ? { to: card.to, actionLabel: t(card.actionLabel as MessageKey) } : {})}
               />
             </Grid>
           ))}
         </Grid>
 
         {!isFresh && (
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={4}>
-              <Panel title={t('admin.dashboard.byStatus')}>
-                <BarList rows={statusRows} emptyLabel={t('admin.dashboard.noOrders')} />
-              </Panel>
+          <>
+            <SectionHeader
+              icon={<InsightsRoundedIcon fontSize="small" />}
+              title={t('admin.dashboard.section.breakdown')}
+            />
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={4}>
+                <Panel title={t('admin.dashboard.byStatus')}>
+                  <BarList rows={statusRows} emptyLabel={t('admin.dashboard.noOrders')} />
+                </Panel>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Panel title={t('admin.dashboard.topProducts')}>
+                  <BarList rows={productRows} emptyLabel={t('admin.dashboard.noSales')} />
+                </Panel>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Panel title={t('admin.dashboard.health')}>
+                  <Stack sx={{ gap: 2.5 }}>
+                    <Meter
+                      label={t('admin.dashboard.meter.published')}
+                      value={kpis.published}
+                      total={kpis.products}
+                      caption={`${kpis.published} / ${kpis.products}`}
+                    />
+                    <Meter
+                      label={t('admin.dashboard.meter.paid')}
+                      value={paidOrders}
+                      total={kpis.orders}
+                      caption={`${paidOrders} / ${kpis.orders}`}
+                    />
+                  </Stack>
+                </Panel>
+              </Grid>
             </Grid>
-            <Grid item xs={12} md={4}>
-              <Panel title={t('admin.dashboard.topProducts')}>
-                <BarList rows={productRows} emptyLabel={t('admin.dashboard.noSales')} />
-              </Panel>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Panel title={t('admin.dashboard.health')}>
-                <Stack sx={{ gap: 2.5 }}>
-                  <Meter
-                    label={t('admin.dashboard.meter.published')}
-                    value={kpis.published}
-                    total={kpis.products}
-                    caption={`${kpis.published} / ${kpis.products}`}
-                  />
-                  <Meter
-                    label={t('admin.dashboard.meter.paid')}
-                    value={paidOrders}
-                    total={kpis.orders}
-                    caption={`${paidOrders} / ${kpis.orders}`}
-                  />
-                </Stack>
-              </Panel>
-            </Grid>
-          </Grid>
+
+            <SectionHeader
+              icon={<HistoryRoundedIcon fontSize="small" />}
+              title={t('admin.dashboard.section.activity')}
+            />
+            <RecentOrders orders={recentOrders.data ?? []} />
+          </>
         )}
 
         {isFresh && (

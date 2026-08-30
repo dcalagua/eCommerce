@@ -9212,6 +9212,7 @@ export type Database = {
         }[]
       }
       dashboard_kpis: { Args: { p_store_id?: string }; Returns: Json }
+      dashboard_recent_orders: { Args: { p_store_id?: string }; Returns: Json }
       delivery_options_for_order: {
         Args: { p_order_id: string }
         Returns: Json

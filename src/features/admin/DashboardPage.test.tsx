@@ -49,7 +49,19 @@ function kpis(overrides: Record<string, unknown> = {}) {
 function backend(rpc: () => unknown): FakeSupabase {
   return createFakeSupabase({
     session: makeSession(),
-    rpc: { dashboard_kpis: rpc },
+    rpc: {
+      dashboard_kpis: rpc,
+      dashboard_recent_orders: () => [
+        {
+          order_number: 'EC-20260827-00008',
+          status: 'paid',
+          customer: 'Ana Compradora',
+          total: '2230.20',
+          currency: 'PEN',
+          placed_at: '2026-08-27T13:29:56Z',
+        },
+      ],
+    },
     tables: {
       tenants: [{ organization_id: ORG, slug: 'casa', name: 'Casa Nórdica', status: 'active' }],
       tenant_members: [
@@ -115,7 +127,7 @@ describe('cifras del resumen', () => {
     // miraban cifras y textos, asi que no lo cazaron.
     render(() => kpis())
 
-    await screen.findByText('Ventas')
+    await screen.findByText('Rendimiento')
     for (const testId of [
       'PaidRoundedIcon',
       'TrendingUpRoundedIcon',
@@ -124,6 +136,52 @@ describe('cifras del resumen', () => {
     ]) {
       expect(screen.getByTestId(testId)).toBeInTheDocument()
     }
+  })
+})
+
+describe('estructura operativa', () => {
+  it('agrupa el panel en secciones con encabezado real', async () => {
+    // Encabezados de verdad, no texto gris pequeno: quien navega por lector de
+    // pantalla salta por encabezados, y una seccion que solo se distingue por
+    // el color no existe para esa persona.
+    render(() => kpis())
+
+    expect(await screen.findByRole('heading', { name: 'Rendimiento', level: 2 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Desglose', level: 2 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Actividad', level: 2 })).toBeInTheDocument()
+  })
+
+  it('las cifras llevan a su pantalla: una cifra sin salida obliga a buscarla', async () => {
+    render(() => kpis())
+
+    const verPedidos = await screen.findByRole('link', { name: /Ver pedidos/ })
+    expect(verPedidos).toHaveAttribute('href', '/app/orders')
+    expect(screen.getByRole('link', { name: /Ver productos/ })).toHaveAttribute('href', '/app/products')
+  })
+
+  it('avisa de lo que hay que mirar hoy, calculado de los datos', async () => {
+    render(() => kpis())
+
+    // 5 pendientes en los datos del mock, y 11-9 = 2 sin publicar.
+    expect(await screen.findByText('Pedidos esperando cobro')).toBeInTheDocument()
+    expect(screen.getByText(/5 pedido/)).toBeInTheDocument()
+    expect(screen.getByText('Catálogo sin publicar')).toBeInTheDocument()
+  })
+
+  it('sin nada que decir no pinta banner: uno permanente ensena a ignorarlo', async () => {
+    render(() => kpis({ products: 9, published: 9, by_status: [{ status: 'paid', count: 8 }] }))
+
+    await screen.findByText('Actividad')
+    expect(screen.queryByText('Pedidos esperando cobro')).not.toBeInTheDocument()
+    expect(screen.queryByText('Catálogo sin publicar')).not.toBeInTheDocument()
+  })
+
+  it('lista los ultimos pedidos con enlace a la pantalla completa', async () => {
+    render(() => kpis())
+
+    expect(await screen.findByText('EC-20260827-00008')).toBeInTheDocument()
+    expect(screen.getByText('Ana Compradora')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Ver todo/ })).toHaveAttribute('href', '/app/orders')
   })
 })
 
@@ -163,9 +221,11 @@ describe('desgloses', () => {
 
     expect(await screen.findByText('Pedidos por estado')).toBeInTheDocument()
     // El estado llega como código del enum; quien traduce es la pantalla.
-    expect(screen.getByText('Pendiente')).toBeInTheDocument()
-    expect(screen.getByText('Pagado')).toBeInTheDocument()
-    expect(screen.getByText('Cancelado')).toBeInTheDocument()
+    // «Pagado» sale tambien como chip en la tabla de ultimos pedidos: se
+    // comprueba que estan, no que sean unicos.
+    expect(screen.getAllByText('Pendiente').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Pagado').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Cancelado').length).toBeGreaterThan(0)
   })
 
   it('lista los productos que más venden con su ingreso', async () => {
