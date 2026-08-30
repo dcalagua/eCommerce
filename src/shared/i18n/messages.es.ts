@@ -319,6 +319,13 @@ export const es = {
     'admin.kpi.orders': 'Pedidos',
     'admin.kpi.sales': 'Ventas',
     'admin.kpi.sales.none': 'Sin pedidos con una moneda única todavía',
+    'admin.kpi.avgTicket': 'Ticket medio',
+    'admin.kpi.avgTicket.hint': 'Ventas entre pedidos no anulados',
+    'admin.kpi.publishedTotal': 'publicados de este total',
+    'admin.dashboard.byStatus': 'Pedidos por estado',
+    'admin.dashboard.topProducts': 'Productos que más venden',
+    'admin.dashboard.noOrders': 'Todavía no hay pedidos.',
+    'admin.dashboard.noSales': 'Ningún producto se ha vendido aún.',
     'admin.dashboard.fresh.title': 'Tu tienda está lista para su primer producto',
     'admin.dashboard.fresh.body':
       'Aún no hay catálogo ni pedidos: en cuanto los haya, las cifras aparecen aquí.',

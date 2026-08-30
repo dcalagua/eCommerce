@@ -167,7 +167,9 @@ describe('flujo login → onboarding → /app', () => {
 
     expect(await screen.findByRole('heading', { name: 'Resumen' })).toBeInTheDocument()
     expect(await screen.findByText('3')).toBeInTheDocument()
-    expect(screen.getByText('2')).toBeInTheDocument()
+    // «Publicados» deja de ser tarjeta propia: acompana al total de productos,
+    // que es la comparacion que de verdad se lee. La cifra sigue siendo real.
+    expect(screen.getByText(/2 publicados/)).toBeInTheDocument()
     expect(screen.getByText(/150[.,]00/)).toBeInTheDocument()
   })
 
@@ -201,7 +203,10 @@ describe('flujo login → onboarding → /app', () => {
     renderApp('/app')
 
     expect(await screen.findByRole('heading', { name: 'Resumen' })).toBeInTheDocument()
-    expect(await screen.findByText('—')).toBeInTheDocument()
+    // DOS guiones, no uno: ventas y ticket medio son las dos cifras de dinero,
+    // y sin una moneda unica ninguna de las dos puede afirmarse. Un cero
+    // inventado en cualquiera de ellas se leeria como un dato.
+    expect(await screen.findAllByText('—')).toHaveLength(2)
     expect(screen.getByText('Sin pedidos con una moneda única todavía')).toBeInTheDocument()
   })
 

@@ -19,6 +19,23 @@ export const dashboardKpisSchema = z.object({
   orders: z.number().int().nonnegative(),
   sales: z.string().nullable(),
   currency: z.string().length(3).nullable(),
+  // El ticket medio hereda el mismo guard que `sales`: sin moneda unica, o sin
+  // pedidos vendidos, no hay promedio que afirmar.
+  avg_ticket: z.string().nullable().default(null),
+  by_status: z
+    .array(z.object({ status: z.string(), count: z.number().int().nonnegative() }))
+    .default([]),
+  // `revenue` tambien viaja como texto: es dinero.
+  top_products: z
+    .array(
+      z.object({
+        sku: z.string(),
+        name: z.string(),
+        units: z.number().int().nonnegative(),
+        revenue: z.string(),
+      }),
+    )
+    .default([]),
 })
 
 export type DashboardKpis = z.infer<typeof dashboardKpisSchema>

@@ -1,0 +1,20 @@
+[
+  {"id":"00","name":"P00","file":"00_audit_baseline.md","gates":["typecheck","lint","test","test:db","build"]},
+  {"id":"01","name":"P01","file":"01_domain_architecture.md","gates":["typecheck","lint","test","build"]},
+  {"id":"02","name":"P02","file":"02_entitlements_control_plane.md","gates":["typecheck","lint","test","test:db","build"]},
+  {"id":"03","name":"P03","file":"03_pim_catalog.md","gates":["typecheck","lint","test","test:db","build"]},
+  {"id":"04","name":"P04","file":"04_pricing_engine.md","gates":["typecheck","lint","test","test:db","build"]},
+  {"id":"05","name":"P05","file":"05_customers_b2b.md","gates":["typecheck","lint","test","test:db","build"]},
+  {"id":"06","name":"P06","file":"06_inventory_multiwarehouse.md","gates":["typecheck","lint","test","test:db","build"]},
+  {"id":"07","name":"P07","file":"07_cart_checkout_pipeline.md","gates":["typecheck","lint","test","test:db","build"]},
+  {"id":"08","name":"P08","file":"08_orders_oms.md","gates":["typecheck","lint","test","test:db","build"]},
+  {"id":"09","name":"P09","file":"09_payments.md","gates":["typecheck","lint","test","test:db","build"]},
+  {"id":"10","name":"P10","file":"10_promotions.md","gates":["typecheck","lint","test","test:db","build"]},
+  {"id":"11","name":"P11","file":"11_cms_search_white_label.md","gates":["typecheck","lint","test","test:db","build"]},
+  {"id":"12","name":"P12","file":"12_fulfillment_returns.md","gates":["typecheck","lint","test","test:db","build"]},
+  {"id":"13","name":"P13","file":"13_analytics_observability.md","gates":["typecheck","lint","test","test:db","build"]},
+  {"id":"14","name":"P14","file":"14_enterprise_api_integrations.md","gates":["typecheck","lint","test","test:db","build"]},
+  {"id":"15","name":"P15","file":"15_storefront_performance_seo.md","gates":["typecheck","lint","test","build"]},
+  {"id":"16","name":"P16","file":"16_security_enterprise_readiness.md","gates":["typecheck","lint","test","test:db","build"]},
+  {"id":"17","name":"P17","file":"17_final_quality_gate.md","gates":["typecheck","lint","test","test:db","build"]}
+]

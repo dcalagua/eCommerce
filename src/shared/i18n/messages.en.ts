@@ -315,6 +315,13 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'admin.kpi.orders': 'Orders',
     'admin.kpi.sales': 'Sales',
     'admin.kpi.sales.none': 'No orders with a single currency yet',
+    'admin.kpi.avgTicket': 'Average order value',
+    'admin.kpi.avgTicket.hint': 'Sales divided by non-cancelled orders',
+    'admin.kpi.publishedTotal': 'published of this total',
+    'admin.dashboard.byStatus': 'Orders by status',
+    'admin.dashboard.topProducts': 'Best-selling products',
+    'admin.dashboard.noOrders': 'No orders yet.',
+    'admin.dashboard.noSales': 'No product has sold yet.',
     'admin.dashboard.fresh.title': 'Your store is ready for its first product',
     'admin.dashboard.fresh.body':
       'There is no catalog or orders yet: as soon as there are, the numbers show up here.',
