@@ -420,8 +420,12 @@ Dos decisiones que lo hacen usable:
 - **El hallazgo no imprime el valor.** Un escáner que enseña el secreto en el log de CI acaba de
   publicarlo otra vez.
 
-Las excepciones son **nominales, por ruta y con motivo escrito** (tres archivos), nunca por patrón:
-«ignora los `.test.ts`» convertiría la lista en una puerta trasera.
+Las excepciones son **nominales, por ruta y con motivo escrito** (cuatro archivos), nunca por patrón:
+«ignora los `.test.ts`» convertiría la lista en una puerta trasera. Un archivo entra en la lista solo
+si la coincidencia **es** la defensa contra el hallazgo o su prueba: el guard `assertNoServiceKey`
+(`src/shared/lib/env.ts`) y su test, el propio escáner —los patrones *son* el fichero— y
+`scripts/secret-scan.test.mjs`, que planta una credencial falsa de cada clase precisamente para ver
+saltar el patrón que le toca.
 
 - Evidencia: `scripts/secret-scan.test.mjs` (13 pruebas) que comprueba lo que casi nunca se
   comprueba de un escáner: **que encuentra**. Se planta cada clase de credencial y se ve saltar el

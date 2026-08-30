@@ -85,12 +85,22 @@ Decisiones en [`docs/adr/016-security-baseline.md`](adr/016-security-baseline.md
 | `npm run test:db` | 1538 / 48 | **1614 / 50** |
 | `npm run build` | PASS | **PASS** + `dist/_headers` y la CSP generados |
 | `npm run bundle:report` | PASS | **PASS**, los cuatro recorridos dentro del techo |
-| `npm run scan:secrets` | no existía | **PASS**, sin hallazgos (600 archivos versionados + 123 del bundle) |
+| `npm run scan:secrets` | no existía | **PASS**, sin hallazgos (614 archivos versionados + 123 del bundle) |
 | `npm audit` | 2 moderadas | **2 moderadas** (analizadas una a una, §7.2 del baseline) |
 
 > **Nota de método, otra vez.** `test` y `test:db` **no se paralelizan en la misma máquina**: cada
 > archivo de base aplica las 93 migraciones sobre PGlite y el `hookTimeout` se agota, marcando los
 > casos como saltados y no como fallados. Es contención de recursos, no un fallo del código.
+
+> **Reparación posterior al commit `6806c7d` (2026-08-30).** El gate de secretos se quedó rojo en la
+> reejecución por una omisión en su propia lista de excepciones: `scripts/secret-scan.test.mjs` planta
+> una credencial falsa de cada clase —es justo lo que prueba que el escáner **encuentra**— pero no
+> estaba entre las excepciones nominales, mientras que su gemelo `src/shared/lib/env.test.ts` sí. No se
+> vio al escribir la fase porque el archivo aún no estaba versionado y `git ls-files` no lo listaba; al
+> commitearlo, el escáner empezó a delatarse a sí mismo. Corregido añadiendo la **cuarta excepción por
+> ruta y con motivo**, el mismo mecanismo documentado, sin tocar un patrón ni relajar una aserción.
+> Los cinco gates vuelven a verde: `lint` 0 problemas, `typecheck` limpio, `test` **2470 / 107
+> archivos**, `build` OK y `scan:secrets` sin hallazgos sobre el bundle recién construido.
 
 ### El criterio de aceptación, comprobado
 

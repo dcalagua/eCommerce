@@ -158,6 +158,10 @@ const ALLOWED = new Map([
     'comprueba que el guard salta; los valores son literales de prueba, no claves',
   ],
   ['scripts/secret-scan.mjs', 'este mismo escáner: los patrones son el fichero'],
+  [
+    'scripts/secret-scan.test.mjs',
+    'planta una credencial falsa de cada clase para comprobar que el patrón salta: la coincidencia ES la prueba del gate',
+  ],
 ])
 
 /** Rutas del árbol de trabajo que nunca se recorren. */
