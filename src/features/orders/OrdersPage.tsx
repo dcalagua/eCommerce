@@ -264,18 +264,19 @@ export function OrdersPage() {
                 size="small"
                 stickyHeader
                 sx={{
-                  '& thead th': { bgcolor: 'var(--card)', borderBottom: '2px solid var(--border)' },
-                  // Separadores verticales tenues: guian el ojo por la columna
-                  // sin convertir la tabla en una hoja de calculo. El ultimo no
-                  // lleva, para no dibujar una linea contra el borde del panel.
-                  '& th:not(:last-of-type), & td:not(:last-of-type)': {
-                    borderRight: '1px solid var(--border)',
+                  // Cabecera en gris solido. `color-mix` sobre `--muted` en vez
+                  // de un hex: asi el gris sale del token del tema y funciona
+                  // igual en claro que en oscuro, sin cablear dos colores.
+                  '& thead th': {
+                    bgcolor: 'color-mix(in srgb, var(--muted) 18%, var(--card))',
+                    color: 'var(--text)',
+                    borderBottom: '1px solid var(--border)',
                   },
+                  // Solo lineas HORIZONTALES: las verticales convertian la tabla
+                  // en una hoja de calculo y competian con las etiquetas de
+                  // estado, que ya tienen forma propia.
                   '& tbody td': { borderBottom: '1px solid var(--border)' },
                   '& tbody tr:last-of-type td': { borderBottom: 0 },
-                  // Franja alterna muy tenue: con filas de dos lineas ayuda a no
-                  // saltar de fila al recorrer la tabla en horizontal.
-                  '& tbody tr:nth-of-type(even)': { bgcolor: 'var(--neutral-soft)' },
                   // La fila entera es pulsable (role=button), pero eso no se
                   // ve: el fondo al pasar y el galon que aparece a la derecha
                   // son la unica pista de que hay algo detras.
