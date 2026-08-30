@@ -1,4 +1,4 @@
-import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined'
+import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
 import { Alert, Box, Button, Card, Chip, Divider, Stack, Typography } from '@mui/material'
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
@@ -65,7 +65,7 @@ export function StoreCartPage() {
           <EmptyState
             title={t('store.cart.empty')}
             description={t('store.cart.emptyBody')}
-            icon={<ShoppingCartOutlinedIcon fontSize="small" />}
+            icon={<ShoppingCartRoundedIcon fontSize="small" />}
             action={
               <Button component={Link} to={`/s/${storeSlug}`} variant="contained">
                 {t('store.cart.continue')}

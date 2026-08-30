@@ -1,4 +1,4 @@
-import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined'
+import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Alert,
@@ -120,7 +120,7 @@ export function LevelsSection() {
           <EmptyState
             title={search ? t('inventory.noResults') : t('inventory.levels.empty')}
             description={search ? undefined : t('inventory.levels.emptyBody')}
-            icon={<Inventory2OutlinedIcon fontSize="small" />}
+            icon={<Inventory2RoundedIcon fontSize="small" />}
           />
         )}
         {!query.isPending && !query.isError && (query.data ?? []).length > 0 && (

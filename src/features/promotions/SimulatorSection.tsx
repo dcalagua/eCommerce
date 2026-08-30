@@ -1,4 +1,4 @@
-import ScienceOutlinedIcon from '@mui/icons-material/ScienceOutlined'
+import ScienceRoundedIcon from '@mui/icons-material/ScienceRounded'
 import {
   Alert,
   Button,
@@ -182,7 +182,7 @@ export function SimulatorSection() {
           <EmptyState
             title={t('promotions.simulator.empty')}
             description={t('promotions.simulator.emptyBody')}
-            icon={<ScienceOutlinedIcon fontSize="small" />}
+            icon={<ScienceRoundedIcon fontSize="small" />}
           />
         </Card>
       )}

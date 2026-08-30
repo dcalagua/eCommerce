@@ -1,4 +1,4 @@
-import WarehouseOutlinedIcon from '@mui/icons-material/WarehouseOutlined'
+import WarehouseRoundedIcon from '@mui/icons-material/WarehouseRounded'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Alert,
@@ -139,7 +139,7 @@ export function WarehousesSection() {
           <EmptyState
             title={search ? t('inventory.noResults') : t('inventory.warehouses.empty')}
             description={search ? undefined : t('inventory.warehouses.emptyBody')}
-            icon={<WarehouseOutlinedIcon fontSize="small" />}
+            icon={<WarehouseRoundedIcon fontSize="small" />}
           />
         )}
         {!query.isPending && !query.isError && warehouses.length > 0 && (

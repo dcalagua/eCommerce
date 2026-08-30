@@ -1,10 +1,10 @@
-import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined'
-import LocalMallOutlinedIcon from '@mui/icons-material/LocalMallOutlined'
-import PaidOutlinedIcon from '@mui/icons-material/PaidOutlined'
-import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
-import TrendingUpOutlinedIcon from '@mui/icons-material/TrendingUpOutlined'
-import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
-import { Box, Card, CardContent, Grid, Stack, Typography } from '@mui/material'
+import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
+import LocalMallRoundedIcon from '@mui/icons-material/LocalMallRounded'
+import PaidRoundedIcon from '@mui/icons-material/PaidRounded'
+import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
+import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
+import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
+import { Card, CardContent, Grid, Stack, Typography } from '@mui/material'
 import type { ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { Button } from '@mui/material'
@@ -12,6 +12,7 @@ import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { formatMoney } from '@/shared/lib/format'
+import { AppIcon } from '@/shared/ui/AppIcon'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/states'
 import { T } from '@/theme/tokens'
@@ -43,9 +44,7 @@ function HeroCard({ label, value, hint, icon }: {
     <Card sx={{ height: '100%', borderColor: 'var(--accent)' }}>
       <CardContent>
         <Stack direction="row" sx={{ alignItems: 'center', gap: 0.75 }}>
-          <Box sx={{ color: 'var(--accent-deep)', display: 'flex' }} aria-hidden>
-            {icon}
-          </Box>
+          <AppIcon tone="accent">{icon}</AppIcon>
           <Typography
             sx={{
               fontSize: T.label,
@@ -85,9 +84,7 @@ function KpiCard({
     <Card sx={{ height: '100%' }}>
       <CardContent>
         <Stack direction="row" sx={{ alignItems: 'center', gap: 0.75 }}>
-          <Box sx={{ color: 'var(--muted)', display: 'flex' }} aria-hidden>
-            {icon}
-          </Box>
+          <AppIcon tone="neutral" size="sm">{icon}</AppIcon>
           <Typography
             sx={{
               fontSize: T.label,
@@ -147,7 +144,7 @@ export function DashboardPage() {
           <EmptyState
             title={t('admin.store.none')}
             description={t('admin.store.noneBody')}
-            icon={<StorefrontOutlinedIcon fontSize="small" />}
+            icon={<StorefrontRoundedIcon fontSize="small" />}
           />
         </Card>
       </>
@@ -176,7 +173,7 @@ export function DashboardPage() {
     key: 'sales',
     label: 'admin.kpi.sales',
     value: money(kpis.sales),
-    icon: <PaidOutlinedIcon fontSize="small" />,
+    icon: <PaidRoundedIcon fontSize="small" />,
     ...(kpis.sales === null ? { hint: t('admin.kpi.sales.none') } : {}),
   }
 
@@ -191,20 +188,20 @@ export function DashboardPage() {
       key: 'avgTicket',
       label: 'admin.kpi.avgTicket',
       value: money(kpis.avg_ticket),
-      icon: <TrendingUpOutlinedIcon fontSize="small" />,
+      icon: <TrendingUpRoundedIcon fontSize="small" />,
       hint: t('admin.kpi.avgTicket.hint'),
     },
     {
       key: 'orders',
       label: 'admin.kpi.orders',
       value: String(kpis.orders),
-      icon: <ReceiptLongOutlinedIcon fontSize="small" />,
+      icon: <ReceiptLongRoundedIcon fontSize="small" />,
     },
     {
       key: 'products',
       label: 'admin.kpi.products',
       value: String(kpis.products),
-      icon: <LocalMallOutlinedIcon fontSize="small" />,
+      icon: <LocalMallRoundedIcon fontSize="small" />,
       // Publicados deja de ser una tarjeta propia: como cifra suelta no dice
       // nada, y junto a total responde «cuanto catalogo esta vivo».
       hint: `${kpis.published} ${t('admin.kpi.publishedTotal')}`,
@@ -296,7 +293,7 @@ export function DashboardPage() {
             <EmptyState
               title={t('admin.dashboard.fresh.title')}
               description={t('admin.dashboard.fresh.body')}
-              icon={<Inventory2OutlinedIcon fontSize="small" />}
+              icon={<Inventory2RoundedIcon fontSize="small" />}
               action={
                 <Button component={RouterLink} to="/app/products" variant="contained">
                   {t('admin.dashboard.fresh.cta')}

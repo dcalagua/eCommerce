@@ -1,4 +1,4 @@
-import ConfirmationNumberOutlinedIcon from '@mui/icons-material/ConfirmationNumberOutlined'
+import ConfirmationNumberRoundedIcon from '@mui/icons-material/ConfirmationNumberRounded'
 import {
   Alert,
   Box,
@@ -165,7 +165,7 @@ export function CouponsSection() {
           <EmptyState
             title={t('promotions.coupons.empty')}
             description={t('promotions.coupons.emptyBody')}
-            icon={<ConfirmationNumberOutlinedIcon fontSize="small" />}
+            icon={<ConfirmationNumberRoundedIcon fontSize="small" />}
           />
         )}
         {!coupons.isPending && !coupons.isError && list.length > 0 && (

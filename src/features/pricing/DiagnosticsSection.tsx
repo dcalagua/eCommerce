@@ -1,4 +1,4 @@
-import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined'
+import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded'
 import {
   Alert,
   Card,
@@ -62,7 +62,7 @@ export function DiagnosticsSection() {
             <EmptyState
               title={t('pricing.diagnostics.clean')}
               description={t('pricing.diagnostics.cleanBody')}
-              icon={<FactCheckOutlinedIcon fontSize="small" />}
+              icon={<FactCheckRoundedIcon fontSize="small" />}
             />
           )}
           {rows.length > 0 && (

@@ -1,4 +1,4 @@
-import ViewQuiltOutlinedIcon from '@mui/icons-material/ViewQuiltOutlined'
+import ViewQuiltRoundedIcon from '@mui/icons-material/ViewQuiltRounded'
 import {
   Box,
   Button,
@@ -200,7 +200,7 @@ export function BlocksSection({ pageId }: { pageId: string | null }) {
       <EmptyState
         title={t('content.blocks.noPageTitle')}
         description={t('content.blocks.noPageBody')}
-        icon={<ViewQuiltOutlinedIcon fontSize="small" />}
+        icon={<ViewQuiltRoundedIcon fontSize="small" />}
       />
     )
   }
@@ -221,7 +221,7 @@ export function BlocksSection({ pageId }: { pageId: string | null }) {
           <EmptyState
             title={t('content.blocks.emptyTitle')}
             description={t('content.blocks.emptyBody')}
-            icon={<ViewQuiltOutlinedIcon fontSize="small" />}
+            icon={<ViewQuiltRoundedIcon fontSize="small" />}
             action={
               <Button variant="contained" onClick={openCreate}>
                 {t('content.blocks.new')}

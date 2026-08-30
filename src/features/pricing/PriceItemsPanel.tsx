@@ -1,4 +1,4 @@
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import {
   Alert,
   Autocomplete,
@@ -271,7 +271,7 @@ export function PriceItemsPanel({ list, canWrite }: { list: PriceList; canWrite:
                       void remove.mutateAsync(item.id).then(() => notify(t('pricing.toast.deleted')))
                     }}
                   >
-                    <DeleteOutlineIcon fontSize="small" />
+                    <DeleteRoundedIcon fontSize="small" />
                   </IconButton>
                 </TableCell>
               </TableRow>

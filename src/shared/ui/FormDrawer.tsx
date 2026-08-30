@@ -1,4 +1,4 @@
-import CloseIcon from '@mui/icons-material/Close'
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import { Box, Drawer, IconButton, Stack, Typography } from '@mui/material'
 import type { ReactNode } from 'react'
 import { useT } from '@/shared/i18n/i18n-context'
@@ -74,7 +74,7 @@ export function FormDrawer({
             )}
           </Box>
           <IconButton onClick={onClose} aria-label={t('common.close')} disabled={busy} edge="end">
-            <CloseIcon fontSize="small" />
+            <CloseRoundedIcon fontSize="small" />
           </IconButton>
         </Stack>
 

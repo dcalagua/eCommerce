@@ -1,4 +1,4 @@
-import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined'
+import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
 import {
   Card,
   Chip,
@@ -116,7 +116,7 @@ export function QueueSection() {
           <EmptyState
             title={t('fulfillment.queue.empty')}
             description={t('fulfillment.queue.emptyBody')}
-            icon={<LocalShippingOutlinedIcon fontSize="small" />}
+            icon={<LocalShippingRoundedIcon fontSize="small" />}
           />
         )}
         {!queue.isPending && !queue.isError && list.length > 0 && (

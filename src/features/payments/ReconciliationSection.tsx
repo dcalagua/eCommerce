@@ -1,4 +1,4 @@
-import BalanceOutlinedIcon from '@mui/icons-material/BalanceOutlined'
+import BalanceRoundedIcon from '@mui/icons-material/BalanceRounded'
 import {
   Alert,
   Box,
@@ -180,7 +180,7 @@ export function ReconciliationSection() {
           <EmptyState
             title={t('payments.reconciliation.empty')}
             description={t('payments.reconciliation.emptyBody')}
-            icon={<BalanceOutlinedIcon fontSize="small" />}
+            icon={<BalanceRoundedIcon fontSize="small" />}
           />
         )}
         {!records.isPending && !records.isError && list.length > 0 && (

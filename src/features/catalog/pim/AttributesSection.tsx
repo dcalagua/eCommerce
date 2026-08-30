@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined'
+import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
 import {
   Alert,
   Box,
@@ -132,7 +132,7 @@ export function AttributesSection() {
         {isEmpty && (
           <EmptyState
             title={search ? t('pim.noResults') : t('pim.attributes.empty')}
-            icon={<TuneOutlinedIcon fontSize="small" />}
+            icon={<TuneRoundedIcon fontSize="small" />}
           />
         )}
         {!attributes.isPending && !attributes.isError && items.length > 0 && (

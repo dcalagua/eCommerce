@@ -1,4 +1,4 @@
-import ApartmentOutlinedIcon from '@mui/icons-material/ApartmentOutlined'
+import ApartmentRoundedIcon from '@mui/icons-material/ApartmentRounded'
 import {
   Card,
   CardContent,
@@ -85,7 +85,7 @@ export function StoreAccountPage() {
       <EmptyState
         title={t('account.signedOut')}
         description={t('account.signedOutBody')}
-        icon={<ApartmentOutlinedIcon fontSize="small" />}
+        icon={<ApartmentRoundedIcon fontSize="small" />}
         action={<Link to="/login">{t('auth.submit')}</Link>}
       />
     )
@@ -101,7 +101,7 @@ export function StoreAccountPage() {
       <EmptyState
         title={t('account.noAccounts')}
         description={t('account.noAccountsBody')}
-        icon={<ApartmentOutlinedIcon fontSize="small" />}
+        icon={<ApartmentRoundedIcon fontSize="small" />}
       />
     )
   }

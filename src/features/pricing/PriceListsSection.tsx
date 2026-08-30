@@ -1,4 +1,4 @@
-import SellOutlinedIcon from '@mui/icons-material/SellOutlined'
+import SellRoundedIcon from '@mui/icons-material/SellRounded'
 import {
   Box,
   Button,
@@ -87,7 +87,7 @@ export function PriceListsSection() {
           <EmptyState
             title={search ? t('pricing.noResults') : t('pricing.lists.empty')}
             description={search ? undefined : t('pricing.lists.emptyBody')}
-            icon={<SellOutlinedIcon fontSize="small" />}
+            icon={<SellRoundedIcon fontSize="small" />}
           />
         )}
         {!query.isPending && !query.isError && lists.length > 0 && (

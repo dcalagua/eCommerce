@@ -1,4 +1,4 @@
-import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
+import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import { MenuItem, Stack, TextField, Typography } from '@mui/material'
 import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
@@ -35,7 +35,7 @@ export function StoreSwitcher() {
         spacing={0.75}
         sx={{ alignItems: 'center', color: 'var(--muted)' }}
       >
-        <StorefrontOutlinedIcon sx={{ fontSize: 16 }} />
+        <StorefrontRoundedIcon sx={{ fontSize: 16 }} />
         <Typography sx={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
           {activeStore?.name ?? stores[0]?.name}
         </Typography>
@@ -55,7 +55,7 @@ export function StoreSwitcher() {
       {stores.map((store) => (
         <MenuItem key={store.id} value={store.id}>
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-            <StorefrontOutlinedIcon sx={{ fontSize: 16 }} />
+            <StorefrontRoundedIcon sx={{ fontSize: 16 }} />
             <span>{store.name}</span>
           </Stack>
         </MenuItem>

@@ -1,6 +1,6 @@
-import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined'
-import MoreVertIcon from '@mui/icons-material/MoreVert'
-import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
+import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
+import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded'
+import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import {
   Button,
   Card,
@@ -130,7 +130,7 @@ export function ProductsPage() {
           <EmptyState
             title={t('admin.store.none')}
             description={t('admin.store.noneBody')}
-            icon={<StorefrontOutlinedIcon fontSize="small" />}
+            icon={<StorefrontRoundedIcon fontSize="small" />}
           />
         </Card>
       </>
@@ -221,7 +221,7 @@ export function ProductsPage() {
           {isEmpty && (
             <EmptyState
               title={search ? t('catalog.products.emptySearch') : t('admin.products.empty')}
-              icon={<Inventory2OutlinedIcon fontSize="small" />}
+              icon={<Inventory2RoundedIcon fontSize="small" />}
               action={
                 canWrite && !search ? (
                   <Button variant="contained" onClick={() => setDrawer({ open: true, product: null })}>
@@ -289,7 +289,7 @@ export function ProductsPage() {
                         aria-label={`${t('common.actions')}: ${product.name}`}
                         onClick={(event) => setMenu({ anchor: event.currentTarget, product })}
                       >
-                        <MoreVertIcon fontSize="small" />
+                        <MoreVertRoundedIcon fontSize="small" />
                       </IconButton>
                     </TableCell>
                   </TableRow>

@@ -1,18 +1,22 @@
-import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined'
-import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined'
-import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined'
-import MenuIcon from '@mui/icons-material/Menu'
-import PersonOutlineIcon from '@mui/icons-material/PersonOutline'
+import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded'
+import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded'
+import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
+import DensityMediumRoundedIcon from '@mui/icons-material/DensityMediumRounded'
+import LanguageRoundedIcon from '@mui/icons-material/LanguageRounded'
+import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import {
+  Avatar,
   Box,
   Chip,
   Divider,
   Drawer,
   IconButton,
-  ListItemIcon,
   Menu,
   MenuItem,
   Stack,
+  Switch,
+  ToggleButton,
+  ToggleButtonGroup,
   Toolbar,
   Typography,
   useMediaQuery,
@@ -25,6 +29,8 @@ import { useSessionContext } from '@/features/auth/session-context'
 import { useCapabilities } from '@/features/capabilities/capabilities-context'
 import { RequireTenant } from '@/features/tenant/RequireTenant'
 import { useTenant } from '@/features/tenant/tenant-context'
+import { R, T } from '@/theme/tokens'
+import { AppIcon } from '@/shared/ui/AppIcon'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { AppBreadcrumbs } from '@/shared/ui/AppBreadcrumbs'
 import { BrandLockup } from '@/shared/ui/BrandLockup'
@@ -115,35 +121,149 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
+/**
+ * Menu de cuenta.
+ *
+ * Lleva identidad (avatar, correo, sociedad), preferencias e salir. Las
+ * preferencias que ofrece son EXACTAMENTE las que el contrato permite al
+ * usuario: idioma, modo claro/oscuro y densidad.
+ *
+ * **No hay selector de paleta, y es deliberado.** El contrato §4.4 dice que el
+ * acento es 100 % del tenant (`accent_color` de Branding) y que el usuario
+ * elige solo modo y densidad. Un selector de color aqui dejaria que cualquier
+ * operario repintara la marca de su empresa desde un menu.
+ */
 function AccountMenu() {
-  const { t } = useI18n()
-  const { email, role } = useTenant()
+  const { t, locale, setLocale } = useI18n()
+  const { email, role, tenant } = useTenant()
+  const { appearance, toggleMode, setDensity } = useAppearance()
   const { signOut } = useSessionContext()
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
+
+  const initial = (email || '?').trim().charAt(0).toUpperCase()
 
   return (
     <>
       <IconButton onClick={(event) => setAnchor(event.currentTarget)} aria-label={t('admin.account')}>
-        <PersonOutlineIcon fontSize="small" />
+        <Avatar sx={{ width: 30, height: 30, fontSize: 13, fontWeight: 800, bgcolor: 'var(--accent)', color: '#fff' }}>
+          {initial}
+        </Avatar>
       </IconButton>
-      <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)}>
-        <Box sx={{ px: 2, py: 1.25, maxWidth: 280 }}>
-          <Typography sx={{ fontSize: 13, fontWeight: 700, wordBreak: 'break-all' }}>
-            {email || '—'}
-          </Typography>
-          {role && <Chip size="small" label={role} sx={{ mt: 0.75, fontWeight: 700 }} />}
+      <Menu
+        anchorEl={anchor}
+        open={Boolean(anchor)}
+        onClose={() => setAnchor(null)}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        slotProps={{ paper: { sx: { width: 300, borderRadius: `${R.lg}px`, mt: 1 } } }}
+      >
+        {/* Cabecera con la identidad, sobre el degradado de suite. */}
+        <Box sx={{ px: 2, py: 2, background: 'var(--sidebar)', color: '#fff' }}>
+          <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
+            <Avatar sx={{ width: 40, height: 40, fontWeight: 800, bgcolor: 'rgba(255,255,255,0.18)', color: '#fff' }}>
+              {initial}
+            </Avatar>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography sx={{ fontSize: 13, fontWeight: 800, wordBreak: 'break-all' }}>
+                {email || '—'}
+              </Typography>
+              {tenant?.name && (
+                <Typography sx={{ fontSize: 11.5, opacity: 0.85 }}>{tenant.name}</Typography>
+              )}
+            </Box>
+          </Stack>
+          {role && (
+            <Chip
+              size="small"
+              label={role}
+              sx={{ mt: 1.25, fontWeight: 700, bgcolor: 'rgba(255,255,255,0.18)', color: '#fff' }}
+            />
+          )}
         </Box>
+
+        <Typography
+          sx={{
+            px: 2, pt: 1.75, pb: 0.75, fontSize: T.micro, fontWeight: 800,
+            letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--muted)',
+          }}
+        >
+          {t('admin.account.preferences')}
+        </Typography>
+
+        <Stack sx={{ px: 2, pb: 1.5, gap: 1.5 }}>
+          <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
+            <AppIcon tone="neutral" size="sm"><LanguageRoundedIcon /></AppIcon>
+            <Typography sx={{ fontSize: T.body, fontWeight: 600, flex: 1 }}>
+              {t('admin.account.language')}
+            </Typography>
+            <ToggleButtonGroup
+              size="small"
+              exclusive
+              value={locale}
+              onChange={(_, next) => next && setLocale(next as typeof locale)}
+              aria-label={t('admin.account.language')}
+            >
+              <ToggleButton value="es" sx={{ px: 1.25, textTransform: 'none' }}>ES</ToggleButton>
+              <ToggleButton value="en" sx={{ px: 1.25, textTransform: 'none' }}>EN</ToggleButton>
+            </ToggleButtonGroup>
+          </Stack>
+
+          <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
+            <AppIcon tone="neutral" size="sm">
+              {appearance.mode === 'dark' ? <LightModeRoundedIcon /> : <DarkModeRoundedIcon />}
+            </AppIcon>
+            <Typography sx={{ fontSize: T.body, fontWeight: 600, flex: 1 }}>
+              {t('admin.account.mode')}
+            </Typography>
+            <Switch checked={appearance.mode === 'dark'} onChange={toggleMode} />
+          </Stack>
+
+          <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
+            <AppIcon tone="neutral" size="sm"><DensityMediumRoundedIcon /></AppIcon>
+            <Typography sx={{ fontSize: T.body, fontWeight: 600, flex: 1 }}>
+              {t('admin.account.density')}
+            </Typography>
+            <ToggleButtonGroup
+              size="small"
+              exclusive
+              value={appearance.density}
+              onChange={(_, next) => next && setDensity(next as typeof appearance.density)}
+              aria-label={t('admin.account.density')}
+            >
+              <ToggleButton value="comoda" sx={{ px: 1, textTransform: 'none' }}>
+                {t('appearance.density.comoda')}
+              </ToggleButton>
+              <ToggleButton value="equilibrada" sx={{ px: 1, textTransform: 'none' }}>
+                {t('appearance.density.equilibrada')}
+              </ToggleButton>
+              <ToggleButton value="compacta" sx={{ px: 1, textTransform: 'none' }}>
+                {t('appearance.density.compacta')}
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Stack>
+        </Stack>
+
         <Divider />
         <MenuItem
           onClick={() => {
             setAnchor(null)
             void signOut()
           }}
+          sx={{ py: 1.25, gap: 1.25 }}
+          // El nombre accesible es la ACCION. Sin esto, el lector anuncia
+          // «Cerrar sesionSalir de tu cuenta»: la linea de ayuda es apoyo
+          // visual, no parte del nombre del control.
+          aria-label={t('nav.signOut')}
         >
-          <ListItemIcon>
-            <LogoutOutlinedIcon fontSize="small" />
-          </ListItemIcon>
-          {t('nav.signOut')}
+          <AppIcon tone="danger" size="sm"><LogoutRoundedIcon /></AppIcon>
+          <Box>
+            <Typography sx={{ fontSize: T.body, fontWeight: 700, color: 'var(--red)' }}>
+              {t('nav.signOut')}
+            </Typography>
+            <Typography sx={{ fontSize: 11.5, color: 'var(--muted)' }}>
+              {t('admin.account.signOutHint')}
+            </Typography>
+          </Box>
         </MenuItem>
       </Menu>
     </>
@@ -189,7 +309,7 @@ function AdminChrome() {
         >
           {!isDesktop && (
             <IconButton edge="start" onClick={() => setDrawerOpen(true)} aria-label={t('admin.openMenu')}>
-              <MenuIcon />
+              <MenuRoundedIcon />
             </IconButton>
           )}
 
@@ -212,9 +332,9 @@ function AdminChrome() {
               aria-label={appearance.mode === 'dark' ? t('common.theme.light') : t('common.theme.dark')}
             >
               {appearance.mode === 'dark' ? (
-                <LightModeOutlinedIcon fontSize="small" />
+                <LightModeRoundedIcon fontSize="small" />
               ) : (
-                <DarkModeOutlinedIcon fontSize="small" />
+                <DarkModeRoundedIcon fontSize="small" />
               )}
             </IconButton>
             <AccountMenu />

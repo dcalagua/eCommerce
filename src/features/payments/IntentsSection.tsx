@@ -1,4 +1,4 @@
-import PaymentsOutlinedIcon from '@mui/icons-material/PaymentsOutlined'
+import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import {
   Alert,
   Box,
@@ -156,7 +156,7 @@ export function IntentsSection() {
           <EmptyState
             title={t('payments.intents.empty')}
             description={t('payments.intents.emptyBody')}
-            icon={<PaymentsOutlinedIcon fontSize="small" />}
+            icon={<PaymentsRoundedIcon fontSize="small" />}
           />
         )}
         {!intents.isPending && !intents.isError && list.length > 0 && (

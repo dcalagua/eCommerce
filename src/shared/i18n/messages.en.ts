@@ -304,6 +304,11 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'tenant.unauthorized.body':
       'Your session is valid but it does not carry the account and company this app needs. Ask your company administrator to enable eCommerce for you.',
     'admin.account': 'Your account',
+    'admin.account.preferences': 'Preferences',
+    'admin.account.language': 'Language',
+    'admin.account.mode': 'Dark theme',
+    'admin.account.density': 'Density',
+    'admin.account.signOutHint': 'Sign out of your account',
     'admin.openMenu': 'Open menu',
     'admin.breadcrumb': 'Breadcrumb',
     'admin.tenant.label': 'Workspace',

@@ -1,5 +1,5 @@
-import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined'
-import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined'
+import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded'
+import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
 import {
   Badge,
   Box,
@@ -271,7 +271,7 @@ function AccountButton({ storeSlug }: { storeSlug: string }) {
     <Button
       component={Link}
       to={`/s/${storeSlug}/account`}
-      startIcon={<PersonOutlineOutlinedIcon />}
+      startIcon={<PersonOutlineRoundedIcon />}
       sx={{ flexShrink: 0 }}
     >
       <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
@@ -295,7 +295,7 @@ function CartButton() {
       onClick={openCart}
       startIcon={
         <Badge badgeContent={count} color="primary" aria-hidden>
-          <ShoppingCartOutlinedIcon />
+          <ShoppingCartRoundedIcon />
         </Badge>
       }
       aria-label={`${t('store.cart.title')} (${count})`}

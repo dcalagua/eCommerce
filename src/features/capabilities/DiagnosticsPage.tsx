@@ -1,4 +1,4 @@
-import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined'
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import {
   Alert,
   Button,
@@ -124,7 +124,7 @@ function ContextSection({ context }: { context: PlatformContext }) {
           <Stack direction="row" spacing={1}>
             <Button
               variant="outlined"
-              startIcon={<RefreshOutlinedIcon fontSize="small" />}
+              startIcon={<RefreshRoundedIcon fontSize="small" />}
               disabled={refresh.isPending}
               onClick={() => refresh.mutate()}
             >

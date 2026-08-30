@@ -1,4 +1,4 @@
-import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
+import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded'
 import {
   Box,
   Button,
@@ -95,7 +95,7 @@ export function MovementsSection() {
             <EmptyState
               title={t('inventory.movements.empty')}
               description={t('inventory.movements.emptyBody')}
-              icon={<HistoryOutlinedIcon fontSize="small" />}
+              icon={<HistoryRoundedIcon fontSize="small" />}
             />
           )}
           {!query.isPending && !query.isError && (query.data ?? []).length > 0 && (

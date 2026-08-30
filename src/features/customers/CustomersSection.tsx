@@ -1,4 +1,4 @@
-import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined'
+import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded'
 import {
   Box,
   Button,
@@ -141,7 +141,7 @@ export function CustomersSection() {
           <EmptyState
             title={search ? t('customers.noResults') : t('customers.list.empty')}
             description={search ? undefined : t('customers.list.emptyBody')}
-            icon={<PeopleAltOutlinedIcon fontSize="small" />}
+            icon={<PeopleAltRoundedIcon fontSize="small" />}
           />
         )}
         {!query.isPending && !query.isError && rows.length > 0 && (

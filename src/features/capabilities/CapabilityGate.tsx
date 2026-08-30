@@ -1,4 +1,4 @@
-import ExtensionOutlinedIcon from '@mui/icons-material/ExtensionOutlined'
+import ExtensionRoundedIcon from '@mui/icons-material/ExtensionRounded'
 import { Box, Stack, Typography } from '@mui/material'
 import type { ReactNode } from 'react'
 import { capability, type CapabilityId } from '@/domain'
@@ -51,7 +51,7 @@ export function NotEntitledState({ id }: { id: CapabilityId }) {
           color: 'var(--accent-deep)',
         }}
       >
-        <ExtensionOutlinedIcon fontSize="small" />
+        <ExtensionRoundedIcon fontSize="small" />
       </Box>
       <Typography component="h2" sx={{ fontSize: 16, fontWeight: 800 }}>
         {t('capabilities.locked.title')}

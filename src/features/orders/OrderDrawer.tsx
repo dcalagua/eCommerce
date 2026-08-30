@@ -1,5 +1,5 @@
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
-import OpenInNewIcon from '@mui/icons-material/OpenInNew'
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
+import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded'
 import {
   Alert,
   Box,
@@ -587,7 +587,7 @@ export function OrderDrawer({
                     void run(() => removeNote.mutateAsync(note.id), 'orders.toast.noteRemoved')
                   }
                 >
-                  <DeleteOutlineIcon fontSize="small" />
+                  <DeleteRoundedIcon fontSize="small" />
                 </IconButton>
               )}
             </Stack>
@@ -660,7 +660,7 @@ export function OrderDrawer({
                     target="_blank"
                     rel="noreferrer noopener"
                   >
-                    <OpenInNewIcon fontSize="small" />
+                    <OpenInNewRoundedIcon fontSize="small" />
                   </IconButton>
                 )}
                 {canWrite && (
@@ -672,7 +672,7 @@ export function OrderDrawer({
                       void run(() => removeRef.mutateAsync(ref.id), 'orders.toast.refRemoved')
                     }
                   >
-                    <DeleteOutlineIcon fontSize="small" />
+                    <DeleteRoundedIcon fontSize="small" />
                   </IconButton>
                 )}
               </Stack>

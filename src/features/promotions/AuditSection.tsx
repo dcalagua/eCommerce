@@ -1,4 +1,4 @@
-import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
+import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded'
 import {
   Card,
   Chip,
@@ -78,7 +78,7 @@ export function AuditSection() {
           <EmptyState
             title={t('promotions.audit.empty')}
             description={t('promotions.audit.emptyBody')}
-            icon={<HistoryOutlinedIcon fontSize="small" />}
+            icon={<HistoryRoundedIcon fontSize="small" />}
           />
         )}
         {!events.isPending && !events.isError && list.length > 0 && (

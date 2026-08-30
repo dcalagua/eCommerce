@@ -1,20 +1,20 @@
-import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined'
-import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined'
-import InsightsOutlinedIcon from '@mui/icons-material/InsightsOutlined'
-import MonitorHeartOutlinedIcon from '@mui/icons-material/MonitorHeartOutlined'
-import HubOutlinedIcon from '@mui/icons-material/HubOutlined'
-import HealthAndSafetyOutlinedIcon from '@mui/icons-material/HealthAndSafetyOutlined'
-import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined'
-import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
-import LocalOfferOutlinedIcon from '@mui/icons-material/LocalOfferOutlined'
-import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined'
-import PriceChangeOutlinedIcon from '@mui/icons-material/PriceChangeOutlined'
-import PaymentsOutlinedIcon from '@mui/icons-material/PaymentsOutlined'
-import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
-import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
-import SpaceDashboardOutlinedIcon from '@mui/icons-material/SpaceDashboardOutlined'
-import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined'
-import WarehouseOutlinedIcon from '@mui/icons-material/WarehouseOutlined'
+import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded'
+import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
+import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded'
+import MonitorHeartRoundedIcon from '@mui/icons-material/MonitorHeartRounded'
+import HubRoundedIcon from '@mui/icons-material/HubRounded'
+import HealthAndSafetyRoundedIcon from '@mui/icons-material/HealthAndSafetyRounded'
+import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded'
+import ArticleRoundedIcon from '@mui/icons-material/ArticleRounded'
+import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
+import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
+import PriceChangeRoundedIcon from '@mui/icons-material/PriceChangeRounded'
+import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
+import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
+import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
+import SpaceDashboardRoundedIcon from '@mui/icons-material/SpaceDashboardRounded'
+import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
+import WarehouseRoundedIcon from '@mui/icons-material/WarehouseRounded'
 import type { ReactNode } from 'react'
 import type { CapabilityId } from '@/domain'
 import type { MessageKey } from '@/shared/i18n/messages'
@@ -46,56 +46,56 @@ export const NAV_ITEMS: NavItem[] = [
   {
     to: '/app',
     label: 'nav.dashboard',
-    icon: <SpaceDashboardOutlinedIcon fontSize="small" />,
+    icon: <SpaceDashboardRoundedIcon fontSize="small" />,
     end: true,
     capability: 'analytics.basic',
   },
   {
     to: '/app/products',
     label: 'nav.products',
-    icon: <Inventory2OutlinedIcon fontSize="small" />,
+    icon: <Inventory2RoundedIcon fontSize="small" />,
     capability: 'catalog',
   },
   {
     to: '/app/categories',
     label: 'nav.categories',
-    icon: <CategoryOutlinedIcon fontSize="small" />,
+    icon: <CategoryRoundedIcon fontSize="small" />,
     capability: 'catalog',
   },
   {
     to: '/app/pim',
     label: 'nav.pim',
-    icon: <TuneOutlinedIcon fontSize="small" />,
+    icon: <TuneRoundedIcon fontSize="small" />,
     capability: 'catalog.advanced',
   },
   {
     to: '/app/pricing',
     label: 'nav.pricing',
-    icon: <PriceChangeOutlinedIcon fontSize="small" />,
+    icon: <PriceChangeRoundedIcon fontSize="small" />,
     capability: 'pricing.lists',
   },
   {
     to: '/app/inventory',
     label: 'nav.inventory',
-    icon: <WarehouseOutlinedIcon fontSize="small" />,
+    icon: <WarehouseRoundedIcon fontSize="small" />,
     capability: 'inventory.multiwarehouse',
   },
   {
     to: '/app/customers',
     label: 'nav.customers',
-    icon: <PeopleAltOutlinedIcon fontSize="small" />,
+    icon: <PeopleAltRoundedIcon fontSize="small" />,
     capability: 'customers',
   },
   {
     to: '/app/orders',
     label: 'nav.orders',
-    icon: <ReceiptLongOutlinedIcon fontSize="small" />,
+    icon: <ReceiptLongRoundedIcon fontSize="small" />,
     capability: 'orders',
   },
   {
     to: '/app/payments',
     label: 'nav.payments',
-    icon: <PaymentsOutlinedIcon fontSize="small" />,
+    icon: <PaymentsRoundedIcon fontSize="small" />,
     capability: 'payments',
   },
   {
@@ -104,13 +104,13 @@ export const NAV_ITEMS: NavItem[] = [
     // cobra, y despues se despacha.
     to: '/app/fulfillment',
     label: 'nav.fulfillment',
-    icon: <LocalShippingOutlinedIcon fontSize="small" />,
+    icon: <LocalShippingRoundedIcon fontSize="small" />,
     capability: 'fulfillment',
   },
   {
     to: '/app/promotions',
     label: 'nav.promotions',
-    icon: <LocalOfferOutlinedIcon fontSize="small" />,
+    icon: <LocalOfferRoundedIcon fontSize="small" />,
     capability: 'promotions',
   },
   {
@@ -119,16 +119,16 @@ export const NAV_ITEMS: NavItem[] = [
     // ve siempre.
     to: '/app/analytics',
     label: 'nav.analytics',
-    icon: <InsightsOutlinedIcon fontSize="small" />,
+    icon: <InsightsRoundedIcon fontSize="small" />,
     capability: 'analytics.basic',
   },
   {
     to: '/app/content',
     label: 'nav.content',
-    icon: <ArticleOutlinedIcon fontSize="small" />,
+    icon: <ArticleRoundedIcon fontSize="small" />,
     capability: 'content.cms',
   },
-  { to: '/app/settings', label: 'nav.settings', icon: <SettingsOutlinedIcon fontSize="small" /> },
+  { to: '/app/settings', label: 'nav.settings', icon: <SettingsRoundedIcon fontSize="small" /> },
   {
     // P13: salud, incidentes, rastro y auditoría. SIN capacidad —igual que
     // Ajustes— y CON permiso: quien no administra el tenant no tiene nada que
@@ -136,7 +136,7 @@ export const NAV_ITEMS: NavItem[] = [
     // operador.
     to: '/app/operations',
     label: 'nav.operations',
-    icon: <HealthAndSafetyOutlinedIcon fontSize="small" />,
+    icon: <HealthAndSafetyRoundedIcon fontSize="small" />,
     permission: 'tenant.manage',
   },
   {
@@ -146,13 +146,13 @@ export const NAV_ITEMS: NavItem[] = [
     // administra el tenant no tiene nada que hacer entre sus credenciales.
     to: '/app/integrations',
     label: 'nav.integrations',
-    icon: <HubOutlinedIcon fontSize="small" />,
+    icon: <HubRoundedIcon fontSize="small" />,
     permission: 'tenant.manage',
   },
   {
     to: '/app/diagnostics',
     label: 'nav.diagnostics',
-    icon: <MonitorHeartOutlinedIcon fontSize="small" />,
+    icon: <MonitorHeartRoundedIcon fontSize="small" />,
     permission: 'tenant.manage',
   },
 ]

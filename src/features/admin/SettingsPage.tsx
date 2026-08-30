@@ -1,4 +1,4 @@
-import LaunchOutlinedIcon from '@mui/icons-material/LaunchOutlined'
+import LaunchRoundedIcon from '@mui/icons-material/LaunchRounded'
 import {
   Alert,
   Box,
@@ -214,7 +214,7 @@ export function SettingsPage() {
               target="_blank"
               rel="noreferrer"
               variant="outlined"
-              endIcon={<LaunchOutlinedIcon fontSize="small" />}
+              endIcon={<LaunchRoundedIcon fontSize="small" />}
             >
               {t('settings.viewStore')}
             </Button>

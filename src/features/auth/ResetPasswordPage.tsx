@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined'
-import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
+import VisibilityOffRoundedIcon from '@mui/icons-material/VisibilityOffRounded'
+import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
 import { Alert, Box, Button, IconButton, InputAdornment, Stack, TextField } from '@mui/material'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -116,9 +116,9 @@ export function ResetPasswordPage() {
                         aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
                       >
                         {showPassword ? (
-                          <VisibilityOffOutlinedIcon fontSize="small" />
+                          <VisibilityOffRoundedIcon fontSize="small" />
                         ) : (
-                          <VisibilityOutlinedIcon fontSize="small" />
+                          <VisibilityRoundedIcon fontSize="small" />
                         )}
                       </IconButton>
                     </InputAdornment>

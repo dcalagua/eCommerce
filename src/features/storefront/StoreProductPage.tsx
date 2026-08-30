@@ -1,7 +1,7 @@
-import AddIcon from '@mui/icons-material/Add'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import RemoveIcon from '@mui/icons-material/Remove'
-import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined'
+import AddRoundedIcon from '@mui/icons-material/AddRounded'
+import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
+import RemoveRoundedIcon from '@mui/icons-material/RemoveRounded'
+import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
 import {
   Box,
   Button,
@@ -163,7 +163,7 @@ export function StoreProductPage() {
         <Button
           component={Link}
           to={`/s/${storeSlug}`}
-          startIcon={<ArrowBackIcon />}
+          startIcon={<ArrowBackRoundedIcon />}
           sx={{ ml: -1 }}
         >
           {t('store.product.back')}
@@ -371,7 +371,7 @@ function AddToCart({
             disabled={quantity <= 1}
             onClick={() => setQuantity((value) => Math.max(1, value - 1))}
           >
-            <RemoveIcon fontSize="small" />
+            <RemoveRoundedIcon fontSize="small" />
           </IconButton>
           <Typography
             component="output"
@@ -387,13 +387,13 @@ function AddToCart({
             disabled={quantity >= MAX_LINE_QUANTITY}
             onClick={() => setQuantity((value) => Math.min(MAX_LINE_QUANTITY, value + 1))}
           >
-            <AddIcon fontSize="small" />
+            <AddRoundedIcon fontSize="small" />
           </IconButton>
         </Stack>
 
         <Button
           variant="contained"
-          startIcon={<ShoppingCartOutlinedIcon />}
+          startIcon={<ShoppingCartRoundedIcon />}
           disabled={!canBuy}
           onClick={() => {
             add(product, quantity, selected)

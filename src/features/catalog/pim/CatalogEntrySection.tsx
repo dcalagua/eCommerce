@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import LocalOfferOutlinedIcon from '@mui/icons-material/LocalOfferOutlined'
+import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
 import {
   Alert,
   Box,
@@ -114,7 +114,7 @@ export function CatalogEntrySection({ kind }: { kind: EntryKind }) {
         {isEmpty && (
           <EmptyState
             title={search ? t('pim.noResults') : t(copy.empty)}
-            icon={<LocalOfferOutlinedIcon fontSize="small" />}
+            icon={<LocalOfferRoundedIcon fontSize="small" />}
           />
         )}
         {!query.isPending && !query.isError && items.length > 0 && (

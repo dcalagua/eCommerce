@@ -1,4 +1,4 @@
-import MapOutlinedIcon from '@mui/icons-material/MapOutlined'
+import MapRoundedIcon from '@mui/icons-material/MapRounded'
 import {
   Alert,
   Button,
@@ -248,7 +248,7 @@ export function NetworkSection() {
             <EmptyState
               title={t('fulfillment.methods.empty')}
               description={t('fulfillment.methods.emptyBody')}
-              icon={<MapOutlinedIcon fontSize="small" />}
+              icon={<MapRoundedIcon fontSize="small" />}
             />
           )}
           {!methods.isPending && !methods.isError && methodList.length > 0 && (
@@ -356,7 +356,7 @@ export function NetworkSection() {
             <EmptyState
               title={t('fulfillment.zones.empty')}
               description={t('fulfillment.zones.emptyBody')}
-              icon={<MapOutlinedIcon fontSize="small" />}
+              icon={<MapRoundedIcon fontSize="small" />}
             />
           )}
           {!zones.isPending && !zones.isError && zoneList.length > 0 && (
@@ -435,7 +435,7 @@ export function NetworkSection() {
             <EmptyState
               title={t('fulfillment.rates.empty')}
               description={t('fulfillment.rates.emptyBody')}
-              icon={<MapOutlinedIcon fontSize="small" />}
+              icon={<MapRoundedIcon fontSize="small" />}
             />
           )}
           {!rates.isPending && !rates.isError && rateList.length > 0 && (

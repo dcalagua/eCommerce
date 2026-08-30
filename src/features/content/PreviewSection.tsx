@@ -1,4 +1,4 @@
-import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
+import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
 import { Alert, Box, Card, FormControlLabel, Stack, Switch, TextField, Typography } from '@mui/material'
 import { useMemo, useState } from 'react'
 import { toStoreContent } from '@/features/storefront/content'
@@ -71,7 +71,7 @@ export function PreviewSection({ pageId }: { pageId: string | null }) {
       <EmptyState
         title={t('content.preview.noPageTitle')}
         description={t('content.preview.noPageBody')}
-        icon={<VisibilityOutlinedIcon fontSize="small" />}
+        icon={<VisibilityRoundedIcon fontSize="small" />}
       />
     )
   }
@@ -115,7 +115,7 @@ export function PreviewSection({ pageId }: { pageId: string | null }) {
           <EmptyState
             title={t('content.preview.emptyTitle')}
             description={t('content.preview.emptyBody')}
-            icon={<VisibilityOutlinedIcon fontSize="small" />}
+            icon={<VisibilityRoundedIcon fontSize="small" />}
           />
         </Card>
       )}

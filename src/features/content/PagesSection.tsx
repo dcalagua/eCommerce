@@ -1,4 +1,4 @@
-import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
+import ArticleRoundedIcon from '@mui/icons-material/ArticleRounded'
 import {
   Box,
   Button,
@@ -207,7 +207,7 @@ export function PagesSection({
           <EmptyState
             title={t('content.pages.emptyTitle')}
             description={t('content.pages.emptyBody')}
-            icon={<ArticleOutlinedIcon fontSize="small" />}
+            icon={<ArticleRoundedIcon fontSize="small" />}
             action={
               <Button variant="contained" onClick={openCreate}>
                 {t('content.pages.new')}

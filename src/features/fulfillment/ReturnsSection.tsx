@@ -1,4 +1,4 @@
-import AssignmentReturnOutlinedIcon from '@mui/icons-material/AssignmentReturnOutlined'
+import AssignmentReturnRoundedIcon from '@mui/icons-material/AssignmentReturnRounded'
 import {
   Card,
   Chip,
@@ -99,7 +99,7 @@ export function ReturnsSection() {
           <EmptyState
             title={t('returns.empty')}
             description={t('returns.emptyBody')}
-            icon={<AssignmentReturnOutlinedIcon fontSize="small" />}
+            icon={<AssignmentReturnRoundedIcon fontSize="small" />}
           />
         )}
         {!queue.isPending && !queue.isError && list.length > 0 && (

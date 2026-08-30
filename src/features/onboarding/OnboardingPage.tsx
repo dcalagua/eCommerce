@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
+import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import {
   Alert,
   Box,
@@ -147,7 +147,7 @@ export function OnboardingPage() {
                 }}
                 aria-hidden
               >
-                <StorefrontOutlinedIcon fontSize="small" />
+                <StorefrontRoundedIcon fontSize="small" />
               </Box>
               <Typography component="h1" sx={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.4px' }}>
                 {t('onboarding.title')}

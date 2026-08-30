@@ -1,4 +1,4 @@
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import {
   Card,
   Chip,
@@ -53,7 +53,7 @@ export function AlertsSection() {
           <EmptyState
             title={t('inventory.alerts.empty')}
             description={t('inventory.alerts.emptyBody')}
-            icon={<CheckCircleOutlineIcon fontSize="small" />}
+            icon={<CheckCircleRoundedIcon fontSize="small" />}
           />
         )}
         {!query.isPending && !query.isError && alerts.length > 0 && (

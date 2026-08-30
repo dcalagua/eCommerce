@@ -1,4 +1,4 @@
-import LocalOfferOutlinedIcon from '@mui/icons-material/LocalOfferOutlined'
+import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
 import {
   Box,
   Button,
@@ -173,7 +173,7 @@ export function CampaignsSection() {
           <EmptyState
             title={t('promotions.campaigns.empty')}
             description={t('promotions.campaigns.emptyBody')}
-            icon={<LocalOfferOutlinedIcon fontSize="small" />}
+            icon={<LocalOfferRoundedIcon fontSize="small" />}
             action={
               <Button variant="contained" onClick={() => setCreating(true)}>
                 {t('promotions.campaigns.new')}

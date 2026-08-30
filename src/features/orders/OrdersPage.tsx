@@ -1,5 +1,5 @@
-import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
-import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
+import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
+import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import {
   Button,
   Card,
@@ -152,7 +152,7 @@ export function OrdersPage() {
           <EmptyState
             title={t('admin.store.none')}
             description={t('admin.store.noneBody')}
-            icon={<StorefrontOutlinedIcon fontSize="small" />}
+            icon={<StorefrontRoundedIcon fontSize="small" />}
           />
         </Card>
       </>
@@ -212,7 +212,7 @@ export function OrdersPage() {
             <EmptyState
               title={t('admin.orders.empty')}
               description={t('admin.orders.emptyBody')}
-              icon={<ReceiptLongOutlinedIcon fontSize="small" />}
+              icon={<ReceiptLongRoundedIcon fontSize="small" />}
             />
           )}
           {orders.isSuccess && rows.length > 0 && (

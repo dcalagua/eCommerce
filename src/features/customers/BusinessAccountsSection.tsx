@@ -1,4 +1,4 @@
-import ApartmentOutlinedIcon from '@mui/icons-material/ApartmentOutlined'
+import ApartmentRoundedIcon from '@mui/icons-material/ApartmentRounded'
 import {
   Box,
   Button,
@@ -78,7 +78,7 @@ export function BusinessAccountsSection() {
           <EmptyState
             title={search ? t('customers.noResults') : t('customers.accounts.empty')}
             description={search ? undefined : t('customers.accounts.emptyBody')}
-            icon={<ApartmentOutlinedIcon fontSize="small" />}
+            icon={<ApartmentRoundedIcon fontSize="small" />}
           />
         )}
         {!query.isPending && !query.isError && accounts.length > 0 && (

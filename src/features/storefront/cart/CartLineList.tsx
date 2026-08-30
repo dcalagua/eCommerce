@@ -1,6 +1,6 @@
-import AddIcon from '@mui/icons-material/Add'
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
-import RemoveIcon from '@mui/icons-material/Remove'
+import AddRoundedIcon from '@mui/icons-material/AddRounded'
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
+import RemoveRoundedIcon from '@mui/icons-material/RemoveRounded'
 import { Box, IconButton, Stack, Typography } from '@mui/material'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
@@ -127,7 +127,7 @@ function CartLineRow({
             label={t('store.cart.decrease')}
             onClick={() => setQuantity(line.product_id, line.quantity - 1, line.variant_id)}
           >
-            <RemoveIcon fontSize="inherit" />
+            <RemoveRoundedIcon fontSize="inherit" />
           </QuantityButton>
           {/* `output` + `aria-live`: al pulsar +/- el lector canta la cantidad
               nueva sin tener que volver a leer toda la línea. */}
@@ -144,7 +144,7 @@ function CartLineRow({
             disabled={line.quantity >= MAX_LINE_QUANTITY}
             onClick={() => setQuantity(line.product_id, line.quantity + 1, line.variant_id)}
           >
-            <AddIcon fontSize="inherit" />
+            <AddRoundedIcon fontSize="inherit" />
           </QuantityButton>
 
           <IconButton
@@ -153,7 +153,7 @@ function CartLineRow({
             onClick={() => remove(line.product_id, line.variant_id)}
             sx={{ ml: 0.5, color: 'var(--muted)' }}
           >
-            <DeleteOutlineIcon fontSize="small" />
+            <DeleteRoundedIcon fontSize="small" />
           </IconButton>
         </Stack>
       </Stack>

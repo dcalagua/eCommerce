@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import StraightenOutlinedIcon from '@mui/icons-material/StraightenOutlined'
+import StraightenRoundedIcon from '@mui/icons-material/StraightenRounded'
 import {
   Alert,
   Box,
@@ -89,7 +89,7 @@ export function UnitsSection() {
         {isEmpty && (
           <EmptyState
             title={search ? t('pim.noResults') : t('pim.units.empty')}
-            icon={<StraightenOutlinedIcon fontSize="small" />}
+            icon={<StraightenRoundedIcon fontSize="small" />}
           />
         )}
         {!units.isPending && !units.isError && items.length > 0 && (

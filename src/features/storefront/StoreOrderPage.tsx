@@ -1,4 +1,4 @@
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import { Box, Button, Card, Chip, Divider, Stack, Typography } from '@mui/material'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
@@ -119,7 +119,7 @@ export function StoreOrderPage() {
           }}
           aria-hidden
         >
-          <CheckCircleOutlineIcon />
+          <CheckCircleRoundedIcon />
         </Box>
 
         <Typography component="h1" sx={{ fontSize: { xs: 20, md: 24 }, fontWeight: 800 }}>

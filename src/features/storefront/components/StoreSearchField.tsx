@@ -1,4 +1,4 @@
-import SearchIcon from '@mui/icons-material/Search'
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import { Autocomplete, InputAdornment, TextField, Typography } from '@mui/material'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { T } from '@/theme/tokens'
@@ -75,7 +75,7 @@ export function StoreSearchField({
             ...params.InputProps,
             startAdornment: (
               <InputAdornment position="start">
-                <SearchIcon fontSize="small" sx={{ color: 'var(--muted)' }} />
+                <SearchRoundedIcon fontSize="small" sx={{ color: 'var(--muted)' }} />
               </InputAdornment>
             ),
           }}

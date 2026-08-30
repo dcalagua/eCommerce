@@ -1,4 +1,4 @@
-import CardGiftcardOutlinedIcon from '@mui/icons-material/CardGiftcardOutlined'
+import CardGiftcardRoundedIcon from '@mui/icons-material/CardGiftcardRounded'
 import {
   Alert,
   Box,
@@ -183,7 +183,7 @@ export function GiftCardsSection() {
           <EmptyState
             title={t('promotions.giftCards.empty')}
             description={t('promotions.giftCards.emptyBody')}
-            icon={<CardGiftcardOutlinedIcon fontSize="small" />}
+            icon={<CardGiftcardRoundedIcon fontSize="small" />}
             action={
               <Button variant="contained" onClick={() => setIssuing(true)}>
                 {t('promotions.giftCards.issue')}

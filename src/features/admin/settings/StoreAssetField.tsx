@@ -1,5 +1,5 @@
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
-import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined'
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
+import ImageRoundedIcon from '@mui/icons-material/ImageRounded'
 import { Box, Button, Stack, Typography } from '@mui/material'
 import { useRef, useState } from 'react'
 import { useI18n } from '@/shared/i18n/i18n-context'
@@ -98,7 +98,7 @@ export function StoreAssetField({
               sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
           ) : (
-            <ImageOutlinedIcon fontSize="small" aria-hidden />
+            <ImageRoundedIcon fontSize="small" aria-hidden />
           )}
         </Box>
 
@@ -119,7 +119,7 @@ export function StoreAssetField({
                 size="small"
                 color="inherit"
                 disabled={disabled || upload.isPending}
-                startIcon={<DeleteOutlineIcon fontSize="small" />}
+                startIcon={<DeleteRoundedIcon fontSize="small" />}
                 onClick={() => {
                   setBroken(false)
                   onChange(null)

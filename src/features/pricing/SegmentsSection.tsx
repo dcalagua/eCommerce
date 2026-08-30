@@ -1,4 +1,4 @@
-import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
+import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Alert,
@@ -91,7 +91,7 @@ export function SegmentsSection() {
         {isEmpty && (
           <EmptyState
             title={search ? t('pricing.noResults') : t('pricing.segments.empty')}
-            icon={<GroupsOutlinedIcon fontSize="small" />}
+            icon={<GroupsRoundedIcon fontSize="small" />}
           />
         )}
         {!query.isPending && !query.isError && segments.length > 0 && (

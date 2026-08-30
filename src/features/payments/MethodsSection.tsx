@@ -1,4 +1,4 @@
-import CreditCardOutlinedIcon from '@mui/icons-material/CreditCardOutlined'
+import CreditCardRoundedIcon from '@mui/icons-material/CreditCardRounded'
 import {
   Alert,
   Button,
@@ -154,7 +154,7 @@ export function MethodsSection() {
           <EmptyState
             title={t('payments.methods.empty')}
             description={t('payments.methods.emptyBody')}
-            icon={<CreditCardOutlinedIcon fontSize="small" />}
+            icon={<CreditCardRoundedIcon fontSize="small" />}
           />
         )}
         {!methods.isPending && !methods.isError && list.length > 0 && (

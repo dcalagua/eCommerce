@@ -1,5 +1,5 @@
-import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined'
-import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
+import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded'
+import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import {
   Button,
   Card,
@@ -89,7 +89,7 @@ export function CategoriesPage() {
           <EmptyState
             title={t('admin.store.none')}
             description={t('admin.store.noneBody')}
-            icon={<StorefrontOutlinedIcon fontSize="small" />}
+            icon={<StorefrontRoundedIcon fontSize="small" />}
           />
         </Card>
       </>
@@ -149,7 +149,7 @@ export function CategoriesPage() {
           {isEmpty && (
             <EmptyState
               title={t('catalog.categories.empty')}
-              icon={<CategoryOutlinedIcon fontSize="small" />}
+              icon={<CategoryRoundedIcon fontSize="small" />}
               action={
                 canWrite && !search ? (
                   <Button

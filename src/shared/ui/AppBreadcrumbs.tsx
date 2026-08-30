@@ -1,4 +1,4 @@
-import NavigateNextIcon from '@mui/icons-material/NavigateNext'
+import NavigateNextRoundedIcon from '@mui/icons-material/NavigateNextRounded'
 import { Breadcrumbs, Typography } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
 
@@ -16,7 +16,7 @@ export function AppBreadcrumbs({ items, ariaLabel }: { items: Crumb[]; ariaLabel
   return (
     <Breadcrumbs
       aria-label={ariaLabel}
-      separator={<NavigateNextIcon sx={{ fontSize: 16 }} />}
+      separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />}
       sx={{ fontSize: 12.5, '& .MuiBreadcrumbs-separator': { mx: 0.5, color: 'var(--muted)' } }}
     >
       {items.map((item, index) => {

@@ -1,9 +1,9 @@
-import AddPhotoAlternateOutlinedIcon from '@mui/icons-material/AddPhotoAlternateOutlined'
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
-import StarIcon from '@mui/icons-material/Star'
-import StarBorderIcon from '@mui/icons-material/StarBorder'
+import AddPhotoAlternateRoundedIcon from '@mui/icons-material/AddPhotoAlternateRounded'
+import ArrowDownwardRoundedIcon from '@mui/icons-material/ArrowDownwardRounded'
+import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded'
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
+import StarRoundedIcon from '@mui/icons-material/StarRounded'
+import StarBorderRoundedIcon from '@mui/icons-material/StarBorderRounded'
 import { Box, Button, Chip, IconButton, Stack, Tooltip, Typography } from '@mui/material'
 import { useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { useI18n } from '@/shared/i18n/i18n-context'
@@ -75,7 +75,7 @@ export function ProductImagesPanel({
       <EmptyState
         title={t('catalog.images.title')}
         description={t('catalog.images.saveFirst')}
-        icon={<AddPhotoAlternateOutlinedIcon fontSize="small" />}
+        icon={<AddPhotoAlternateRoundedIcon fontSize="small" />}
       />
     )
   }
@@ -164,7 +164,7 @@ export function ProductImagesPanel({
           <Button
             variant="outlined"
             size="small"
-            startIcon={<AddPhotoAlternateOutlinedIcon fontSize="small" />}
+            startIcon={<AddPhotoAlternateRoundedIcon fontSize="small" />}
             onClick={() => inputRef.current?.click()}
             disabled={busy}
           >
@@ -190,7 +190,7 @@ export function ProductImagesPanel({
         <EmptyState
           title={t('catalog.images.empty')}
           description={t('catalog.images.help')}
-          icon={<AddPhotoAlternateOutlinedIcon fontSize="small" />}
+          icon={<AddPhotoAlternateRoundedIcon fontSize="small" />}
         />
       )}
 
@@ -245,9 +245,9 @@ export function ProductImagesPanel({
                         onClick={() => void onSetPrimary(image)}
                       >
                         {image.is_primary ? (
-                          <StarIcon fontSize="small" />
+                          <StarRoundedIcon fontSize="small" />
                         ) : (
-                          <StarBorderIcon fontSize="small" />
+                          <StarBorderRoundedIcon fontSize="small" />
                         )}
                       </IconButton>
                     </span>
@@ -260,7 +260,7 @@ export function ProductImagesPanel({
                         disabled={busy || index === 0}
                         onClick={() => void onMove(image, -1)}
                       >
-                        <ArrowUpwardIcon fontSize="small" />
+                        <ArrowUpwardRoundedIcon fontSize="small" />
                       </IconButton>
                     </span>
                   </Tooltip>
@@ -272,7 +272,7 @@ export function ProductImagesPanel({
                         disabled={busy || index === list.length - 1}
                         onClick={() => void onMove(image, 1)}
                       >
-                        <ArrowDownwardIcon fontSize="small" />
+                        <ArrowDownwardRoundedIcon fontSize="small" />
                       </IconButton>
                     </span>
                   </Tooltip>
@@ -285,7 +285,7 @@ export function ProductImagesPanel({
                         disabled={busy}
                         onClick={() => void onRemove(image)}
                       >
-                        <DeleteOutlineIcon fontSize="small" />
+                        <DeleteRoundedIcon fontSize="small" />
                       </IconButton>
                     </span>
                   </Tooltip>

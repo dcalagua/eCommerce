@@ -308,6 +308,11 @@ export const es = {
     'tenant.unauthorized.body':
       'Tu sesión es válida pero no trae la cuenta ni la sociedad que esta app necesita. Pide al administrador de tu empresa que te habilite eCommerce.',
     'admin.account': 'Tu cuenta',
+    'admin.account.preferences': 'Preferencias',
+    'admin.account.language': 'Idioma',
+    'admin.account.mode': 'Tema oscuro',
+    'admin.account.density': 'Densidad',
+    'admin.account.signOutHint': 'Salir de tu cuenta',
     'admin.openMenu': 'Abrir menú',
     'admin.breadcrumb': 'Ruta de navegación',
     'admin.tenant.label': 'Espacio',

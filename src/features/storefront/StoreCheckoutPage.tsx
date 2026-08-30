@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined'
+import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
 import { Alert, AlertTitle, Box, Button, Card, Chip, Divider, Stack, TextField, Typography } from '@mui/material'
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -243,7 +243,7 @@ export function StoreCheckoutPage() {
           <EmptyState
             title={t('store.cart.empty')}
             description={t('store.cart.emptyBody')}
-            icon={<ShoppingCartOutlinedIcon fontSize="small" />}
+            icon={<ShoppingCartRoundedIcon fontSize="small" />}
             action={
               <Button component={Link} to={`/s/${storeSlug}`} variant="contained">
                 {t('store.cart.continue')}

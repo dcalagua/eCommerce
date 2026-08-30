@@ -1,9 +1,9 @@
-import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined'
-import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined'
-import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined'
-import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined'
-import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
-import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined'
+import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded'
+import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
+import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded'
+import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded'
+import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
+import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
 import {
   Box,
   Divider,
@@ -28,9 +28,9 @@ interface Bullet {
 
 /** Exactamente 3 bullets: ni dos ni cinco (contrato §4.5, punto 5). */
 const BULLETS: Bullet[] = [
-  { icon: <Inventory2OutlinedIcon fontSize="small" />, title: 'auth.bullet1.title', body: 'auth.bullet1.body' },
-  { icon: <ReceiptLongOutlinedIcon fontSize="small" />, title: 'auth.bullet2.title', body: 'auth.bullet2.body' },
-  { icon: <PaletteOutlinedIcon fontSize="small" />, title: 'auth.bullet3.title', body: 'auth.bullet3.body' },
+  { icon: <Inventory2RoundedIcon fontSize="small" />, title: 'auth.bullet1.title', body: 'auth.bullet1.body' },
+  { icon: <ReceiptLongRoundedIcon fontSize="small" />, title: 'auth.bullet2.title', body: 'auth.bullet2.body' },
+  { icon: <PaletteRoundedIcon fontSize="small" />, title: 'auth.bullet3.title', body: 'auth.bullet3.body' },
 ]
 
 /**
@@ -84,9 +84,9 @@ export function AuthShell({
           aria-label={appearance.mode === 'dark' ? t('common.theme.light') : t('common.theme.dark')}
         >
           {appearance.mode === 'dark' ? (
-            <LightModeOutlinedIcon fontSize="small" />
+            <LightModeRoundedIcon fontSize="small" />
           ) : (
-            <DarkModeOutlinedIcon fontSize="small" />
+            <DarkModeRoundedIcon fontSize="small" />
           )}
         </IconButton>
       </Stack>
@@ -169,7 +169,7 @@ export function AuthShell({
 
           {/* Pie de confianza (fijo en toda la suite). */}
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center', color: 'rgba(255,255,255,.72)' }}>
-            <ShieldOutlinedIcon sx={{ fontSize: 16 }} />
+            <ShieldRoundedIcon sx={{ fontSize: 16 }} />
             <Typography sx={{ fontSize: 11.5 }}>{t('auth.trust')}</Typography>
           </Stack>
         </Box>

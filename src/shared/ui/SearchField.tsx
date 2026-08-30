@@ -1,4 +1,4 @@
-import SearchIcon from '@mui/icons-material/Search'
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import { InputAdornment, TextField } from '@mui/material'
 
 /**
@@ -28,7 +28,7 @@ export function SearchField({
       InputProps={{
         startAdornment: (
           <InputAdornment position="start">
-            <SearchIcon fontSize="small" sx={{ color: 'var(--muted)' }} />
+            <SearchRoundedIcon fontSize="small" sx={{ color: 'var(--muted)' }} />
           </InputAdornment>
         ),
       }}

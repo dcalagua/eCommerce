@@ -1,4 +1,4 @@
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import {
   Alert,
   Button,
@@ -218,7 +218,7 @@ export function ContactsPanel({
                         .then(() => notify(t('customers.toast.deleted')))
                     }}
                   >
-                    <DeleteOutlineIcon fontSize="small" />
+                    <DeleteRoundedIcon fontSize="small" />
                   </IconButton>
                 </TableCell>
               </TableRow>

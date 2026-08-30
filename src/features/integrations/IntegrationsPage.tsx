@@ -1,4 +1,4 @@
-import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
+import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import { Card } from '@mui/material'
 import { useMemo } from 'react'
 import { useTenant } from '@/features/tenant/tenant-context'
@@ -69,7 +69,7 @@ export function IntegrationsPage() {
           <EmptyState
             title={t('admin.store.none')}
             description={t('admin.store.noneBody')}
-            icon={<StorefrontOutlinedIcon fontSize="small" />}
+            icon={<StorefrontRoundedIcon fontSize="small" />}
           />
         </Card>
       </>

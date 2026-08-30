@@ -1,4 +1,4 @@
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
+import LockRoundedIcon from '@mui/icons-material/LockRounded'
 import { Box, Button, CircularProgress, Stack, Typography } from '@mui/material'
 import type { ReactNode } from 'react'
 import { isAppError } from '@/domain/errors'
@@ -116,7 +116,7 @@ export function UnauthorizedState({
         }}
         aria-hidden
       >
-        <LockOutlinedIcon fontSize="small" />
+        <LockRoundedIcon fontSize="small" />
       </Box>
       <Typography component="h2" sx={{ fontSize: 16, fontWeight: 800 }}>
         {title ?? t('common.unauthorized.title')}

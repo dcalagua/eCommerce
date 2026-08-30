@@ -117,10 +117,10 @@ describe('cifras del resumen', () => {
 
     await screen.findByText('Ventas')
     for (const testId of [
-      'PaidOutlinedIcon',
-      'TrendingUpOutlinedIcon',
-      'ReceiptLongOutlinedIcon',
-      'LocalMallOutlinedIcon',
+      'PaidRoundedIcon',
+      'TrendingUpRoundedIcon',
+      'ReceiptLongRoundedIcon',
+      'LocalMallRoundedIcon',
     ]) {
       expect(screen.getByTestId(testId)).toBeInTheDocument()
     }

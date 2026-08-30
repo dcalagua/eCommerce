@@ -1,4 +1,4 @@
-import ManageSearchOutlinedIcon from '@mui/icons-material/ManageSearchOutlined'
+import ManageSearchRoundedIcon from '@mui/icons-material/ManageSearchRounded'
 import {
   Box,
   Button,
@@ -137,7 +137,7 @@ export function SynonymsSection() {
           <EmptyState
             title={t('content.synonyms.emptyTitle')}
             description={t('content.synonyms.emptyBody')}
-            icon={<ManageSearchOutlinedIcon fontSize="small" />}
+            icon={<ManageSearchRoundedIcon fontSize="small" />}
           />
         )}
         {list.length > 0 && (

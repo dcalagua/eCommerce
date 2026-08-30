@@ -1,5 +1,5 @@
-import CloseIcon from '@mui/icons-material/Close'
-import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined'
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
+import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
 import { Box, Button, Divider, Drawer, IconButton, Stack, Typography } from '@mui/material'
 import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
@@ -51,7 +51,7 @@ export function CartDrawer({ storeSlug }: { storeSlug: string }) {
             )}
           </Typography>
           <IconButton onClick={closeCart} aria-label={t('common.cancel')} size="small">
-            <CloseIcon fontSize="small" />
+            <CloseRoundedIcon fontSize="small" />
           </IconButton>
         </Stack>
 
@@ -60,7 +60,7 @@ export function CartDrawer({ storeSlug }: { storeSlug: string }) {
             <EmptyState
               title={t('store.cart.empty')}
               description={t('store.cart.emptyBody')}
-              icon={<ShoppingCartOutlinedIcon fontSize="small" />}
+              icon={<ShoppingCartRoundedIcon fontSize="small" />}
             />
           ) : (
             <CartLineList cart={cart} storeSlug={storeSlug} onNavigate={closeCart} compact />

@@ -1,4 +1,4 @@
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import {
   Alert,
   Button,
@@ -625,7 +625,7 @@ export function PromotionDrawer({
                       : `${tier.discount_amount} ${currency}`
                   }`}
                   onDelete={() => void removeTier.mutateAsync(tier.id)}
-                  deleteIcon={<DeleteOutlineIcon />}
+                  deleteIcon={<DeleteRoundedIcon />}
                 />
               ))}
             </Stack>

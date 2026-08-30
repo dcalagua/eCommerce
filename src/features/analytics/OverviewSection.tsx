@@ -11,7 +11,7 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@mui/material'
-import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined'
+import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { downloadCsv, toCsv } from '@/shared/lib/csv'
 import { formatDate, formatMoney } from '@/shared/lib/format'
@@ -135,7 +135,7 @@ export function OverviewSection({
         </ToggleButtonGroup>
         <Button
           size="small"
-          startIcon={<DownloadOutlinedIcon />}
+          startIcon={<DownloadRoundedIcon />}
           onClick={exportCsv}
           disabled={(series.data ?? []).length === 0}
         >

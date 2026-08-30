@@ -1,4 +1,4 @@
-import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined'
+import ImageRoundedIcon from '@mui/icons-material/ImageRounded'
 import { Box } from '@mui/material'
 import { R } from '@/theme/tokens'
 
@@ -49,7 +49,7 @@ export function ProductMedia({
           sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         />
       ) : (
-        <ImageOutlinedIcon sx={{ fontSize: sizePx }} aria-hidden />
+        <ImageRoundedIcon sx={{ fontSize: sizePx }} aria-hidden />
       )}
     </Box>
   )
