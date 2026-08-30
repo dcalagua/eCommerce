@@ -30,6 +30,7 @@
 import { corsHeaders } from '../_shared/cors.ts'
 import { normalizeOrigin, renderRobots, renderSitemap } from '../_shared/seo/sitemap.ts'
 import { anonClient } from '../_runtime/clients.ts'
+import { edgeSecurityHeaders } from '../_shared/securityHeaders.ts'
 
 /** Techo de filas que se piden al catálogo. Coherente con `SITEMAP_MAX_URLS`. */
 const PRODUCT_LIMIT = 5_000
@@ -47,6 +48,9 @@ function textResponse(
     status,
     headers: {
       ...headers,
+      // Cacheable: el sitemap trae su propio `Cache-Control` mas abajo, asi que
+      // el `no-store` del resto del borde no puede entrar aqui (P16-SaaS).
+      ...edgeSecurityHeaders({ cacheable: true }),
       'Content-Type': contentType,
       'Cache-Control': status === 200 ? CACHE : 'no-store',
       // Nada de este contenido depende de quién pregunte.

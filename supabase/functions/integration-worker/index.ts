@@ -31,6 +31,7 @@
 import { serviceClient } from '../_runtime/clients.ts'
 import { timingSafeEqual } from '../_shared/auth.ts'
 import { resolveTrace, traceHeaders } from '../_shared/observability/index.ts'
+import { edgeSecurityHeaders } from '../_shared/securityHeaders.ts'
 import {
   dispatchWebhooks,
   type DispatcherPorts,
@@ -49,7 +50,7 @@ function json(body: unknown, status: number, headers: Record<string, string>): R
 
 Deno.serve(async (request: Request): Promise<Response> => {
   const trace = resolveTrace(request)
-  const headers = traceHeaders(trace)
+  const headers = { ...edgeSecurityHeaders(), ...traceHeaders(trace) }
 
   if (request.method !== 'POST') {
     return json({ error: { code: 'METODO_NO_PERMITIDO', message: 'Solo POST' } }, 405, headers)

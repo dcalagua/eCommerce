@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { isSafeHref as isSafeHrefValue } from './href'
 
 /**
  * Contenido administrable: el vocabulario y, sobre todo, QUÉ ES CONTENIDO
@@ -42,18 +43,18 @@ import { z } from 'zod'
  * `javascript:` es el que todo el mundo recuerda, pero `data:text/html`,
  * `vbscript:` y el protocolo-relativo `//otro-dominio` hacen daño igual. Con
  * lista blanca, el esquema que nadie ha pensado todavía cae en el lado de «no».
+ *
+ * **P16-SaaS: la regla vive en un solo sitio.** Hasta esta fase había tres
+ * copias de la misma condición —esta, la del borde del storefront y el CHECK de
+ * Postgres— y las tres compartían el mismo fallo: aceptaban `/\evil.com` como
+ * ruta interna cuando el navegador la resuelve a OTRO DOMINIO. Se corrigió en
+ * las tres, y las tres de cliente pasan ahora por `@/domain/href` para
+ * que no vuelvan a separarse. La semántica de `null` se conserva aquí: un
+ * enlace ausente es válido, igual que en el CHECK.
  */
 export function isSafeHref(value: string | null | undefined): boolean {
   if (value === null || value === undefined) return true
-  if (value.length < 1 || value.length > 2048) return false
-  if (/\s/.test(value)) return false
-  if (/javascript:|vbscript:|data:/i.test(value)) return false
-  return (
-    value.startsWith('https://') ||
-    (value.startsWith('/') && !value.startsWith('//')) ||
-    value.startsWith('mailto:') ||
-    value.startsWith('tel:')
-  )
+  return isSafeHrefValue(value)
 }
 
 /**

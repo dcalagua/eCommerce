@@ -3,7 +3,7 @@
 GUIDELINES_STATUS: VERIFIED (**por lectura directa** en la 2ª pasada de P00-SaaS: contrato v1.15,
 `PROTOCOLO.md`, `BANDEJA.md` y `EBIM-CREW-ROSTER.md`). La unidad montada es `G:`, no `H:`.
 Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
-Última actualización: 2026-08-30 (recuperación: P15-SaaS terminada — rendimiento, accesibilidad y SEO de la vitrina)
+Última actualización: 2026-08-30 (P16-SaaS terminada — línea base de seguridad y preparación enterprise)
 
 > **Dos numeraciones de fase.** Lo que sigue como «P00…P12» es el trabajo histórico de este repo. A
 > partir del 2026-08-27 arranca un segundo recorrido, **P00–P17 de productización SaaS**
@@ -71,6 +71,170 @@ pantalla y sin un solo test propio. Se conservó tal cual y se continuó desde a
 ---
 
 ## Fase actual
+**P16-SaaS — Seguridad SaaS y preparación enterprise. COMPLETA. Gate: PASS.**
+Estado por control, con evidencia, en [`docs/SECURITY_BASELINE.md`](SECURITY_BASELINE.md).
+Decisiones en [`docs/adr/016-security-baseline.md`](adr/016-security-baseline.md).
+
+### Gates (2026-08-30, partiendo de `c77c1e1`)
+
+| Comando | Antes de P16 | Después |
+|---|---|---|
+| `npm run typecheck` | PASS | **PASS** |
+| `npm run lint` | PASS, 0 problemas | **PASS**, 0 problemas |
+| `npm run test` | 2312 / 102 archivos | **2470 / 107 archivos** |
+| `npm run test:db` | 1538 / 48 | **1614 / 50** |
+| `npm run build` | PASS | **PASS** + `dist/_headers` y la CSP generados |
+| `npm run bundle:report` | PASS | **PASS**, los cuatro recorridos dentro del techo |
+| `npm run scan:secrets` | no existía | **PASS**, sin hallazgos (600 archivos versionados + 123 del bundle) |
+| `npm audit` | 2 moderadas | **2 moderadas** (analizadas una a una, §7.2 del baseline) |
+
+> **Nota de método, otra vez.** `test` y `test:db` **no se paralelizan en la misma máquina**: cada
+> archivo de base aplica las 93 migraciones sobre PGlite y el `hookTimeout` se agota, marcando los
+> casos como saltados y no como fallados. Es contención de recursos, no un fallo del código.
+
+### El criterio de aceptación, comprobado
+
+> «PASS si no quedan vulnerabilidades críticas conocidas dentro del alcance del repo y los controles
+> externos pendientes están declarados honestamente con responsables/dependencias.»
+
+| Exigencia | Dónde se comprueba |
+|---|---|
+| **sin vulnerabilidades críticas conocidas** | Había una y está corregida: el redirector abierto ALMACENADO de la barra invertida (abajo). Se corrigió en las tres capas y hay regresión automática en las tres |
+| **controles externos declarados con honestidad** | `SECURITY_BASELINE.md` §9: ocho fichas con requisito, responsable, dependencia y **procedimiento verificable**. Ninguna se simula: copias de seguridad es **GAP**, no PARTIAL, porque nadie ha ejecutado todavía la restauración |
+| **el estado va respaldado por evidencia** | La tabla de estados define PASS como «existe **y** hay un test que falla si desaparece». Los inventarios (superficie anónima, claves ajenas, PII) se leen de `pg_proc`, `pg_constraint` e `information_schema`, no de la memoria de nadie |
+
+### El hallazgo: redirector abierto ALMACENADO por barra invertida
+
+En el analizador de URL de WHATWG, para `http`/`https` **la barra invertida es una barra**:
+
+```js
+new URL('/\evil.com', 'https://tienda.com').href   // → https://evil.com/
+```
+
+`ebim.is_safe_href` (P11) aceptaba como «ruta interna» cualquier cadena que empezara por `/` y no
+por `//`. `/\evil.com` cumple las dos y **sale del dominio**. Cualquiera con permiso de escribir
+contenido del CMS —`content_blocks.cta_href` o el `href` de un nodo de texto enriquecido— dejaba
+publicado en la vitrina un botón que lleva al comprador a un sitio de terceros con la marca del
+comercio todavía en la barra de direcciones. Phishing con la reputación del tenant.
+
+Lo importante de cómo se descubrió: la **misma condición estaba copiada palabra por palabra en tres
+sitios** —el CHECK de Postgres, `src/domain/content.ts` y el borde del storefront— y las tres tenían
+el mismo fallo. Se defendía como «defensa en profundidad» y eran tres capas con el mismo agujero.
+
+No hace falta React Router para llegar: un `<a href>` normal lo resuelve igual, porque lo resuelve
+el navegador. Por eso la corrección va en la base —que es la autoridad— y en un único módulo de
+cliente, no actualizando una librería.
+
+### Qué se construyó
+
+**Tres migraciones**, ninguna de dominio nuevo:
+
+| Migración | Qué trae |
+|---|---|
+| `20260830100000_href_safety_hardening` | `ebim.is_safe_href` sin barra invertida y sin caracteres de control —se ELIMINAN al analizar la URL, así que `java<TAB>script:` era `javascript:` para el navegador—, **más la remediación de lo ya guardado**: redefinir la función no revalida las filas existentes, y sin limpiar, una fila envenenada seguiría publicándose y además sería imposible de editar |
+| `20260830100100_tenant_safe_foreign_keys` | Cuatro claves candidatas nuevas y las **nueve** claves ajenas que apuntaban a una tabla con tenant sin llevar el tenant dentro, convertidas en compuestas |
+| `20260830100200_public_rate_limits` | `public_rate_events` + `ebim.public_rate_{limit,exceeded,record}` + `purge_public_rate_events`; techo por tienda para la analítica anónima y para el sondeo de cupones |
+
+**Fuera de la base:**
+
+| Dónde | Qué |
+|---|---|
+| `src/domain/href.ts` | La ÚNICA definición de cliente de «enlace publicable». Vive en `domain/` porque eso es conocimiento de dominio y porque el test de arquitectura exige que `domain/` sea puro |
+| `src/shared/security/headers.ts` | La CSP y las ocho cabeceras, como módulo PURO: comprobable sin levantar un navegador |
+| `vite.config.ts` · `ebim-security-headers` | Emite `dist/_headers` **y** la misma política como `<meta http-equiv>` detrás de `<meta charset>`; calcula el `sha256` del script en línea del HTML final |
+| `supabase/functions/_shared/securityHeaders.ts` | `nosniff`, `no-referrer`, `DENY`, `no-store` y una CSP de `default-src 'none'; sandbox` en TODAS las respuestas de las once funciones |
+| `scripts/secret-scan.mjs` + `npm run scan:secrets` | El gate. Sale con código 1 |
+
+**158 tests nuevos**, repartidos así:
+
+| Dónde | Cuántos | Qué defienden |
+|---|---|---|
+| `supabase/tests/security-baseline.test.ts` | 54 | contra Postgres real: que la superficie anónima es una lista CERRADA de 18 funciones con su clase y su porqué —y que el reparto 8/8/2 que publica el baseline no se separa del código—; que ninguna función de `ebim` alcanzable por `anon` escribe, **con la prueba de por qué se excluyen las de disparador**; que toda FK a una tabla con tenant lleva alcance o su tabla lo lleva en otra; las nueve por nombre y una que falla de verdad al cruzar tenants; la barra invertida en la función, en el CHECK y en el texto enriquecido; los dos techos de tasa con la propiedad que los hace aceptables —**degradan**— y la de que `0` no deja rastro; y los **tres hallazgos de `esupplier-030`** comprobados contra esta base |
+| `src/domain/href.test.ts` | 42 | el guard, y antes que el guard **el ataque**: cuatro casos que demuestran con el propio `URL` del navegador que `/\evil.com` sale del dominio. Si algún día el estándar cambiara, ese test se pone rojo y el guard se relaja con evidencia en vez de con opinión |
+| `src/shared/security/headers.test.ts` | 27 | que `script-src` NO lleva `unsafe-*` y que `style-src` es la ÚNICA directiva que sí; que `frame-ancestors` va en la cabecera y NO en la etiqueta —el navegador la ignora ahí y publicarla anunciaría una protección que no existe—; que ninguna directiva abre `https:` entero; que HSTS va sin `preload`; y que `index.html` tiene EXACTAMENTE un script en línea, porque el plugin resume lo que encuentre y un segundo quedaría autorizado en silencio |
+| `supabase/tests/edge-security-headers.test.ts` | 22 | que las cabeceras van también en el **preflight** y en la respuesta de **error** —la que suele quedarse sin ellas—, que no pisan el `Content-Type`, que conviven con el CORS restringido del backoffice, y la comprobación estructural: **ninguna** de las once funciones del borde construye sus cabeceras sin pasar por el módulo compartido |
+| `scripts/secret-scan.test.mjs` | 13 | lo que casi nunca se comprueba de un escáner: **que encuentra**. Se planta cada clase de credencial y se ve saltar su patrón; que el prefijo pelado NO es hallazgo (si lo fuera, tres falsos positivos el primer día y el gate desactivado en una semana); que un JWT `anon` no falla y uno `service_role` sí; y que el hallazgo **no imprime el valor** |
+
+**Ningún test se borró ni se debilitó.** Ninguno existente hizo falta tocarlo: los tres cambios de
+conducta —la barra invertida, las FK compuestas y los techos de tasa— no rompieron ninguna
+expectativa previa, porque ninguna dependía del agujero.
+
+### Las decisiones que más cuesta revertir
+
+1. **La regla del enlace vive en `src/domain/href.ts`, no en tres sitios.** Tres copias idénticas no
+   son tres capas: son un agujero con tres nombres. La base sigue siendo la autoridad; lo que se
+   quita es la duplicación de la CONDICIÓN, no la comprobación en el sumidero.
+2. **El test del guard empieza comprobando el ATAQUE.** Una lista blanca escrita sobre la intuición
+   de cómo se resuelve una URL no es una lista blanca: es una conjetura. `new URL()` la comprueba.
+3. **La CSP se GENERA en el build.** Depende del origen de Supabase y del `sha256` del script en
+   línea, y las dos cosas cambian por despliegue. Escrita a mano sería la de otro despliegue.
+4. **La política va en `_headers` Y en `<meta>`.** La cabecera es la buena —`frame-ancestors` solo
+   funciona ahí—, pero `_headers` depende del hosting: con la etiqueta dentro del artefacto,
+   `script-src` viaja con él aunque mañana el despliegue se mueva a un bucket que no lo lea.
+5. **`style-src 'unsafe-inline'` se DECLARA en vez de disimularse.** Emotion inyecta estilos en
+   tiempo de ejecución; sin eso la aplicación se queda sin ni un estilo. Las salidas reales son un
+   *nonce* por respuesta —exige servidor que renderice, y esto es una SPA estática— o cambiar de
+   motor. El riesgo abierto es CSS, no ejecución.
+6. **`default-src 'none'`, no `'self'`.** Con `'self'`, el tipo de recurso que nadie se acuerde de
+   declarar queda permitido, y la lista de tipos crece con cada versión del estándar.
+7. **Los techos de tasa DEGRADAN, no niegan.** El contador es por tienda porque Postgres no ve la IP
+   y el identificador de sesión lo elige el cliente. Un límite que tumba el checkout de una tienda
+   entera porque alguien lanzó un bucle es peor que el abuso que evita.
+8. **El de cupones cuenta FALLOS, no usos.** Una campaña con diez mil canjes legítimos no gasta ni
+   una unidad; un enumerador lo agota en segundos.
+9. **Dieciséis funciones anónimas se quedan SIN techo a propósito.** Con 256 y 96 bits de entropía,
+   adivinar no es un ataque sino aritmética imposible; añadir un contador compartido no daría
+   seguridad y sí una forma nueva de dejar sin servicio a un comprador legítimo.
+10. **Las FK compuestas cambian el aislamiento de «por revisión de código» a «por construcción».**
+    Ninguna de las nueve era explotable hoy; el punto es que dejen de depender de que nadie edite mal
+    una función `SECURITY DEFINER`.
+11. **El escáner busca credenciales con VALOR, no la palabra `service_role`.** Buscar la palabra da
+    tres falsos positivos garantizados —el guard viaja en el bundle porque *es* el guard— y un gate
+    que empieza con tres falsos positivos se desactiva en la primera semana.
+12. **El escáner se prueba por el lado que encuentra.** Ese test destapó que su detector de JWT
+    tenía un carácter de retroceso literal en vez de `\b` y **no encontraba absolutamente nada**.
+13. **Los tres hallazgos de `esupplier-030` son tests de este repo.** Una lección de otro equipo que
+    no se convierte en test es una lección que este repositorio va a volver a aprender por su cuenta.
+
+### Lo que NO se hizo, y por qué
+
+- **No se actualiza `react-router` a la v7.** Los dos avisos moderados se analizaron uno a uno: el de
+  hidratación SSR **no aplica** (es una SPA; no hay `createStaticHandler` ni `renderToString` en el
+  árbol) y el de redirección abierta **ya está mitigado en la capa correcta**, porque el fallo no era
+  de la librería. El arreglo del segundo es un salto mayor con rupturas de API, y el encargo pide
+  explícitamente no hacer actualizaciones mayores automáticas. `npm audit` **sigue mostrando los
+  dos**: no se declara limpio lo que no lo está.
+- **No se verifican las cabeceras contra un despliegue.** Esta fase no despliega (contrato §11). El
+  `curl` que hay que ejecutar y firmar está en el baseline §9.2.
+- **No se declara PASS en copias de seguridad.** «Hay backups» no es «hay recuperación». El
+  procedimiento de seis pasos está en §9.5, incluido el que casi nunca se comprueba: que la base
+  restaurada conserve `FORCE ROW LEVEL SECURITY` — una restauración que lo pierda es una fuga entre
+  tenants disfrazada de recuperación exitosa.
+- **MFA/SSO siguen bloqueados.** `ecommerce` no está dado de alta en el hub; cambiar el mecanismo de
+  identidad es breaking por contrato y va al buzón antes de codificar (§9.1).
+- **No hay CI.** No existe `.github/` en este repositorio. Los gates existen y son ejecutables;
+  quién los ejecuta en cada cambio es del operador, con la canalización escrita en §9.8.
+- **`audit_log` y `analytics_events` siguen sin purga.** Son append-only por diseño (P13). Su
+  retención y el borrado a petición del titular son una decisión de política de datos con
+  implicación legal, no un `delete` que se escribe en una fase técnica (§9.4).
+- **Ni WAF ni límite por IP.** Postgres no ve la IP: el techo por tienda no lo sustituye y no se
+  presenta como si lo hiciera (§9.3).
+- **`useCatalogSearch` sigue sin llamadores** desde P15. Retirarlo es un refactor ajeno a esta fase;
+  sigue anotado como higiene.
+- **`claude-saas-opus/` sigue sin versionar.** Es la herramienta del operador, no producto de este
+  repositorio.
+
+- **Buzón EBIM**: revisado el 2026-08-30. Sin novedades desde el 2026-08-20; ninguno `to: ecommerce`
+  ni `to: all` nuevo. Lo que sí se leyó a fondo esta vez es
+  `respondidos/2026-08-11-esupplier-030-…-hardening-rls-bitacora.md`, el único documento de la
+  plataforma con hallazgos de seguridad comprobados contra una base real: sus tres hallazgos son
+  ahora tests de este repositorio. Traza en `docs/EBIM_GUIDELINES_TRACE.md`.
+
+Siguiente: **P17-SaaS** (gate final).
+
+---
+
+## Fase anterior
 **P15-SaaS — Vitrina: rendimiento, accesibilidad y SEO. COMPLETA (recuperada). Gate: PASS.**
 Decisiones completas en [`docs/adr/015-storefront-performance-seo.md`](adr/015-storefront-performance-seo.md).
 Método de medida y techos vigentes en [`docs/performance-budget.md`](performance-budget.md).

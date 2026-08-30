@@ -16,6 +16,7 @@ import { Link as RouterLink, Navigate, useLocation } from 'react-router-dom'
 import { z } from 'zod'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
+import { internalPathOr } from '@/domain/href'
 import { LoadingState } from '@/shared/ui/states'
 import { R } from '@/theme/tokens'
 import { AuthShell, CTA_SX, FieldLabel, ROUNDED_FIELD_SX } from './AuthShell'
@@ -57,8 +58,11 @@ export function LoginPage() {
   if (status === 'loading') return <LoadingState />
   if (status === 'recovery') return <Navigate to="/nueva-clave" replace />
   if (status === 'authenticated') {
+    // `startsWith('/')` no basta: `/\evil.com` empieza por `/` y el navegador
+    // la resuelve a OTRO DOMINIO (P16-SaaS). `internalPathOr` hace la misma
+    // pregunta bien y trae el suelo consigo.
     const from = (location.state as LocationState | null)?.from
-    return <Navigate to={from && from.startsWith('/') ? from : '/app'} replace />
+    return <Navigate to={internalPathOr(from, '/app')} replace />
   }
 
   async function onSubmit(values: FormValues) {

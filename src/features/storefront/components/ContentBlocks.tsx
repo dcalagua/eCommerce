@@ -2,6 +2,7 @@ import { Box, Button, Card, Chip, Stack, Typography } from '@mui/material'
 import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
+import { isInternalPath, isSafeHref } from '@/domain/href'
 import { RichText } from '@/shared/ui/RichText'
 import { T } from '@/theme/tokens'
 import type { ContentBlock, ContentCollectionItem } from '../content'
@@ -101,11 +102,19 @@ function ContentBlockView({
   }
 }
 
-/** Botón de llamada a la acción. Interno → `Link`; externo → `<a>`. */
+/**
+ * Botón de llamada a la acción. Interno → `Link`; externo → `<a>`.
+ *
+ * El destino se vuelve a comprobar aquí, en el borde por el que entra al DOM
+ * (P16-SaaS). `internal` NO puede ser `startsWith('/')`: `/\evil.com` empieza
+ * por `/` y el navegador la resuelve a otro dominio, así que ese `if` decidía
+ * «esto es interno» sobre una cadena que no lo era. `isInternalPath` es la
+ * misma pregunta hecha bien.
+ */
 function BlockCta({ block, contrast = false }: { block: ContentBlock; contrast?: boolean }) {
-  if (!block.ctaHref || !block.ctaLabel) return null
+  if (!block.ctaHref || !block.ctaLabel || !isSafeHref(block.ctaHref)) return null
 
-  const internal = block.ctaHref.startsWith('/')
+  const internal = isInternalPath(block.ctaHref)
   const sx = {
     alignSelf: 'flex-start',
     fontWeight: 700,

@@ -13,7 +13,8 @@
     "preview": "vite preview",
     "db:types": "node scripts/gen-db-types.mjs",
     "test:db": "vitest run supabase/tests",
-    "bundle:report": "node scripts/bundle-report.mjs"
+    "bundle:report": "node scripts/bundle-report.mjs",
+    "scan:secrets": "node scripts/secret-scan.mjs"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

@@ -23,6 +23,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { formatDateTime, formatMoney } from '@/shared/lib/format'
+import { isSafeExternalUrl } from '@/domain/href'
 import { FormDrawer } from '@/shared/ui/FormDrawer'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/states'
@@ -646,7 +647,11 @@ export function OrderDrawer({
                 </Typography>
               </Box>
               <Stack direction="row" spacing={0.5}>
-                {ref.external_url && (
+                {/* El destino lo escribe quien registra la referencia. Se
+                    comprueba en el borde por el que entra al DOM: un `http(s)`
+                    de verdad, sin barra invertida ni caracteres de control
+                    (P16-SaaS). Lo que no vale, no se pinta. */}
+                {isSafeExternalUrl(ref.external_url) && (
                   <IconButton
                     size="small"
                     aria-label={t('orders.externalRefs.open')}

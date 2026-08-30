@@ -110,6 +110,51 @@ se releyeron el contrato y la bandeja antes de tocar nada:
 `to: [all]` siguen pendientes y son los mismos que P00 dejó anotados —se responden con el mensaje de
 alta de la app y no antes—; **ninguno `to: ecommerce`** y ninguno afecta a esta fase.
 
+## Relectura directa para P16-SaaS (2026-08-30)
+
+Fuentes abiertas desde Drive, resueltas por el acceso directo (`G:` hoy): el contrato v1.15, el
+buzon `coordinacion\BANDEJA.md` + `coordinacion\pendientes\`, y —esto es lo nuevo de esta fase—
+el mensaje respondido `2026-08-11-esupplier-030-operador-aplicar-hardening-rls-bitacora.md`, que es
+el unico documento de la plataforma con hallazgos de seguridad **comprobados contra una base real**.
+
+| Fuente | Que se extrajo para P16 |
+|---|---|
+| §2.2 Claims / §2.6 app-a-app | El tenant sale del token. `assertNoTenantInPayload` **rechaza con 400** nueve nombres de campo; ninguna funcion alcanzable por el cliente acepta la ORGANIZACION por parametro (test propio) |
+| §3 Jerarquia | Las nueve claves ajenas que no llevaban el tenant dentro pasan a compuestas: el aislamiento deja de sostenerse por revision de codigo |
+| §13 Super Admin | `assertNotSuiteOperator` sigue: un `@ebim.pe` no opera datos de negocio de un tenant aunque venga forzado en el cuerpo |
+| §9 Checklist por app | Base de la §0 de `SECURITY_BASELINE.md`: cada control con estado y evidencia, y lo externo declarado en vez de simulado |
+| **`esupplier-030`** | Los TRES hallazgos criticos de otra app de la suite, convertidos en tests contra esta base (§5 de `security-baseline.test.ts`) |
+
+### La leccion de `esupplier-030`, comprobada aqui
+
+El mensaje reporta tres agujeros que su autor verifico con consultas, no dedujo del codigo. Se
+comprobaron uno a uno contra esta base, y ahora hay un test por cada uno — porque una leccion de
+otro equipo que no se convierte en test es una leccion que este repositorio va a volver a aprender
+por su cuenta.
+
+| Hallazgo alli | Aqui | Prueba |
+|---|---|---|
+| 1 · `audit_log` con policy `FOR ALL USING(true)` y `anon` con UPDATE/DELETE: «la bitacora se puede borrar con la anon key del bundle» | `anon` **no tiene ni un privilegio** sobre `audit_log`, y ni `service_role` tiene UPDATE/DELETE/TRUNCATE | `security-baseline.test.ts` §5.1 + `audit-log.test.ts` |
+| 2 · `SECURITY DEFINER` con `p_tenant_id` libre ejecutable por `anon` | La organizacion NUNCA llega por parametro. La SOCIEDAD si —es el selector de sociedad activa— y entonces la funcion **no es definer** y valida `ebim.can_access` a mano: las dos, no una | `security-baseline.test.ts` §5.2 y §5.2b |
+| 3 · policy `FOR ALL` mezclando lectura y escritura bajo el mismo predicado | Hay seis `FOR ALL`, todas de `authenticated` con `ebim.has_role(owner\|admin)`. Ninguna policy de escritura pasa con `true`, y el UNICO predicado `true` del esquema es la lectura del catalogo tecnico de modulos | `security-baseline.test.ts` §5.3, §5.3b y el test nominal |
+
+La frase del mensaje que gobierna el bloque entero: la tabla llevaba un `COMMENT` que decia
+«append-only por convencion», y al lado una policy que dejaba borrarla. **La convencion no es un
+control.** Es la misma razon por la que en `SECURITY_BASELINE.md` nada se declara PASS por lectura
+de codigo.
+
+**Lo que este repo NO puede cerrar y el mensaje ya anticipaba.** El autor escribe: «la raiz es una
+sola: identidad en el token. Mientras el tenant sea un header declarado, todo RPC `SECURITY
+DEFINER` es un bypass de RLS por diseño». En eCommerce el tenant **si** sale del token desde P00, y
+por eso los guards de `SECURITY DEFINER` tienen donde apoyarse. Lo que sigue pendiente es de quien
+EMITE ese token: SSO y MFA de suite, bloqueados porque `ecommerce` no esta dado de alta en el hub
+(`SECURITY_BASELINE.md` §9.1).
+
+**Bandeja:** revisada el 2026-08-30. Sin novedades desde el 2026-08-20 —los tres ultimos son
+`esupplier-036`, `esupplier-037` y `echange-005`—, **ninguno `to: ecommerce`** ni `to: all` nuevo, y
+ninguno afecta a esta fase. Sigue sin poderse responder: `ecommerce` no es un `from` valido del
+`PROTOCOLO.md` (bloqueo del operador, `SAAS_ROADMAP` §5.1).
+
 ## Hallazgo de la relectura directa (2026-08-27, P00-SaaS)
 
 **`ecommerce` no figura en ninguna de las fuentes.** No está en el contrato v1.15 (cabecera «Apps»:

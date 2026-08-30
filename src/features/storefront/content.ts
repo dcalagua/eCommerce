@@ -8,6 +8,7 @@ import {
   type RichTextDocument,
 } from '@/domain/content'
 import { moneyText } from '@/shared/lib/money'
+import { isSafeHref as isSafeHrefValue } from '@/domain/href'
 import {
   STORE_NAVIGATION_PUBLIC_RPC,
   STORE_PAGE_PUBLIC_RPC,
@@ -37,20 +38,13 @@ export { STORE_PAGE_PUBLIC_RPC, STORE_NAVIGATION_PUBLIC_RPC }
  * el valor entra al DOM. Dos comprobaciones para lo mismo no es duplicación
  * cuando la segunda es la que impide que un dato viejo —guardado antes de que
  * existiera el CHECK— acabe en un `href`.
+ *
+ * P16-SaaS: la condición dejó de estar escrita aquí. Estaba copiada palabra por
+ * palabra en tres sitios, y las tres copias compartían el fallo de la barra
+ * invertida (`/\evil.com` sale del dominio). Ahora las tres llaman a
+ * `@/domain/href`, que es donde está el porqué.
  */
-const safeHref = z
-  .string()
-  .refine(
-    (value) =>
-      !/\s/.test(value) &&
-      !/javascript:|vbscript:|data:/i.test(value) &&
-      (value.startsWith('https://') ||
-        (value.startsWith('/') && !value.startsWith('//')) ||
-        value.startsWith('mailto:') ||
-        value.startsWith('tel:')),
-  )
-  .nullable()
-  .catch(null)
+const safeHref = z.string().refine(isSafeHrefValue).nullable().catch(null)
 
 const collectionItemSchema = z.discriminatedUnion('kind', [
   z.object({

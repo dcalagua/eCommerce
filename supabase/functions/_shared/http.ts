@@ -4,6 +4,7 @@
  * cambio en el contrato de errores no haya que repetirlo cuatro veces.
  */
 import { corsHeaders, type CorsOptions } from './cors.ts'
+import { edgeSecurityHeaders } from './securityHeaders.ts'
 import { AppError, badRequest, methodNotAllowed, toAppError } from './errors.ts'
 import {
   createLogger,
@@ -92,7 +93,14 @@ export function serveJson(
     // Es lo que permite que quien abre una incidencia pegue un identificador en
     // vez de una hora aproximada: sin devolverlo, el rastro existe y nadie
     // sabe cual pedir.
-    const headers = { ...corsHeaders(request.headers.get('origin'), options), ...traceHeaders(trace) }
+    const headers = {
+      ...corsHeaders(request.headers.get('origin'), options),
+      // P16-SaaS. Van en TODAS las respuestas de la funcion, incluidas la de
+      // error y la del preflight: una cabecera de seguridad que solo esta en el
+      // camino feliz protege justo la respuesta que menos falta hace.
+      ...edgeSecurityHeaders(),
+      ...traceHeaders(trace),
+    }
 
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers })

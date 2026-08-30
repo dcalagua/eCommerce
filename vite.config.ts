@@ -1,7 +1,16 @@
 import { defineConfig, type Plugin } from 'vitest/config'
 import { loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+import { createHash } from 'node:crypto'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
 import { fileURLToPath, URL } from 'node:url'
+import {
+  contentSecurityPolicy,
+  originOf,
+  renderHeadersFile,
+  securityHeaders,
+} from './src/shared/security/headers'
 
 /**
  * `preconnect` al proyecto Supabase (P15-SaaS).
@@ -33,6 +42,102 @@ function preconnectSupabase(url: string | undefined): Plugin {
         { tag: 'link', attrs: { rel: 'preconnect', href: origin, crossorigin: '' }, injectTo: 'head-prepend' },
         { tag: 'link', attrs: { rel: 'dns-prefetch', href: origin }, injectTo: 'head-prepend' },
       ]
+    },
+  }
+}
+
+/** Salto de línea + sangría del `<head>`, para que el HTML generado se lea. */
+const INDENT = `${String.fromCharCode(10)}    `
+
+/**
+ * Cabeceras de seguridad y CSP (P16-SaaS).
+ *
+ * Genera `dist/_headers` —el formato que leen igual Netlify y Cloudflare
+ * Pages— y, además, inyecta la misma política como `<meta http-equiv>` en el
+ * `index.html`.
+ *
+ * **Las dos, y no una.** La cabecera es la buena: es la única forma de aplicar
+ * `frame-ancestors` y la única que cubre las respuestas que no son el
+ * documento. La etiqueta existe porque un `_headers` **depende del hosting**:
+ * si mañana el despliegue se mueve a un bucket que no lo lee, la aplicación se
+ * queda sin CSP y nadie se entera. Con la etiqueta dentro del artefacto, la
+ * protección de `script-src` viaja con él.
+ *
+ * **Sin `VITE_SUPABASE_URL` no se emite nada.** Un `connect-src` sin el origen
+ * del proyecto deja la aplicación sin backend: mejor no publicar política que
+ * publicar una que rompe. Es el mismo criterio que el `preconnect` de arriba
+ * —«sin variable, no hay etiqueta»— y queda anotado en el log del build.
+ */
+function securityHeadersPlugin(env: Record<string, string>): Plugin {
+  const supabaseOrigin = originOf(env.VITE_SUPABASE_URL)
+  const hubOrigin = originOf(env.VITE_EBIM_HUB_URL)
+  const inlineScriptHashes: string[] = []
+  let outDir = 'dist'
+
+  return {
+    name: 'ebim-security-headers',
+    apply: 'build',
+    configResolved(config) {
+      outDir = resolve(config.root, config.build.outDir)
+    },
+    transformIndexHtml: {
+      // `post`: hay que resumir el HTML FINAL. Si otro plugin toca el script en
+      // línea después de calcular el resumen, la CSP bloquea justo lo que
+      // quería permitir.
+      order: 'post',
+      handler(html) {
+        inlineScriptHashes.length = 0
+        for (const match of html.matchAll(/<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/gi)) {
+          const body = match[1] ?? ''
+          if (body.trim().length === 0) continue
+          inlineScriptHashes.push(
+            `sha256-${createHash('sha256').update(body, 'utf8').digest('base64')}`,
+          )
+        }
+        if (!supabaseOrigin) return html
+
+        const policy = contentSecurityPolicy({
+          supabaseOrigin,
+          hubOrigin,
+          inlineScriptHashes,
+          includeFrameAncestors: false,
+        })
+
+        // La etiqueta va JUSTO DESPUÉS de `<meta charset>`, no la primera. Son
+        // dos reglas que se pisan: la declaración de codificación tiene que
+        // caber en los primeros 1024 bytes del documento —si no, el navegador
+        // adivina el juego de caracteres, que es su propio problema de
+        // seguridad— y una CSP en etiqueta solo cubre lo que viene DESPUÉS de
+        // ella. Este es el único hueco que cumple las dos: detrás del charset y
+        // delante del script anti-flash, que es el primer script del documento.
+        const meta =
+          '<meta http-equiv="Content-Security-Policy" content="' +
+          policy.replace(/"/g, '&quot;') +
+          '">'
+        const charset = /<meta[^>]+charset[^>]*>/i.exec(html)
+        if (!charset) {
+          console.warn('`index.html` sin `<meta charset>`: la CSP va al principio del head.')
+          return html.replace(/<head>/i, '<head>' + INDENT + meta)
+        }
+        const at = charset.index + charset[0].length
+        return html.slice(0, at) + INDENT + meta + html.slice(at)
+      },
+    },
+    closeBundle() {
+      if (!supabaseOrigin) {
+        console.warn(
+          'VITE_SUPABASE_URL no definida: no se genera `_headers` ni la CSP. ' +
+            'El despliegue quedaria sin cabeceras de seguridad.',
+        )
+        return
+      }
+      const file = resolve(outDir, '_headers')
+      mkdirSync(dirname(file), { recursive: true })
+      writeFileSync(
+        file,
+        renderHeadersFile(securityHeaders({ supabaseOrigin, hubOrigin, inlineScriptHashes })),
+        'utf8',
+      )
     },
   }
 }
@@ -71,41 +176,45 @@ function vendorChunk(id: string): string | undefined {
   return undefined
 }
 
-export default defineConfig(({ mode }) => ({
-  plugins: [react(), preconnectSupabase(loadEnv(mode, process.cwd(), 'VITE_').VITE_SUPABASE_URL)],
-  resolve: {
-    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
-  },
-  build: {
-    // El manifiesto es lo que hace medible el presupuesto de rendimiento:
-    // `npm run bundle:report` lo lee para calcular los bytes REALES de cada
-    // recorrido (entrada + cierre de imports estáticos de su ruta), en vez de
-    // mirar el chunk más grande y suponer. Ver `docs/performance-budget.md`.
-    manifest: true,
-    rollupOptions: {
-      output: { manualChunks: (id) => vendorChunk(id) },
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), 'VITE_')
+
+  return {
+    plugins: [react(), preconnectSupabase(env.VITE_SUPABASE_URL), securityHeadersPlugin(env)],
+    resolve: {
+      alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
     },
-    // El aviso por defecto (500 kB) ya no dice nada útil una vez repartido el
-    // proveedor: el techo real que vigilamos es el de `docs/performance-budget.md`.
-    chunkSizeWarningLimit: 400,
-  },
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
-    css: false,
-    // Los flujos completos (login -> alta -> panel) recorren el router real con
-    // rutas `React.lazy`. Con la suite entera en paralelo, resolver esos
-    // imports en una maquina cargada pasa de los 5 s por defecto y el test
-    // fallaria por lento, no por roto. El margen no oculta nada: una asercion
-    // que no se cumple sigue fallando igual.
-    testTimeout: 30_000,
-    // Y el mismo margen para los HOOKS. El `beforeAll` de los bancos de prueba
-    // de base aplica las 49 migraciones sobre una Postgres en WASM; con la
-    // suite entera en paralelo eso pasa de los 10 s por defecto y el archivo
-    // falla antes de ejecutar una sola asercion — un falso negativo que depende
-    // del hardware, no del codigo. Subirlo no oculta nada: un hook que de
-    // verdad se cuelgue sigue fallando, solo que treinta segundos despues.
-    hookTimeout: 30_000,
-  },
-}))
+    build: {
+      // El manifiesto es lo que hace medible el presupuesto de rendimiento:
+      // `npm run bundle:report` lo lee para calcular los bytes REALES de cada
+      // recorrido (entrada + cierre de imports estáticos de su ruta), en vez de
+      // mirar el chunk más grande y suponer. Ver `docs/performance-budget.md`.
+      manifest: true,
+      rollupOptions: {
+        output: { manualChunks: (id) => vendorChunk(id) },
+      },
+      // El aviso por defecto (500 kB) ya no dice nada útil una vez repartido el
+      // proveedor: el techo real que vigilamos es el de `docs/performance-budget.md`.
+      chunkSizeWarningLimit: 400,
+    },
+    test: {
+      globals: true,
+      environment: 'jsdom',
+      setupFiles: ['./src/test/setup.ts'],
+      css: false,
+      // Los flujos completos (login -> alta -> panel) recorren el router real con
+      // rutas `React.lazy`. Con la suite entera en paralelo, resolver esos
+      // imports en una maquina cargada pasa de los 5 s por defecto y el test
+      // fallaria por lento, no por roto. El margen no oculta nada: una asercion
+      // que no se cumple sigue fallando igual.
+      testTimeout: 30_000,
+      // Y el mismo margen para los HOOKS. El `beforeAll` de los bancos de prueba
+      // de base aplica las 93 migraciones sobre una Postgres en WASM; con la
+      // suite entera en paralelo eso pasa de los 10 s por defecto y el archivo
+      // falla antes de ejecutar una sola asercion — un falso negativo que depende
+      // del hardware, no del codigo. Subirlo no oculta nada: un hook que de
+      // verdad se cuelgue sigue fallando, solo que treinta segundos despues.
+      hookTimeout: 30_000,
+    },
+  }
+})

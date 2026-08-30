@@ -30,10 +30,13 @@ import { serviceClient } from '../_runtime/clients.ts'
 import { resolveTrace, traceHeaders } from '../_shared/observability/index.ts'
 import { handleApiRequest, type GatewayPorts } from '../_shared/api/gateway.ts'
 import { sha256Hex } from '../_shared/checkout/request.ts'
+import { edgeSecurityHeaders } from '../_shared/securityHeaders.ts'
 
 Deno.serve(async (request: Request): Promise<Response> => {
   const trace = resolveTrace(request)
   const headers: Record<string, string> = {
+    // P16-SaaS: nosniff, no-referrer y sin enmarcar, tambien para el socio.
+    ...edgeSecurityHeaders(),
     ...traceHeaders(trace),
     'Content-Type': 'application/json; charset=utf-8',
     // Un socio no debería cachear respuestas de negocio por accidente, y un

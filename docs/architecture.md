@@ -1020,6 +1020,50 @@ evento para desmontarse se quedan colgados).
 **Lo que NO se declara**: ninguna puntuación de Lighthouse ni Web Vitals de campo. Exigen un
 navegador real contra un despliegue real, y esta fase no despliega (contrato §11).
 
+### Línea base de seguridad (P16-SaaS)
+
+Estado completo, con evidencia y con lo que queda fuera del repositorio, en
+[`SECURITY_BASELINE.md`](SECURITY_BASELINE.md); decisiones en
+[`adr/016-security-baseline.md`](adr/016-security-baseline.md).
+
+**Tres migraciones**, ninguna de dominio nuevo:
+
+| Migración | Qué cierra |
+|---|---|
+| `20260830100000_href_safety_hardening` | `ebim.is_safe_href` deja de admitir la barra invertida y los caracteres de control — `/\evil.com` pasaba el CHECK como ruta interna y el navegador la resolvía a OTRO dominio. Incluye la remediación de lo ya guardado: redefinir la función no revalida las filas existentes |
+| `20260830100100_tenant_safe_foreign_keys` | Las nueve claves ajenas que apuntaban a una tabla con tenant sin llevar el tenant dentro pasan a ser compuestas. El aislamiento deja de sostenerse por revisión de código y pasa a sostenerse por construcción |
+| `20260830100200_public_rate_limits` | `public_rate_events` + `ebim.public_rate_{limit,exceeded,record}`: techo por tienda para la analítica anónima (ESCRIBE) y para el sondeo de cupones (es un ORÁCULO). Las dos **degradan** en vez de negar |
+
+**Fuera de la base:**
+
+```
+BUILD                     src/shared/security/headers.ts   (puro, comprobable sin navegador)
+                                   │
+        vite.config.ts · plugin `ebim-security-headers`
+                                   ├──► dist/_headers          8 cabeceras, con frame-ancestors
+                                   └──► <meta http-equiv CSP>  detrás de <meta charset>,
+                                                               delante del primer script
+
+BORDE   functions/_shared/securityHeaders.ts  ──► TODAS las respuestas de las 11 funciones,
+                                                  incluidas la de error y la del preflight
+
+DOMINIO src/domain/href.ts   la ÚNICA definición de «enlace publicable» del cliente.
+                             La usan content.ts, el borde del storefront, RichText,
+                             ContentBlocks, OrderDrawer y LoginPage
+
+GATE    scripts/secret-scan.mjs  ──► `npm run scan:secrets`: repo versionado + dist/,
+                                     sale con código 1. Busca credenciales con VALOR,
+                                     no la palabra `service_role`
+```
+
+**La superficie anónima es una lista cerrada de 18 funciones**, cada una clasificada por lo que la
+protege (catálogo publicado · secreto de 96-256 bits · techo de tasa). Una decimonovena pone la
+suite roja (`supabase/tests/security-baseline.test.ts`).
+
+**Lo que NO se declara cubierto**: cabeceras servidas por el hosting, WAF y límite por IP, copias y
+restauración, MFA/SSO (bloqueado: `ecommerce` no está dado de alta en el hub) y CI. Los seis van con
+responsable, dependencia y procedimiento verificable en `SECURITY_BASELINE.md` §9.
+
 ## Integración con la suite
 
 - Registro de `ecommerce` en el hub (`apps`, `workspace_apps`): **pendiente del operador**

@@ -1,5 +1,6 @@
 import { Box, Link as MuiLink, Typography } from '@mui/material'
 import type { RichTextDocument, RichTextNode } from '@/domain/content'
+import { isInternalPath, isSafeHref } from '@/domain/href'
 import { T } from '@/theme/tokens'
 
 /**
@@ -18,7 +19,9 @@ import { T } from '@/theme/tokens'
  *
  * El `href` se vuelve a comprobar en `content.ts` antes de llegar aquí, y la
  * base ya lo validó con un CHECK. Tres capas para lo mismo no es exceso: es que
- * este es el punto donde un valor del tenant entra al DOM.
+ * este es el punto donde un valor del tenant entra al DOM — y en P16-SaaS se
+ * demostró que hacía falta: las tres capas compartían el mismo fallo de la
+ * barra invertida y la tercera es la única que está en el sumidero real.
  */
 export function RichText({ doc }: { doc: RichTextDocument | null }) {
   if (!doc || doc.length === 0) return null
@@ -85,7 +88,7 @@ function RichTextNodeView({ node }: { node: RichTextNode }) {
       return (
         <Typography sx={{ fontSize: T.body, color: 'var(--text)', lineHeight: 1.7 }}>
           {node.text}
-          {node.href ? (
+          {isSafeHref(node.href) ? (
             <>
               {' '}
               <MuiLink
@@ -94,7 +97,9 @@ function RichTextNodeView({ node }: { node: RichTextNode }) {
                 // `noopener noreferrer` no es cosmética: sin él, la página de
                 // destino puede manipular la pestaña que la abrió.
                 rel="noopener noreferrer"
-                target={node.href.startsWith('/') ? undefined : '_blank'}
+                // `isInternalPath` y no `startsWith('/')`: `/\evil.com` empieza
+                // por `/` y el navegador la resuelve a otro dominio (P16-SaaS).
+                target={isInternalPath(node.href) ? undefined : '_blank'}
                 sx={{ color: 'var(--accent-deep)', fontWeight: 700 }}
               >
                 {node.linkLabel ?? node.href}
