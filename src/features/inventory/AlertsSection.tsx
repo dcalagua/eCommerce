@@ -1,7 +1,7 @@
+import { StatusChip } from '@/shared/ui/StatusChip'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import {
   Card,
-  Chip,
   Stack,
   Table,
   TableBody,
@@ -70,9 +70,8 @@ export function AlertsSection() {
               {alerts.map((alert) => (
                 <TableRow key={`${alert.kind}-${alert.product_id}-${alert.variant_id ?? ''}-${alert.warehouse_id ?? ''}`} hover>
                   <TableCell>
-                    <Chip
-                      size="small"
-                      color={severityColor(alert.kind)}
+                    <StatusChip
+                      tone={severityColor(alert.kind)}
                       label={t(`inventory.alert.${alert.kind}` as MessageKey)}
                     />
                   </TableCell>

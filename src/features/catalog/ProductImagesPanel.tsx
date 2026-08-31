@@ -1,10 +1,11 @@
+import { StatusChip } from '@/shared/ui/StatusChip'
 import AddPhotoAlternateRoundedIcon from '@mui/icons-material/AddPhotoAlternateRounded'
 import ArrowDownwardRoundedIcon from '@mui/icons-material/ArrowDownwardRounded'
 import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded'
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import StarRoundedIcon from '@mui/icons-material/StarRounded'
 import StarBorderRoundedIcon from '@mui/icons-material/StarBorderRounded'
-import { Box, Button, Chip, IconButton, Stack, Tooltip, Typography } from '@mui/material'
+import { Box, Button, IconButton, Stack, Tooltip, Typography } from '@mui/material'
 import { useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
@@ -225,7 +226,7 @@ export function ProductImagesPanel({
               />
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 {image.is_primary && (
-                  <Chip size="small" color="primary" label={t('catalog.images.primary')} />
+                  <StatusChip tone="success" label={t('catalog.images.primary')} />
                 )}
                 <Typography
                   sx={{ fontSize: 11, color: 'var(--muted)', mt: 0.5, wordBreak: 'break-all' }}

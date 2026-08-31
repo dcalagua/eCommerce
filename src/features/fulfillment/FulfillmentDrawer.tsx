@@ -1,7 +1,7 @@
+import { StatusChip } from '@/shared/ui/StatusChip'
 import {
   Alert,
   Button,
-  Chip,
   Divider,
   MenuItem,
   Stack,
@@ -144,20 +144,17 @@ export function FulfillmentDrawer({
           {/* ---- Resumen ------------------------------------------------- */}
           <Stack spacing={1}>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              <Chip
-                size="small"
+              <StatusChip
                 label={t(`fulfillment.state.${fulfillment.state}` as MessageKey)}
               />
-              <Chip
-                size="small"
-                variant="outlined"
+              <StatusChip
                 label={t(`fulfillment.strategy.${fulfillment.strategy}` as MessageKey)}
               />
               {fulfillment.provider_code && (
-                <Chip size="small" variant="outlined" label={fulfillment.provider_code} />
+                <StatusChip label={fulfillment.provider_code} />
               )}
               {fulfillment.is_late && (
-                <Chip size="small" color="error" label={t('fulfillment.field.late')} />
+                <StatusChip tone="error" label={t('fulfillment.field.late')} />
               )}
             </Stack>
 
@@ -434,7 +431,7 @@ export function FulfillmentDrawer({
                   {event.description ? ` · ${event.description}` : ''}
                 </Typography>
                 {!event.signature_verified && (
-                  <Chip size="small" variant="outlined" label={t('fulfillment.field.unsigned')} />
+                  <StatusChip label={t('fulfillment.field.unsigned')} />
                 )}
               </Stack>
             ))}

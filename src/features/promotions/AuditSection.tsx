@@ -1,8 +1,7 @@
+import { StatusChip } from '@/shared/ui/StatusChip'
 import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded'
 import {
-  Card,
-  Chip,
-  Stack,
+  Card,  Stack,
   Table,
   TableBody,
   TableCell,
@@ -101,7 +100,7 @@ export function AuditSection() {
                   <TableCell>{t(`promotions.auditAction.${event.action}` as MessageKey)}</TableCell>
                   <TableCell>
                     {event.promotion_status === 'active' ? (
-                      <Chip size="small" color="warning" label={t('promotions.audit.live')} />
+                      <StatusChip tone="warning" label={t('promotions.audit.live')} />
                     ) : (
                       <Typography sx={{ color: 'var(--muted)', fontSize: 13 }}>
                         {event.promotion_status ?? '—'}

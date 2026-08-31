@@ -9,7 +9,6 @@ import {
   Box,
   Button,
   Card,
-  Chip,
   MenuItem,
   Stack,
   Tab,
@@ -155,7 +154,7 @@ export function OrdersPage() {
   if (tenantStatus === 'loading') {
     return (
       <>
-        <PageHeader title={t('admin.orders.title')} />
+        <PageHeader icon={<ReceiptLongRoundedIcon />} title={t('admin.orders.title')} />
         <Card>
           <TableSkeleton columns={6} />
         </Card>
@@ -166,7 +165,7 @@ export function OrdersPage() {
   if (!storeId) {
     return (
       <>
-        <PageHeader title={t('admin.orders.title')} />
+        <PageHeader icon={<ReceiptLongRoundedIcon />} title={t('admin.orders.title')} />
         <Card>
           <EmptyState
             title={t('admin.store.none')}
@@ -281,28 +280,9 @@ export function OrdersPage() {
                   </Typography>
                 </Stack>
               </Stack>
-              <Table
-                size="small"
-                stickyHeader
-                sx={{
-                  // Cabecera en gris solido. `color-mix` sobre `--muted` en vez
-                  // de un hex: asi el gris sale del token del tema y funciona
-                  // igual en claro que en oscuro, sin cablear dos colores.
-                  '& thead th': {
-                    bgcolor: 'color-mix(in srgb, var(--muted) 15%, var(--card))',
-                    color: 'var(--text)',
-                    borderBottom: '1px solid var(--border)',
-                  },
-                  // Solo lineas HORIZONTALES: las verticales convertian la tabla
-                  // en una hoja de calculo y competian con las etiquetas de
-                  // estado, que ya tienen forma propia.
-                  '& tbody td': { borderBottom: '1px solid var(--border)' },
-                  '& tbody tr:last-of-type td': { borderBottom: 0 },
-                  // La fila entera es pulsable (role=button), pero eso no se
-                  // ve: el fondo al pasar y el galon que aparece a la derecha
-                  // son la unica pista de que hay algo detras.
-                }}
-              >
+              {/* El gris de cabecera y las lineas horizontales ya no viven
+                  aqui: los pone el tema para las ~56 tablas de la app. */}
+              <Table size="small" stickyHeader>
                 <TableHead>
                   <TableRow>
                     <TableCell>{t('common.number')}</TableCell>
@@ -337,10 +317,8 @@ export function OrdersPage() {
                         <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
                           <span>{order.order_number}</span>
                           {order.approval_status === 'pending' && (
-                            <Chip
-                              size="small"
-                              color="warning"
-                              variant="outlined"
+                            <StatusChip
+                              tone="warning"
                               label={t('orders.approval.pendingShort')}
                             />
                           )}

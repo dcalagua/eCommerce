@@ -1,8 +1,8 @@
+import { StatusChip } from '@/shared/ui/StatusChip'
 import {
   Alert,
   Box,
   Button,
-  Chip,
   FormControlLabel,
   MenuItem,
   Stack,
@@ -292,7 +292,7 @@ export function CustomerDrawer({
               {customer && account.data && (
                 <Alert severity="info" icon={false}>
                   <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                    <Chip size="small" color="primary" label={t('customers.account.linked')} />
+                    <StatusChip tone="success" label={t('customers.account.linked')} />
                     <Typography sx={{ fontSize: 13 }}>
                       {account.data.name} · {account.data.code}
                     </Typography>
@@ -340,7 +340,7 @@ export function CustomerDrawer({
                       <TableCell sx={{ fontWeight: 700 }}>{order.order_number}</TableCell>
                       <TableCell>{new Date(order.placed_at).toLocaleDateString()}</TableCell>
                       <TableCell>
-                        <Chip size="small" label={t(`orders.status.${order.status}`)} />
+                        <StatusChip label={t(`orders.status.${order.status}`)} />
                       </TableCell>
                       <TableCell align="right" className="tnum">
                         {formatMoney(Number(order.grand_total), order.currency, locale)}

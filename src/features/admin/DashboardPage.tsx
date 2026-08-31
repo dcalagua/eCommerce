@@ -1,3 +1,4 @@
+import SpaceDashboardRoundedIcon from '@mui/icons-material/SpaceDashboardRounded'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded'
 import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded'
@@ -165,7 +166,7 @@ export function DashboardPage() {
   if (!storeId) {
     return (
       <>
-        <PageHeader title={t('admin.dashboard.title')} subtitle={tenant?.name} />
+        <PageHeader icon={<SpaceDashboardRoundedIcon />} title={t('admin.dashboard.title')} subtitle={tenant?.name} />
         <Card>
           <EmptyState
             title={t('admin.store.none')}
@@ -181,7 +182,7 @@ export function DashboardPage() {
   if (isError) {
     return (
       <>
-        <PageHeader title={t('admin.dashboard.title')} subtitle={subtitle} />
+        <PageHeader icon={<SpaceDashboardRoundedIcon />} title={t('admin.dashboard.title')} subtitle={subtitle} />
         <Card>
           <ErrorState error={error} onRetry={() => void refetch()} />
         </Card>
@@ -293,7 +294,7 @@ export function DashboardPage() {
 
   return (
     <>
-      <PageHeader title={t('admin.dashboard.title')} subtitle={subtitle} />
+      <PageHeader icon={<SpaceDashboardRoundedIcon />} title={t('admin.dashboard.title')} subtitle={subtitle} />
       <Stack spacing={2.5}>
         <InsightBanner insights={insights} />
 

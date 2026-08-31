@@ -1,8 +1,9 @@
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
+import { RowActions } from '@/shared/ui/RowActions'
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import {
   Alert,
   Button,
-  IconButton,
   Stack,
   Table,
   TableBody,
@@ -134,32 +135,36 @@ export function ExternalIdsPanel({
                 <TableCell sx={{ fontWeight: 700 }}>{row.system_code}</TableCell>
                 <TableCell>{row.external_id}</TableCell>
                 <TableCell align="right">
-                  <Button
-                    size="small"
-                    disabled={!canWrite}
-                    onClick={() => {
-                      setEditing(row)
-                      setValues({
-                        system_code: row.system_code,
-                        external_id: row.external_id,
-                        notes: row.notes ?? '',
-                      })
-                      setError(null)
-                    }}
-                    aria-label={`${t('common.edit')}: ${row.system_code}`}
-                  >
-                    {t('common.edit')}
-                  </Button>
-                  <IconButton
-                    size="small"
-                    disabled={!canWrite || remove.isPending}
-                    aria-label={`${t('common.delete')}: ${row.system_code}`}
-                    onClick={() => {
-                      void remove.mutateAsync(row.id).then(() => notify(t('customers.toast.deleted')))
-                    }}
-                  >
-                    <DeleteRoundedIcon fontSize="small" />
-                  </IconButton>
+                  <RowActions
+                    actions={[
+                      {
+                        id: 'edit',
+                        icon: <EditRoundedIcon fontSize="small" />,
+                        label: `${t('common.edit')}: ${row.system_code}`,
+                        tone: 'neutral',
+                        disabled: !canWrite,
+                        onClick: () => {
+                          setEditing(row)
+                          setValues({
+                            system_code: row.system_code,
+                            external_id: row.external_id,
+                            notes: row.notes ?? '',
+                          })
+                          setError(null)
+                        },
+                      },
+                      {
+                        id: 'delete',
+                        icon: <DeleteRoundedIcon fontSize="small" />,
+                        label: `${t('common.delete')}: ${row.system_code}`,
+                        tone: 'danger',
+                        disabled: !canWrite || remove.isPending,
+                        onClick: () => {
+                          void remove.mutateAsync(row.id).then(() => notify(t('customers.toast.deleted')))
+                        },
+                      },
+                    ]}
+                  />
                 </TableCell>
               </TableRow>
             ))}

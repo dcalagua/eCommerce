@@ -1,3 +1,4 @@
+import WarehouseRoundedIcon from '@mui/icons-material/WarehouseRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import { Card } from '@mui/material'
 import { useMemo } from 'react'
@@ -45,7 +46,7 @@ export function InventoryPage() {
   if (status === 'loading') {
     return (
       <>
-        <PageHeader title={t('inventory.title')} subtitle={t('inventory.subtitle')} />
+        <PageHeader icon={<WarehouseRoundedIcon />} title={t('inventory.title')} subtitle={t('inventory.subtitle')} />
         <Card>
           <TableSkeleton columns={5} />
         </Card>
@@ -56,7 +57,7 @@ export function InventoryPage() {
   if (!tenant || !activeCompanyId) {
     return (
       <>
-        <PageHeader title={t('inventory.title')} subtitle={t('inventory.subtitle')} />
+        <PageHeader icon={<WarehouseRoundedIcon />} title={t('inventory.title')} subtitle={t('inventory.subtitle')} />
         <Card>
           <EmptyState
             title={t('admin.store.none')}
@@ -71,6 +72,7 @@ export function InventoryPage() {
   return (
     <>
       <PageHeader
+        icon={<WarehouseRoundedIcon />}
         title={t('inventory.title')}
         subtitle={activeStore?.name ?? t('inventory.subtitle')}
       />

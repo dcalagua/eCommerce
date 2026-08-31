@@ -1,3 +1,4 @@
+import { StatusChip } from '@/shared/ui/StatusChip'
 /**
  * Configuración de impuestos del tenant.
  *
@@ -14,7 +15,6 @@ import {
   Alert,
   Box,
   Button,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -154,7 +154,7 @@ export function TaxesSection({ organizationId, companyId, canManage }: Props) {
                 <TableCell>
                   <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                     <span>{row.name}</span>
-                    {row.is_default && <Chip size="small" label={t('taxes.default')} />}
+                    {row.is_default && <StatusChip label={t('taxes.default')} />}
                   </Stack>
                 </TableCell>
                 <TableCell sx={{ color: 'var(--muted)' }}>{row.code}</TableCell>

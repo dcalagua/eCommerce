@@ -1,9 +1,9 @@
+import { StatusChip } from '@/shared/ui/StatusChip'
 import MapRoundedIcon from '@mui/icons-material/MapRounded'
 import {
   Alert,
   Button,
   Card,
-  Chip,
   FormControlLabel,
   MenuItem,
   Stack,
@@ -277,14 +277,13 @@ export function NetworkSection() {
                       </TableCell>
                       <TableCell>
                         {method.provider_code ?? (
-                          <Chip size="small" label={t('fulfillment.method.own')} />
+                          <StatusChip label={t('fulfillment.method.own')} />
                         )}
                       </TableCell>
                       <TableCell>
                         <Stack direction="row" spacing={0.5}>
-                          <Chip
-                            size="small"
-                            color={method.is_active ? 'success' : 'default'}
+                          <StatusChip
+                            tone={method.is_active ? 'success' : 'default'}
                             label={t(
                               method.is_active
                                 ? 'fulfillment.state.active'
@@ -293,9 +292,8 @@ export function NetworkSection() {
                           />
                           {/* Sin tarifa no es gratis: es imposible de ofrecer. */}
                           {method.is_active && !hasRate && method.strategy !== 'pickup' && (
-                            <Chip
-                              size="small"
-                              color="warning"
+                            <StatusChip
+                              tone="warning"
                               label={t('fulfillment.methods.noRate')}
                             />
                           )}

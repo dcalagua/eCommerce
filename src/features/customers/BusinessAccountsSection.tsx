@@ -1,9 +1,10 @@
+import { FilterBar } from '@/shared/ui/FilterBar'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import ApartmentRoundedIcon from '@mui/icons-material/ApartmentRounded'
 import {
   Box,
   Button,
   Card,
-  Chip,
   Stack,
   Table,
   TableBody,
@@ -60,7 +61,7 @@ export function BusinessAccountsSection() {
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('customers.accounts.help')}</Typography>
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ alignItems: { sm: 'center' } }}>
+      <FilterBar>
         <Box sx={{ flex: 1 }}>
           <SearchField value={search} onChange={setSearch} placeholder={t('customers.accounts.search')} />
         </Box>
@@ -69,7 +70,7 @@ export function BusinessAccountsSection() {
             {t('customers.accounts.new')}
           </Button>
         )}
-      </Stack>
+      </FilterBar>
 
       <Card>
         {query.isPending && <TableSkeleton columns={5} />}
@@ -105,9 +106,8 @@ export function BusinessAccountsSection() {
                   </TableCell>
                   <TableCell>{account.purchase_order_required ? t('common.yes') : t('common.no')}</TableCell>
                   <TableCell>
-                    <Chip
-                      size="small"
-                      color={account.is_active ? 'success' : 'default'}
+                    <StatusChip
+                      tone={account.is_active ? 'success' : 'default'}
                       label={account.is_active ? t('customers.field.active') : t('common.no')}
                     />
                   </TableCell>

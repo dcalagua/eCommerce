@@ -1,3 +1,5 @@
+import { FilterBar } from '@/shared/ui/FilterBar'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import { zodResolver } from '@hookform/resolvers/zod'
 import StraightenRoundedIcon from '@mui/icons-material/StraightenRounded'
 import {
@@ -5,7 +7,6 @@ import {
   Box,
   Button,
   Card,
-  Chip,
   FormControlLabel,
   Stack,
   Switch,
@@ -68,11 +69,7 @@ export function UnitsSection() {
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('pim.units.help')}</Typography>
 
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={1.5}
-        sx={{ alignItems: { sm: 'center' } }}
-      >
+      <FilterBar>
         <Box sx={{ flex: 1 }}>
           <SearchField value={search} onChange={setSearch} placeholder={t('pim.search')} />
         </Box>
@@ -81,7 +78,7 @@ export function UnitsSection() {
             {t('pim.units.new')}
           </Button>
         )}
-      </Stack>
+      </FilterBar>
 
       <Card>
         {units.isPending && <TableSkeleton columns={4} />}
@@ -112,9 +109,8 @@ export function UnitsSection() {
                     {unit.symbol ?? t('common.none')}
                   </TableCell>
                   <TableCell>
-                    <Chip
-                      size="small"
-                      color={unit.is_active ? 'success' : 'default'}
+                    <StatusChip
+                      tone={unit.is_active ? 'success' : 'default'}
                       label={unit.is_active ? t('pim.field.active') : t('common.no')}
                     />
                   </TableCell>

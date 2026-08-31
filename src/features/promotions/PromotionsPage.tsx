@@ -1,3 +1,4 @@
+import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import { Card } from '@mui/material'
 import { useMemo } from 'react'
@@ -48,7 +49,7 @@ export function PromotionsPage() {
   if (status === 'loading') {
     return (
       <>
-        <PageHeader title={t('promotions.title')} subtitle={t('promotions.subtitle')} />
+        <PageHeader icon={<LocalOfferRoundedIcon />} title={t('promotions.title')} subtitle={t('promotions.subtitle')} />
         <Card>
           <TableSkeleton columns={5} />
         </Card>
@@ -59,7 +60,7 @@ export function PromotionsPage() {
   if (!tenant || !activeCompanyId) {
     return (
       <>
-        <PageHeader title={t('promotions.title')} subtitle={t('promotions.subtitle')} />
+        <PageHeader icon={<LocalOfferRoundedIcon />} title={t('promotions.title')} subtitle={t('promotions.subtitle')} />
         <Card>
           <EmptyState
             title={t('admin.store.none')}
@@ -74,6 +75,7 @@ export function PromotionsPage() {
   return (
     <>
       <PageHeader
+        icon={<LocalOfferRoundedIcon />}
         title={t('promotions.title')}
         subtitle={activeStore?.name ?? t('promotions.subtitle')}
       />

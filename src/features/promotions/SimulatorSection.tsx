@@ -1,9 +1,9 @@
+import { StatusChip } from '@/shared/ui/StatusChip'
 import ScienceRoundedIcon from '@mui/icons-material/ScienceRounded'
 import {
   Alert,
   Button,
   Card,
-  Chip,
   Divider,
   IconButton,
   Stack,
@@ -243,10 +243,10 @@ export function SimulatorSection() {
                     justifyContent="space-between"
                   >
                     <Stack direction="row" spacing={1} alignItems="center">
-                      <Chip size="small" color="success" label={entry.code} />
+                      <StatusChip tone="success" label={entry.code} />
                       <Typography>{entry.label}</Typography>
                       {entry.coupon_code && (
-                        <Chip size="small" variant="outlined" label={entry.coupon_code} />
+                        <StatusChip label={entry.coupon_code} />
                       )}
                     </Stack>
                     <Typography sx={{ fontWeight: 700 }}>−{entry.amount}</Typography>
@@ -261,7 +261,7 @@ export function SimulatorSection() {
                 <Typography variant="subtitle2">{t('promotions.simulator.skipped')}</Typography>
                 {result.promotions.skipped.map((entry) => (
                   <Stack key={entry.code} direction="row" spacing={1} alignItems="center">
-                    <Chip size="small" label={entry.code} />
+                    <StatusChip label={entry.code} />
                     <Typography sx={{ color: 'var(--muted)' }}>
                       {t(`promotions.reason.${entry.reason}` as MessageKey)}
                     </Typography>
@@ -275,9 +275,8 @@ export function SimulatorSection() {
                 <Typography variant="subtitle2">{t('promotions.simulator.coupons')}</Typography>
                 {result.promotions.coupons.map((entry) => (
                   <Stack key={entry.code} direction="row" spacing={1} alignItems="center">
-                    <Chip
-                      size="small"
-                      color={entry.status === 'aplicado' ? 'success' : 'default'}
+                    <StatusChip
+                      tone={entry.status === 'aplicado' ? 'success' : 'default'}
                       label={entry.code}
                     />
                     <Typography sx={{ color: 'var(--muted)' }}>

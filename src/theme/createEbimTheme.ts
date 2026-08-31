@@ -167,11 +167,27 @@ export function createEbimTheme({
             fontWeight: 700,
             letterSpacing: '0.1em',
             textTransform: 'uppercase',
-            color: 'var(--muted)',
+            // Cabecera en gris solido. `color-mix` sobre el token `--muted` en
+            // vez de un hex: asi el gris sale del tema y funciona igual en
+            // claro que en oscuro, sin cablear dos colores.
+            color: 'var(--text)',
+            backgroundColor: 'color-mix(in srgb, var(--muted) 15%, var(--card))',
+            borderBottom: '1px solid var(--border)',
           },
+          // Solo lineas HORIZONTALES. Las verticales convierten la tabla en
+          // una hoja de calculo y compiten con las etiquetas de estado, que ya
+          // tienen forma propia. Vive en el tema y no en cada pantalla porque
+          // son ~56 tablas: en linea, el proximo retoque del gris son 56
+          // ediciones y una de ellas se queda sin hacer.
+          body: { borderBottom: '1px solid var(--border)' },
         },
       },
       MuiTableRow: { styleOverrides: { root: { height: d.rowH } } },
+      // La ultima fila no lleva raya: el borde de la tarjeta ya cierra la
+      // tabla y dos lineas pegadas se leen como un error de pintado.
+      MuiTableBody: {
+        styleOverrides: { root: { '& tr:last-of-type td': { borderBottom: 0 } } },
+      },
       MuiLink: {
         styleOverrides: { root: { color: deep, textDecorationColor: 'transparent' } },
       },

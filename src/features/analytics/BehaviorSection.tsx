@@ -1,6 +1,6 @@
+import { StatusChip } from '@/shared/ui/StatusChip'
 import {
   Card,
-  Chip,
   Stack,
   Table,
   TableBody,
@@ -143,7 +143,7 @@ export function BehaviorSection({
                       // sin resultados es catálogo que falta o un sinónimo que
                       // falta (P11). Se resalta porque si no, se pierde entre
                       // los que sí encontraron.
-                      <Chip size="small" color="warning" label={row.zero_results} />
+                      <StatusChip tone="warning" label={String(row.zero_results)} />
                     ) : (
                       row.zero_results
                     )}

@@ -1,3 +1,4 @@
+import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import { Card } from '@mui/material'
 import { useMemo } from 'react'
@@ -48,7 +49,7 @@ export function PaymentsPage() {
   if (status === 'loading') {
     return (
       <>
-        <PageHeader title={t('payments.title')} subtitle={t('payments.subtitle')} />
+        <PageHeader icon={<PaymentsRoundedIcon />} title={t('payments.title')} subtitle={t('payments.subtitle')} />
         <Card>
           <TableSkeleton columns={5} />
         </Card>
@@ -59,7 +60,7 @@ export function PaymentsPage() {
   if (!tenant || !activeCompanyId) {
     return (
       <>
-        <PageHeader title={t('payments.title')} subtitle={t('payments.subtitle')} />
+        <PageHeader icon={<PaymentsRoundedIcon />} title={t('payments.title')} subtitle={t('payments.subtitle')} />
         <Card>
           <EmptyState
             title={t('admin.store.none')}
@@ -74,6 +75,7 @@ export function PaymentsPage() {
   return (
     <>
       <PageHeader
+        icon={<PaymentsRoundedIcon />}
         title={t('payments.title')}
         subtitle={activeStore?.name ?? t('payments.subtitle')}
       />

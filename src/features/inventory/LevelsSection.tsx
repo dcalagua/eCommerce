@@ -1,3 +1,5 @@
+import { FilterBar } from '@/shared/ui/FilterBar'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -5,7 +7,6 @@ import {
   Box,
   Button,
   Card,
-  Chip,
   MenuItem,
   Stack,
   Table,
@@ -87,7 +88,7 @@ export function LevelsSection() {
 
       {noWarehouses && <Alert severity="info">{t('inventory.levels.noWarehouses')}</Alert>}
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ alignItems: { sm: 'center' } }}>
+      <FilterBar>
         <Box sx={{ flex: 1 }}>
           <SearchField value={search} onChange={setSearch} placeholder={t('inventory.levels.search')} />
         </Box>
@@ -111,7 +112,7 @@ export function LevelsSection() {
             {t('inventory.levels.newMovement')}
           </Button>
         )}
-      </Stack>
+      </FilterBar>
 
       <Card>
         {query.isPending && <TableSkeleton columns={6} />}
@@ -149,9 +150,8 @@ export function LevelsSection() {
                   <TableCell align="right">{formatQuantity(row.on_hand_qty)}</TableCell>
                   <TableCell align="right">{formatQuantity(row.reserved_qty)}</TableCell>
                   <TableCell align="right">
-                    <Chip
-                      size="small"
-                      color={
+                    <StatusChip
+                      tone={
                         row.available_qty < 0
                           ? 'error'
                           : row.available_qty <= row.reorder_point

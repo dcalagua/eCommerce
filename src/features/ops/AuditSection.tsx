@@ -1,6 +1,8 @@
+import { FilterBar } from '@/shared/ui/FilterBar'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import {
+  Box,
   Card,
-  Chip,
   Stack,
   Table,
   TableBody,
@@ -48,12 +50,16 @@ export function AuditSection() {
 
   return (
     <Stack sx={{ gap: 2 }}>
-      <SearchField
-        value={term}
-        onChange={setTerm}
-        placeholder={t('ops.audit.search')}
-        ariaLabel={t('ops.audit.search')}
-      />
+      <FilterBar>
+        <Box sx={{ minWidth: { xs: '100%', sm: 280 } }}>
+          <SearchField
+            value={term}
+            onChange={setTerm}
+            placeholder={t('ops.audit.search')}
+            ariaLabel={t('ops.audit.search')}
+          />
+        </Box>
+      </FilterBar>
       <Card>
         {entries.isPending ? (
           <TableSkeleton columns={4} />
@@ -78,12 +84,12 @@ export function AuditSection() {
                   <TableCell>
                     <Typography sx={{ fontSize: 13 }}>{row.actor_email ?? '—'}</Typography>
                     <Stack direction="row" sx={{ gap: 0.5, mt: 0.5 }}>
-                      <Chip size="small" variant="outlined" label={row.actor_kind} />
+                      <StatusChip label={row.actor_kind} />
                       {row.actor_role && (
-                        <Chip size="small" variant="outlined" label={row.actor_role} />
+                        <StatusChip label={row.actor_role} />
                       )}
                       {row.cross_tenant && (
-                        <Chip size="small" color="error" label={t('ops.audit.crossTenant')} />
+                        <StatusChip tone="error" label={t('ops.audit.crossTenant')} />
                       )}
                     </Stack>
                   </TableCell>

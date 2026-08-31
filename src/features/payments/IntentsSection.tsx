@@ -1,3 +1,5 @@
+import { FilterBar } from '@/shared/ui/FilterBar'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import {
   Alert,
@@ -121,7 +123,7 @@ export function IntentsSection() {
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('payments.intents.help')}</Typography>
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="center">
+      <FilterBar>
         <Box sx={{ flex: 1, width: '100%' }}>
           <SearchField
             value={term}
@@ -145,7 +147,7 @@ export function IntentsSection() {
             </option>
           ))}
         </TextField>
-      </Stack>
+      </FilterBar>
 
       <Card>
         {intents.isPending && <TableSkeleton columns={6} />}
@@ -182,7 +184,7 @@ export function IntentsSection() {
                   <TableCell>{formatDateTime(intent.created_at, locale)}</TableCell>
                   <TableCell>
                     {intent.order_number ?? (
-                      <Chip size="small" label={t('payments.intents.noOrder')} />
+                      <StatusChip label={t('payments.intents.noOrder')} />
                     )}
                   </TableCell>
                   <TableCell>{intent.method_name}</TableCell>
@@ -201,9 +203,8 @@ export function IntentsSection() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Chip
-                      size="small"
-                      color={STATUS_COLOR[intent.status] ?? 'default'}
+                    <StatusChip
+                      tone={STATUS_COLOR[intent.status] ?? 'default'}
                       label={t(`payments.status.${intent.status}` as MessageKey)}
                     />
                   </TableCell>
@@ -249,11 +250,10 @@ export function IntentsSection() {
               )}
               {(attempts.data ?? []).map((attempt) => (
                 <Stack key={attempt.id} direction="row" spacing={1} alignItems="center">
-                  <Chip size="small" label={`#${attempt.attempt_no}`} />
+                  <StatusChip label={`#${attempt.attempt_no}`} />
                   <Typography variant="body2">{attempt.operation}</Typography>
-                  <Chip
-                    size="small"
-                    color={attempt.status === 'succeeded' ? 'success' : 'error'}
+                  <StatusChip
+                    tone={attempt.status === 'succeeded' ? 'success' : 'error'}
                     label={t(`payments.attempt.${attempt.status}` as MessageKey)}
                   />
                   <Typography variant="body2" sx={{ color: 'var(--muted)' }}>
@@ -273,14 +273,12 @@ export function IntentsSection() {
                     {formatDateTime(event.created_at, locale)}
                   </Typography>
                   <Typography variant="body2">{event.event_type}</Typography>
-                  <Chip
-                    size="small"
+                  <StatusChip
                     label={t(`payments.source.${event.source}` as MessageKey)}
                   />
                   {event.source === 'provider_webhook' && (
-                    <Chip
-                      size="small"
-                      color={event.signature_verified ? 'success' : 'error'}
+                    <StatusChip
+                      tone={event.signature_verified ? 'success' : 'error'}
                       label={t(
                         event.signature_verified
                           ? 'payments.detail.signed'
@@ -301,8 +299,7 @@ export function IntentsSection() {
                   <Typography variant="body2">
                     {refund.amount} {refund.currency}
                   </Typography>
-                  <Chip
-                    size="small"
+                  <StatusChip
                     label={t(`payments.refund.${refund.status}` as MessageKey)}
                   />
                   <Typography variant="body2" sx={{ color: 'var(--muted)' }}>

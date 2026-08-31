@@ -1,3 +1,4 @@
+import HubRoundedIcon from '@mui/icons-material/HubRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import { Card } from '@mui/material'
 import { useMemo } from 'react'
@@ -53,7 +54,7 @@ export function IntegrationsPage() {
   if (status === 'loading') {
     return (
       <>
-        <PageHeader title={t('integrations.title')} subtitle={t('integrations.subtitle')} />
+        <PageHeader icon={<HubRoundedIcon />} title={t('integrations.title')} subtitle={t('integrations.subtitle')} />
         <Card>
           <TableSkeleton columns={4} />
         </Card>
@@ -64,7 +65,7 @@ export function IntegrationsPage() {
   if (!tenant || !activeCompanyId) {
     return (
       <>
-        <PageHeader title={t('integrations.title')} subtitle={t('integrations.subtitle')} />
+        <PageHeader icon={<HubRoundedIcon />} title={t('integrations.title')} subtitle={t('integrations.subtitle')} />
         <Card>
           <EmptyState
             title={t('admin.store.none')}
@@ -79,6 +80,7 @@ export function IntegrationsPage() {
   return (
     <>
       <PageHeader
+        icon={<HubRoundedIcon />}
         title={t('integrations.title')}
         subtitle={activeStore?.name ?? t('integrations.subtitle')}
       />

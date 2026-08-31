@@ -1,10 +1,10 @@
+import { RowActions } from '@/shared/ui/RowActions'
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import {
   Alert,
   Autocomplete,
   Box,
   Button,
-  IconButton,
   MenuItem,
   Stack,
   Table,
@@ -263,16 +263,20 @@ export function PriceItemsPanel({ list, canWrite }: { list: PriceList; canWrite:
                 </TableCell>
                 <TableCell align="right">{item.compare_at_price ?? '—'}</TableCell>
                 <TableCell align="right">
-                  <IconButton
-                    size="small"
-                    disabled={!canWrite || remove.isPending}
-                    aria-label={`${t('common.delete')} ${item.unit_price}`}
-                    onClick={() => {
-                      void remove.mutateAsync(item.id).then(() => notify(t('pricing.toast.deleted')))
-                    }}
-                  >
-                    <DeleteRoundedIcon fontSize="small" />
-                  </IconButton>
+                  <RowActions
+                    actions={[
+                      {
+                        id: 'delete',
+                        icon: <DeleteRoundedIcon fontSize="small" />,
+                        label: `${t('common.delete')} ${item.unit_price}`,
+                        tone: 'danger',
+                        disabled: !canWrite || remove.isPending,
+                        onClick: () => {
+                          void remove.mutateAsync(item.id).then(() => notify(t('pricing.toast.deleted')))
+                        },
+                      },
+                    ]}
+                  />
                 </TableCell>
               </TableRow>
             ))}

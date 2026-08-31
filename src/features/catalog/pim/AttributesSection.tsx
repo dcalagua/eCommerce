@@ -1,3 +1,5 @@
+import { FilterBar } from '@/shared/ui/FilterBar'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import { zodResolver } from '@hookform/resolvers/zod'
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
 import {
@@ -5,7 +7,6 @@ import {
   Box,
   Button,
   Card,
-  Chip,
   Divider,
   FormControlLabel,
   MenuItem,
@@ -109,11 +110,7 @@ export function AttributesSection() {
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('pim.attributes.help')}</Typography>
 
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={1.5}
-        sx={{ alignItems: { sm: 'center' } }}
-      >
+      <FilterBar>
         <Box sx={{ flex: 1 }}>
           <SearchField value={search} onChange={setSearch} placeholder={t('pim.search')} />
         </Box>
@@ -122,7 +119,7 @@ export function AttributesSection() {
             {t('pim.attributes.new')}
           </Button>
         )}
-      </Stack>
+      </FilterBar>
 
       <Card>
         {attributes.isPending && <TableSkeleton columns={5} />}
@@ -162,7 +159,7 @@ export function AttributesSection() {
                   </TableCell>
                   <TableCell>
                     {attribute.is_variant_axis ? (
-                      <Chip size="small" color="success" label={t('common.yes')} />
+                      <StatusChip tone="success" label={t('common.yes')} />
                     ) : (
                       <Typography sx={{ color: 'var(--muted)', fontSize: 13 }}>
                         {t('common.no')}
@@ -471,11 +468,10 @@ function AttributeValuesPanel({
       ) : (
         <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }}>
           {values.map((value) => (
-            <Chip
+            <StatusChip
               key={value.id}
               label={value.label}
-              size="small"
-              variant={value.is_active ? 'filled' : 'outlined'}
+              tone={value.is_active ? 'success' : 'default'}
             />
           ))}
         </Stack>

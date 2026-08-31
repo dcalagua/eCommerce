@@ -1,7 +1,9 @@
+import { FilterBar } from '@/shared/ui/FilterBar'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
 import {
+  Box,
   Card,
-  Chip,
   Stack,
   Tab,
   Table,
@@ -84,30 +86,28 @@ export function QueueSection() {
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('fulfillment.queue.help')}</Typography>
 
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={2}
-        alignItems={{ sm: 'center' }}
-        justifyContent="space-between"
+      <Tabs
+        value={state}
+        onChange={(_event, next: string) => setState(next)}
+        variant="scrollable"
+        scrollButtons="auto"
+        aria-label={t('fulfillment.queue.filter')}
       >
-        <SearchField
-          value={term}
-          onChange={setTerm}
-          placeholder={t('fulfillment.queue.search')}
-          ariaLabel={t('fulfillment.queue.search')}
-        />
-        <Tabs
-          value={state}
-          onChange={(_event, next: string) => setState(next)}
-          variant="scrollable"
-          scrollButtons="auto"
-          aria-label={t('fulfillment.queue.filter')}
-        >
-          {TABS.map((tab) => (
-            <Tab key={tab.id || 'todas'} value={tab.id} label={t(tab.label)} />
-          ))}
-        </Tabs>
-      </Stack>
+        {TABS.map((tab) => (
+          <Tab key={tab.id || 'todas'} value={tab.id} label={t(tab.label)} />
+        ))}
+      </Tabs>
+
+      <FilterBar>
+        <Box sx={{ minWidth: { xs: '100%', sm: 280 } }}>
+          <SearchField
+            value={term}
+            onChange={setTerm}
+            placeholder={t('fulfillment.queue.search')}
+            ariaLabel={t('fulfillment.queue.search')}
+          />
+        </Box>
+      </FilterBar>
 
       <Card>
         {queue.isPending && <TableSkeleton columns={6} />}
@@ -171,16 +171,15 @@ export function QueueSection() {
                   </TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={0.5} alignItems="center">
-                      <Chip
-                        size="small"
-                        color={TONE[row.state]}
+                      <StatusChip
+                        tone={TONE[row.state]}
                         label={t(`fulfillment.state.${row.state}` as MessageKey)}
                       />
                       {/* Se llegó tarde. Lo calcula la vista comparando la
                           promesa con hoy: dos fechas que viven juntas en la
                           entrega, no una resta hecha en el navegador. */}
                       {row.is_late && (
-                        <Chip size="small" color="error" label={t('fulfillment.field.late')} />
+                        <StatusChip tone="error" label={t('fulfillment.field.late')} />
                       )}
                     </Stack>
                   </TableCell>

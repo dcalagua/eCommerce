@@ -1,3 +1,5 @@
+import { FilterBar } from '@/shared/ui/FilterBar'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import WarehouseRoundedIcon from '@mui/icons-material/WarehouseRounded'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -5,7 +7,6 @@ import {
   Box,
   Button,
   Card,
-  Chip,
   FormControlLabel,
   MenuItem,
   Stack,
@@ -121,7 +122,7 @@ export function WarehousesSection() {
         <Alert severity="info">{t('inventory.warehouses.allServe')}</Alert>
       )}
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ alignItems: { sm: 'center' } }}>
+      <FilterBar>
         <Box sx={{ flex: 1 }}>
           <SearchField value={search} onChange={setSearch} placeholder={t('inventory.search')} />
         </Box>
@@ -130,7 +131,7 @@ export function WarehousesSection() {
             {t('inventory.warehouses.new')}
           </Button>
         )}
-      </Stack>
+      </FilterBar>
 
       <Card>
         {query.isPending && <TableSkeleton columns={5} />}
@@ -161,20 +162,19 @@ export function WarehousesSection() {
                     <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
                       <span>{warehouse.name}</span>
                       {warehouse.is_default && (
-                        <Chip size="small" label={t('inventory.field.default')} />
+                        <StatusChip label={t('inventory.field.default')} />
                       )}
                       {warehouse.allows_backorder && (
-                        <Chip size="small" color="warning" label={t('inventory.field.backorder')} />
+                        <StatusChip tone="warning" label={t('inventory.field.backorder')} />
                       )}
                       {!warehouse.is_active && (
-                        <Chip size="small" color="default" label={t('common.no')} />
+                        <StatusChip label={t('common.no')} />
                       )}
                     </Stack>
                   </TableCell>
                   <TableCell>
-                    <Chip
-                      size="small"
-                      color={warehouse.source === 'erp' ? 'info' : 'default'}
+                    <StatusChip
+                      tone={warehouse.source === 'erp' ? 'info' : 'default'}
                       label={t(`inventory.source.${warehouse.source}` as MessageKey)}
                     />
                   </TableCell>

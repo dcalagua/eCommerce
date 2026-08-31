@@ -1,10 +1,10 @@
+import { FilterBar } from '@/shared/ui/FilterBar'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import ViewQuiltRoundedIcon from '@mui/icons-material/ViewQuiltRounded'
 import {
   Box,
   Button,
-  Card,
-  Chip,
-  Divider,
+  Card,  Divider,
   MenuItem,
   Stack,
   Switch,
@@ -247,10 +247,9 @@ export function BlocksSection({ pageId }: { pageId: string | null }) {
                   <TableCell>{t(`content.block.${row.block_type}` as MessageKey)}</TableCell>
                   <TableCell>{row.title ?? '—'}</TableCell>
                   <TableCell>
-                    <Chip
-                      size="small"
+                    <StatusChip
                       label={t(row.is_active ? 'content.blocks.active' : 'content.blocks.inactive')}
-                      color={row.is_active ? 'primary' : 'default'}
+                      tone={row.is_active ? 'success' : 'default'}
                     />
                   </TableCell>
                   <TableCell align="right">
@@ -538,12 +537,16 @@ function CollectionDrawer({
 
         <Divider />
 
-        <SearchField
-          value={term}
-          onChange={setTerm}
-          placeholder={t('content.items.search')}
-          ariaLabel={t('content.items.search')}
-        />
+        <FilterBar>
+          <Box sx={{ minWidth: { xs: '100%', sm: 280 } }}>
+            <SearchField
+              value={term}
+              onChange={setTerm}
+              placeholder={t('content.items.search')}
+              ariaLabel={t('content.items.search')}
+            />
+          </Box>
+        </FilterBar>
 
         {results.data && results.data.items.length > 0 && (
           <Stack spacing={0.5}>

@@ -1,4 +1,7 @@
+import { FilterBar } from '@/shared/ui/FilterBar'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import {
+  Box,
   Button,
   Card,
   Chip,
@@ -7,12 +10,12 @@ import {
   DialogContent,
   DialogTitle,
   Stack,
+  Tab,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableRow,
-  Tab,
   Tabs,
   TextField,
   Typography,
@@ -77,12 +80,16 @@ export function IncidentsSection({ onTrace }: { onTrace: (correlationId: string)
         <Tab value="" label={t('ops.incidents.all')} />
       </Tabs>
 
-      <SearchField
-        value={term}
-        onChange={setTerm}
-        placeholder={t('ops.incidents.search')}
-        ariaLabel={t('ops.incidents.search')}
-      />
+      <FilterBar>
+        <Box sx={{ minWidth: { xs: '100%', sm: 280 } }}>
+          <SearchField
+            value={term}
+            onChange={setTerm}
+            placeholder={t('ops.incidents.search')}
+            ariaLabel={t('ops.incidents.search')}
+          />
+        </Box>
+      </FilterBar>
 
       <Card>
         {incidents.isPending ? (
@@ -110,7 +117,7 @@ export function IncidentsSection({ onTrace }: { onTrace: (correlationId: string)
                 <TableRow key={row.id}>
                   <TableCell>{formatDateTime(row.occurred_at, locale)}</TableCell>
                   <TableCell>
-                    <Chip size="small" color={severityColor(row.severity)} label={row.kind} />
+                    <StatusChip tone={severityColor(row.severity)} label={row.kind} />
                     {row.repeats > 1 && (
                       <Chip
                         size="small"
@@ -152,7 +159,7 @@ export function IncidentsSection({ onTrace }: { onTrace: (correlationId: string)
                         {t('ops.incidents.resolve')}
                       </Button>
                     ) : (
-                      <Chip size="small" label={t('ops.incidents.resolved')} />
+                      <StatusChip label={t('ops.incidents.resolved')} />
                     )}
                   </TableCell>
                 </TableRow>

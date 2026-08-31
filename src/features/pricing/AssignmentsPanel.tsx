@@ -1,9 +1,9 @@
+import { RowActions } from '@/shared/ui/RowActions'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import {
   Alert,
   Button,
-  Chip,
-  IconButton,
   MenuItem,
   Stack,
   Table,
@@ -205,25 +205,29 @@ export function AssignmentsPanel({ list, canWrite }: { list: PriceList; canWrite
               return (
                 <TableRow key={assignment.id} hover>
                   <TableCell>
-                    <Chip size="small" label={t(`pricing.scope.${assignment.scope}`)} />
+                    <StatusChip label={t(`pricing.scope.${assignment.scope}`)} />
                   </TableCell>
                   <TableCell>
                     {target ? (targetName.get(target) ?? target) : t('pricing.scope.storeAll')}
                   </TableCell>
                   <TableCell align="right">{SCOPE_RANK[assignment.scope]}</TableCell>
                   <TableCell align="right">
-                    <IconButton
-                      size="small"
-                      disabled={!canWrite || remove.isPending}
-                      aria-label={`${t('common.delete')} ${t(`pricing.scope.${assignment.scope}`)}`}
-                      onClick={() => {
-                        void remove
-                          .mutateAsync(assignment.id)
-                          .then(() => notify(t('pricing.toast.deleted')))
-                      }}
-                    >
-                      <DeleteRoundedIcon fontSize="small" />
-                    </IconButton>
+                    <RowActions
+                      actions={[
+                        {
+                          id: 'delete',
+                          icon: <DeleteRoundedIcon fontSize="small" />,
+                          label: `${t('common.delete')} ${t(`pricing.scope.${assignment.scope}`)}`,
+                          tone: 'danger',
+                          disabled: !canWrite || remove.isPending,
+                          onClick: () => {
+                            void remove
+                              .mutateAsync(assignment.id)
+                              .then(() => notify(t('pricing.toast.deleted')))
+                          },
+                        },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               )

@@ -1,7 +1,11 @@
+import { FilterBar } from '@/shared/ui/FilterBar'
+import { TablePager } from '@/shared/ui/TablePager'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
 import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import {
+  Box,
   Button,
   Card,
   Chip,
@@ -13,9 +17,7 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
-  TablePagination,
-  TableRow,
+  TableHead,  TableRow,
   Tabs,
 } from '@mui/material'
 import { useEffect, useMemo, useState } from 'react'
@@ -114,7 +116,7 @@ export function ProductsPage() {
   if (tenantStatus === 'loading') {
     return (
       <>
-        <PageHeader title={t('admin.products.title')} />
+        <PageHeader icon={<Inventory2RoundedIcon />} title={t('admin.products.title')} />
         <Card>
           <TableSkeleton columns={6} />
         </Card>
@@ -125,7 +127,7 @@ export function ProductsPage() {
   if (!storeId || !activeCompanyId || !tenant) {
     return (
       <>
-        <PageHeader title={t('admin.products.title')} />
+        <PageHeader icon={<Inventory2RoundedIcon />} title={t('admin.products.title')} />
         <Card>
           <EmptyState
             title={t('admin.store.none')}
@@ -165,6 +167,7 @@ export function ProductsPage() {
   return (
     <>
       <PageHeader
+        icon={<Inventory2RoundedIcon />}
         title={t('admin.products.title')}
         subtitle={activeStore?.name}
         actions={
@@ -209,7 +212,11 @@ export function ProductsPage() {
           ))}
         </Tabs>
 
-        <SearchField value={search} onChange={setSearch} placeholder={t('admin.products.search')} />
+        <FilterBar>
+          <Box sx={{ minWidth: { xs: '100%', sm: 280 } }}>
+            <SearchField value={search} onChange={setSearch} placeholder={t('admin.products.search')} />
+          </Box>
+        </FilterBar>
 
         <Card>
           {products.isPending && <TableSkeleton columns={6} />}
@@ -277,9 +284,8 @@ export function ProductsPage() {
                       {product.kind === 'simple' ? product.stock : '—'}
                     </TableCell>
                     <TableCell>
-                      <Chip
-                        size="small"
-                        color={STATUS_COLOR[product.status]}
+                      <StatusChip
+                        tone={STATUS_COLOR[product.status]}
                         label={t(STATUS_LABEL[product.status])}
                       />
                     </TableCell>
@@ -299,18 +305,11 @@ export function ProductsPage() {
           )}
 
           {!products.isError && total > 0 && (
-            <TablePagination
-              component="div"
-              count={total}
+            <TablePager
               page={page}
-              onPageChange={(_, next) => setPage(next)}
-              rowsPerPage={PRODUCTS_PAGE_SIZE}
-              rowsPerPageOptions={[PRODUCTS_PAGE_SIZE]}
-              labelRowsPerPage={t('common.rowsPerPage')}
-              labelDisplayedRows={({ from, to, count }) =>
-                `${t('common.showing')} ${from}–${to} / ${count}`
-              }
-              getItemAriaLabel={(type) => `${t('common.showing')}: ${type}`}
+              pageSize={PRODUCTS_PAGE_SIZE}
+              total={total}
+              onPageChange={setPage}
             />
           )}
         </Card>

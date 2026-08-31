@@ -1,10 +1,11 @@
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
+import { RowActions } from '@/shared/ui/RowActions'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import {
   Alert,
   Button,
-  Chip,
   FormControlLabel,
-  IconButton,
   MenuItem,
   Stack,
   Switch,
@@ -191,7 +192,7 @@ export function LocationsPanel({
                   <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                     <span>{location.code}</span>
                     {location.is_default && (
-                      <Chip size="small" color="primary" label={t('customers.field.byDefault')} />
+                      <StatusChip tone="success" label={t('customers.field.byDefault')} />
                     )}
                   </Stack>
                 </TableCell>
@@ -200,36 +201,40 @@ export function LocationsPanel({
                   {location.address_id ? (addressLabel.get(location.address_id) ?? '—') : '—'}
                 </TableCell>
                 <TableCell align="right">
-                  <Button
-                    size="small"
-                    disabled={!canWrite}
-                    onClick={() => {
-                      setEditing(location)
-                      setValues({
-                        code: location.code,
-                        name: location.name,
-                        address_id: location.address_id ?? '',
-                        is_default: location.is_default,
-                        is_active: location.is_active,
-                      })
-                      setError(null)
-                    }}
-                    aria-label={`${t('common.edit')}: ${location.name}`}
-                  >
-                    {t('common.edit')}
-                  </Button>
-                  <IconButton
-                    size="small"
-                    disabled={!canWrite || remove.isPending}
-                    aria-label={`${t('common.delete')}: ${location.name}`}
-                    onClick={() => {
-                      void remove
-                        .mutateAsync(location.id)
-                        .then(() => notify(t('customers.toast.deleted')))
-                    }}
-                  >
-                    <DeleteRoundedIcon fontSize="small" />
-                  </IconButton>
+                  <RowActions
+                    actions={[
+                      {
+                        id: 'edit',
+                        icon: <EditRoundedIcon fontSize="small" />,
+                        label: `${t('common.edit')}: ${location.name}`,
+                        tone: 'neutral',
+                        disabled: !canWrite,
+                        onClick: () => {
+                          setEditing(location)
+                          setValues({
+                            code: location.code,
+                            name: location.name,
+                            address_id: location.address_id ?? '',
+                            is_default: location.is_default,
+                            is_active: location.is_active,
+                          })
+                          setError(null)
+                        },
+                      },
+                      {
+                        id: 'delete',
+                        icon: <DeleteRoundedIcon fontSize="small" />,
+                        label: `${t('common.delete')}: ${location.name}`,
+                        tone: 'danger',
+                        disabled: !canWrite || remove.isPending,
+                        onClick: () => {
+                          void remove
+                            .mutateAsync(location.id)
+                            .then(() => notify(t('customers.toast.deleted')))
+                        },
+                      },
+                    ]}
+                  />
                 </TableCell>
               </TableRow>
             ))}

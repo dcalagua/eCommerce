@@ -1,3 +1,4 @@
+import ArticleRoundedIcon from '@mui/icons-material/ArticleRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import { Card } from '@mui/material'
 import { useMemo, useState } from 'react'
@@ -58,7 +59,7 @@ export function ContentPage() {
   if (status === 'loading') {
     return (
       <>
-        <PageHeader title={t('content.title')} subtitle={t('content.subtitle')} />
+        <PageHeader icon={<ArticleRoundedIcon />} title={t('content.title')} subtitle={t('content.subtitle')} />
         <Card>
           <TableSkeleton columns={5} />
         </Card>
@@ -69,7 +70,7 @@ export function ContentPage() {
   if (!tenant || !activeCompanyId) {
     return (
       <>
-        <PageHeader title={t('content.title')} subtitle={t('content.subtitle')} />
+        <PageHeader icon={<ArticleRoundedIcon />} title={t('content.title')} subtitle={t('content.subtitle')} />
         <Card>
           <EmptyState
             title={t('admin.store.none')}
@@ -84,6 +85,7 @@ export function ContentPage() {
   return (
     <>
       <PageHeader
+        icon={<ArticleRoundedIcon />}
         title={t('content.title')}
         subtitle={activeStore?.name ?? t('content.subtitle')}
       />

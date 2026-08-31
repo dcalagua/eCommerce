@@ -1,10 +1,11 @@
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
+import { RowActions } from '@/shared/ui/RowActions'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import {
   Alert,
   Button,
-  Chip,
   FormControlLabel,
-  IconButton,
   Stack,
   Switch,
   Table,
@@ -188,7 +189,7 @@ export function ContactsPanel({
                   <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                     <span>{contact.name}</span>
                     {contact.is_primary && (
-                      <Chip size="small" color="primary" label={t('customers.field.primary')} />
+                      <StatusChip tone="success" label={t('customers.field.primary')} />
                     )}
                   </Stack>
                   {contact.role_title && (
@@ -200,26 +201,30 @@ export function ContactsPanel({
                 <TableCell>{contact.email ?? '—'}</TableCell>
                 <TableCell>{contact.phone ?? '—'}</TableCell>
                 <TableCell align="right">
-                  <Button
-                    size="small"
-                    disabled={!canWrite}
-                    onClick={() => startEdit(contact)}
-                    aria-label={`${t('common.edit')}: ${contact.name}`}
-                  >
-                    {t('common.edit')}
-                  </Button>
-                  <IconButton
-                    size="small"
-                    disabled={!canWrite || remove.isPending}
-                    aria-label={`${t('common.delete')}: ${contact.name}`}
-                    onClick={() => {
-                      void remove
-                        .mutateAsync(contact.id)
-                        .then(() => notify(t('customers.toast.deleted')))
-                    }}
-                  >
-                    <DeleteRoundedIcon fontSize="small" />
-                  </IconButton>
+                  <RowActions
+                    actions={[
+                      {
+                        id: 'edit',
+                        icon: <EditRoundedIcon fontSize="small" />,
+                        label: `${t('common.edit')}: ${contact.name}`,
+                        tone: 'neutral',
+                        disabled: !canWrite,
+                        onClick: () => startEdit(contact),
+                      },
+                      {
+                        id: 'delete',
+                        icon: <DeleteRoundedIcon fontSize="small" />,
+                        label: `${t('common.delete')}: ${contact.name}`,
+                        tone: 'danger',
+                        disabled: !canWrite || remove.isPending,
+                        onClick: () => {
+                          void remove
+                            .mutateAsync(contact.id)
+                            .then(() => notify(t('customers.toast.deleted')))
+                        },
+                      },
+                    ]}
+                  />
                 </TableCell>
               </TableRow>
             ))}

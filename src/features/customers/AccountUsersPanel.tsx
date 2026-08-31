@@ -1,9 +1,10 @@
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
+import { RowActions } from '@/shared/ui/RowActions'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import {
   Alert,
   Button,
-  Chip,
-  IconButton,
   MenuItem,
   Stack,
   Table,
@@ -218,48 +219,51 @@ export function AccountUsersPanel({
               <TableRow key={user.id} hover>
                 <TableCell>{user.email}</TableCell>
                 <TableCell>
-                  <Chip size="small" label={t(`customers.role.${user.role}`)} />
+                  <StatusChip label={t(`customers.role.${user.role}`)} />
                 </TableCell>
                 <TableCell align="right" className="tnum">
                   {user.spending_limit ?? t('customers.field.noLimit')}
                 </TableCell>
                 <TableCell>
-                  <Chip
-                    size="small"
-                    color={user.status === 'active' ? 'success' : 'default'}
+                  <StatusChip
+                    tone={user.status === 'active' ? 'success' : 'default'}
                     label={t(`customers.status.${user.status}`)}
                   />
                 </TableCell>
                 <TableCell align="right">
-                  <Button
-                    size="small"
-                    disabled={!canWrite}
-                    onClick={() => {
-                      setEditing(user)
-                      setValues({
-                        user_id: user.user_id,
-                        email: user.email,
-                        role: user.role,
-                        spending_limit: user.spending_limit ?? '',
-                        status: user.status,
-                        default_location_id: user.default_location_id ?? '',
-                      })
-                      setError(null)
-                    }}
-                    aria-label={`${t('common.edit')}: ${user.email}`}
-                  >
-                    {t('common.edit')}
-                  </Button>
-                  <IconButton
-                    size="small"
-                    disabled={!canWrite || remove.isPending}
-                    aria-label={`${t('common.delete')}: ${user.email}`}
-                    onClick={() => {
-                      void remove.mutateAsync(user.id).then(() => notify(t('customers.toast.deleted')))
-                    }}
-                  >
-                    <DeleteRoundedIcon fontSize="small" />
-                  </IconButton>
+                  <RowActions
+                    actions={[
+                      {
+                        id: 'edit',
+                        icon: <EditRoundedIcon fontSize="small" />,
+                        label: `${t('common.edit')}: ${user.email}`,
+                        tone: 'neutral',
+                        disabled: !canWrite,
+                        onClick: () => {
+                          setEditing(user)
+                          setValues({
+                            user_id: user.user_id,
+                            email: user.email,
+                            role: user.role,
+                            spending_limit: user.spending_limit ?? '',
+                            status: user.status,
+                            default_location_id: user.default_location_id ?? '',
+                          })
+                          setError(null)
+                        },
+                      },
+                      {
+                        id: 'delete',
+                        icon: <DeleteRoundedIcon fontSize="small" />,
+                        label: `${t('common.delete')}: ${user.email}`,
+                        tone: 'danger',
+                        disabled: !canWrite || remove.isPending,
+                        onClick: () => {
+                          void remove.mutateAsync(user.id).then(() => notify(t('customers.toast.deleted')))
+                        },
+                      },
+                    ]}
+                  />
                 </TableCell>
               </TableRow>
             ))}

@@ -1,7 +1,9 @@
+import { FilterBar } from '@/shared/ui/FilterBar'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import {
+  Box,
   Button,
   Card,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -72,15 +74,13 @@ function DetailDialog({ outboxId, onClose }: { outboxId: string | null; onClose:
               {t('integrations.queue.sanitized')}
             </Typography>
             <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
-              <Chip size="small" label={`${detail.data.provider_code} · ${detail.data.operation}`} />
-              <Chip size="small" variant="outlined" label={detail.data.status} />
-              <Chip
-                size="small"
-                variant="outlined"
+              <StatusChip label={`${detail.data.provider_code} · ${detail.data.operation}`} />
+              <StatusChip label={detail.data.status} />
+              <StatusChip
                 label={`${detail.data.attempts}/${detail.data.max_attempts}`}
               />
               {detail.data.target_label && (
-                <Chip size="small" variant="outlined" label={detail.data.target_label} />
+                <StatusChip label={detail.data.target_label} />
               )}
             </Stack>
             {detail.data.target_url && (
@@ -108,10 +108,9 @@ function DetailDialog({ outboxId, onClose }: { outboxId: string | null; onClose:
                   <TableRow key={`${attempt.attempt}-${attempt.at}`}>
                     <TableCell>{attempt.attempt}</TableCell>
                     <TableCell>
-                      <Chip
-                        size="small"
-                        color={attempt.succeeded ? 'success' : 'error'}
-                        label={attempt.status_code ?? (attempt.succeeded ? 'ok' : '—')}
+                      <StatusChip
+                        tone={attempt.succeeded ? 'success' : 'error'}
+                        label={String(attempt.status_code ?? (attempt.succeeded ? 'ok' : '—'))}
                       />
                       {attempt.error && (
                         <Typography sx={{ fontSize: 12, color: 'var(--muted)' }}>
@@ -182,12 +181,16 @@ export function QueueSection() {
         <Tab value="" label={t('integrations.queue.all')} />
       </Tabs>
 
-      <SearchField
-        value={term}
-        onChange={setTerm}
-        placeholder={t('integrations.queue.search')}
-        ariaLabel={t('integrations.queue.search')}
-      />
+      <FilterBar>
+        <Box sx={{ minWidth: { xs: '100%', sm: 280 } }}>
+          <SearchField
+            value={term}
+            onChange={setTerm}
+            placeholder={t('integrations.queue.search')}
+            ariaLabel={t('integrations.queue.search')}
+          />
+        </Box>
+      </FilterBar>
 
       <Card>
         {queue.isPending ? (
@@ -223,11 +226,11 @@ export function QueueSection() {
                   <TableCell>
                     <Typography sx={{ fontSize: 13 }}>{row.target_label}</Typography>
                     {row.circuit_state !== 'closed' && (
-                      <Chip size="small" color="error" label={row.circuit_state} />
+                      <StatusChip tone="error" label={row.circuit_state} />
                     )}
                   </TableCell>
                   <TableCell>
-                    <Chip size="small" color={statusColor(row)} label={row.status} />
+                    <StatusChip tone={statusColor(row)} label={row.status} />
                     <Typography sx={{ fontSize: 12, color: 'var(--muted)' }}>
                       {t('integrations.queue.attempt')} {row.attempts}/{row.max_attempts}
                     </Typography>

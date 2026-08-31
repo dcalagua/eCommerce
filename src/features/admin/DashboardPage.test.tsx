@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '@/test/render'
 import {
@@ -128,13 +128,22 @@ describe('cifras del resumen', () => {
     render(() => kpis())
 
     await screen.findByText('Rendimiento')
-    for (const testId of [
-      'PaidRoundedIcon',
-      'TrendingUpRoundedIcon',
-      'ReceiptLongRoundedIcon',
-      'LocalMallRoundedIcon',
-    ]) {
-      expect(screen.getByTestId(testId)).toBeInTheDocument()
+    // El icono se comprueba DENTRO de su tarjeta, no en toda la pantalla.
+    // Desde que los pedidos recientes llevan icono de estado, `PaidRoundedIcon`
+    // sale dos veces y el `getByTestId` global fallaba. Buscarlo suelto tampoco
+    // serviria: pasaria aunque la tarjeta se quedase sin icono, que es justo el
+    // fallo que este test existe para cazar.
+    for (const [label, testId] of [
+      ['Ventas', 'PaidRoundedIcon'],
+      ['Ticket medio', 'TrendingUpRoundedIcon'],
+      ['Pedidos', 'ReceiptLongRoundedIcon'],
+      ['Productos', 'LocalMallRoundedIcon'],
+    ] as const) {
+      const carries = screen
+        .getAllByText(label)
+        .map((node) => node.closest('.MuiCard-root'))
+        .some((card) => card !== null && within(card as HTMLElement).queryByTestId(testId) !== null)
+      expect(carries, `${label} sin ${testId}`).toBe(true)
     }
   })
 })

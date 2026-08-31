@@ -1,3 +1,5 @@
+import { FilterBar } from '@/shared/ui/FilterBar'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
 import {
   Box,
@@ -136,7 +138,7 @@ export function CampaignsSection() {
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('promotions.campaigns.help')}</Typography>
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="center">
+      <FilterBar>
         <Box sx={{ flex: 1, width: '100%' }}>
           <SearchField
             value={term}
@@ -162,7 +164,7 @@ export function CampaignsSection() {
         <Button variant="contained" onClick={() => setCreating(true)}>
           {t('promotions.campaigns.new')}
         </Button>
-      </Stack>
+      </FilterBar>
 
       <Card>
         {promotions.isPending && <TableSkeleton columns={7} />}
@@ -236,9 +238,8 @@ export function CampaignsSection() {
                       {promotion.discount_granted} {activeStore?.currency}
                     </TableCell>
                     <TableCell>
-                      <Chip
-                        size="small"
-                        color={STATUS_COLOR[promotion.effective_status] ?? 'default'}
+                      <StatusChip
+                        tone={STATUS_COLOR[promotion.effective_status] ?? 'default'}
                         label={t(
                           `promotions.status.${promotion.effective_status}` as MessageKey,
                         )}

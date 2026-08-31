@@ -1,3 +1,4 @@
+import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import { Card } from '@mui/material'
 import { useMemo } from 'react'
@@ -50,7 +51,7 @@ export function CustomersPage() {
   if (status === 'loading') {
     return (
       <>
-        <PageHeader title={t('customers.title')} subtitle={t('customers.subtitle')} />
+        <PageHeader icon={<PeopleAltRoundedIcon />} title={t('customers.title')} subtitle={t('customers.subtitle')} />
         <Card>
           <TableSkeleton columns={5} />
         </Card>
@@ -61,7 +62,7 @@ export function CustomersPage() {
   if (!tenant || !activeCompanyId) {
     return (
       <>
-        <PageHeader title={t('customers.title')} subtitle={t('customers.subtitle')} />
+        <PageHeader icon={<PeopleAltRoundedIcon />} title={t('customers.title')} subtitle={t('customers.subtitle')} />
         <Card>
           <EmptyState
             title={t('admin.store.none')}
@@ -76,6 +77,7 @@ export function CustomersPage() {
   return (
     <>
       <PageHeader
+        icon={<PeopleAltRoundedIcon />}
         title={t('customers.title')}
         subtitle={activeStore?.name ?? t('customers.subtitle')}
       />

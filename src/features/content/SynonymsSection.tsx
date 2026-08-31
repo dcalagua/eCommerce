@@ -1,9 +1,10 @@
+import { FilterBar } from '@/shared/ui/FilterBar'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import ManageSearchRoundedIcon from '@mui/icons-material/ManageSearchRounded'
 import {
   Box,
   Button,
   Card,
-  Chip,
   Stack,
   Switch,
   Table,
@@ -107,7 +108,7 @@ export function SynonymsSection() {
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('content.synonyms.help')}</Typography>
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="center">
+      <FilterBar>
         <Box sx={{ flex: 1, width: '100%' }}>
           <SearchField
             value={term}
@@ -126,7 +127,7 @@ export function SynonymsSection() {
         >
           {t('content.synonyms.new')}
         </Button>
-      </Stack>
+      </FilterBar>
 
       <Card>
         {synonyms.isPending && <TableSkeleton columns={4} />}
@@ -162,15 +163,14 @@ export function SynonymsSection() {
                   <TableCell>
                     <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }}>
                       {row.expansions.map((item) => (
-                        <Chip key={item} label={item} size="small" />
+                        <StatusChip key={item} label={item} />
                       ))}
                     </Stack>
                   </TableCell>
                   <TableCell>
-                    <Chip
-                      size="small"
+                    <StatusChip
                       label={t(row.is_active ? 'content.blocks.active' : 'content.blocks.inactive')}
-                      color={row.is_active ? 'primary' : 'default'}
+                      tone={row.is_active ? 'success' : 'default'}
                     />
                   </TableCell>
                   <TableCell align="right">
@@ -243,7 +243,7 @@ export function SynonymsSection() {
           {expansions.length > 0 && (
             <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }}>
               {expansions.map((item) => (
-                <Chip key={item} label={item} size="small" />
+                <StatusChip key={item} label={item} />
               ))}
             </Stack>
           )}

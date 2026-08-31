@@ -1,3 +1,5 @@
+import { FilterBar } from '@/shared/ui/FilterBar'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import { zodResolver } from '@hookform/resolvers/zod'
 import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
 import {
@@ -5,7 +7,6 @@ import {
   Box,
   Button,
   Card,
-  Chip,
   FormControlLabel,
   Stack,
   Switch,
@@ -93,11 +94,7 @@ export function CatalogEntrySection({ kind }: { kind: EntryKind }) {
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t(copy.help)}</Typography>
 
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={1.5}
-        sx={{ alignItems: { sm: 'center' } }}
-      >
+      <FilterBar>
         <Box sx={{ flex: 1 }}>
           <SearchField value={search} onChange={setSearch} placeholder={t('pim.search')} />
         </Box>
@@ -106,7 +103,7 @@ export function CatalogEntrySection({ kind }: { kind: EntryKind }) {
             {t(copy.create)}
           </Button>
         )}
-      </Stack>
+      </FilterBar>
 
       <Card>
         {query.isPending && <TableSkeleton columns={3} />}
@@ -133,9 +130,8 @@ export function CatalogEntrySection({ kind }: { kind: EntryKind }) {
                   <TableCell sx={{ fontWeight: 700 }}>{entry.code}</TableCell>
                   <TableCell>{entry.name}</TableCell>
                   <TableCell>
-                    <Chip
-                      size="small"
-                      color={entry.is_active ? 'success' : 'default'}
+                    <StatusChip
+                      tone={entry.is_active ? 'success' : 'default'}
                       label={entry.is_active ? t('pim.field.active') : t('common.no')}
                     />
                   </TableCell>

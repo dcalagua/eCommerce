@@ -1,10 +1,10 @@
+import { FilterBar } from '@/shared/ui/FilterBar'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import SellRoundedIcon from '@mui/icons-material/SellRounded'
 import {
   Box,
   Button,
-  Card,
-  Chip,
-  Stack,
+  Card,  Stack,
   Table,
   TableBody,
   TableCell,
@@ -65,11 +65,7 @@ export function PriceListsSection() {
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('pricing.lists.help')}</Typography>
 
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={1.5}
-        sx={{ alignItems: { sm: 'center' } }}
-      >
+      <FilterBar>
         <Box sx={{ flex: 1 }}>
           <SearchField value={search} onChange={setSearch} placeholder={t('pricing.search')} />
         </Box>
@@ -78,7 +74,7 @@ export function PriceListsSection() {
             {t('pricing.lists.new')}
           </Button>
         )}
-      </Stack>
+      </FilterBar>
 
       <Card>
         {query.isPending && <TableSkeleton columns={5} />}
@@ -113,9 +109,8 @@ export function PriceListsSection() {
                     <TableCell align="right">{list.priority}</TableCell>
                     <TableCell>
                       <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                        <Chip
-                          size="small"
-                          color={VALIDITY_COLOR[validity]}
+                        <StatusChip
+                          tone={VALIDITY_COLOR[validity]}
                           label={t(`pricing.validity.${validity}`)}
                         />
                         <Typography sx={{ fontSize: 12, color: 'var(--muted)' }}>

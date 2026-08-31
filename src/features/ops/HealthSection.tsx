@@ -1,4 +1,5 @@
-import { Card, Chip, Stack, Typography } from '@mui/material'
+import { StatusChip } from '@/shared/ui/StatusChip'
+import { Card, Stack, Typography } from '@mui/material'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatDateTime } from '@/shared/lib/format'
 import { ErrorState, UnauthorizedState } from '@/shared/ui/states'
@@ -52,13 +53,11 @@ function QueueCard({
       </Stack>
       <Stack direction="row" sx={{ gap: 0.75, mt: 1, flexWrap: 'wrap' }}>
         {stuck > 0 && (
-          <Chip size="small" color="error" label={`${t('ops.health.stuck')}: ${stuck}`} />
+          <StatusChip tone="error" label={`${t('ops.health.stuck')}: ${stuck}`} />
         )}
         {/* La EDAD de lo más viejo, no solo cuántos hay: una cola de 200 que se
             vacía sola está sana; una de 3 parada desde ayer, no. */}
-        <Chip
-          size="small"
-          variant="outlined"
+        <StatusChip
           label={`${t('ops.health.oldest')}: ${ageLabel(queue.oldest_pending_seconds, t)}`}
         />
       </Stack>
@@ -108,9 +107,8 @@ export function HealthSection({ storeId }: { storeId: string | null }) {
           {t('ops.health.last24h')}
         </Typography>
         <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
-          <Chip
-            size="small"
-            color={data.last_24h.checkouts_failed > 0 ? 'error' : 'default'}
+          <StatusChip
+            tone={data.last_24h.checkouts_failed > 0 ? 'error' : 'default'}
             label={`${t('ops.health.checkoutsFailed')}: ${data.last_24h.checkouts_failed}${
               // El porcentaje solo cuando hay denominador. Sin intentos no hay
               // tasa, y un «0 %» ahí diría que todo va bien cuando lo que pasa
@@ -118,24 +116,19 @@ export function HealthSection({ storeId }: { storeId: string | null }) {
               failureRate === null ? '' : ` (${failureRate} %)`
             }`}
           />
-          <Chip
-            size="small"
-            color={data.last_24h.payments_failed > 0 ? 'error' : 'default'}
+          <StatusChip
+            tone={data.last_24h.payments_failed > 0 ? 'error' : 'default'}
             label={`${t('ops.health.paymentsFailed')}: ${data.last_24h.payments_failed}`}
           />
-          <Chip
-            size="small"
-            color={data.last_24h.integrations_failed > 0 ? 'warning' : 'default'}
+          <StatusChip
+            tone={data.last_24h.integrations_failed > 0 ? 'warning' : 'default'}
             label={`${t('ops.health.integrationsFailed')}: ${data.last_24h.integrations_failed}`}
           />
-          <Chip
-            size="small"
-            color={data.stuck_checkouts > 0 ? 'warning' : 'default'}
+          <StatusChip
+            tone={data.stuck_checkouts > 0 ? 'warning' : 'default'}
             label={`${t('ops.health.stuckCheckouts')}: ${data.stuck_checkouts}`}
           />
-          <Chip
-            size="small"
-            variant="outlined"
+          <StatusChip
             label={`${t('ops.health.slow')}: ${data.slow_operations.count}${
               data.slow_operations.max_ms === null ? '' : ` · ${data.slow_operations.max_ms} ms`
             }`}
@@ -152,10 +145,9 @@ export function HealthSection({ storeId }: { storeId: string | null }) {
         ) : (
           <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
             {open.map(([severity, count]) => (
-              <Chip
+              <StatusChip
                 key={severity}
-                size="small"
-                color={severity === 'critical' || severity === 'error' ? 'error' : 'warning'}
+                tone={severity === 'critical' || severity === 'error' ? 'error' : 'warning'}
                 label={`${severity}: ${count}`}
               />
             ))}

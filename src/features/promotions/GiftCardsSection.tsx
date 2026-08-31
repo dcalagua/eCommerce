@@ -1,10 +1,11 @@
+import { FilterBar } from '@/shared/ui/FilterBar'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import CardGiftcardRoundedIcon from '@mui/icons-material/CardGiftcardRounded'
 import {
   Alert,
   Box,
   Button,
   Card,
-  Chip,
   Stack,
   Table,
   TableBody,
@@ -136,7 +137,7 @@ export function GiftCardsSection() {
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('promotions.giftCards.help')}</Typography>
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="center">
+      <FilterBar>
         <Box sx={{ flex: 1, width: '100%' }}>
           <SearchField
             value={term}
@@ -162,7 +163,7 @@ export function GiftCardsSection() {
         <Button variant="contained" onClick={() => setIssuing(true)}>
           {t('promotions.giftCards.issue')}
         </Button>
-      </Stack>
+      </FilterBar>
 
       {issued && (
         <Alert severity="success" onClose={() => setIssued(null)}>
@@ -225,9 +226,8 @@ export function GiftCardsSection() {
                   </TableCell>
                   <TableCell>{formatDate(card.expires_at, locale)}</TableCell>
                   <TableCell>
-                    <Chip
-                      size="small"
-                      color={STATUS_COLOR[card.effective_status] ?? 'default'}
+                    <StatusChip
+                      tone={STATUS_COLOR[card.effective_status] ?? 'default'}
                       label={t(`promotions.giftStatus.${card.effective_status}` as MessageKey)}
                     />
                   </TableCell>

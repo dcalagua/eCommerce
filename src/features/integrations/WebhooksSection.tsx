@@ -1,13 +1,15 @@
+import { FilterBar } from '@/shared/ui/FilterBar'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import {
+  Box,
   Button,
   Card,
-  Chip,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControlLabel,
-  Checkbox,
   Stack,
   Table,
   TableBody,
@@ -261,7 +263,7 @@ export function WebhooksSection() {
                   <TableCell>
                     <Stack direction="row" sx={{ gap: 0.5, flexWrap: 'wrap' }}>
                       {(byEndpoint.get(endpoint.id) ?? []).map((eventType) => (
-                        <Chip key={eventType} size="small" variant="outlined" label={eventType} />
+                        <StatusChip key={eventType} label={eventType} />
                       ))}
                     </Stack>
                   </TableCell>
@@ -286,12 +288,16 @@ export function WebhooksSection() {
 
       <Typography sx={{ fontWeight: 700 }}>{t('integrations.webhooks.deliveries')}</Typography>
 
-      <SearchField
-        value={term}
-        onChange={setTerm}
-        placeholder={t('integrations.webhooks.search')}
-        ariaLabel={t('integrations.webhooks.search')}
-      />
+      <FilterBar>
+        <Box sx={{ minWidth: { xs: '100%', sm: 280 } }}>
+          <SearchField
+            value={term}
+            onChange={setTerm}
+            placeholder={t('integrations.webhooks.search')}
+            ariaLabel={t('integrations.webhooks.search')}
+          />
+        </Box>
+      </FilterBar>
 
       <Card>
         {deliveries.isPending ? (
@@ -321,21 +327,20 @@ export function WebhooksSection() {
                   <TableCell>
                     <Typography sx={{ fontSize: 13 }}>{delivery.event_type}</Typography>
                     {delivery.is_replay && (
-                      <Chip size="small" color="warning" label={t('integrations.webhooks.replayed')} />
+                      <StatusChip tone="warning" label={t('integrations.webhooks.replayed')} />
                     )}
                   </TableCell>
                   <TableCell>{delivery.endpoint_name}</TableCell>
                   <TableCell>
-                    <Chip
-                      size="small"
-                      color={
+                    <StatusChip
+                      tone={
                         delivery.status === 'succeeded'
                           ? 'success'
                           : delivery.status === 'dead'
                             ? 'error'
                             : 'default'
                       }
-                      label={delivery.last_status_code ?? delivery.status}
+                      label={String(delivery.last_status_code ?? delivery.status)}
                     />
                     {delivery.last_error && (
                       <Typography sx={{ fontSize: 12, color: 'var(--muted)' }}>

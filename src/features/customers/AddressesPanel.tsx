@@ -1,10 +1,11 @@
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
+import { RowActions } from '@/shared/ui/RowActions'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import {
   Alert,
   Button,
-  Chip,
   FormControlLabel,
-  IconButton,
   MenuItem,
   Stack,
   Switch,
@@ -317,49 +318,50 @@ export function AddressesPanel({
                 <TableCell>
                   <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }}>
                     {address.is_shipping && (
-                      <Chip
-                        size="small"
-                        color={address.is_default_shipping ? 'primary' : 'default'}
+                      <StatusChip
+                        tone={address.is_default_shipping ? 'success' : 'default'}
                         label={t('customers.address.shipping')}
                       />
                     )}
                     {address.is_billing && (
-                      <Chip
-                        size="small"
-                        color={address.is_default_billing ? 'primary' : 'default'}
+                      <StatusChip
+                        tone={address.is_default_billing ? 'success' : 'default'}
                         label={t('customers.address.billing')}
                       />
                     )}
                   </Stack>
                 </TableCell>
                 <TableCell>
-                  <Chip
-                    size="small"
-                    color={VERIFICATION_COLOR[address.verification] ?? 'default'}
+                  <StatusChip
+                    tone={VERIFICATION_COLOR[address.verification] ?? 'default'}
                     label={t(`customers.verification.${address.verification}`)}
                   />
                 </TableCell>
                 <TableCell align="right">
-                  <Button
-                    size="small"
-                    disabled={!canWrite}
-                    onClick={() => startEdit(address)}
-                    aria-label={`${t('common.edit')}: ${address.label}`}
-                  >
-                    {t('common.edit')}
-                  </Button>
-                  <IconButton
-                    size="small"
-                    disabled={!canWrite || remove.isPending}
-                    aria-label={`${t('common.delete')}: ${address.label}`}
-                    onClick={() => {
-                      void remove
-                        .mutateAsync(address.id)
-                        .then(() => notify(t('customers.toast.deleted')))
-                    }}
-                  >
-                    <DeleteRoundedIcon fontSize="small" />
-                  </IconButton>
+                  <RowActions
+                    actions={[
+                      {
+                        id: 'edit',
+                        icon: <EditRoundedIcon fontSize="small" />,
+                        label: `${t('common.edit')}: ${address.label}`,
+                        tone: 'neutral',
+                        disabled: !canWrite,
+                        onClick: () => startEdit(address),
+                      },
+                      {
+                        id: 'delete',
+                        icon: <DeleteRoundedIcon fontSize="small" />,
+                        label: `${t('common.delete')}: ${address.label}`,
+                        tone: 'danger',
+                        disabled: !canWrite || remove.isPending,
+                        onClick: () => {
+                          void remove
+                            .mutateAsync(address.id)
+                            .then(() => notify(t('customers.toast.deleted')))
+                        },
+                      },
+                    ]}
+                  />
                 </TableCell>
               </TableRow>
             ))}

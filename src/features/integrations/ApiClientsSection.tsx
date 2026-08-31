@@ -1,9 +1,9 @@
+import { StatusChip } from '@/shared/ui/StatusChip'
 import {
   Alert,
   Button,
   Card,
   Checkbox,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -161,7 +161,7 @@ export function ApiClientsSection() {
                   <TableCell>
                     <Stack direction="row" sx={{ gap: 0.5, flexWrap: 'wrap' }}>
                       {row.scopes.map((scope) => (
-                        <Chip key={scope} size="small" variant="outlined" label={scope} />
+                        <StatusChip key={scope} label={scope} />
                       ))}
                     </Stack>
                   </TableCell>

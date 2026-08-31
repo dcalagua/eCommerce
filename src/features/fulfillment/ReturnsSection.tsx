@@ -1,7 +1,9 @@
+import { FilterBar } from '@/shared/ui/FilterBar'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import AssignmentReturnRoundedIcon from '@mui/icons-material/AssignmentReturnRounded'
 import {
+  Box,
   Card,
-  Chip,
   Stack,
   Tab,
   Table,
@@ -67,30 +69,28 @@ export function ReturnsSection() {
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('returns.help')}</Typography>
 
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={2}
-        alignItems={{ sm: 'center' }}
-        justifyContent="space-between"
+      <Tabs
+        value={state}
+        onChange={(_event, next: string) => setState(next)}
+        variant="scrollable"
+        scrollButtons="auto"
+        aria-label={t('returns.filter')}
       >
-        <SearchField
-          value={term}
-          onChange={setTerm}
-          placeholder={t('returns.search')}
-          ariaLabel={t('returns.search')}
-        />
-        <Tabs
-          value={state}
-          onChange={(_event, next: string) => setState(next)}
-          variant="scrollable"
-          scrollButtons="auto"
-          aria-label={t('returns.filter')}
-        >
-          {TABS.map((tab) => (
-            <Tab key={tab.id || 'todas'} value={tab.id} label={t(tab.label)} />
-          ))}
-        </Tabs>
-      </Stack>
+        {TABS.map((tab) => (
+          <Tab key={tab.id || 'todas'} value={tab.id} label={t(tab.label)} />
+        ))}
+      </Tabs>
+
+      <FilterBar>
+        <Box sx={{ minWidth: { xs: '100%', sm: 280 } }}>
+          <SearchField
+            value={term}
+            onChange={setTerm}
+            placeholder={t('returns.search')}
+            ariaLabel={t('returns.search')}
+          />
+        </Box>
+      </FilterBar>
 
       <Card>
         {queue.isPending && <TableSkeleton columns={6} />}
@@ -139,9 +139,8 @@ export function ReturnsSection() {
                     {formatMoney(Number(row.refund_amount), row.currency, locale)}
                   </TableCell>
                   <TableCell>
-                    <Chip
-                      size="small"
-                      color={TONE[row.state]}
+                    <StatusChip
+                      tone={TONE[row.state]}
                       label={t(`returns.state.${row.state}` as MessageKey)}
                     />
                   </TableCell>

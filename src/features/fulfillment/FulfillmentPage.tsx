@@ -1,3 +1,4 @@
+import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import { Card } from '@mui/material'
 import { useMemo } from 'react'
@@ -45,7 +46,7 @@ export function FulfillmentPage() {
   if (status === 'loading') {
     return (
       <>
-        <PageHeader title={t('fulfillment.title')} subtitle={t('fulfillment.subtitle')} />
+        <PageHeader icon={<LocalShippingRoundedIcon />} title={t('fulfillment.title')} subtitle={t('fulfillment.subtitle')} />
         <Card>
           <TableSkeleton columns={6} />
         </Card>
@@ -56,7 +57,7 @@ export function FulfillmentPage() {
   if (!tenant || !activeCompanyId) {
     return (
       <>
-        <PageHeader title={t('fulfillment.title')} subtitle={t('fulfillment.subtitle')} />
+        <PageHeader icon={<LocalShippingRoundedIcon />} title={t('fulfillment.title')} subtitle={t('fulfillment.subtitle')} />
         <Card>
           <EmptyState
             title={t('admin.store.none')}
@@ -71,6 +72,7 @@ export function FulfillmentPage() {
   return (
     <>
       <PageHeader
+        icon={<LocalShippingRoundedIcon />}
         title={t('fulfillment.title')}
         subtitle={activeStore?.name ?? t('fulfillment.subtitle')}
       />

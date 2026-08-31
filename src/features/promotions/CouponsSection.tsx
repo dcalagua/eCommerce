@@ -1,10 +1,11 @@
+import { FilterBar } from '@/shared/ui/FilterBar'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import ConfirmationNumberRoundedIcon from '@mui/icons-material/ConfirmationNumberRounded'
 import {
   Alert,
   Box,
   Button,
   Card,
-  Chip,
   MenuItem,
   Stack,
   Switch,
@@ -135,7 +136,7 @@ export function CouponsSection() {
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('promotions.coupons.help')}</Typography>
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="center">
+      <FilterBar>
         <Box sx={{ flex: 1, width: '100%' }}>
           <SearchField
             value={term}
@@ -150,7 +151,7 @@ export function CouponsSection() {
         >
           {t('promotions.coupons.new')}
         </Button>
-      </Stack>
+      </FilterBar>
 
       {couponable.length === 0 && !promotions.isPending && (
         <Alert severity="info">{t('promotions.coupons.needCampaign')}</Alert>
@@ -203,9 +204,8 @@ export function CouponsSection() {
                     {coupon.usage_limit !== null && ` / ${coupon.usage_limit}`}
                   </TableCell>
                   <TableCell>
-                    <Chip
-                      size="small"
-                      color={coupon.is_active ? 'success' : 'default'}
+                    <StatusChip
+                      tone={coupon.is_active ? 'success' : 'default'}
                       label={t(
                         coupon.is_active ? 'promotions.coupons.active' : 'promotions.coupons.off',
                       )}

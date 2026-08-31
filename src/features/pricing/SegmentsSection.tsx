@@ -1,3 +1,5 @@
+import { FilterBar } from '@/shared/ui/FilterBar'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -5,7 +7,6 @@ import {
   Box,
   Button,
   Card,
-  Chip,
   FormControlLabel,
   Stack,
   Switch,
@@ -70,11 +71,7 @@ export function SegmentsSection() {
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('pricing.segments.help')}</Typography>
 
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={1.5}
-        sx={{ alignItems: { sm: 'center' } }}
-      >
+      <FilterBar>
         <Box sx={{ flex: 1 }}>
           <SearchField value={search} onChange={setSearch} placeholder={t('pricing.search')} />
         </Box>
@@ -83,7 +80,7 @@ export function SegmentsSection() {
             {t('pricing.segments.new')}
           </Button>
         )}
-      </Stack>
+      </FilterBar>
 
       <Card>
         {query.isPending && <TableSkeleton columns={3} />}
@@ -110,9 +107,8 @@ export function SegmentsSection() {
                   <TableCell sx={{ fontWeight: 700 }}>{segment.code}</TableCell>
                   <TableCell>{segment.name}</TableCell>
                   <TableCell>
-                    <Chip
-                      size="small"
-                      color={segment.is_active ? 'success' : 'default'}
+                    <StatusChip
+                      tone={segment.is_active ? 'success' : 'default'}
                       label={segment.is_active ? t('pricing.field.active') : t('common.no')}
                     />
                   </TableCell>

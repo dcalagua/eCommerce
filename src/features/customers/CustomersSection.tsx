@@ -1,9 +1,11 @@
+import { FilterBar } from '@/shared/ui/FilterBar'
+import { TablePager } from '@/shared/ui/TablePager'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded'
 import {
   Box,
   Button,
   Card,
-  Chip,
   FormControlLabel,
   Stack,
   Switch,
@@ -11,7 +13,6 @@ import {
   TableBody,
   TableCell,
   TableHead,
-  TablePagination,
   TableRow,
   Typography,
 } from '@mui/material'
@@ -117,7 +118,7 @@ export function CustomersSection() {
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('customers.list.help')}</Typography>
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ alignItems: { sm: 'center' } }}>
+      <FilterBar>
         <Box sx={{ flex: 1 }}>
           <SearchField value={search} onChange={setSearch} placeholder={t('customers.search')} />
         </Box>
@@ -132,7 +133,7 @@ export function CustomersSection() {
             {t('customers.new')}
           </Button>
         )}
-      </Stack>
+      </FilterBar>
 
       <Card>
         {query.isPending && <TableSkeleton columns={6} />}
@@ -163,16 +164,15 @@ export function CustomersSection() {
                   <TableCell sx={{ fontWeight: 700 }}>{customer.code}</TableCell>
                   <TableCell>{customer.name}</TableCell>
                   <TableCell>
-                    <Chip size="small" label={t(`customers.kind.${customer.kind}`)} />
+                    <StatusChip label={t(`customers.kind.${customer.kind}`)} />
                   </TableCell>
                   <TableCell>
                     {customer.segment_id ? (segmentName.get(customer.segment_id) ?? '—') : '—'}
                   </TableCell>
                   <TableCell>{customer.email ?? '—'}</TableCell>
                   <TableCell>
-                    <Chip
-                      size="small"
-                      color={customer.is_active ? 'success' : 'default'}
+                    <StatusChip
+                      tone={customer.is_active ? 'success' : 'default'}
                       label={customer.is_active ? t('customers.field.active') : t('common.no')}
                     />
                   </TableCell>
@@ -202,18 +202,11 @@ export function CustomersSection() {
         )}
 
         {!query.isError && total > 0 && (
-          <TablePagination
-            component="div"
-            count={total}
+          <TablePager
             page={page}
-            onPageChange={(_, next) => setPage(next)}
-            rowsPerPage={PAGE_SIZE}
-            rowsPerPageOptions={[PAGE_SIZE]}
-            labelRowsPerPage={t('common.rowsPerPage')}
-            labelDisplayedRows={({ from, to, count }) =>
-              `${t('common.showing')} ${from}–${to} / ${count}`
-            }
-            getItemAriaLabel={(type) => `${t('common.showing')}: ${type}`}
+            pageSize={PAGE_SIZE}
+            total={total}
+            onPageChange={setPage}
           />
         )}
       </Card>

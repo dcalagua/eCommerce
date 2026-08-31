@@ -1,4 +1,5 @@
-import { Button, Card, Chip, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material'
+import { StatusChip } from '@/shared/ui/StatusChip'
+import { Button, Card, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material'
 import { useState } from 'react'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatDateTime } from '@/shared/lib/format'
@@ -117,9 +118,8 @@ export function HealthSection() {
                   <TableCell>{circuit.operation}</TableCell>
                   <TableCell>{circuit.target_label}</TableCell>
                   <TableCell>
-                    <Chip
-                      size="small"
-                      color={circuit.state === 'open' ? 'error' : 'warning'}
+                    <StatusChip
+                      tone={circuit.state === 'open' ? 'error' : 'warning'}
                       label={`${circuit.state} · ${circuit.consecutive_fail}/${circuit.threshold}`}
                     />
                   </TableCell>
@@ -170,7 +170,7 @@ export function HealthSection() {
                   </TableCell>
                   <TableCell align="right">
                     {provider.dead > 0 ? (
-                      <Chip size="small" color="error" label={provider.dead} />
+                      <StatusChip tone="error" label={String(provider.dead)} />
                     ) : (
                       provider.dead
                     )}

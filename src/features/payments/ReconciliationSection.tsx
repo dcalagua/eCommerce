@@ -1,10 +1,10 @@
+import { StatusChip } from '@/shared/ui/StatusChip'
 import BalanceRoundedIcon from '@mui/icons-material/BalanceRounded'
 import {
   Alert,
   Box,
   Button,
   Card,
-  Chip,
   MenuItem,
   Stack,
   Table,
@@ -204,9 +204,8 @@ export function ReconciliationSection() {
                   </TableCell>
                   <TableCell align="right">{record.fee_amount}</TableCell>
                   <TableCell>
-                    <Chip
-                      size="small"
-                      color={
+                    <StatusChip
+                      tone={
                         record.status === 'matched'
                           ? 'success'
                           : record.status === 'discrepancy'

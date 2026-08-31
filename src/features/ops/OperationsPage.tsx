@@ -1,3 +1,4 @@
+import HealthAndSafetyRoundedIcon from '@mui/icons-material/HealthAndSafetyRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import { Card } from '@mui/material'
 import { useMemo, useState } from 'react'
@@ -72,7 +73,7 @@ export function OperationsPage() {
   if (status === 'loading') {
     return (
       <>
-        <PageHeader title={t('ops.title')} subtitle={t('ops.subtitle')} />
+        <PageHeader icon={<HealthAndSafetyRoundedIcon />} title={t('ops.title')} subtitle={t('ops.subtitle')} />
         <Card>
           <TableSkeleton columns={4} />
         </Card>
@@ -83,7 +84,7 @@ export function OperationsPage() {
   if (!tenant || !activeCompanyId) {
     return (
       <>
-        <PageHeader title={t('ops.title')} subtitle={t('ops.subtitle')} />
+        <PageHeader icon={<HealthAndSafetyRoundedIcon />} title={t('ops.title')} subtitle={t('ops.subtitle')} />
         <Card>
           <EmptyState
             title={t('admin.store.none')}
@@ -97,7 +98,7 @@ export function OperationsPage() {
 
   return (
     <>
-      <PageHeader title={t('ops.title')} subtitle={activeStore?.name ?? t('ops.subtitle')} />
+      <PageHeader icon={<HealthAndSafetyRoundedIcon />} title={t('ops.title')} subtitle={activeStore?.name ?? t('ops.subtitle')} />
       <SectionTabs items={items} ariaLabel={t('ops.title')} />
     </>
   )

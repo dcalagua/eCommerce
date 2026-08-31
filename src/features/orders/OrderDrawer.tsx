@@ -1,3 +1,4 @@
+import { StatusChip } from '@/shared/ui/StatusChip'
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded'
 import {
@@ -207,27 +208,21 @@ export function OrderDrawer({
       <Section title={t('common.status')}>
         <Stack spacing={1.5}>
           <Stack direction="row" spacing={0.75} sx={{ flexWrap: 'wrap', rowGap: 0.75 }}>
-            <Chip
-              size="small"
-              color={STATUS_COLOR[current.status]}
+            <StatusChip
+              tone={STATUS_COLOR[current.status]}
               label={t(STATUS_LABEL[current.status])}
             />
-            <Chip
-              size="small"
-              variant="outlined"
-              color={PAYMENT_COLOR[current.payment_status]}
+            <StatusChip
+              tone={PAYMENT_COLOR[current.payment_status]}
               label={t(PAYMENT_LABEL[current.payment_status])}
             />
-            <Chip
-              size="small"
-              variant="outlined"
-              color={FULFILLMENT_COLOR[current.fulfillment_status]}
+            <StatusChip
+              tone={FULFILLMENT_COLOR[current.fulfillment_status]}
               label={t(FULFILLMENT_LABEL[current.fulfillment_status])}
             />
             {current.approval_status !== 'not_required' && (
-              <Chip
-                size="small"
-                color={APPROVAL_COLOR[current.approval_status]}
+              <StatusChip
+                tone={APPROVAL_COLOR[current.approval_status]}
                 label={t(APPROVAL_LABEL[current.approval_status])}
               />
             )}
@@ -753,9 +748,7 @@ export function OrderDrawer({
                       : headline}
                   </Typography>
                   {event.axis && (
-                    <Chip
-                      size="small"
-                      variant="outlined"
+                    <StatusChip
                       label={t(AXIS_LABEL_ANY[event.axis] ?? 'orders.axis')}
                     />
                   )}

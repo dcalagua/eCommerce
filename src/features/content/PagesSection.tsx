@@ -1,3 +1,5 @@
+import { FilterBar } from '@/shared/ui/FilterBar'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import ArticleRoundedIcon from '@mui/icons-material/ArticleRounded'
 import {
   Box,
@@ -173,7 +175,7 @@ export function PagesSection({
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('content.pages.help')}</Typography>
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="center">
+      <FilterBar>
         <Box sx={{ flex: 1, width: '100%' }}>
           <SearchField
             value={term}
@@ -185,7 +187,7 @@ export function PagesSection({
         <Button variant="contained" onClick={openCreate}>
           {t('content.pages.new')}
         </Button>
-      </Stack>
+      </FilterBar>
 
       <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }} role="group" aria-label={t('content.pages.status')}>
         {STATUS_TABS.map((value) => (
@@ -243,10 +245,9 @@ export function PagesSection({
                   </TableCell>
                   <TableCell>{t(`content.kind.${row.kind}` as MessageKey)}</TableCell>
                   <TableCell>
-                    <Chip
-                      size="small"
+                    <StatusChip
                       label={t(`content.status.${row.effective_status}` as MessageKey)}
-                      color={row.effective_status === 'live' ? 'primary' : 'default'}
+                      tone={row.effective_status === 'live' ? 'success' : 'default'}
                     />
                   </TableCell>
                   <TableCell>{row.channel_name ?? t('content.pages.allChannels')}</TableCell>

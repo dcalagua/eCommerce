@@ -1,10 +1,11 @@
+import { StatusChip } from '@/shared/ui/StatusChip'
+import MonitorHeartRoundedIcon from '@mui/icons-material/MonitorHeartRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import {
   Alert,
   Button,
   Card,
   CardContent,
-  Chip,
   Divider,
   Stack,
   Switch,
@@ -201,8 +202,7 @@ function CapabilitiesSection({ context }: { context: PlatformContext }) {
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Chip
-                        size="small"
+                      <StatusChip
                         label={
                           active
                             ? t('diagnostics.state.active')
@@ -210,8 +210,7 @@ function CapabilitiesSection({ context }: { context: PlatformContext }) {
                               ? t('diagnostics.state.flagged')
                               : t('diagnostics.state.notContracted')
                         }
-                        color={active ? 'success' : contracted ? 'warning' : 'default'}
-                        variant={active ? 'filled' : 'outlined'}
+                        tone={active ? 'success' : contracted ? 'warning' : 'default'}
                       />
                     </TableCell>
                     <TableCell align="right">
@@ -294,7 +293,7 @@ export function DiagnosticsPage() {
   if (!can('tenant.manage')) {
     return (
       <>
-        <PageHeader title={t('diagnostics.title')} />
+        <PageHeader icon={<MonitorHeartRoundedIcon />} title={t('diagnostics.title')} />
         <UnauthorizedState description={t('admin.settings.unauthorized')} />
       </>
     )
@@ -302,7 +301,7 @@ export function DiagnosticsPage() {
 
   return (
     <>
-      <PageHeader title={t('diagnostics.title')} subtitle={t('diagnostics.subtitle')} />
+      <PageHeader icon={<MonitorHeartRoundedIcon />} title={t('diagnostics.title')} subtitle={t('diagnostics.subtitle')} />
       {status === 'loading' ? (
         <LoadingState />
       ) : status === 'error' || !context ? (

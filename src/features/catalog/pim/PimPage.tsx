@@ -1,3 +1,4 @@
+import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import { Card } from '@mui/material'
 import { useMemo } from 'react'
@@ -48,7 +49,7 @@ export function PimPage() {
   if (status === 'loading') {
     return (
       <>
-        <PageHeader title={t('pim.title')} subtitle={t('pim.subtitle')} />
+        <PageHeader icon={<TuneRoundedIcon />} title={t('pim.title')} subtitle={t('pim.subtitle')} />
         <Card>
           <TableSkeleton columns={4} />
         </Card>
@@ -59,7 +60,7 @@ export function PimPage() {
   if (!tenant || !activeCompanyId) {
     return (
       <>
-        <PageHeader title={t('pim.title')} subtitle={t('pim.subtitle')} />
+        <PageHeader icon={<TuneRoundedIcon />} title={t('pim.title')} subtitle={t('pim.subtitle')} />
         <Card>
           <EmptyState
             title={t('admin.store.none')}
@@ -73,7 +74,7 @@ export function PimPage() {
 
   return (
     <>
-      <PageHeader title={t('pim.title')} subtitle={activeStore?.name ?? t('pim.subtitle')} />
+      <PageHeader icon={<TuneRoundedIcon />} title={t('pim.title')} subtitle={activeStore?.name ?? t('pim.subtitle')} />
       <SectionTabs items={items} ariaLabel={t('pim.title')} />
     </>
   )

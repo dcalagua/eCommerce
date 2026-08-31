@@ -1,10 +1,11 @@
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
+import { RowActions } from '@/shared/ui/RowActions'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import {
   Alert,
   Button,
-  Chip,
   Divider,
-  IconButton,
   MenuItem,
   Stack,
   Table,
@@ -201,36 +202,40 @@ export function ApprovalRulesPanel({
                   {rule.min_amount}
                 </TableCell>
                 <TableCell>
-                  <Chip size="small" label={t(`customers.role.${rule.approver_role}`)} />
+                  <StatusChip label={t(`customers.role.${rule.approver_role}`)} />
                 </TableCell>
                 <TableCell align="right">
-                  <Button
-                    size="small"
-                    disabled={!canWrite}
-                    onClick={() => {
-                      setEditing(rule)
-                      setValues({
-                        name: rule.name,
-                        min_amount: rule.min_amount,
-                        approver_role: rule.approver_role,
-                        is_active: rule.is_active,
-                      })
-                      setError(null)
-                    }}
-                    aria-label={`${t('common.edit')}: ${rule.name}`}
-                  >
-                    {t('common.edit')}
-                  </Button>
-                  <IconButton
-                    size="small"
-                    disabled={!canWrite || remove.isPending}
-                    aria-label={`${t('common.delete')}: ${rule.name}`}
-                    onClick={() => {
-                      void remove.mutateAsync(rule.id).then(() => notify(t('customers.toast.deleted')))
-                    }}
-                  >
-                    <DeleteRoundedIcon fontSize="small" />
-                  </IconButton>
+                  <RowActions
+                    actions={[
+                      {
+                        id: 'edit',
+                        icon: <EditRoundedIcon fontSize="small" />,
+                        label: `${t('common.edit')}: ${rule.name}`,
+                        tone: 'neutral',
+                        disabled: !canWrite,
+                        onClick: () => {
+                          setEditing(rule)
+                          setValues({
+                            name: rule.name,
+                            min_amount: rule.min_amount,
+                            approver_role: rule.approver_role,
+                            is_active: rule.is_active,
+                          })
+                          setError(null)
+                        },
+                      },
+                      {
+                        id: 'delete',
+                        icon: <DeleteRoundedIcon fontSize="small" />,
+                        label: `${t('common.delete')}: ${rule.name}`,
+                        tone: 'danger',
+                        disabled: !canWrite || remove.isPending,
+                        onClick: () => {
+                          void remove.mutateAsync(rule.id).then(() => notify(t('customers.toast.deleted')))
+                        },
+                      },
+                    ]}
+                  />
                 </TableCell>
               </TableRow>
             ))}

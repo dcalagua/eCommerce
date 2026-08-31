@@ -1,9 +1,9 @@
+import { StatusChip } from '@/shared/ui/StatusChip'
 import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded'
 import {
   Box,
   Button,
   Card,
-  Chip,
   MenuItem,
   Stack,
   Table,
@@ -116,8 +116,7 @@ export function MovementsSection() {
                     <TableCell>{formatDateTime(movement.occurred_at, locale)}</TableCell>
                     <TableCell>{warehouseCode.get(movement.warehouse_id) ?? '—'}</TableCell>
                     <TableCell>
-                      <Chip
-                        size="small"
+                      <StatusChip
                         label={t(`inventory.movement.${movement.kind}` as MessageKey)}
                       />
                     </TableCell>
@@ -167,9 +166,8 @@ export function MovementsSection() {
                     <TableCell sx={{ fontWeight: 700 }}>{reservation.reference_key}</TableCell>
                     <TableCell>{formatDateTime(reservation.expires_at, locale)}</TableCell>
                     <TableCell>
-                      <Chip
-                        size="small"
-                        color="warning"
+                      <StatusChip
+                        tone="warning"
                         label={t(`inventory.reservation.${reservation.status}` as MessageKey)}
                       />
                     </TableCell>

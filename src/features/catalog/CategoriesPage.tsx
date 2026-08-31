@@ -1,10 +1,11 @@
+import { FilterBar } from '@/shared/ui/FilterBar'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import {
+  Box,
   Button,
-  Card,
-  Chip,
-  Stack,
+  Card,  Stack,
   Table,
   TableBody,
   TableCell,
@@ -73,7 +74,7 @@ export function CategoriesPage() {
   if (tenantStatus === 'loading') {
     return (
       <>
-        <PageHeader title={t('catalog.categories.title')} />
+        <PageHeader icon={<CategoryRoundedIcon />} title={t('catalog.categories.title')} />
         <Card>
           <TableSkeleton columns={4} />
         </Card>
@@ -84,7 +85,7 @@ export function CategoriesPage() {
   if (!storeId || !activeCompanyId || !tenant) {
     return (
       <>
-        <PageHeader title={t('catalog.categories.title')} />
+        <PageHeader icon={<CategoryRoundedIcon />} title={t('catalog.categories.title')} />
         <Card>
           <EmptyState
             title={t('admin.store.none')}
@@ -121,6 +122,7 @@ export function CategoriesPage() {
   return (
     <>
       <PageHeader
+        icon={<CategoryRoundedIcon />}
         title={t('catalog.categories.title')}
         subtitle={activeStore?.name}
         actions={
@@ -133,11 +135,15 @@ export function CategoriesPage() {
       />
 
       <Stack spacing={2}>
-        <SearchField
-          value={search}
-          onChange={setSearch}
-          placeholder={t('catalog.categories.search')}
-        />
+        <FilterBar>
+          <Box sx={{ minWidth: { xs: '100%', sm: 280 } }}>
+            <SearchField
+              value={search}
+              onChange={setSearch}
+              placeholder={t('catalog.categories.search')}
+            />
+          </Box>
+        </FilterBar>
 
         <Card>
           {categories.isPending && <TableSkeleton columns={4} />}
@@ -179,9 +185,8 @@ export function CategoriesPage() {
                     <TableCell sx={{ fontWeight: 700 }}>{category.name}</TableCell>
                     <TableCell sx={{ color: 'var(--muted)' }}>{category.slug}</TableCell>
                     <TableCell>
-                      <Chip
-                        size="small"
-                        color={category.is_active ? 'success' : 'default'}
+                      <StatusChip
+                        tone={category.is_active ? 'success' : 'default'}
                         label={t(
                           category.is_active
                             ? 'catalog.categories.active'

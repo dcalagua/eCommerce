@@ -1,6 +1,8 @@
+import { FilterBar } from '@/shared/ui/FilterBar'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import {
+  Box,
   Card,
-  Chip,
   Stack,
   Table,
   TableBody,
@@ -56,12 +58,16 @@ export function TraceSection({
 
   return (
     <Stack sx={{ gap: 2 }}>
-      <SearchField
-        value={correlationId}
-        onChange={onCorrelationChange}
-        placeholder={t('ops.trace.search')}
-        ariaLabel={t('ops.trace.search')}
-      />
+      <FilterBar>
+        <Box sx={{ minWidth: { xs: '100%', sm: 280 } }}>
+          <SearchField
+            value={correlationId}
+            onChange={onCorrelationChange}
+            placeholder={t('ops.trace.search')}
+            ariaLabel={t('ops.trace.search')}
+          />
+        </Box>
+      </FilterBar>
       <Typography sx={{ fontSize: 12, color: 'var(--muted)' }}>{t('ops.trace.help')}</Typography>
 
       <Card>
@@ -88,7 +94,7 @@ export function TraceSection({
                 <TableRow key={`${step.entity_id ?? 'x'}-${index}`}>
                   <TableCell>{formatDateTime(step.occurred_at, locale)}</TableCell>
                   <TableCell>
-                    <Chip size="small" variant="outlined" label={step.domain} />
+                    <StatusChip label={step.domain} />
                   </TableCell>
                   <TableCell>
                     <Typography sx={{ fontSize: 13, fontWeight: 700 }}>
@@ -100,9 +106,8 @@ export function TraceSection({
                   </TableCell>
                   <TableCell align="right">
                     {step.status ? (
-                      <Chip
-                        size="small"
-                        color={severityColor(step.severity)}
+                      <StatusChip
+                        tone={severityColor(step.severity)}
                         label={step.status}
                       />
                     ) : (

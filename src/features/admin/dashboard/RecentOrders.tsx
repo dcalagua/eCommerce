@@ -3,7 +3,6 @@ import {
   Button,
   Card,
   CardContent,
-  Chip,
   Stack,
   Table,
   TableBody,
@@ -17,6 +16,10 @@ import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { formatMoney } from '@/shared/lib/format'
 import { T } from '@/theme/tokens'
+import type { OrderStatus } from '@/features/orders/types'
+import { STATUS_COLOR } from '@/features/orders/status'
+import { STATUS_ICON } from '@/features/orders/statusIcons'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import type { RecentOrder } from '../useDashboardKpis'
 
 /**
@@ -26,9 +29,14 @@ import type { RecentOrder } from '../useDashboardKpis'
  * —no tiene filtros, ni orden, ni paginación a propósito—: es un vistazo, y en
  * cuanto alguien necesita más, el sitio es Pedidos.
  *
- * El estado va en `Chip` con su texto traducido, nunca un punto de color: los
- * tokens de estado de esta paleta no se distinguen entre sí lo suficiente para
- * cargar significado a solas.
+ * El estado va con su texto traducido, nunca un punto de color: los tokens de
+ * estado de esta paleta no se distinguen entre sí lo suficiente para cargar
+ * significado a solas.
+ *
+ * Los tonos salen de `STATUS_COLOR` de Pedidos, no de un mapa propio: un mismo
+ * estado tiene que verse igual en el resumen y en el listado, o el color deja
+ * de significar nada. Antes el chip iba SIN color y los cinco estados se veían
+ * idénticos.
  */
 export function RecentOrders({ orders }: { orders: RecentOrder[] }) {
   const { t, locale } = useI18n()
@@ -89,10 +97,10 @@ export function RecentOrders({ orders }: { orders: RecentOrder[] }) {
                     {order.customer ?? '—'}
                   </TableCell>
                   <TableCell>
-                    <Chip
-                      size="small"
+                    <StatusChip
+                      tone={STATUS_COLOR[order.status as OrderStatus] ?? 'default'}
+                      icon={STATUS_ICON[order.status as OrderStatus]}
                       label={t(`orders.status.${order.status}` as MessageKey)}
-                      sx={{ fontWeight: 700 }}
                     />
                   </TableCell>
                   <TableCell align="right" className="tnum" sx={{ fontWeight: 700 }}>

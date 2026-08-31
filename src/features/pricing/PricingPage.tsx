@@ -1,3 +1,4 @@
+import PriceChangeRoundedIcon from '@mui/icons-material/PriceChangeRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import { Card } from '@mui/material'
 import { useMemo } from 'react'
@@ -46,7 +47,7 @@ export function PricingPage() {
   if (status === 'loading') {
     return (
       <>
-        <PageHeader title={t('pricing.title')} subtitle={t('pricing.subtitle')} />
+        <PageHeader icon={<PriceChangeRoundedIcon />} title={t('pricing.title')} subtitle={t('pricing.subtitle')} />
         <Card>
           <TableSkeleton columns={5} />
         </Card>
@@ -57,7 +58,7 @@ export function PricingPage() {
   if (!tenant || !activeCompanyId) {
     return (
       <>
-        <PageHeader title={t('pricing.title')} subtitle={t('pricing.subtitle')} />
+        <PageHeader icon={<PriceChangeRoundedIcon />} title={t('pricing.title')} subtitle={t('pricing.subtitle')} />
         <Card>
           <EmptyState
             title={t('admin.store.none')}
@@ -71,7 +72,7 @@ export function PricingPage() {
 
   return (
     <>
-      <PageHeader title={t('pricing.title')} subtitle={activeStore?.name ?? t('pricing.subtitle')} />
+      <PageHeader icon={<PriceChangeRoundedIcon />} title={t('pricing.title')} subtitle={activeStore?.name ?? t('pricing.subtitle')} />
       <SectionTabs items={items} ariaLabel={t('pricing.title')} />
     </>
   )

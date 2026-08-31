@@ -1,3 +1,4 @@
+import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import { Card } from '@mui/material'
 import { useMemo, useState } from 'react'
@@ -59,7 +60,7 @@ export function AnalyticsPage() {
   if (status === 'loading') {
     return (
       <>
-        <PageHeader title={t('analytics.title')} subtitle={t('analytics.subtitle')} />
+        <PageHeader icon={<InsightsRoundedIcon />} title={t('analytics.title')} subtitle={t('analytics.subtitle')} />
         <Card>
           <TableSkeleton columns={5} />
         </Card>
@@ -70,7 +71,7 @@ export function AnalyticsPage() {
   if (!tenant || !activeCompanyId) {
     return (
       <>
-        <PageHeader title={t('analytics.title')} subtitle={t('analytics.subtitle')} />
+        <PageHeader icon={<InsightsRoundedIcon />} title={t('analytics.title')} subtitle={t('analytics.subtitle')} />
         <Card>
           <EmptyState
             title={t('admin.store.none')}
@@ -85,6 +86,7 @@ export function AnalyticsPage() {
   return (
     <>
       <PageHeader
+        icon={<InsightsRoundedIcon />}
         title={t('analytics.title')}
         subtitle={activeStore?.name ?? t('analytics.subtitle')}
       />

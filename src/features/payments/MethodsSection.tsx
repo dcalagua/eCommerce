@@ -1,9 +1,9 @@
+import { StatusChip } from '@/shared/ui/StatusChip'
 import CreditCardRoundedIcon from '@mui/icons-material/CreditCardRounded'
 import {
   Alert,
   Button,
   Card,
-  Chip,
   FormControlLabel,
   MenuItem,
   Stack,
@@ -176,14 +176,13 @@ export function MethodsSection() {
                   <TableCell>{method.display_name}</TableCell>
                   <TableCell>
                     {method.provider_code ?? (
-                      <Chip size="small" label={t('payments.method.offline')} />
+                      <StatusChip label={t('payments.method.offline')} />
                     )}
                   </TableCell>
                   <TableCell>{t(`payments.capture.${method.capture_mode}` as MessageKey)}</TableCell>
                   <TableCell>
-                    <Chip
-                      size="small"
-                      color={method.is_active ? 'success' : 'default'}
+                    <StatusChip
+                      tone={method.is_active ? 'success' : 'default'}
                       label={t(method.is_active ? 'payments.state.active' : 'payments.state.inactive')}
                     />
                   </TableCell>

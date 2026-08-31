@@ -1,3 +1,4 @@
+import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
 import LaunchRoundedIcon from '@mui/icons-material/LaunchRounded'
 import {
   Alert,
@@ -205,6 +206,7 @@ export function SettingsPage() {
   return (
     <Box component="form" onSubmit={form.handleSubmit(onSubmit)} noValidate>
       <PageHeader
+        icon={<SettingsRoundedIcon />}
         title={t('admin.settings.title')}
         actions={
           storeUrl && (

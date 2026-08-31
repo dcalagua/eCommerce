@@ -1,7 +1,7 @@
+import { StatusChip } from '@/shared/ui/StatusChip'
 import {
   Alert,
   Button,
-  Chip,
   Divider,
   MenuItem,
   Stack,
@@ -142,11 +142,9 @@ export function ReturnDrawer({
         <Stack spacing={3}>
           <Stack spacing={1}>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              <Chip size="small" label={t(`returns.state.${request.state}` as MessageKey)} />
-              <Chip size="small" variant="outlined" label={request.reason_label} />
-              <Chip
-                size="small"
-                variant="outlined"
+              <StatusChip label={t(`returns.state.${request.state}` as MessageKey)} />
+              <StatusChip label={request.reason_label} />
+              <StatusChip
                 label={t(`returns.resolution.${request.resolution}` as MessageKey)}
               />
             </Stack>
@@ -234,7 +232,7 @@ export function ReturnDrawer({
                           }
                         />
                         {line.restock_movement_id && (
-                          <Chip size="small" label={t('returns.field.restocked')} />
+                          <StatusChip label={t('returns.field.restocked')} />
                         )}
                       </TableCell>
                       <TableCell align="right">

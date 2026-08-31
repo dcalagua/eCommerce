@@ -1,10 +1,10 @@
+import { StatusChip } from '@/shared/ui/StatusChip'
 import {
   Alert,
   Autocomplete,
   Box,
   Button,
   Card,
-  Chip,
   MenuItem,
   Stack,
   TextField,
@@ -223,17 +223,16 @@ export function SimulatorSection() {
             </Typography>
 
             <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
-              <Chip
-                size="small"
-                color={line.source === 'price_list' ? 'primary' : 'default'}
+              <StatusChip
+                tone={line.source === 'price_list' ? 'success' : 'default'}
                 label={t(`pricing.source.${line.source}`)}
               />
-              {line.price_list_code && <Chip size="small" label={line.price_list_code} />}
-              {line.scope && <Chip size="small" label={t(`pricing.scope.${line.scope}`)} />}
+              {line.price_list_code && <StatusChip label={line.price_list_code} />}
+              {line.scope && <StatusChip label={t(`pricing.scope.${line.scope}`)} />}
               {line.min_quantity && (
-                <Chip size="small" label={`${t('pricing.field.minQuantity')}: ${Number(line.min_quantity)}`} />
+                <StatusChip label={`${t('pricing.field.minQuantity')}: ${Number(line.min_quantity)}`} />
               )}
-              <Chip size="small" label={`${t('pricing.field.channel')}: ${result.channel}`} />
+              <StatusChip label={`${t('pricing.field.channel')}: ${result.channel}`} />
             </Stack>
 
             <Box sx={{ pt: 1 }}>

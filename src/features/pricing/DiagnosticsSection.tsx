@@ -1,8 +1,8 @@
+import { StatusChip } from '@/shared/ui/StatusChip'
 import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded'
 import {
   Alert,
   Card,
-  Chip,
   Stack,
   Table,
   TableBody,
@@ -78,9 +78,8 @@ export function DiagnosticsSection() {
                 {rows.map((row, index) => (
                   <TableRow key={`${row.kind}-${row.price_list_id ?? index}-${row.other_list_id ?? ''}`} hover>
                     <TableCell>
-                      <Chip
-                        size="small"
-                        color={conflictSeverity(row.kind) === 'error' ? 'error' : 'warning'}
+                      <StatusChip
+                        tone={conflictSeverity(row.kind) === 'error' ? 'error' : 'warning'}
                         label={t(`pricing.conflict.${row.kind}`)}
                       />
                     </TableCell>
