@@ -494,23 +494,54 @@ function ProductCollectionBlock({
   )
 }
 
+/**
+ * Cabecera de seccion.
+ *
+ * El titulo llevaba una barra de acento a la izquierda... y no: una seccion de
+ * portada no es una cita. Lo que la separa de la anterior es AIRE y peso
+ * tipografico, no un adorno. Lo unico que se anade es la regla fina que corre
+ * hasta el borde derecho: cierra el bloque, ordena la lectura y no compite con
+ * nada.
+ */
 function BlockHeading({ block }: { block: ContentBlock }) {
   if (!block.title && !block.subtitle) return null
   return (
-    <Stack sx={{ gap: 0.25 }}>
-      {block.title ? (
-        <Typography
-          component="h2"
-          sx={{ fontSize: { xs: 20, md: 24 }, fontWeight: 800, letterSpacing: '-0.02em' }}
-        >
-          {block.title}
-        </Typography>
-      ) : null}
-      {block.subtitle ? (
-        <Typography sx={{ fontSize: T.bodyStrong, color: 'var(--muted)' }}>
-          {block.subtitle}
-        </Typography>
-      ) : null}
+    <Stack direction="row" sx={{ alignItems: 'flex-end', gap: 2 }}>
+      <Stack sx={{ gap: 0.25, flexShrink: 0 }}>
+        {block.title ? (
+          <Typography
+            component="h2"
+            sx={{
+              fontSize: { xs: 21, md: 26 },
+              fontWeight: 800,
+              letterSpacing: '-0.025em',
+              lineHeight: 1.2,
+            }}
+          >
+            {block.title}
+          </Typography>
+        ) : null}
+        {block.subtitle ? (
+          <Typography sx={{ fontSize: T.bodyStrong, color: 'var(--muted)' }}>
+            {block.subtitle}
+          </Typography>
+        ) : null}
+      </Stack>
+      {/* Regla que arranca en el acento y se apaga hacia el borde: cierra el
+          bloque y ordena la lectura sin competir con el titulo. A 1 px y en
+          gris no se veia; el degradado se ve y sigue sin gritar. */}
+      <Box
+        aria-hidden
+        sx={{
+          flex: 1,
+          height: 2,
+          minWidth: 24,
+          mb: 1.25,
+          borderRadius: 1,
+          background:
+            'linear-gradient(to right, color-mix(in srgb, var(--accent) 55%, transparent), transparent)',
+        }}
+      />
     </Stack>
   )
 }
@@ -566,7 +597,35 @@ function CollectionCard({
         alt={item.image_alt ?? item.name}
       />
       </Box>
-      <Typography sx={{ fontSize: 15, fontWeight: 650, lineHeight: 1.35 }}>{item.name}</Typography>
+      {item.kind === 'product' && item.brand_name ? (
+        <Typography
+          sx={{
+            fontSize: 10.5,
+            fontWeight: 800,
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            color: 'var(--muted)',
+            lineHeight: 1.4,
+          }}
+        >
+          {item.brand_name}
+        </Typography>
+      ) : null}
+      <Typography
+        sx={{
+          fontSize: 15,
+          fontWeight: 650,
+          lineHeight: 1.35,
+          // Dos lineas y elipsis: un nombre largo no puede empujar el precio
+          // fuera de la tarjeta ni descuadrar la fila.
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+        }}
+      >
+        {item.name}
+      </Typography>
       {item.kind === 'variant' && item.variant_label ? (
         <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
           {item.variant_label}

@@ -1,5 +1,6 @@
-import { Chip, Stack } from '@mui/material'
+import { Chip } from '@mui/material'
 import type { SxProps, Theme } from '@mui/material'
+import { ScrollRow } from './ScrollRow'
 import { useT } from '@/shared/i18n/i18n-context'
 import type { PublicCategory } from '../types'
 
@@ -49,20 +50,7 @@ export function CategoryBar({
   if (categories.length === 0) return null
 
   return (
-    <Stack
-      direction="row"
-      component="nav"
-      aria-label={t('store.categories.title')}
-      sx={{
-        gap: 1,
-        overflowX: 'auto',
-        pb: 0.5,
-        // La barra de scroll en móvil roba altura y no aporta nada: el gesto
-        // ya se entiende porque las píldoras se cortan en el borde.
-        scrollbarWidth: 'none',
-        '&::-webkit-scrollbar': { display: 'none' },
-      }}
-    >
+    <ScrollRow component="nav" ariaLabel={t('store.categories.title')} gap={1}>
       <Chip
         label={t('store.categories.all')}
         onClick={() => onSelect(null)}
@@ -81,6 +69,6 @@ export function CategoryBar({
           />
         )
       })}
-    </Stack>
+    </ScrollRow>
   )
 }
