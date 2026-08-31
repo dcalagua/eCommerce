@@ -17,12 +17,14 @@ import {
 } from './cart'
 import { CartContext, type CartApi } from './cart-context'
 import {
+  ServerCartError,
   clearCartToken,
   openServerCart,
   readCartToken,
   replaceServerCartLines,
   writeCartToken,
 } from './serverCart'
+import { CART_GONE_CODE } from '../checkout'
 
 /**
  * Estado del carrito de UNA tienda.
@@ -131,7 +133,27 @@ export function CartProvider({
     reconciled.current = scope
 
     let cancelled = false
-    openServerCart({ storeSlug, token: readCartToken(storeId), authenticated })
+    /**
+     * Un token que ya no nombra ningun carrito se TIRA y se vuelve a abrir.
+     *
+     * El token vive en `localStorage` y sobrevive a la fila que nombraba: el
+     * carrito de invitado caduca por retencion, y un entorno de demostracion se
+     * puede vaciar entero. Sin esto, el token muerto se queda para siempre y el
+     * checkout falla con `CARRITO_NO_ENCONTRADO` en cada intento — la persona
+     * no puede comprar hasta que alguien le dice que borre datos del sitio.
+     */
+    const openOrReopen = async () => {
+      try {
+        return await openServerCart({ storeSlug, token: readCartToken(storeId), authenticated })
+      } catch (error) {
+        if (!(error instanceof ServerCartError) || error.code !== CART_GONE_CODE) throw error
+        clearCartToken(storeId)
+        setCartToken(null)
+        return openServerCart({ storeSlug, token: null, authenticated })
+      }
+    }
+
+    openOrReopen()
       .then((server) => {
         if (cancelled) return
         if (server.token) {
@@ -219,6 +241,11 @@ export function CartProvider({
     setOpen(false)
   }, [storeId])
 
+  const forgetServerCart = useCallback(() => {
+    clearCartToken(storeId)
+    setCartToken(null)
+  }, [storeId])
+
   const value = useMemo<CartApi>(
     () => ({
       cart,
@@ -227,6 +254,7 @@ export function CartProvider({
       currency: cartCurrency(cart, currency),
       isOpen,
       cartToken,
+      forgetServerCart,
       synced,
       add,
       setQuantity,
@@ -235,7 +263,7 @@ export function CartProvider({
       openCart: () => setOpen(true),
       closeCart: () => setOpen(false),
     }),
-    [cart, currency, isOpen, cartToken, synced, add, setQuantity, remove, clear],
+    [cart, currency, isOpen, cartToken, synced, add, setQuantity, remove, clear, forgetServerCart],
   )
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>

@@ -41,6 +41,14 @@ export interface CartApi {
   setQuantity: (productId: string, quantity: number, variantId?: string | null) => void
   remove: (productId: string, variantId?: string | null) => void
   clear: () => void
+  /**
+   * Suelta el carrito de SERVIDOR sin tocar las lineas de pantalla.
+   *
+   * Lo llama el checkout cuando el servidor dice que ese carrito ya no existe:
+   * el token esta en `localStorage` y solo quien lo guarda puede tirarlo. Las
+   * lineas se quedan — son la compra, y el token solo era el ancla.
+   */
+  forgetServerCart: () => void
   openCart: () => void
   closeCart: () => void
 }

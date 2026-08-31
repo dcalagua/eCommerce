@@ -204,9 +204,22 @@ function isStage(value: string | null | undefined): value is CheckoutStage {
   return typeof value === 'string' && (CHECKOUT_STAGES as readonly string[]).includes(value)
 }
 
+/**
+ * El carrito de servidor al que apunta el token ya no existe.
+ *
+ * Pasa mas de lo que parece: el carrito de un invitado CADUCA (retencion de
+ * carritos de invitado), y un entorno de demostracion se puede vaciar entero.
+ * El token vive en `localStorage` del comprador, asi que sobrevive a la fila
+ * que nombraba — y sin recuperacion deja a esa persona sin poder comprar hasta
+ * que alguien le diga que borre datos del sitio.
+ */
+export const CART_GONE_CODE = 'CARRITO_NO_ENCONTRADO'
+
 /** Códigos del servidor traducidos a algo que el comprador pueda hacer. */
 export function mapCheckoutCode(code: string): MessageKey {
   switch (code) {
+    case CART_GONE_CODE:
+      return 'store.checkout.error.cartGone'
     case 'STOCK_INSUFICIENTE':
       return 'store.checkout.error.stock'
     case 'DISPONIBILIDAD_DESCONOCIDA':
@@ -329,6 +342,11 @@ export interface StartCheckoutInput extends CheckoutValues {
   cartToken?: string | null
   /** El comprador ya vio el precio nuevo y sigue adelante. */
   acceptPriceChanges?: boolean
+  /**
+   * Aviso de que el token de carrito estaba muerto. Quien lo guarda —el
+   * proveedor del carrito— es el unico que puede tirarlo del almacenamiento.
+   */
+  onCartGone?: () => void
   /** Con sesión, la petición viaja con el JWT para poder resolver su cuenta B2B. */
   authenticated?: boolean
 }
@@ -354,19 +372,23 @@ export async function startCheckout(input: StartCheckoutInput): Promise<OrderRes
   // Con sesión hace falta el cliente que la lleva: es lo único que permite al
   // servidor resolver la cuenta B2B del comprador (`my_business_accounts()`).
   // Sin sesión, el cliente anónimo de la vitrina, como todo lo demás.
-  const supabase = input.authenticated ? tryGetSupabaseClient() : tryGetStorefrontClient()
-  if (!supabase) throw new CheckoutError('store.checkout.error.generic', 'CONFIG_INCOMPLETA')
+  const client = input.authenticated ? tryGetSupabaseClient() : tryGetStorefrontClient()
+  if (!client) throw new CheckoutError('store.checkout.error.generic', 'CONFIG_INCOMPLETA')
+  // Se ata a una constante para que el cierre de `invoke` no vuelva a dudar de
+  // que existe: dentro de una funcion anidada, TypeScript pierde el estrechado.
+  const supabase = client
 
   const items = toOrderItems(input.cart)
   if (items.length === 0) {
     throw new CheckoutError('store.checkout.error.emptyCart', 'ITEMS_REQUERIDOS')
   }
 
-  const { data, error } = await supabase.functions.invoke<{ data: unknown }>(CHECKOUT_FUNCTION, {
+  async function invoke(cartToken: string | null) {
+    return supabase.functions.invoke<{ data: unknown }>(CHECKOUT_FUNCTION, {
     body: {
       store_slug: input.storeSlug,
       idempotency_key: input.idempotencyKey,
-      cart_token: input.cartToken ?? null,
+      cart_token: cartToken,
       customer_name: input.customerName,
       customer_email: input.customerEmail,
       customer_phone: input.customerPhone,
@@ -386,14 +408,39 @@ export async function startCheckout(input: StartCheckoutInput): Promise<OrderRes
       // cupón», que es distinto de «no se preguntó».
       coupon_codes: input.couponCode ? [input.couponCode] : [],
     },
-  })
+    })
+  }
+
+  let { data, error } = await invoke(input.cartToken ?? null)
 
   if (error) {
-    const failure = await failureFromInvokeError(error)
-    throw new CheckoutError(mapCheckoutCode(failure.code), failure.code, {
-      stage: failure.stage,
-      retryable: failure.retryable,
-    })
+    let failure = await failureFromInvokeError(error)
+
+    /**
+     * El carrito de servidor ya no esta: se sigue SIN el.
+     *
+     * El token es un ancla, no la compra: las lineas viajan en el cuerpo de la
+     * peticion, asi que lo unico que se pierde al soltarlo es marcar ese
+     * carrito como convertido y el aviso de cambio de precio. Cambiar eso por
+     * «no pudimos registrar el pedido» seria perder la venta por un dato
+     * accesorio.
+     *
+     * Se reintenta UNA vez y solo por este codigo. La clave de idempotencia es
+     * la misma a proposito: si el primer intento hubiese llegado a crear el
+     * pedido, el servidor devuelve ese y no un segundo.
+     */
+    if (failure.code === CART_GONE_CODE && input.cartToken) {
+      input.onCartGone?.()
+      ;({ data, error } = await invoke(null))
+      failure = error ? await failureFromInvokeError(error) : failure
+    }
+
+    if (error) {
+      throw new CheckoutError(mapCheckoutCode(failure.code), failure.code, {
+        stage: failure.stage,
+        retryable: failure.retryable,
+      })
+    }
   }
 
   const parsed = orderResultSchema.safeParse(data?.data)

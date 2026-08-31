@@ -582,6 +582,48 @@ describe('checkout', () => {
     expect(screen.getByRole('button', { name: 'Confirmar pedido' })).toBeEnabled()
   })
 
+  /**
+   * El carrito de servidor puede desaparecer bajo los pies del comprador: el de
+   * un invitado CADUCA por retencion, y un entorno de demostracion se puede
+   * vaciar entero. El token vive en `localStorage` y sobrevive a la fila que
+   * nombraba, asi que sin recuperacion esa persona no vuelve a comprar hasta
+   * que alguien le dice que borre datos del sitio.
+   */
+  it('si el carrito de servidor ya no existe, se compra igual y el token muerto se tira', async () => {
+    const user = userEvent.setup()
+    const fake = backend({
+      onCheckout: (body) => {
+        // El servidor solo se queja cuando le mandan el token muerto.
+        if (body.cart_token) {
+          throw new FunctionsHttpErrorLike(404, 'CARRITO_NO_ENCONTRADO', {
+            stage: 'resolve_prices',
+            retryable: false,
+          })
+        }
+        return respuestaPedido(body)
+      },
+    })
+    sembrarCarrito([LINEA_SILLA])
+    localStorage.setItem(cartTokenStorageKey(STORE), CART_TOKEN)
+    renderStorefront(fake, '/s/casa-nordica/checkout')
+
+    await rellenar(user)
+    await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+
+    // El pedido sale: las lineas viajan en el cuerpo, el token solo era el ancla.
+    expect(await screen.findByText('EC-20260827-00001')).toBeInTheDocument()
+    await waitFor(() => expect(fake.state.invocations).toHaveLength(2))
+    expect(fake.state.invocations[0]?.body.cart_token).toBe(CART_TOKEN)
+    expect(fake.state.invocations[1]?.body.cart_token).toBeNull()
+    // Misma clave en los dos: si el primero hubiese llegado a crear el pedido,
+    // el servidor devuelve ese y no un segundo.
+    expect(fake.state.invocations[1]?.body.idempotency_key).toBe(
+      fake.state.invocations[0]?.body.idempotency_key,
+    )
+    // Y el token muerto no se queda esperando al siguiente intento.
+    await waitFor(() => expect(localStorage.getItem(cartTokenStorageKey(STORE))).toBeNull())
+  })
+
   it('un cambio de precio se puede confirmar, y el segundo envío lo dice', async () => {
     const user = userEvent.setup()
     let intentos = 0

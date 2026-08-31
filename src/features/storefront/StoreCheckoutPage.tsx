@@ -71,7 +71,7 @@ export function StoreCheckoutPage() {
   const { t, locale } = useI18n()
   const navigate = useNavigate()
   const { store, storeSlug } = useStorefront()
-  const { cart, subtotal, currency, cartToken, clear } = useCart()
+  const { cart, subtotal, currency, cartToken, clear, forgetServerCart } = useCart()
   const { status: sessionStatus } = useSessionContext()
   const authenticated = sessionStatus === 'authenticated'
 
@@ -189,6 +189,9 @@ export function StoreCheckoutPage() {
         cart,
         idempotencyKey,
         cartToken,
+        // Si el carrito de servidor ya no existe, el checkout reintenta sin el
+        // y avisa aqui para que el token muerto no siga en el navegador.
+        onCartGone: forgetServerCart,
         acceptPriceChanges: input.acceptPriceChanges,
         authenticated,
       })
