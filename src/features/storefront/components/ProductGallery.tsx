@@ -22,7 +22,16 @@ export function ProductGallery({ images, alt }: { images: GalleryImage[]; alt: s
 
   return (
     <Stack sx={{ gap: 1 }} aria-label={t('store.product.gallery')} component="section">
-      <ProductMedia url={current?.url ?? null} alt={current?.alt ?? alt} ratio="4 / 3" sizePx={40} eager />
+      {/* `contain`: aquí se ha venido a mirar el producto, y recortarlo esconde
+          justo lo que se quería ver. */}
+      <ProductMedia
+        url={current?.url ?? null}
+        alt={current?.alt ?? alt}
+        ratio="4 / 3"
+        sizePx={40}
+        eager
+        fit="contain"
+      />
 
       {images.length > 1 && (
         <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>

@@ -7,7 +7,6 @@ import {
   Button,
   Card,
   Chip,
-  Divider,
   IconButton,
   MenuItem,
   Stack,
@@ -19,6 +18,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
 import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
+import { AppBreadcrumbs } from '@/shared/ui/AppBreadcrumbs'
 import { EmptyState, ErrorState } from '@/shared/ui/states'
 import { R, T } from '@/theme/tokens'
 import { StorefrontNotFoundError } from './api'
@@ -159,16 +159,37 @@ export function StoreProductPage() {
 
   return (
     <Stack sx={{ gap: { xs: 2.5, md: 4 } }}>
-      <Box>
+      {/* Migas ADEMÁS del «volver»: dicen dónde estás —de qué categoría cuelga
+          esto— y no solo por dónde salir. La categoría es un enlace al catálogo
+          ya filtrado, que es a donde se quiere ir tras descartar un producto. */}
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        sx={{ gap: 1, alignItems: { sm: 'center' }, justifyContent: 'space-between' }}
+      >
+        <AppBreadcrumbs
+          ariaLabel={t('store.product.breadcrumb')}
+          items={[
+            { label: t('store.catalog.title'), to: `/s/${storeSlug}` },
+            ...(item.category_name && item.category_slug
+              ? [
+                  {
+                    label: item.category_name,
+                    to: `/s/${storeSlug}?c=${encodeURIComponent(item.category_slug)}`,
+                  },
+                ]
+              : []),
+            { label: item.name },
+          ]}
+        />
         <Button
           component={Link}
           to={`/s/${storeSlug}`}
           startIcon={<ArrowBackRoundedIcon />}
-          sx={{ ml: -1 }}
+          sx={{ textTransform: 'none', fontWeight: 700, flexShrink: 0 }}
         >
           {t('store.product.back')}
         </Button>
-      </Box>
+      </Stack>
 
       <Box
         sx={{
@@ -178,23 +199,24 @@ export function StoreProductPage() {
           alignItems: 'start',
         }}
       >
-        <ProductGallery images={gallery.data ?? []} alt={item.name} />
+        {/* Cada mitad en su tarjeta: sobre el fondo desnudo, la foto y los datos
+            parecían dos cosas que están cerca por casualidad. */}
+        <Card sx={{ p: { xs: 1.5, md: 2 } }}>
+          <ProductGallery images={gallery.data ?? []} alt={item.name} />
+        </Card>
 
+        <Card sx={{ p: { xs: 2, md: 2.5 } }}>
         <Stack sx={{ gap: 1.25 }}>
-          {item.category_name && (
-            <Typography
-              sx={{
-                fontSize: T.label,
-                fontWeight: 700,
-                letterSpacing: 0.4,
-                textTransform: 'uppercase',
-                color: 'var(--muted)',
-              }}
-            >
-              {item.category_name}
+          {item.brand_name && (
+            <Typography sx={{ fontSize: T.label, fontWeight: 800, color: 'var(--accent-deep)' }}>
+              {item.brand_name}
             </Typography>
           )}
-
+          {/* La categoría YA la dicen las migas, y allí además es un enlace al
+              catálogo filtrado. Repetirla aquí encima del título la ponía tres
+              veces en la misma pantalla —migas, encabezado y ficha de datos—,
+              que es ruido, no énfasis. Aquí manda la marca, que no está en
+              ningún otro sitio de esta columna. */}
           <Typography component="h1" sx={{ fontSize: { xs: 22, md: 26 }, fontWeight: 800 }}>
             {item.name}
           </Typography>
@@ -246,23 +268,54 @@ export function StoreProductPage() {
             variantsPending={hasVariants && variants.isPending}
           />
 
-          <Divider sx={{ my: 1 }} />
-
-          <Typography component="h2" sx={{ fontSize: T.cardTitle, fontWeight: 800 }}>
-            {t('store.product.description')}
-          </Typography>
-          <Typography
-            sx={{
-              fontSize: T.body,
-              color: item.description ? 'var(--text)' : 'var(--muted)',
-              whiteSpace: 'pre-line',
-              lineHeight: 1.65,
-            }}
-          >
-            {item.description?.trim() || t('store.product.noDescription')}
-          </Typography>
         </Stack>
+        </Card>
       </Box>
+
+      {/* Descripción y datos, uno al lado del otro y DEBAJO de la compra: lo que
+          hace falta para decidir va arriba; esto es lo que se lee cuando ya casi
+          se ha decidido. */}
+      <Card sx={{ p: { xs: 2, md: 3 } }}>
+        <Box
+          sx={{
+            display: 'grid',
+            gap: { xs: 2, md: 4 },
+            gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1.6fr) minmax(0, 1fr)' },
+          }}
+        >
+          <Box>
+            <Typography component="h2" sx={{ fontSize: T.cardTitle, fontWeight: 800, mb: 1 }}>
+              {t('store.product.description')}
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: T.body,
+                color: item.description ? 'var(--text)' : 'var(--muted)',
+                whiteSpace: 'pre-line',
+                lineHeight: 1.65,
+              }}
+            >
+              {item.description?.trim() || t('store.product.noDescription')}
+            </Typography>
+          </Box>
+
+          <Box>
+            <Typography component="h2" sx={{ fontSize: T.cardTitle, fontWeight: 800, mb: 1 }}>
+              {t('store.product.sheet')}
+            </Typography>
+            <Stack>
+              <SheetRow label={t('store.filter.brand')} value={item.brand_name} />
+              <SheetRow label={t('store.filter.category')} value={item.category_name} />
+              <SheetRow
+                label={t('store.product.availabilityLabel')}
+                value={
+                  available ? t('store.availability.inStock') : t('store.availability.outOfStock')
+                }
+              />
+            </Stack>
+          </Box>
+        </Box>
+      </Card>
 
       {related.length > 0 && (
         <Box component="section">
@@ -272,6 +325,33 @@ export function StoreProductPage() {
           <ProductGrid products={related} storeSlug={storeSlug} thumbnails={relatedThumbs} />
         </Box>
       )}
+    </Stack>
+  )
+}
+
+/**
+ * Una fila de la ficha de datos.
+ *
+ * Lo que no se sabe se dice con una raya, y la fila NO se esconde: una ficha a
+ * la que le faltan filas según el producto no se puede recorrer con la vista,
+ * porque cada producto la tiene en otro sitio.
+ */
+function SheetRow({ label, value }: { label: string; value: string | null }) {
+  return (
+    <Stack
+      direction="row"
+      sx={{
+        justifyContent: 'space-between',
+        gap: 2,
+        py: 0.85,
+        borderBottom: '1px solid var(--border)',
+        '&:last-of-type': { borderBottom: 0 },
+      }}
+    >
+      <Typography sx={{ fontSize: T.body, color: 'var(--muted)' }}>{label}</Typography>
+      <Typography sx={{ fontSize: T.body, fontWeight: 700, textAlign: 'right' }}>
+        {value ?? '—'}
+      </Typography>
     </Stack>
   )
 }
@@ -323,7 +403,15 @@ function AddToCart({
   const canBuy = available && (!hasVariants || (selected !== null && selected.in_stock !== false))
 
   return (
-    <Stack sx={{ gap: 1.5, mt: 1 }}>
+    // `role="group"` con nombre: la variante, la cantidad y el botón son UNA
+    // sola decisión, y anunciarlos sueltos deja al lector de pantalla leyendo
+    // tres controles sin relación. Además distingue este botón de los que ahora
+    // llevan las tarjetas de «también te puede interesar», que se llaman igual.
+    <Stack
+      role="group"
+      aria-label={t('store.product.buyGroup')}
+      sx={{ gap: 1.5, mt: 1 }}
+    >
       {hasVariants && (
         <TextField
           select

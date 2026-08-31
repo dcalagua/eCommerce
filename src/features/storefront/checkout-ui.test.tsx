@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Route, Routes } from 'react-router-dom'
@@ -315,8 +315,13 @@ describe('de la ficha al carrito', () => {
     const user = userEvent.setup()
     renderStorefront(backend(), '/s/casa-nordica/product/silla-roble')
 
-    await user.click(await screen.findByRole('button', { name: 'Sumar una unidad' }))
-    await user.click(screen.getByRole('button', { name: 'Agregar al carrito' }))
+    // El botón de la FICHA, no el de una tarjeta de «también te puede
+    // interesar»: desde que las tarjetas compran, hay varios con el mismo
+    // nombre en la página, y el único que respeta la cantidad elegida es este.
+    // El bloque de compra es un `group` con nombre, así que se acota ahí.
+    const buyBox = await screen.findByRole('group', { name: 'Comprar' })
+    await user.click(within(buyBox).getByRole('button', { name: 'Sumar una unidad' }))
+    await user.click(within(buyBox).getByRole('button', { name: 'Agregar al carrito' }))
 
     await waitFor(() => {
       const guardado = localStorage.getItem(`ebim.ecommerce.cart.v1:${STORE}`)

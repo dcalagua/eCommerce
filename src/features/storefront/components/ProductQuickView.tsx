@@ -99,13 +99,34 @@ export function ProductQuickView({
           <ErrorState error={product.error} onRetry={() => void product.refetch()} />
         )}
 
+        {/* El esqueleto tiene la MISMA forma que el contenido real: foto a la
+            izquierda con su proporción, y a la derecha marca, nombre,
+            disponibilidad, descripción y botones. Un rectángulo genérico haría
+            que el diálogo cambiara de tamaño al llegar los datos, y un diálogo
+            que crece se mueve entero porque está centrado en la pantalla.
+
+            El PRECIO no se dibuja a propósito: es la única cifra de la ficha, y
+            un rectángulo gris con su forma y su sitio se lee como un precio que
+            aún no se sabe —o peor, como uno tachado—. Prefiere el hueco. */}
         {product.isPending && slug !== null && (
-          <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ gap: 3 }}>
-            <Skeleton variant="rounded" sx={{ flex: 1, minHeight: 260 }} />
-            <Stack sx={{ flex: 1, gap: 1.5 }}>
-              <Skeleton width="70%" height={32} />
-              <Skeleton width="40%" height={28} />
-              <Skeleton height={80} />
+          <Stack aria-hidden direction={{ xs: 'column', sm: 'row' }} sx={{ gap: 3 }}>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Skeleton
+                variant="rectangular"
+                sx={{ width: '100%', aspectRatio: '4 / 3', borderRadius: `${R.md}px` }}
+              />
+            </Box>
+            <Stack sx={{ flex: 1, minWidth: 0, gap: 1.25 }}>
+              <Skeleton width="35%" height={14} />
+              <Skeleton width="85%" height={34} />
+              <Skeleton width="25%" height={18} />
+              <Skeleton width="100%" height={14} sx={{ mt: 1 }} />
+              <Skeleton width="95%" height={14} />
+              <Skeleton width="70%" height={14} />
+              <Stack direction="row" sx={{ gap: 1, mt: 1 }}>
+                <Skeleton variant="rounded" width={170} height={40} />
+                <Skeleton variant="rounded" width={150} height={40} />
+              </Stack>
             </Stack>
           </Stack>
         )}

@@ -1,4 +1,4 @@
-import { Box, Skeleton, Stack } from '@mui/material'
+import { Box, Card, Skeleton, Stack } from '@mui/material'
 import { useT } from '@/shared/i18n/i18n-context'
 import { R } from '@/theme/tokens'
 
@@ -28,9 +28,11 @@ export function ProductPageSkeleton() {
         </span>
       </Box>
 
-      <Box aria-hidden>
+      {/* Migas + «volver», la misma fila que la ficha real. */}
+      <Stack aria-hidden direction="row" sx={{ justifyContent: 'space-between', gap: 1 }}>
+        <Skeleton variant="rounded" width={220} height={20} />
         <Skeleton variant="rounded" width={120} height={32} />
-      </Box>
+      </Stack>
 
       <Box
         aria-hidden
@@ -41,22 +43,53 @@ export function ProductPageSkeleton() {
           alignItems: 'start',
         }}
       >
-        <Skeleton
-          variant="rectangular"
-          sx={{ width: '100%', aspectRatio: '4 / 3', borderRadius: `${R.md}px` }}
-        />
+        {/* Las dos mitades van en tarjeta, como en la ficha: si el esqueleto se
+            dibuja sobre el fondo desnudo y luego aparecen dos tarjetas, la
+            pagina cambia de forma justo cuando termina de cargar. */}
+        <Card sx={{ p: { xs: 1.5, md: 2 } }}>
+          <Skeleton
+            variant="rectangular"
+            sx={{ width: '100%', aspectRatio: '4 / 3', borderRadius: `${R.md}px` }}
+          />
+        </Card>
 
-        <Stack sx={{ gap: 1.25 }}>
-          <Skeleton width="30%" height={14} />
-          <Skeleton width="80%" height={34} />
-          <Skeleton width="40%" height={30} />
-          <Skeleton width="25%" height={18} />
-          <Skeleton variant="rounded" width={220} height={40} sx={{ mt: 1 }} />
-          <Skeleton width="100%" height={14} sx={{ mt: 2 }} />
-          <Skeleton width="95%" height={14} />
-          <Skeleton width="60%" height={14} />
-        </Stack>
+        <Card sx={{ p: { xs: 2, md: 2.5 } }}>
+          <Stack sx={{ gap: 1.25 }}>
+            {/* Marca, nombre y disponibilidad. El PRECIO no se dibuja: es la
+                unica cifra de la ficha, y un rectangulo gris del tamano de un
+                precio se lee como un precio que todavia no se sabe. Prefiere
+                el hueco: cuando llega, llega y ya esta. */}
+            <Skeleton width="30%" height={14} />
+            <Skeleton width="80%" height={34} />
+            <Skeleton width="25%" height={18} />
+            <Skeleton variant="rounded" width={220} height={40} sx={{ mt: 1 }} />
+          </Stack>
+        </Card>
       </Box>
+
+      {/* Panel de descripcion y datos. */}
+      <Card aria-hidden sx={{ p: { xs: 2, md: 3 } }}>
+        <Box
+          sx={{
+            display: 'grid',
+            gap: { xs: 2, md: 4 },
+            gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1.6fr) minmax(0, 1fr)' },
+          }}
+        >
+          <Stack sx={{ gap: 1 }}>
+            <Skeleton width="35%" height={22} />
+            <Skeleton width="100%" height={14} />
+            <Skeleton width="95%" height={14} />
+            <Skeleton width="60%" height={14} />
+          </Stack>
+          <Stack sx={{ gap: 1 }}>
+            <Skeleton width="55%" height={22} />
+            <Skeleton width="100%" height={14} />
+            <Skeleton width="100%" height={14} />
+            <Skeleton width="100%" height={14} />
+          </Stack>
+        </Box>
+      </Card>
     </Stack>
   )
 }

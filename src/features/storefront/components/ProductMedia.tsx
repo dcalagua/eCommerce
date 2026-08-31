@@ -17,6 +17,7 @@ export function ProductMedia({
   ratio = '1 / 1',
   sizePx = 28,
   eager = false,
+  fit = 'cover',
 }: {
   url: string | null
   alt: string
@@ -25,6 +26,18 @@ export function ProductMedia({
   sizePx?: number
   /** La primera imagen de la ficha se carga sin `lazy`: es lo que se ve. */
   eager?: boolean
+  /**
+   * Cómo encaja la foto en su caja.
+   *
+   *  - `cover` en la REJILLA: recorta, y ese recorte es lo que mantiene todas
+   *    las tarjetas del mismo tamaño. Una rejilla con fotos de proporciones
+   *    distintas se lee como una tabla mal cuadrada.
+   *  - `contain` en la FICHA: ahí se ha venido a mirar el producto, y recortarlo
+   *    esconde justo lo que se quería ver. Se nota sobre todo con lo que no es
+   *    una foto de estudio —un logotipo apaisado, una imagen con márgenes—: con
+   *    `cover` sale ampliado y descentrado, y parece un fallo de la tienda.
+   */
+  fit?: 'cover' | 'contain'
 }) {
   return (
     <Box
@@ -46,7 +59,15 @@ export function ProductMedia({
           alt={alt}
           loading={eager ? 'eager' : 'lazy'}
           decoding="async"
-          sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          sx={{
+            width: '100%',
+            height: '100%',
+            objectFit: fit,
+            // Centrada de verdad: con `contain` el hueco sobrante se reparte a
+            // los dos lados en vez de quedarse todo abajo.
+            objectPosition: 'center',
+            display: 'block',
+          }}
         />
       ) : (
         <ImageRoundedIcon sx={{ fontSize: sizePx }} aria-hidden />
