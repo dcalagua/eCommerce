@@ -561,6 +561,12 @@ function CollectionCard({
 }) {
   const { t, locale } = useI18n()
   const price = item.kind === 'product' ? (item.price_from ?? item.price) : item.price
+  // Mismo criterio que la tarjeta del catalogo: el porcentaje se calcula, no se
+  // escribe a mano, y solo existe si el «antes» es mayor que el precio.
+  const descuento =
+    item.compare_at_price && price && Number(item.compare_at_price) > Number(price)
+      ? Math.round((1 - Number(price) / Number(item.compare_at_price)) * 100)
+      : null
 
   return (
     <Card
@@ -591,7 +597,27 @@ function CollectionCard({
         },
       }}
     >
-      <Box className="sf-collection-media">
+      <Box className="sf-collection-media" sx={{ position: 'relative' }}>
+      {descuento !== null ? (
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 8,
+            left: 8,
+            zIndex: 1,
+            px: 0.875,
+            py: 0.25,
+            borderRadius: 'var(--sf-pill)',
+            bgcolor: 'var(--accent)',
+            color: '#FFFFFF',
+            fontSize: T.label,
+            fontWeight: 800,
+            lineHeight: 1.6,
+          }}
+        >
+          {`-${descuento}%`}
+        </Box>
+      ) : null}
       <ProductMedia
         url={item.image_path ? (images[item.image_path] ?? null) : null}
         alt={item.image_alt ?? item.name}
@@ -632,12 +658,26 @@ function CollectionCard({
         </Typography>
       ) : null}
       {showPrice && price && item.currency ? (
-        <Typography
-          className="tnum"
-          sx={{ fontSize: 17, fontWeight: 800, letterSpacing: '-0.02em', mt: 0.25 }}
-        >
-          {formatMoney(Number(price), item.currency, locale)}
-        </Typography>
+        // El «antes» tachado va JUNTO al precio, no debajo: en una fila de
+        // ofertas lo que se compara es una cifra con otra, y separarlas obliga
+        // a hacer la resta de memoria.
+        <Stack direction="row" sx={{ alignItems: 'baseline', gap: 0.75, flexWrap: 'wrap', mt: 0.25 }}>
+          <Typography
+            className="tnum"
+            sx={{ fontSize: 17, fontWeight: 800, letterSpacing: '-0.02em' }}
+          >
+            {formatMoney(Number(price), item.currency, locale)}
+          </Typography>
+          {descuento !== null && item.compare_at_price ? (
+            <Typography
+              component="s"
+              className="tnum"
+              sx={{ fontSize: 12.5, color: 'var(--muted)', fontWeight: 600 }}
+            >
+              {formatMoney(Number(item.compare_at_price), item.currency, locale)}
+            </Typography>
+          ) : null}
+        </Stack>
       ) : null}
       {item.in_stock === false ? (
         <Typography sx={{ fontSize: T.micro, fontWeight: 700, color: 'var(--muted)' }}>
