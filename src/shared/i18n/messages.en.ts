@@ -150,6 +150,7 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'store.product.notFound': 'We could not find that product',
     'store.product.notFoundBody': 'It may no longer be published. Browse the rest of the catalog.',
     'store.product.gallery': 'Product gallery',
+    'store.catalog.backToTop': 'Back to top',
     'store.favorite.add': 'Save to favorites',
     'store.favorite.remove': 'Remove from favorites',
     'store.favorite.saved': 'Saved to favorites',

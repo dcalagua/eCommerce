@@ -1,11 +1,14 @@
 import { Box, Button, Card, Stack, Typography } from '@mui/material'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
 import type { SearchQuery, SearchSort } from '@/domain'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
+import { BrandLoader } from '@/shared/ui/BrandLoader'
+import { CONTENT_ANCHOR } from '@/shared/ui/SkipToContentLink'
 import { EmptyState, ErrorState } from '@/shared/ui/states'
 import { T } from '@/theme/tokens'
+import { BackToTop } from './components/BackToTop'
 import { CategoryBar } from './components/CategoryBar'
 import { ContentBlocks } from './components/ContentBlocks'
 import { ProductGrid, ProductGridSkeleton } from './components/ProductGrid'
@@ -155,6 +158,36 @@ export function StoreHomePage() {
   // Los favoritos se cargan UNA vez por tienda y se reparten a las tarjetas.
   const favorites = useFavorites(store.store_id)
 
+  /**
+   * Carga al bajar.
+   *
+   * Un centinela invisible bajo la rejilla: cuando entra en pantalla, se pide
+   * la pagina siguiente. Se dispara 400 px ANTES de llegar (`rootMargin`) para
+   * que la siguiente tanda ya este puesta cuando el ojo llega, en vez de
+   * enseñar un hueco y luego rellenarlo.
+   *
+   * El boton «Ver mas» NO se quita: es lo que funciona con teclado, con lector
+   * de pantalla y cuando el observador no existe. El desplazamiento infinito
+   * sin boton es una trampa para quien no navega con rueda.
+   */
+  const sentinel = useRef<HTMLDivElement | null>(null)
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = results
+
+  useEffect(() => {
+    const node = sentinel.current
+    if (!node || !hasNextPage || isFetchingNextPage) return
+    if (typeof IntersectionObserver === 'undefined') return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) void fetchNextPage()
+      },
+      { rootMargin: '400px 0px' },
+    )
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, products.length])
+
   const resultCount = new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'es-PE').format(total)
 
   // Metadatos de la portada. Cuelgan de la tienda YA RESUELTA, así que el
@@ -276,21 +309,17 @@ export function StoreHomePage() {
               que costaba subir el techo y volver a pedir desde cero. */}
           {results.hasNextPage && (
             <Stack sx={{ alignItems: 'center', gap: 1, mt: 2 }}>
-              <Button
-                variant="outlined"
-                onClick={() => void results.fetchNextPage()}
-                disabled={results.isFetchingNextPage}
-              >
-                {t('store.catalog.more')}
-              </Button>
-              {/* Que hay más cargando no se puede contar solo con el botón
-                  deshabilitado: quien no ve la pantalla no se entera de nada. */}
-              <Typography
-                aria-live="polite"
-                sx={{ fontSize: T.label, color: 'var(--muted)', minHeight: 18 }}
-              >
-                {results.isFetchingNextPage ? t('store.catalog.loadingMore') : ''}
-              </Typography>
+              {/* Invisible y sin alto: solo marca el punto a partir del cual
+                  vale la pena pedir la siguiente pagina. */}
+              <Box ref={sentinel} aria-hidden sx={{ height: 1, width: '100%' }} />
+
+              {results.isFetchingNextPage ? (
+                <BrandLoader label={t('store.catalog.loadingMore')} compact />
+              ) : (
+                <Button variant="outlined" onClick={() => void results.fetchNextPage()}>
+                  {t('store.catalog.more')}
+                </Button>
+              )}
             </Stack>
           )}
 
@@ -308,6 +337,8 @@ export function StoreHomePage() {
 
       {/* El producto abierto vive en `?p=`: el boton de atras cierra el
           dialogo y el enlace se puede pegar en un chat. */}
+      <BackToTop anchorId={CONTENT_ANCHOR} />
+
       <ProductQuickView
         storeId={store.store_id}
         storeSlug={storeSlug}

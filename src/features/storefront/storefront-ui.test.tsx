@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Route, Routes } from 'react-router-dom'
@@ -511,6 +511,22 @@ describe('catálogo', () => {
 
     expect(await screen.findByText('Mesa extensible')).toBeInTheDocument()
     expect(screen.queryByText('Silla de roble')).not.toBeInTheDocument()
+  })
+})
+
+describe('recorrer el catálogo', () => {
+  it('el botón de volver arriba no existe hasta que hace falta', async () => {
+    renderStorefront(backend(), '/s/casa-nordica')
+    await screen.findAllByRole('button', { name: 'Guardar en favoritos' })
+
+    // Arriba del todo no aporta nada y taparía una esquina del catálogo: ni
+    // siquiera está en el árbol, así que tampoco en el orden de tabulación.
+    expect(screen.queryByRole('button', { name: 'Volver arriba' })).not.toBeInTheDocument()
+
+    Object.defineProperty(window, 'scrollY', { value: 1200, writable: true })
+    fireEvent.scroll(window)
+
+    expect(await screen.findByRole('button', { name: 'Volver arriba' })).toBeInTheDocument()
   })
 })
 

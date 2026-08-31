@@ -153,6 +153,7 @@ export const es = {
     'store.product.notFound': 'No encontramos ese producto',
     'store.product.notFoundBody': 'Puede que ya no esté publicado. Mira el resto del catálogo.',
     'store.product.gallery': 'Galería del producto',
+    'store.catalog.backToTop': 'Volver arriba',
     'store.favorite.add': 'Guardar en favoritos',
     'store.favorite.remove': 'Quitar de favoritos',
     'store.favorite.saved': 'Guardado en favoritos',
