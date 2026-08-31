@@ -7,6 +7,7 @@ import { RichText } from '@/shared/ui/RichText'
 import { T } from '@/theme/tokens'
 import type { ContentBlock, ContentCollectionItem } from '../content'
 import { ProductMedia } from './ProductMedia'
+import { ScrollRow } from './ScrollRow'
 
 /**
  * Pinta los bloques de una página del CMS (P11-SaaS).
@@ -340,7 +341,27 @@ function CampaignBlock({ block, assets }: { block: ContentBlock; assets: Record<
   const url = mediaUrl(block.mediaUrl, assets)
 
   return (
-    <Card component="section" aria-label={block.title ?? undefined} sx={{ p: 0, overflow: 'hidden' }}>
+    /**
+     * La campana no es una tarjeta mas.
+     *
+     * Anuncia un descuento vigente, asi que tiene que separarse del resto de la
+     * portada sin gritar: fondo con el acento del tenant al 8 %, borde del
+     * acento y titulo de cuerpo grande. Sigue siendo el color del comercio —no
+     * se inventa un rojo de rebajas—, que es lo que exige el contrato: el
+     * acento es 100 % suyo.
+     */
+    <Card
+      component="section"
+      aria-label={block.title ?? undefined}
+      sx={{
+        p: 0,
+        overflow: 'hidden',
+        borderRadius: 'var(--sf-radius)',
+        border: '1px solid color-mix(in srgb, var(--accent) 35%, transparent)',
+        boxShadow: 'var(--sf-shadow)',
+        bgcolor: 'color-mix(in srgb, var(--accent) 8%, var(--card))',
+      }}
+    >
       <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ alignItems: 'stretch' }}>
         {url ? (
           <Box
@@ -360,17 +381,42 @@ function CampaignBlock({ block, assets }: { block: ContentBlock; assets: Record<
             }}
           />
         ) : null}
-        <Stack sx={{ gap: 1, p: { xs: 2.5, md: 3 }, flex: 1, justifyContent: 'center' }}>
-          <Stack direction="row" sx={{ gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-            <Typography component="h2" sx={{ fontSize: T.cardTitle, fontWeight: 800 }}>
-              {block.title}
+        <Stack sx={{ gap: 1.25, p: { xs: 2.5, md: 3.5 }, flex: 1, justifyContent: 'center' }}>
+          <Stack direction="row" sx={{ gap: 1.25, alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Rótulo de sección: dice QUE es esto antes de decir cómo se
+                llama. Sin él, «Semana dermocosmética» podía leerse como una
+                categoría más del catálogo. */}
+            <Typography
+              sx={{
+                fontSize: T.label,
+                fontWeight: 800,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                color: 'var(--accent-deep)',
+              }}
+            >
+              {t('store.content.campaignEyebrow')}
             </Typography>
             {block.campaignLive ? (
-              <Chip size="small" color="primary" label={t('store.content.campaignLive')} />
+              <Chip
+                size="small"
+                label={t('store.content.campaignLive')}
+                sx={{ bgcolor: 'var(--accent)', color: '#FFFFFF', fontWeight: 800 }}
+              />
             ) : null}
           </Stack>
+          <Stack direction="row" sx={{ gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Typography
+              component="h2"
+              sx={{ fontSize: { xs: 22, md: 28 }, fontWeight: 800, letterSpacing: '-0.02em' }}
+            >
+              {block.title}
+            </Typography>
+          </Stack>
           {block.subtitle ? (
-            <Typography sx={{ fontSize: T.body, color: 'var(--muted)' }}>{block.subtitle}</Typography>
+            <Typography sx={{ fontSize: T.bodyStrong, color: 'var(--text)', maxWidth: '62ch' }}>
+              {block.subtitle}
+            </Typography>
           ) : null}
           {block.campaignLive && block.campaignEndsAt ? (
             <Typography sx={{ fontSize: T.label, fontWeight: 700, color: 'var(--accent-deep)' }}>
@@ -457,39 +503,57 @@ function ProductCollectionBlock({
   return (
     <Stack component="section" aria-label={block.title ?? undefined} sx={{ gap: 1.5 }}>
       <BlockHeading block={block} />
-      <Box
-        sx={
-          scroll
-            ? {
-                display: 'grid',
-                gridAutoFlow: 'column',
-                gridAutoColumns: { xs: '62%', sm: '38%', md: '22%' },
-                gap: 1.5,
-                overflowX: 'auto',
-                pb: 1,
-                scrollSnapType: 'x mandatory',
-              }
-            : {
-                display: 'grid',
-                gap: 1.5,
-                gridTemplateColumns: {
-                  xs: 'repeat(2, minmax(0, 1fr))',
-                  md: `repeat(${Math.min(Math.max(columns, 2), 6)}, minmax(0, 1fr))`,
-                },
-              }
-        }
-      >
-        {items.map((item) => (
-          <CollectionCard
-            key={'variant_id' in item ? item.variant_id : item.product_id}
-            item={item}
-            storeSlug={storeSlug}
-            images={images}
-            showPrice={showPrice}
-            snap={scroll}
-          />
-        ))}
-      </Box>
+      {/* Carrusel de verdad: `ScrollRow` pone las flechas, el difuminado del
+          borde y esconde la barra. Antes era un `overflow-x` pelado, que en
+          escritorio no ofrece ningun gesto —no hay rueda horizontal— y encima
+          dejaba la barra gris cruzando la seccion. */}
+      {scroll ? (
+        <ScrollRow gap={2} ariaLabel={block.title ?? undefined}>
+          {items.map((item) => (
+            <Box
+              key={'variant_id' in item ? item.variant_id : item.product_id}
+              sx={{
+                flex: '0 0 auto',
+                // Ancho fijo por tarjeta: en una fila que se desplaza, dejarlas
+                // crecer hace que la ultima quede a medias de una forma
+                // distinta en cada pantalla.
+                width: { xs: '68%', sm: '42%', md: 250 },
+                scrollSnapAlign: 'start',
+              }}
+            >
+              <CollectionCard
+                item={item}
+                storeSlug={storeSlug}
+                images={images}
+                showPrice={showPrice}
+                snap={false}
+              />
+            </Box>
+          ))}
+        </ScrollRow>
+      ) : (
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 2,
+            gridTemplateColumns: {
+              xs: 'repeat(2, minmax(0, 1fr))',
+              md: `repeat(${Math.min(Math.max(columns, 2), 6)}, minmax(0, 1fr))`,
+            },
+          }}
+        >
+          {items.map((item) => (
+            <CollectionCard
+              key={'variant_id' in item ? item.variant_id : item.product_id}
+              item={item}
+              storeSlug={storeSlug}
+              images={images}
+              showPrice={showPrice}
+              snap={false}
+            />
+          ))}
+        </Box>
+      )}
     </Stack>
   )
 }

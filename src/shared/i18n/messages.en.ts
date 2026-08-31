@@ -1779,6 +1779,7 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'store.search.kind.product': 'product',
     'store.search.kind.category': 'category',
     'store.search.kind.brand': 'brand',
+    'store.content.campaignEyebrow': 'Active promotion',
     'store.content.campaignLive': 'Live',
     'store.content.campaignEnds': 'Until',
     'store.content.notFound': 'We could not find this page',

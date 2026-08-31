@@ -1790,6 +1790,7 @@ export const es = {
     'store.search.kind.product': 'producto',
     'store.search.kind.category': 'categoría',
     'store.search.kind.brand': 'marca',
+    'store.content.campaignEyebrow': 'Promoción vigente',
     'store.content.campaignLive': 'Activa',
     'store.content.campaignEnds': 'Hasta el',
     'store.content.notFound': 'No encontramos esta página',
