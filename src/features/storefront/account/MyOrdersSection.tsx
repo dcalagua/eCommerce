@@ -1,0 +1,135 @@
+import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
+import {
+  Box,
+  Card,
+  Chip,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Typography,
+} from '@mui/material'
+import { useQuery } from '@tanstack/react-query'
+import { useI18n } from '@/shared/i18n/i18n-context'
+import type { MessageKey } from '@/shared/i18n/messages'
+import { formatDate, formatMoney } from '@/shared/lib/format'
+import { BrandLoader } from '@/shared/ui/BrandLoader'
+import { EmptyState, ErrorState } from '@/shared/ui/states'
+import { T } from '@/theme/tokens'
+import { fetchMyOrders, myOrdersKey, type MyOrder } from '../portal'
+
+/**
+ * Mis pedidos.
+ *
+ * Un comprador B2B no busca «el pedido de ayer»: busca «el que todavía no me
+ * llega» y «el que tengo que pagar». Por eso las dos columnas que mandan son
+ * ESTADO y PAGO, y no la fecha: la fecha ordena, pero no es lo que se viene a
+ * consultar.
+ *
+ * La lista sale de `my_business_orders`, que resuelve por vínculo qué pedidos
+ * son suyos. Aquí no se filtra por cuenta ni se pasa ningún id: si la persona
+ * compra para dos empresas, ve las dos, y cada fila dice de cuál es.
+ */
+export function MyOrdersSection({ storeSlug }: { storeSlug: string }) {
+  const { t, locale } = useI18n()
+  const query = useQuery({ queryKey: myOrdersKey(), queryFn: () => fetchMyOrders(50) })
+
+  if (query.isPending) return <BrandLoader />
+  if (query.isError) return <ErrorState error={query.error} onRetry={() => void query.refetch()} />
+
+  const orders = query.data ?? []
+  if (orders.length === 0) {
+    return (
+      <EmptyState
+        title={t('account.orders.empty')}
+        description={t('account.orders.emptyBody')}
+        icon={<ReceiptLongRoundedIcon fontSize="small" />}
+      />
+    )
+  }
+
+  return (
+    <Card sx={{ borderRadius: 'var(--sf-radius)', border: '1px solid var(--sf-line)', overflow: 'hidden' }}>
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell>{t('account.orders.number')}</TableCell>
+            <TableCell>{t('account.orders.date')}</TableCell>
+            <TableCell>{t('account.orders.state')}</TableCell>
+            <TableCell align="right">{t('account.orders.total')}</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {orders.map((order) => (
+            <TableRow key={order.order_id} hover>
+              <TableCell>
+                <Typography sx={{ fontSize: T.body, fontWeight: 800 }}>
+                  {order.order_number}
+                </Typography>
+                {/* De qué empresa es. Solo dice algo cuando se compra para más
+                    de una, pero cuando lo dice es lo primero que se mira. */}
+                <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+                  {order.account_name}
+                </Typography>
+              </TableCell>
+              <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                {formatDate(new Date(order.placed_at), locale)}
+              </TableCell>
+              <TableCell>
+                <Stack direction="row" sx={{ gap: 0.75, flexWrap: 'wrap' }}>
+                  <EstadoChip valor={order.status} clave="orders.status" />
+                  <EstadoChip valor={order.payment_status} clave="orders.payment" />
+                  {order.approval_status === 'pending' && (
+                    <Chip
+                      size="small"
+                      label={t('account.needsApproval')}
+                      sx={{ bgcolor: 'var(--amber-soft)', color: 'var(--text)', fontWeight: 700 }}
+                    />
+                  )}
+                </Stack>
+              </TableCell>
+              <TableCell align="right" className="tnum" sx={{ fontWeight: 800, whiteSpace: 'nowrap' }}>
+                {formatMoney(Number(order.grand_total), order.currency, locale)}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <Box sx={{ px: 2, py: 1.25, borderTop: '1px solid var(--sf-line)' }}>
+        <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+          {t('account.orders.tracking').replace('{store}', storeSlug)}
+        </Typography>
+      </Box>
+    </Card>
+  )
+}
+
+/**
+ * Estado en pastilla, con su traducción y su color.
+ *
+ * Cae al valor crudo si el diccionario no tiene la clave: un estado nuevo del
+ * servidor tiene que verse, aunque sea sin traducir. Esconderlo sería peor.
+ */
+function EstadoChip({ valor, clave }: { valor: string; clave: string }) {
+  const { t } = useI18n()
+  const key = `${clave}.${valor}` as MessageKey
+  const etiqueta = t(key)
+  const tono =
+    valor === 'paid' || valor === 'fulfilled'
+      ? { bgcolor: 'var(--accent-soft)', color: 'var(--accent-deep)' }
+      : valor === 'cancelled' || valor === 'failed'
+        ? { bgcolor: 'var(--red-soft)', color: 'var(--red)' }
+        : { bgcolor: 'var(--neutral-soft)', color: 'var(--muted)' }
+
+  return (
+    <Chip
+      size="small"
+      label={etiqueta === key ? valor : etiqueta}
+      sx={{ ...tono, fontWeight: 700, fontSize: T.label }}
+    />
+  )
+}
+
+export type { MyOrder }

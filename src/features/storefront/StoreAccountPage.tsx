@@ -18,7 +18,11 @@ import { useMyAccounts } from '@/features/customers/hooks'
 import { formatAddress } from '@/features/customers/types'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
+import { SectionTabs } from '@/shared/ui/SectionTabs'
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/states'
+import { AccountStatementSection } from './account/AccountStatementSection'
+import { MyCouponsSection } from './account/MyCouponsSection'
+import { MyOrdersSection } from './account/MyOrdersSection'
 import { useStorefrontOptional } from './hooks'
 import { privateMeta } from './seo'
 
@@ -106,12 +110,18 @@ export function StoreAccountPage() {
     )
   }
 
-  return (
+  /**
+   * Cuatro secciones y no cuatro pantallas.
+   *
+   * Un comprador entra a su cuenta por una de cuatro razones —ver qué pidió,
+   * cuánto debe, qué cupones tiene o revisar sus datos— y las cuatro son la
+   * misma sesión sobre la misma cuenta. `SectionTabs` es el patrón de suite
+   * para eso, con `#hash`: la pestaña abierta se comparte y sobrevive al
+   * refresco, que es lo que hace falta cuando alguien manda «mira mi estado de
+   * cuenta» por chat.
+   */
+  const resumen = (
     <Stack spacing={3}>
-      <Typography component="h1" sx={{ fontSize: 22, fontWeight: 800 }}>
-        {t('account.title')}
-      </Typography>
-
       {accounts.map((account) => (
         <Card key={account.account_id}>
           <CardContent>
@@ -216,6 +226,28 @@ export function StoreAccountPage() {
           </CardContent>
         </Card>
       ))}
+    </Stack>
+  )
+
+  return (
+    <Stack spacing={2.5}>
+      <Typography component="h1" sx={{ fontSize: 22, fontWeight: 800 }}>
+        {t('account.title')}
+      </Typography>
+
+      <SectionTabs
+        ariaLabel={t('account.title')}
+        items={[
+          { id: 'pedidos', label: t('account.tab.orders'), content: <MyOrdersSection storeSlug={storefront?.storeSlug ?? ''} /> },
+          { id: 'estado', label: t('account.tab.statement'), content: <AccountStatementSection /> },
+          // Los cupones son de UNA tienda: sin tienda resuelta no hay a quien
+          // preguntarle, y la pestaña no se ofrece en vez de fallar dentro.
+          ...(storefront
+            ? [{ id: 'cupones', label: t('account.tab.coupons'), content: <MyCouponsSection storeId={storefront.store.store_id} /> }]
+            : []),
+          { id: 'cuenta', label: t('account.tab.summary'), content: resumen },
+        ]}
+      />
     </Stack>
   )
 }

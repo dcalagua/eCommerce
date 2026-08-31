@@ -308,6 +308,12 @@ describe('Área de cuenta del comprador', () => {
 
     renderAccount(fake)
 
+    // El área de cuenta pasó a tener secciones (pedidos, estado de cuenta,
+    // cupones y datos): los datos de la empresa viven en su pestaña. Lo que
+    // esta prueba vigila —que el vínculo lo resuelva el servidor sin recibir
+    // ningún identificador— no cambia por eso.
+    await userEvent.click(await screen.findByRole('tab', { name: 'Mi cuenta' }))
+
     expect(await screen.findByText('Acme S.A.C. · ACME')).toBeInTheDocument()
     expect(screen.getByText('Comprador')).toBeInTheDocument()
     expect(screen.getByText('LIM · Planta Lima')).toBeInTheDocument()
