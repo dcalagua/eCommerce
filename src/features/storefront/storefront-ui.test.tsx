@@ -514,6 +514,31 @@ describe('catálogo', () => {
   })
 })
 
+describe('favoritos', () => {
+  it('el corazón guarda sin sesión y sobrevive a recargar la página', async () => {
+    const user = userEvent.setup()
+    renderStorefront(backend(), '/s/casa-nordica')
+
+    const guardar = await screen.findAllByRole('button', { name: 'Guardar en favoritos' })
+    expect(guardar[0]).toHaveAttribute('aria-pressed', 'false')
+
+    await user.click(guardar[0]!)
+
+    // El mismo botón cambia de nombre: «guardar» y «quitar» son dos acciones
+    // distintas, y quien no ve el relleno del icono necesita oírlo.
+    const quitar = await screen.findByRole('button', { name: 'Quitar de favoritos' })
+    expect(quitar).toHaveAttribute('aria-pressed', 'true')
+
+    // Sin sesión el favorito vive en el navegador: es lo que hace que siga ahí
+    // al volver, y lo que se sube al iniciar sesión.
+    const guardados = Object.keys(globalThis.localStorage)
+      .filter((key) => key.startsWith('ebim.favorites.'))
+      .map((key) => globalThis.localStorage.getItem(key) ?? '')
+      .join('')
+    expect(guardados).toContain(P_SILLA)
+  })
+})
+
 describe('ficha de producto', () => {
   it('muestra galería, precio, disponibilidad y descripción', async () => {
     renderStorefront(backend(), '/s/casa-nordica/product/silla-roble')

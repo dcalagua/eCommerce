@@ -1,6 +1,8 @@
+import FavoriteBorderRoundedIcon from '@mui/icons-material/FavoriteBorderRounded'
+import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded'
 import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
-import { Box, Button, Card, Stack, Typography } from '@mui/material'
+import { Box, Button, Card, IconButton, Stack, Tooltip, Typography } from '@mui/material'
 import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
@@ -54,6 +56,8 @@ export function ProductCard({
   imageUrl = null,
   onPrefetch,
   onQuickView,
+  favorite,
+  onToggleFavorite,
 }: {
   product: PublicProduct
   storeSlug: string
@@ -73,6 +77,14 @@ export function ProductCard({
    * tarjeta es un enlace y ya está.
    */
   onQuickView?: (slug: string) => void
+  /**
+   * Estado del corazón. Se pasa desde arriba en vez de leerlo aquí: la rejilla
+   * carga los favoritos UNA vez, y una tarjeta que consultara los suyos serían
+   * veinticuatro consultas para pintar veinticuatro corazones.
+   */
+  favorite?: boolean
+  /** Sin esto no se pinta el corazón: quien no ofrece guardar, no lo enseña. */
+  onToggleFavorite?: (productId: string) => void
 }) {
   const { t, locale } = useI18n()
   const { add } = useCart()
@@ -132,6 +144,42 @@ export function ProductCard({
         }}
       >
         <ProductMedia url={imageUrl} alt={product.primary_image_alt ?? product.name} />
+
+        {onToggleFavorite && (
+          // Por encima de la capa que hace pulsable la tarjeta (`zIndex: 1`):
+          // pulsar el corazón guarda, no navega. Y es un botón de verdad, con
+          // su nombre accesible cambiando según el estado: «guardar» y «quitar»
+          // son dos acciones distintas y el lector de pantalla tiene que poder
+          // distinguirlas sin ver el relleno del icono.
+          <Tooltip title={favorite ? t('store.favorite.remove') : t('store.favorite.add')}>
+            <IconButton
+              size="small"
+              aria-pressed={Boolean(favorite)}
+              aria-label={favorite ? t('store.favorite.remove') : t('store.favorite.add')}
+              onClick={() => onToggleFavorite(product.product_id)}
+              sx={{
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                zIndex: 1,
+                bgcolor: 'color-mix(in srgb, var(--card) 82%, transparent)',
+                backdropFilter: 'blur(6px)',
+                color: favorite ? 'var(--red)' : 'var(--muted)',
+                '&:hover': {
+                  bgcolor: 'var(--card)',
+                  color: favorite ? 'var(--red)' : 'var(--text)',
+                },
+              }}
+            >
+              {favorite ? (
+                <FavoriteRoundedIcon sx={{ fontSize: 18 }} />
+              ) : (
+                <FavoriteBorderRoundedIcon sx={{ fontSize: 18 }} />
+              )}
+            </IconButton>
+          </Tooltip>
+        )}
+
         {discount !== null && (
           // Pastilla plana y compacta, no un `Chip` con su alto de 24 px y su
           // sombra: sobre la foto lo que hace falta es una etiqueta que se lea,

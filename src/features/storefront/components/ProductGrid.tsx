@@ -24,6 +24,8 @@ export function ProductGrid({
   thumbnails,
   onPrefetch,
   onQuickView,
+  favorites,
+  onToggleFavorite,
 }: {
   products: PublicProduct[]
   storeSlug: string
@@ -35,6 +37,10 @@ export function ProductGrid({
   /** Abre la vista rapida. Sin esto la tarjeta navega a la ficha, que es
       su comportamiento por defecto y el que conserva sin JavaScript. */
   onQuickView?: (slug: string) => void
+  /** Ids guardados. La rejilla los recibe YA cargados: una consulta, no una por
+      tarjeta. */
+  favorites?: ReadonlySet<string>
+  onToggleFavorite?: (productId: string) => void
 }) {
   return (
     <Box sx={GRID_SX}>
@@ -44,6 +50,8 @@ export function ProductGrid({
           product={product}
           storeSlug={storeSlug}
           {...(onQuickView ? { onQuickView } : {})}
+          {...(onToggleFavorite ? { onToggleFavorite } : {})}
+          favorite={favorites?.has(product.product_id) ?? false}
           imageUrl={
             product.primary_image_path ? (thumbnails[product.primary_image_path] ?? null) : null
           }

@@ -10,6 +10,7 @@ import { CategoryBar } from './components/CategoryBar'
 import { ContentBlocks } from './components/ContentBlocks'
 import { ProductGrid, ProductGridSkeleton } from './components/ProductGrid'
 import { ProductQuickView } from './components/ProductQuickView'
+import { useFavorites } from './useFavorites'
 import { StoreFilterPanel } from './components/StoreFilterPanel'
 import { StoreHero } from './components/StoreHero'
 import { StoreSortMenu } from './components/StoreSortMenu'
@@ -151,6 +152,9 @@ export function StoreHomePage() {
     count: brand ? null : facet.count,
   }))
 
+  // Los favoritos se cargan UNA vez por tienda y se reparten a las tarjetas.
+  const favorites = useFavorites(store.store_id)
+
   const resultCount = new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'es-PE').format(total)
 
   // Metadatos de la portada. Cuelgan de la tienda YA RESUELTA, así que el
@@ -264,6 +268,8 @@ export function StoreHomePage() {
                 thumbnails={thumbnails}
                 onPrefetch={prefetchProduct}
                 onQuickView={(slug) => update('p', slug)}
+                favorites={favorites.ids}
+                onToggleFavorite={(productId) => void favorites.toggle(productId)}
               />
 
           {/* La siguiente página se PIDE al servidor: 24 filas, no las 48 o 72
