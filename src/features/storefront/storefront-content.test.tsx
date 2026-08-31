@@ -308,20 +308,27 @@ describe('con contenido publicado', () => {
     expect(card).toHaveAttribute('href', '/s/casa-verde/product/manta-lana')
   })
 
-  it('las páginas marcadas para el menú aparecen en la cabecera', async () => {
+  it('las páginas marcadas para el menú aparecen en el pie, no en la cabecera', async () => {
     renderStorefront(
       backend({ navigation: [{ slug: 'envios', title: 'Envíos y devoluciones' }] }),
       '/s/casa-verde',
     )
 
-    // Se espera al ENLACE, no solo a la cabecera. La navegación llega por su
-    // propia consulta: dar por hecho que ya está cuando aparece el `banner` era
+    // Se espera al ENLACE, no solo a la región. La navegación llega por su
+    // propia consulta: dar por hecho que ya está cuando aparece la región era
     // una carrera que se ganaba por casualidad, y cualquier cambio en el orden
-    // de montado de la cabecera la perdía.
-    const header = await screen.findByRole('banner')
+    // de montado la perdía.
+    const footer = await screen.findByRole('contentinfo')
     expect(
-      await within(header).findByRole('link', { name: 'Envíos y devoluciones' }),
+      await within(footer).findByRole('link', { name: 'Envíos y devoluciones' }),
     ).toHaveAttribute('href', '/s/casa-verde/p/envios')
+
+    // Y NO en la cabecera: sus tres trabajos son buscar, entrar a lo tuyo y ver
+    // el carrito. Cada enlace de más compite con esos tres.
+    const header = screen.getByRole('banner')
+    expect(
+      within(header).queryByRole('link', { name: 'Envíos y devoluciones' }),
+    ).not.toBeInTheDocument()
   })
 })
 

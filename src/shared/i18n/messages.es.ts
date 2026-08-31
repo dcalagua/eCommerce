@@ -167,6 +167,7 @@ export const es = {
     'store.product.closeImage': 'Cerrar la imagen',
     'store.product.imageOf': 'Imagen {n} de {total}',
     'store.product.image': 'Imagen',
+    'store.footer.pages': 'Páginas de la tienda',
     'store.contact.title': 'Contacto',
     'store.contact.phone': 'Teléfono',
     'store.contact.email': 'Correo',

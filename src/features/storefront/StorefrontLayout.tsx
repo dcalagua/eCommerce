@@ -151,7 +151,7 @@ export function StorefrontLayout() {
             </ErrorBoundary>
           </Container>
 
-          <StoreFooter store={store} />
+          <StoreFooter store={store} storeSlug={storeSlug as string} />
           <CartDrawer storeSlug={storeSlug as string} />
         </Box>
       </CartProvider>
@@ -246,7 +246,11 @@ function StoreHeader({ store, storeSlug }: { store: PublicStore; storeSlug: stri
             <StoreQuickSearch storeSlug={storeSlug} />
           </Box>
 
-          <StoreNav storeSlug={storeSlug} />
+          {/* Las paginas del CMS —quienes somos, envios, terminos— NO viven
+              aqui. La cabecera de una tienda tiene tres trabajos: buscar,
+              entrar a lo tuyo y ver el carrito; cada enlace que se le anade
+              compite con esos tres y ninguno de ellos vende. Se leen una vez,
+              casi siempre buscandolas, y su sitio de siempre es el pie. */}
           <AccountButton storeSlug={storeSlug} />
           <CartButton />
         </Toolbar>
@@ -267,7 +271,19 @@ function StoreHeader({ store, storeSlug }: { store: PublicStore; storeSlug: stri
  * más empujan el nombre de la tienda fuera de la pantalla. Las páginas siguen
  * alcanzables desde los bloques de contenido y desde el pie.
  */
-function StoreNav({ storeSlug }: { storeSlug: string }) {
+/**
+ * Paginas de la tienda —quienes somos, envios, terminos—, en el PIE.
+ *
+ * Estaban en la cabecera y se las llevaba el sitio que necesitan el buscador,
+ * la cuenta y el carrito. Son paginas que se consultan una vez y casi nunca de
+ * memoria: al pie se las encuentra igual, y ademas es donde se buscan las
+ * legales.
+ *
+ * Sigue siendo un `<nav>` con nombre: quien navega por regiones con un lector
+ * de pantalla las encuentra por ahi, este arriba o abajo.
+ */
+function StorePagesNav({ storeSlug }: { storeSlug: string }) {
+  const { t } = useI18n()
   const { data } = useStoreNavigation(storeSlug)
   if (!data || data.length === 0) return null
 
@@ -275,13 +291,24 @@ function StoreNav({ storeSlug }: { storeSlug: string }) {
     <Stack
       component="nav"
       direction="row"
-      aria-label="secciones"
-      sx={{ gap: 0.5, display: { xs: 'none', md: 'flex' }, flexShrink: 0 }}
+      aria-label={t('store.footer.pages')}
+      sx={{ gap: { xs: 1.5, sm: 3 }, flexWrap: 'wrap' }}
     >
-      {data.slice(0, 4).map((item) => (
-        <Button key={item.slug} component={Link} to={`/s/${storeSlug}/p/${item.slug}`} size="small">
+      {data.slice(0, 6).map((item) => (
+        <MuiLink
+          key={item.slug}
+          component={Link}
+          to={`/s/${storeSlug}/p/${item.slug}`}
+          sx={{
+            fontSize: T.body,
+            fontWeight: 700,
+            color: 'var(--muted)',
+            textDecoration: 'none',
+            '&:hover': { color: 'var(--accent-deep)', textDecoration: 'underline' },
+          }}
+        >
           {item.title}
-        </Button>
+        </MuiLink>
       ))}
     </Stack>
   )
@@ -341,13 +368,17 @@ function CartButton() {
   )
 }
 
-function StoreFooter({ store }: { store: PublicStore }) {
+function StoreFooter({ store, storeSlug }: { store: PublicStore; storeSlug: string }) {
   const { t } = useI18n()
   const hasContact = Boolean(store.contact_phone || store.support_email || store.contact_address)
 
   return (
     <Box component="footer" sx={{ borderTop: '1px solid var(--border)', bgcolor: 'var(--card)', mt: 4 }}>
       <Container maxWidth="lg" sx={{ py: { xs: 3, md: 4 } }}>
+        <Box sx={{ mb: 2.5 }}>
+          <StorePagesNav storeSlug={storeSlug} />
+        </Box>
+
         {hasContact && (
           <>
             <Typography component="h2" sx={{ fontSize: T.label, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase', color: 'var(--muted)', mb: 1 }}>

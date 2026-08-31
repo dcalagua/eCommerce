@@ -164,6 +164,7 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'store.product.closeImage': 'Close image',
     'store.product.imageOf': 'Image {n} of {total}',
     'store.product.image': 'Image',
+    'store.footer.pages': 'Store pages',
     'store.contact.title': 'Contact',
     'store.contact.phone': 'Phone',
     'store.contact.email': 'Email',
