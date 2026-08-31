@@ -1,3 +1,4 @@
+import FileDownloadRoundedIcon from '@mui/icons-material/FileDownloadRounded'
 import CancelRoundedIcon from '@mui/icons-material/CancelRounded'
 import ReceiptRoundedIcon from '@mui/icons-material/ReceiptRounded'
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
@@ -30,6 +31,7 @@ import { STATUS_ICON, PAYMENT_ICON, FULFILLMENT_ICON } from './statusIcons'
 import { RowActions } from '@/shared/ui/RowActions'
 import { TablePager } from '@/shared/ui/TablePager'
 import { StatusChip } from '@/shared/ui/StatusChip'
+import { FilterBar } from '@/shared/ui/FilterBar'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { SearchField } from '@/shared/ui/SearchField'
 import { TableSkeleton } from '@/shared/ui/TableSkeleton'
@@ -180,9 +182,16 @@ export function OrdersPage() {
     <>
       <PageHeader
         title={t('admin.orders.title')}
+        subtitle={t('admin.orders.subtitle')}
+        icon={<ReceiptLongRoundedIcon />}
         actions={
           canExport ? (
-            <Button variant="outlined" onClick={() => void exportCsv()} disabled={exporting}>
+            <Button
+              variant="outlined"
+              startIcon={<FileDownloadRoundedIcon />}
+              onClick={() => void exportCsv()}
+              disabled={exporting}
+            >
               {t('common.export')}
             </Button>
           ) : undefined
@@ -202,8 +211,20 @@ export function OrdersPage() {
           ))}
         </Tabs>
 
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ alignItems: 'center' }}>
-          <SearchField value={search} onChange={setSearch} placeholder={t('admin.orders.search')} />
+        <FilterBar
+          onClear={
+            search !== '' || range !== 'all'
+              ? () => {
+                  setSearch('')
+                  setRange('all')
+                  setPage(0)
+                }
+              : undefined
+          }
+        >
+          <Box sx={{ minWidth: { xs: '100%', sm: 280 } }}>
+            <SearchField value={search} onChange={setSearch} placeholder={t('admin.orders.search')} />
+          </Box>
           <TextField
             select
             size="small"
@@ -218,7 +239,7 @@ export function OrdersPage() {
               </MenuItem>
             ))}
           </TextField>
-        </Stack>
+        </FilterBar>
 
         <Card>
           {orders.isPending && <TableSkeleton columns={6} />}

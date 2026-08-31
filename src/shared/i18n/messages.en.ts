@@ -72,6 +72,8 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'admin.products.search': 'Search by name, SKU or category',
     'admin.products.empty': 'You have not published any products yet',
     'admin.orders.title': 'Orders',
+    'admin.orders.subtitle': 'Everything that came in through the storefront.',
+    'common.filters.clear': 'Clear filters',
     'admin.orders.search': 'Search by number, customer or status',
     'admin.orders.empty': 'You have not received orders yet',
     'admin.settings.title': 'Settings',

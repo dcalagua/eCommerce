@@ -602,3 +602,29 @@ describe('OrdersPage — acciones de fila', () => {
     expect(screen.queryAllByRole('dialog').length).toBeLessThanOrEqual(1)
   })
 })
+
+describe('OrdersPage — barra de filtros', () => {
+  it('no ofrece limpiar cuando no hay nada que limpiar', async () => {
+    // Un boton que no hace nada ensena a no pulsarlo, y el dia que sirva
+    // tampoco se pulsara.
+    renderPage()
+
+    await screen.findByText('MI-000001')
+    expect(screen.queryByRole('button', { name: /Limpiar filtros/ })).not.toBeInTheDocument()
+  })
+
+  it('aparece al filtrar y devuelve el listado a su estado inicial', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('MI-000001')
+    const buscador = screen.getByPlaceholderText(/Buscar/i)
+    await user.type(buscador, 'MI-000002')
+
+    const limpiar = await screen.findByRole('button', { name: /Limpiar filtros/ })
+    await user.click(limpiar)
+
+    await waitFor(() => expect(buscador).toHaveValue(''))
+    expect(screen.queryByRole('button', { name: /Limpiar filtros/ })).not.toBeInTheDocument()
+  })
+})

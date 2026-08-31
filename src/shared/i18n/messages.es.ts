@@ -74,6 +74,8 @@ export const es = {
     'admin.products.search': 'Buscar por nombre, SKU o categoría',
     'admin.products.empty': 'Aún no publicaste productos',
     'admin.orders.title': 'Pedidos',
+    'admin.orders.subtitle': 'Todo lo que ha entrado por la vitrina.',
+    'common.filters.clear': 'Limpiar filtros',
     'admin.orders.search': 'Buscar por número, cliente o estado',
     'admin.orders.empty': 'Todavía no recibiste pedidos',
     'admin.settings.title': 'Configuración',
