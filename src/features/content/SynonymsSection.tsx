@@ -119,8 +119,21 @@ export function SynonymsSection() {
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('content.synonyms.help')}</Typography>
 
-      <FilterBar>
-        <Box sx={{ flex: 1, width: '100%' }}>
+      <FilterBar
+        actions={
+          <Button
+            variant="contained"
+            onClick={() => {
+              setForm(emptyForm())
+              setEditing(null)
+              setOpen(true)
+            }}
+          >
+            {t('content.synonyms.new')}
+          </Button>
+        }
+      >
+        <Box sx={{ minWidth: { xs: '100%', sm: 280 } }}>
           <SearchField
             value={term}
             onChange={setTerm}
@@ -128,16 +141,6 @@ export function SynonymsSection() {
             ariaLabel={t('content.synonyms.search')}
           />
         </Box>
-        <Button
-          variant="contained"
-          onClick={() => {
-            setForm(emptyForm())
-            setEditing(null)
-            setOpen(true)
-          }}
-        >
-          {t('content.synonyms.new')}
-        </Button>
       </FilterBar>
 
       <Card>

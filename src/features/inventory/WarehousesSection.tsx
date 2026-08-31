@@ -133,15 +133,18 @@ export function WarehousesSection() {
         <Alert severity="info">{t('inventory.warehouses.allServe')}</Alert>
       )}
 
-      <FilterBar>
-        <Box sx={{ flex: 1 }}>
+      <FilterBar
+        actions={
+          canWrite && (
+            <Button variant="contained" onClick={() => setEditing({ open: true, warehouse: null })}>
+              {t('inventory.warehouses.new')}
+            </Button>
+          )
+        }
+      >
+        <Box sx={{ minWidth: { xs: '100%', sm: 280 } }}>
           <SearchField value={search} onChange={setSearch} placeholder={t('inventory.search')} />
         </Box>
-        {canWrite && (
-          <Button variant="contained" onClick={() => setEditing({ open: true, warehouse: null })}>
-            {t('inventory.warehouses.new')}
-          </Button>
-        )}
       </FilterBar>
 
       <Card>

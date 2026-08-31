@@ -75,15 +75,18 @@ export function PriceListsSection() {
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('pricing.lists.help')}</Typography>
 
-      <FilterBar>
-        <Box sx={{ flex: 1 }}>
+      <FilterBar
+        actions={
+          canWrite && (
+            <Button variant="contained" onClick={() => setEditing({ open: true, list: null })}>
+              {t('pricing.lists.new')}
+            </Button>
+          )
+        }
+      >
+        <Box sx={{ minWidth: { xs: '100%', sm: 280 } }}>
           <SearchField value={search} onChange={setSearch} placeholder={t('pricing.search')} />
         </Box>
-        {canWrite && (
-          <Button variant="contained" onClick={() => setEditing({ open: true, list: null })}>
-            {t('pricing.lists.new')}
-          </Button>
-        )}
       </FilterBar>
 
       <Card>

@@ -144,21 +144,24 @@ export function CouponsSection() {
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('promotions.coupons.help')}</Typography>
 
-      <FilterBar>
-        <Box sx={{ flex: 1, width: '100%' }}>
+      <FilterBar
+        actions={
+          <Button
+            variant="contained"
+            onClick={() => setCreating(true)}
+            disabled={couponable.length === 0}
+          >
+            {t('promotions.coupons.new')}
+          </Button>
+        }
+      >
+        <Box sx={{ minWidth: { xs: '100%', sm: 280 } }}>
           <SearchField
             value={term}
             onChange={setTerm}
             placeholder={t('promotions.coupons.search')}
           />
         </Box>
-        <Button
-          variant="contained"
-          onClick={() => setCreating(true)}
-          disabled={couponable.length === 0}
-        >
-          {t('promotions.coupons.new')}
-        </Button>
       </FilterBar>
 
       {couponable.length === 0 && !promotions.isPending && (

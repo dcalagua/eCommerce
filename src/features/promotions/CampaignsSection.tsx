@@ -143,8 +143,14 @@ export function CampaignsSection() {
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('promotions.campaigns.help')}</Typography>
 
-      <FilterBar>
-        <Box sx={{ flex: 1, width: '100%' }}>
+      <FilterBar
+        actions={
+          <Button variant="contained" onClick={() => setCreating(true)}>
+            {t('promotions.campaigns.new')}
+          </Button>
+        }
+      >
+        <Box sx={{ minWidth: { xs: '100%', sm: 280 } }}>
           <SearchField
             value={term}
             onChange={setTerm}
@@ -166,9 +172,6 @@ export function CampaignsSection() {
             </option>
           ))}
         </TextField>
-        <Button variant="contained" onClick={() => setCreating(true)}>
-          {t('promotions.campaigns.new')}
-        </Button>
       </FilterBar>
 
       <Card>

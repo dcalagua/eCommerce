@@ -71,15 +71,18 @@ export function BusinessAccountsSection() {
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('customers.accounts.help')}</Typography>
 
-      <FilterBar>
-        <Box sx={{ flex: 1 }}>
+      <FilterBar
+        actions={
+          canWrite && (
+            <Button variant="contained" onClick={() => setDrawer({ open: true, account: null })}>
+              {t('customers.accounts.new')}
+            </Button>
+          )
+        }
+      >
+        <Box sx={{ minWidth: { xs: '100%', sm: 280 } }}>
           <SearchField value={search} onChange={setSearch} placeholder={t('customers.accounts.search')} />
         </Box>
-        {canWrite && (
-          <Button variant="contained" onClick={() => setDrawer({ open: true, account: null })}>
-            {t('customers.accounts.new')}
-          </Button>
-        )}
       </FilterBar>
 
       <Card>

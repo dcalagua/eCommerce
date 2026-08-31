@@ -120,15 +120,18 @@ export function AttributesSection() {
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('pim.attributes.help')}</Typography>
 
-      <FilterBar>
-        <Box sx={{ flex: 1 }}>
+      <FilterBar
+        actions={
+          canWrite && (
+            <Button variant="contained" onClick={() => setEditing({ open: true, attribute: null })}>
+              {t('pim.attributes.new')}
+            </Button>
+          )
+        }
+      >
+        <Box sx={{ minWidth: { xs: '100%', sm: 280 } }}>
           <SearchField value={search} onChange={setSearch} placeholder={t('pim.search')} />
         </Box>
-        {canWrite && (
-          <Button variant="contained" onClick={() => setEditing({ open: true, attribute: null })}>
-            {t('pim.attributes.new')}
-          </Button>
-        )}
       </FilterBar>
 
       <Card>

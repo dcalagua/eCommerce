@@ -79,15 +79,18 @@ export function UnitsSection() {
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('pim.units.help')}</Typography>
 
-      <FilterBar>
-        <Box sx={{ flex: 1 }}>
+      <FilterBar
+        actions={
+          canWrite && (
+            <Button variant="contained" onClick={() => setEditing({ open: true, unit: null })}>
+              {t('pim.units.new')}
+            </Button>
+          )
+        }
+      >
+        <Box sx={{ minWidth: { xs: '100%', sm: 280 } }}>
           <SearchField value={search} onChange={setSearch} placeholder={t('pim.search')} />
         </Box>
-        {canWrite && (
-          <Button variant="contained" onClick={() => setEditing({ open: true, unit: null })}>
-            {t('pim.units.new')}
-          </Button>
-        )}
       </FilterBar>
 
       <Card>

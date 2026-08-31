@@ -121,8 +121,16 @@ export function CustomersSection() {
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('customers.list.help')}</Typography>
 
-      <FilterBar>
-        <Box sx={{ flex: 1 }}>
+      <FilterBar
+        actions={
+          canWrite && (
+            <Button variant="contained" onClick={() => setDrawer({ open: true, customer: null })}>
+              {t('customers.new')}
+            </Button>
+          )
+        }
+      >
+        <Box sx={{ minWidth: { xs: '100%', sm: 280 } }}>
           <SearchField value={search} onChange={setSearch} placeholder={t('customers.search')} />
         </Box>
         <FormControlLabel
@@ -131,11 +139,6 @@ export function CustomersSection() {
           }
           label={t('customers.filter.activeOnly')}
         />
-        {canWrite && (
-          <Button variant="contained" onClick={() => setDrawer({ open: true, customer: null })}>
-            {t('customers.new')}
-          </Button>
-        )}
       </FilterBar>
 
       <Card>

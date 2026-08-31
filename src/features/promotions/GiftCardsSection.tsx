@@ -145,8 +145,14 @@ export function GiftCardsSection() {
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('promotions.giftCards.help')}</Typography>
 
-      <FilterBar>
-        <Box sx={{ flex: 1, width: '100%' }}>
+      <FilterBar
+        actions={
+          <Button variant="contained" onClick={() => setIssuing(true)}>
+            {t('promotions.giftCards.issue')}
+          </Button>
+        }
+      >
+        <Box sx={{ minWidth: { xs: '100%', sm: 280 } }}>
           <SearchField
             value={term}
             onChange={setTerm}
@@ -168,9 +174,6 @@ export function GiftCardsSection() {
             </option>
           ))}
         </TextField>
-        <Button variant="contained" onClick={() => setIssuing(true)}>
-          {t('promotions.giftCards.issue')}
-        </Button>
       </FilterBar>
 
       {issued && (

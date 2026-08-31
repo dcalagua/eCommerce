@@ -96,8 +96,16 @@ export function LevelsSection() {
 
       {noWarehouses && <Alert severity="info">{t('inventory.levels.noWarehouses')}</Alert>}
 
-      <FilterBar>
-        <Box sx={{ flex: 1 }}>
+      <FilterBar
+        actions={
+          canWrite && !noWarehouses && (
+            <Button variant="contained" onClick={() => setMovementOpen(true)}>
+              {t('inventory.levels.newMovement')}
+            </Button>
+          )
+        }
+      >
+        <Box sx={{ minWidth: { xs: '100%', sm: 280 } }}>
           <SearchField value={search} onChange={setSearch} placeholder={t('inventory.levels.search')} />
         </Box>
         <TextField
@@ -115,11 +123,6 @@ export function LevelsSection() {
             </MenuItem>
           ))}
         </TextField>
-        {canWrite && !noWarehouses && (
-          <Button variant="contained" onClick={() => setMovementOpen(true)}>
-            {t('inventory.levels.newMovement')}
-          </Button>
-        )}
       </FilterBar>
 
       <Card>

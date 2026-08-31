@@ -81,15 +81,18 @@ export function SegmentsSection() {
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('pricing.segments.help')}</Typography>
 
-      <FilterBar>
-        <Box sx={{ flex: 1 }}>
+      <FilterBar
+        actions={
+          canWrite && (
+            <Button variant="contained" onClick={() => setEditing({ open: true, segment: null })}>
+              {t('pricing.segments.new')}
+            </Button>
+          )
+        }
+      >
+        <Box sx={{ minWidth: { xs: '100%', sm: 280 } }}>
           <SearchField value={search} onChange={setSearch} placeholder={t('pricing.search')} />
         </Box>
-        {canWrite && (
-          <Button variant="contained" onClick={() => setEditing({ open: true, segment: null })}>
-            {t('pricing.segments.new')}
-          </Button>
-        )}
       </FilterBar>
 
       <Card>

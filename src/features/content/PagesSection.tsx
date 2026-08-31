@@ -186,8 +186,14 @@ export function PagesSection({
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('content.pages.help')}</Typography>
 
-      <FilterBar>
-        <Box sx={{ flex: 1, width: '100%' }}>
+      <FilterBar
+        actions={
+          <Button variant="contained" onClick={openCreate}>
+            {t('content.pages.new')}
+          </Button>
+        }
+      >
+        <Box sx={{ minWidth: { xs: '100%', sm: 280 } }}>
           <SearchField
             value={term}
             onChange={setTerm}
@@ -195,9 +201,6 @@ export function PagesSection({
             ariaLabel={t('content.pages.search')}
           />
         </Box>
-        <Button variant="contained" onClick={openCreate}>
-          {t('content.pages.new')}
-        </Button>
       </FilterBar>
 
       <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }} role="group" aria-label={t('content.pages.status')}>

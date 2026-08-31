@@ -132,7 +132,7 @@ export function IntentsSection() {
       <Typography sx={{ color: 'var(--muted)' }}>{t('payments.intents.help')}</Typography>
 
       <FilterBar>
-        <Box sx={{ flex: 1, width: '100%' }}>
+        <Box sx={{ minWidth: { xs: '100%', sm: 280 } }}>
           <SearchField
             value={term}
             onChange={setTerm}
