@@ -205,13 +205,45 @@ describe('el camino feliz', () => {
 
     expect(result.ok).toBe(true)
     expect(result.order.orderNumber).toBe('EC-20260828-00001')
-    // `markStage` se llama una vez por etapa, más la anotación del token de la
-    // reserva (que repite `reserve_inventory` a propósito: es la que graba el
-    // secreto en el intento).
-    expect(log.stages.filter((stage, index) => log.stages.indexOf(stage) === index)).toEqual([
-      ...CHECKOUT_STAGES,
-    ])
     expect(result.stagesRun).toEqual([...CHECKOUT_STAGES])
+
+    // Las etapas se MARCAN hasta el pedido, y ni una más: `checkout_place_order`
+    // cierra el intento como `succeeded` dentro de la misma transacción, y
+    // `checkout_mark_stage` solo admite intentos `running`. Marcar después
+    // devolvía `INTENTO_NO_VIGENTE` sobre un pedido ya creado.
+    const marcadas = log.stages.filter((stage, index) => log.stages.indexOf(stage) === index)
+    expect(marcadas).toEqual([...CHECKOUT_STAGES].slice(0, CHECKOUT_STAGES.indexOf('create_order') + 1))
+    expect(marcadas).not.toContain('publish_events')
+    expect(marcadas).not.toContain('notify')
+  })
+
+  it('no marca etapas sobre un intento ya cerrado: el pedido existe y la respuesta es ok', async () => {
+    // El falso se comporta como la BASE: en cuanto el pedido existe, el intento
+    // deja de estar `running` y marcar una etapa revienta. Sin esto, la suite
+    // daba verde sobre un checkout que en producción devolvía 409 con el pedido
+    // ya creado.
+    let pedidoCreado = false
+    const { ports: base } = ports()
+    const p: CheckoutPorts = {
+      ...base,
+      placeOrder: async (args) => {
+        const placed = await base.placeOrder(args)
+        pedidoCreado = true
+        return placed
+      },
+      markStage: (id, stage, token) => {
+        if (pedidoCreado) {
+          return Promise.reject(new Error('INTENTO_NO_VIGENTE: ese intento de compra ya se cerro'))
+        }
+        return base.markStage(id, stage, token)
+      },
+    }
+
+    const result = await runCheckout(p, input())
+
+    expect(result.ok).toBe(true)
+    expect(result.order.orderNumber).toBe('EC-20260828-00001')
+    expect(result.stagesRun).toContain('notify')
   })
 
   it('el token de la reserva se anota en el intento antes de crear el pedido', async () => {
@@ -544,19 +576,27 @@ describe('lo que falla, y lo que se deshace', () => {
    * Cuando el pedido YA existe no hay nada que compensar: deshacerlo no es
    * «soltar una reserva», es cancelar una venta, y eso lo decide una persona.
    */
-  it('creado el pedido, un fallo posterior no lo deshace', async () => {
+  it('creado el pedido no queda nada que compensar: ni se suelta ni se anula', async () => {
+    // Antes esto se comprobaba haciendo fallar la marca de `publish_events`,
+    // pero esa marca ya no existe —el intento queda cerrado dentro de la
+    // transacción del pedido—, así que el fallo era imposible y la prueba
+    // vigilaba un camino muerto. Lo que importa se comprueba igual: con un
+    // cobro autorizado y una reserva viva, un pedido creado las deja quietas.
     const { ports: p, log } = ports({
-      markStage: (_id, stage) => {
-        log.stages.push(stage)
-        // Falla justo DESPUÉS de crear el pedido.
-        if (stage === 'publish_events') return Promise.reject(new Error('la red se cayo'))
-        return Promise.resolve()
-      },
+      authorizePayment: () =>
+        Promise.resolve({
+          status: 'authorized' as const,
+          providerCode: 'fake',
+          providerReference: 'auth-1',
+          providerMessage: null,
+        }),
     })
 
-    await expectStageFailure(() => runCheckout(p, input()))
+    const result = await runCheckout(p, input())
 
+    expect(result.ok).toBe(true)
     expect(log.released).toEqual([])
+    expect(log.voided).toBe(0)
   })
 
   it('un carrito vacío ni siquiera reclama el intento', async () => {

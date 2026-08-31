@@ -212,6 +212,27 @@ export async function runCheckout(
     return value
   }
 
+  /**
+   * Etapa POSTERIOR al pedido: se anota, pero no se marca contra la base.
+   *
+   * `checkout_place_order` cierra el intento como `succeeded` DENTRO de la
+   * transaccion del pedido —los eventos se escriben ahi mismo, que es el patron
+   * outbox— y `checkout_mark_stage` solo acepta intentos `running`. Al marcar
+   * `publish_events` despues de crear el pedido, la base respondia
+   * `INTENTO_NO_VIGENTE` y la Edge Function devolvia 409... con el pedido ya
+   * creado. El comprador veia «no pudimos registrar el pedido» sobre una compra
+   * que si existia.
+   *
+   * La respuesta NO es relajar el guardian: ese `status = 'running'` es lo que
+   * impide que un segundo trabajador rezagado siga ejecutando etapas de un
+   * intento ya cerrado. Lo que sobra es la marca: despues del pedido no queda
+   * nada que proteger, porque no queda nada que hacer.
+   */
+  const closedStage = (name: CheckoutStage): void => {
+    current = name
+    stagesRun.push(name)
+  }
+
   try {
     // --- 1 · Contexto ------------------------------------------------------
     const context: CheckoutContext = await stage('resolve_context', () =>
@@ -462,14 +483,14 @@ export async function runCheckout(
     // escribieron DENTRO de la transacción de la etapa 9. Si esta etapa
     // publicara por su cuenta, existiría el estado «pedido creado, nadie
     // enterado» — que es exactamente lo que el patrón outbox elimina.
-    await stage('publish_events', async () => undefined)
+    closedStage('publish_events')
 
     // --- 11 · El aviso -----------------------------------------------------
     // Tampoco hay nada síncrono. El consumidor del outbox entrega el correo con
     // sus reintentos y su backoff; bloquear la respuesta del comprador hasta
     // que un proveedor de mensajería conteste sería regalarle la disponibilidad
     // de la tienda a un tercero.
-    await stage('notify', async () => undefined)
+    closedStage('notify')
 
     return {
       ok: true,
