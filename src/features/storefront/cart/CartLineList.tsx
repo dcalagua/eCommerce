@@ -1,12 +1,11 @@
-import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
-import RemoveRoundedIcon from '@mui/icons-material/RemoveRounded'
 import { Box, IconButton, Stack, Typography } from '@mui/material'
-import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
 import { R, T } from '@/theme/tokens'
+import { ProductMedia } from '../components/ProductMedia'
+import { QuantityStepper } from '../components/QuantityStepper'
 import { useSignedThumbnails } from '../hooks'
 import { MAX_LINE_QUANTITY, lineKey, lineTotalCents, type Cart, type CartLine } from './cart'
 import { useCart } from './cart-context'
@@ -90,14 +89,10 @@ function CartLineRow({
           display: 'block',
         }}
       >
-        {imageUrl && (
-          <Box
-            component="img"
-            src={imageUrl}
-            alt=""
-            sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          />
-        )}
+        {/* `ProductMedia` y no un `<img>` suelto: sin foto pinta el marcador
+            neutral igual que el resto de la tienda. Aqui quedaba un
+            rectangulo gris vacio que se leia como una imagen rota. */}
+        <ProductMedia url={imageUrl} alt="" sizePx={compact ? 18 : 22} />
       </Box>
 
       <Stack sx={{ flex: 1, minWidth: 0, gap: 0.5 }}>
@@ -122,36 +117,27 @@ function CartLineRow({
           {formatMoney(Number(line.unit_price), line.currency, locale)} · {t('store.cart.each')}
         </Typography>
 
-        <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5, mt: 0.25 }}>
-          <QuantityButton
-            label={t('store.cart.decrease')}
-            onClick={() => setQuantity(line.product_id, line.quantity - 1, line.variant_id)}
-          >
-            <RemoveRoundedIcon fontSize="inherit" />
-          </QuantityButton>
-          {/* `output` + `aria-live`: al pulsar +/- el lector canta la cantidad
-              nueva sin tener que volver a leer toda la línea. */}
-          <Typography
-            component="output"
-            aria-live="polite"
-            aria-label={t('store.cart.quantity')}
-            sx={{ minWidth: 28, textAlign: 'center', fontWeight: 800, fontSize: T.bodyStrong }}
-          >
-            {line.quantity}
-          </Typography>
-          <QuantityButton
-            label={t('store.cart.increase')}
-            disabled={line.quantity >= MAX_LINE_QUANTITY}
-            onClick={() => setQuantity(line.product_id, line.quantity + 1, line.variant_id)}
-          >
-            <AddRoundedIcon fontSize="inherit" />
-          </QuantityButton>
+        <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+          {/* El MISMO selector que la ficha y la vista rapida. Con `min` a
+              cero: aqui bajar desde uno quita la linea, que es lo que ya
+              hacia y lo que espera quien tiene el dedo en ese boton. */}
+          <QuantityStepper
+            size="sm"
+            min={0}
+            value={line.quantity}
+            max={MAX_LINE_QUANTITY}
+            onChange={(next) => setQuantity(line.product_id, next, line.variant_id)}
+          />
 
+          {/* La papelera se va al otro extremo. Pegada al «+» convertia un
+              dedo torpe en una linea borrada, y deshacer eso es volver a
+              buscar el producto. */}
+          <Box sx={{ flex: 1 }} />
           <IconButton
             size="small"
             aria-label={`${t('store.cart.remove')}: ${line.name}${line.variant_name ? ` ${line.variant_name}` : ''}`}
             onClick={() => remove(line.product_id, line.variant_id)}
-            sx={{ ml: 0.5, color: 'var(--muted)' }}
+            sx={{ color: 'var(--muted)', '&:hover': { color: 'var(--red)' } }}
           >
             <DeleteRoundedIcon fontSize="small" />
           </IconButton>
@@ -162,35 +148,5 @@ function CartLineRow({
         {formatMoney(lineTotalCents(line) / 100, line.currency, locale)}
       </Typography>
     </Stack>
-  )
-}
-
-function QuantityButton({
-  label,
-  onClick,
-  disabled = false,
-  children,
-}: {
-  label: string
-  onClick: () => void
-  disabled?: boolean
-  children: ReactNode
-}) {
-  return (
-    <IconButton
-      size="small"
-      aria-label={label}
-      onClick={onClick}
-      disabled={disabled}
-      sx={{
-        border: '1px solid var(--border)',
-        borderRadius: `${R.sm}px`,
-        width: 26,
-        height: 26,
-        fontSize: 16,
-      }}
-    >
-      {children}
-    </IconButton>
   )
 }

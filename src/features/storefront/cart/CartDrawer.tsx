@@ -1,6 +1,6 @@
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
-import { Box, Button, Divider, Drawer, IconButton, Stack, Typography } from '@mui/material'
+import { Box, Button, Card, Drawer, IconButton, Stack, Typography } from '@mui/material'
 import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
@@ -55,7 +55,10 @@ export function CartDrawer({ storeSlug }: { storeSlug: string }) {
           </IconButton>
         </Stack>
 
-        <Box sx={{ flex: 1, overflowY: 'auto', px: 2, py: 2 }}>
+        {/* `--bg` y no `--card`: la zona de las líneas se hunde un tono y las
+            líneas se ven sobre ella, en vez de flotar en un panel blanco donde
+            un carrito de un solo producto parece medio vacío. */}
+        <Box sx={{ flex: 1, overflowY: 'auto', px: 2, py: 2, bgcolor: 'var(--bg)' }}>
           {empty ? (
             <EmptyState
               title={t('store.cart.empty')}
@@ -63,31 +66,50 @@ export function CartDrawer({ storeSlug }: { storeSlug: string }) {
               icon={<ShoppingCartRoundedIcon fontSize="small" />}
             />
           ) : (
-            <CartLineList cart={cart} storeSlug={storeSlug} onNavigate={closeCart} compact />
+            <Card sx={{ p: 1.5 }}>
+              <CartLineList cart={cart} storeSlug={storeSlug} onNavigate={closeCart} compact />
+            </Card>
           )}
         </Box>
 
         {!empty && (
-          <Box sx={{ px: 2, py: 2, borderTop: '1px solid var(--border)' }}>
-            <Stack direction="row" sx={{ justifyContent: 'space-between', mb: 0.5 }}>
-              <Typography sx={{ fontWeight: 700 }}>{t('store.cart.subtotal')}</Typography>
-              <Typography sx={{ fontWeight: 800 }}>
+          /* El pie se ancla abajo con su propia sombra: sin ella, con una sola
+             línea, el subtotal y el botón quedaban colgando al final de un
+             hueco y no se leían como el cierre del panel. */
+          <Box
+            sx={{
+              px: 2,
+              py: 2,
+              bgcolor: 'var(--card)',
+              borderTop: '1px solid var(--border)',
+              boxShadow: '0 -8px 20px -18px rgba(0,0,0,0.45)',
+            }}
+          >
+            <Stack
+              direction="row"
+              sx={{ justifyContent: 'space-between', alignItems: 'baseline', gap: 2 }}
+            >
+              <Typography sx={{ fontWeight: 700, fontSize: T.bodyStrong }}>
+                {t('store.cart.subtotal')}
+              </Typography>
+              <Typography className="tnum" sx={{ fontWeight: 800, fontSize: 20 }}>
                 {formatMoney(Number(subtotal), currency, locale)}
               </Typography>
             </Stack>
             {/* El impuesto y el total definitivos los calcula el servidor al
                 confirmar: aquí no se promete un número que no es el de cobro. */}
-            <Typography sx={{ fontSize: T.label, color: 'var(--muted)', mb: 1.5 }}>
+            <Typography sx={{ fontSize: T.label, color: 'var(--muted)', mt: 0.5, mb: 1.75 }}>
               {t('store.cart.taxNote')}
             </Typography>
-            <Divider sx={{ mb: 1.5 }} />
-            <Stack sx={{ gap: 1 }}>
+            <Stack sx={{ gap: 0.5 }}>
               <Button
                 component={Link}
                 to={`/s/${storeSlug}/checkout`}
                 variant="contained"
+                size="large"
                 onClick={closeCart}
                 fullWidth
+                sx={{ textTransform: 'none', fontWeight: 800 }}
               >
                 {t('store.cart.checkout')}
               </Button>
@@ -96,6 +118,7 @@ export function CartDrawer({ storeSlug }: { storeSlug: string }) {
                 to={`/s/${storeSlug}/cart`}
                 onClick={closeCart}
                 fullWidth
+                sx={{ textTransform: 'none', fontWeight: 700 }}
               >
                 {t('store.cart.view')}
               </Button>

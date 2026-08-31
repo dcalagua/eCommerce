@@ -23,15 +23,27 @@ import { MAX_LINE_QUANTITY } from '../cart/cart'
 export function QuantityStepper({
   value,
   onChange,
+  min = 1,
   max = MAX_LINE_QUANTITY,
   disabled = false,
+  size = 'md',
 }: {
   value: number
   onChange: (next: number) => void
+  /**
+   * Suelo. Uno al comprar —no se añade «cero» de algo—, pero el CARRITO pasa
+   * cero: allí bajar desde uno quita la línea, y obligar a usar la papelera
+   * para lo que el «−» ya estaba haciendo sería quitarle un camino a quien ya
+   * tiene el dedo en ese botón.
+   */
+  min?: number
   max?: number
   disabled?: boolean
+  /** `sm` para las líneas del carrito, donde compite con el resto de la fila. */
+  size?: 'sm' | 'md'
 }) {
   const { t } = useI18n()
+  const small = size === 'sm'
 
   return (
     <Stack
@@ -48,8 +60,9 @@ export function QuantityStepper({
       <IconButton
         size="small"
         aria-label={t('store.cart.decrease')}
-        disabled={disabled || value <= 1}
-        onClick={() => onChange(Math.max(1, value - 1))}
+        disabled={disabled || value <= min}
+        onClick={() => onChange(Math.max(min, value - 1))}
+        sx={small ? { width: 28, height: 28 } : undefined}
       >
         <RemoveRoundedIcon fontSize="small" />
       </IconButton>
@@ -57,7 +70,12 @@ export function QuantityStepper({
         component="output"
         aria-live="polite"
         aria-label={t('store.cart.quantity')}
-        sx={{ minWidth: 28, textAlign: 'center', fontWeight: 800 }}
+        sx={{
+          minWidth: small ? 24 : 28,
+          textAlign: 'center',
+          fontWeight: 800,
+          fontSize: small ? 13 : undefined,
+        }}
       >
         {value}
       </Typography>
@@ -66,6 +84,7 @@ export function QuantityStepper({
         aria-label={t('store.cart.increase')}
         disabled={disabled || value >= max}
         onClick={() => onChange(Math.min(max, value + 1))}
+        sx={small ? { width: 28, height: 28 } : undefined}
       >
         <AddRoundedIcon fontSize="small" />
       </IconButton>
