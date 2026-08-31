@@ -97,6 +97,7 @@ export function StoreContentPage() {
         storeSlug={storeSlug}
         assets={assets}
         images={images}
+        currency={store.currency}
       />
     </Stack>
   )

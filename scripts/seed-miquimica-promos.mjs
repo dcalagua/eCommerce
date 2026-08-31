@@ -102,7 +102,9 @@ async function main() {
     )
     await sql(
       `delete from public.content_blocks
-        where store_id = ${lit(store.id)} and title in ('Ofertas de la semana', 'Semana dermocosmetica')`,
+        where store_id = ${lit(store.id)}
+          and title in ('Ofertas de la semana', 'Semana dermocosmetica',
+                        'Lleva 3, paga 2', 'Escala por volumen Adium')`,
       cfg,
     )
     await sql(
@@ -289,6 +291,55 @@ async function main() {
         )`,
       cfg,
     )
+
+    // Las OTRAS dos campanas automaticas, en las posiciones de al lado.
+    //
+    // Contiguas a proposito: la vitrina agrupa las campanas CONSECUTIVAS en un
+    // mural de tarjetas, asi que 15-16-17 se ven en fila y comparables. Una
+    // campana suelta entre medias rompe la fila, que es justo lo que se quiere
+    // cuando el editor decide separarlas.
+    //
+    // No entran aqui `bienvenida` ni `andino-8`: exigen cupon, y anunciar en la
+    // portada un descuento que no se aplica solo es como se pierde la venta en
+    // el carrito.
+    const murales = [
+      {
+        code: 'nutri-3x2',
+        title: 'Lleva 3, paga 2',
+        subtitle: 'La tercera unidad sale gratis en nutricion Abbott.',
+        position: 16,
+      },
+      {
+        code: 'escala-adium',
+        title: 'Escala por volumen Adium',
+        subtitle: 'Cuanto mas llevas, menos pagas por unidad. Sin cupon.',
+        position: 17,
+      },
+    ]
+
+    for (const mural of murales) {
+      const [promo] = await sql(
+        `select id from public.promotions
+          where store_id = ${lit(store.id)} and code = ${lit(mural.code)} and status = 'active'`,
+        cfg,
+      )
+      if (!promo) continue
+
+      await sql(
+        `insert into public.content_blocks
+           (organization_id, company_id, store_id, page_id, block_type, position, title, subtitle,
+            cta_label, cta_href, promotion_id, is_active)
+         select ${tenant}, ${lit(pagina.id)}, 'campaign'::content_block_type, ${mural.position},
+                ${lit(mural.title)}, ${lit(mural.subtitle)},
+                'Ver los productos', ${lit(`/s/${STORE_SLUG}`)}, ${lit(promo.id)}, true
+          where not exists (
+            select 1 from public.content_blocks b
+             where b.store_id = ${lit(store.id)} and b.title = ${lit(mural.title)}
+          )`,
+        cfg,
+      )
+      console.log(`  ✓ portada: campana «${mural.title}»`)
+    }
 
     // Y una fila con lo rebajado, para que la oferta tenga cara de producto y
     // no solo de cartel.

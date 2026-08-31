@@ -347,3 +347,131 @@ describe('white-label: la marca del tenant, no la de casa', () => {
     expect(document.documentElement.getAttribute('data-density')).toBe('compacta')
   })
 })
+
+/**
+ * Varias campañas vigentes en la portada.
+ *
+ * La vitrina pintaba UNA campaña por fila a ancho completo: con tres, la
+ * segunda y la tercera quedaban debajo del pliegue y nadie las veía. Y decían
+ * «promoción vigente» sin decir de cuánto, que es el único dato por el que
+ * alguien se para.
+ *
+ * Lo que aquí se fija es la línea: sale la FORMA del descuento (-20 %, 3x2, el
+ * mínimo de compra) y nunca el código del cupón.
+ */
+describe('el mural de campañas', () => {
+  function campaña(
+    id: string,
+    title: string,
+    campaign: Record<string, unknown>,
+    position: number,
+  ) {
+    return {
+      id,
+      type: 'campaign',
+      position,
+      title,
+      subtitle: 'Ahorra esta semana',
+      body: null,
+      media_url: null,
+      media_alt: null,
+      cta_label: 'Ver los productos',
+      cta_href: '/s/casa-verde?promo=1',
+      settings: {},
+      is_active: true,
+      category_id: null,
+      campaign,
+      items: [],
+    }
+  }
+
+  const enUnMes = new Date(Date.now() + 30 * 86_400_000).toISOString()
+
+  it('tres campañas van en rejilla y cada una dice cuánto descuenta', async () => {
+    const bloques = [
+      campaña(
+        'cccc1111-1111-4111-8111-111111111111',
+        'Semana dermocosmética',
+        { live: true, ends_at: enUnMes, kind: 'percentage', percent_off: 20 },
+        0,
+      ),
+      campaña(
+        'cccc2222-1111-4111-8111-111111111111',
+        'Lleva 3, paga 2',
+        { live: true, ends_at: enUnMes, kind: 'x_for_y', buy_quantity: 3, free_quantity: 1 },
+        1,
+      ),
+      campaña(
+        'cccc3333-1111-4111-8111-111111111111',
+        '20 soles sobre 150',
+        {
+          live: true,
+          ends_at: enUnMes,
+          kind: 'fixed_amount',
+          amount_off: 20,
+          min_subtotal: 150,
+        },
+        2,
+      ),
+    ]
+    renderStorefront(backend({ content: content(bloques) }), '/s/casa-verde')
+
+    // Las tres se pintan, no solo la primera.
+    expect(await screen.findByRole('heading', { name: 'Semana dermocosmética' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Lleva 3, paga 2' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '20 soles sobre 150' })).toBeInTheDocument()
+
+    // Y cada una lleva su sello, que es lo que se lee de lejos.
+    expect(screen.getByText('-20 %')).toBeInTheDocument()
+    expect(screen.getByText('3x2')).toBeInTheDocument()
+    // El importe fijo se dice en la moneda de la tienda, y con el mínimo que
+    // hay que gastar para que entre: prometerlo sin el mínimo decepciona en el
+    // carrito.
+    expect(screen.getByText(/Desde .*150.* de compra/)).toBeInTheDocument()
+
+    // Van agrupadas bajo una sección, no sueltas una debajo de otra.
+    expect(screen.getByRole('region', { name: 'Ofertas de la semana' })).toBeInTheDocument()
+  })
+
+  it('una campaña con cupón lo advierte sin cantar el código', async () => {
+    const bloques = [
+      campaña(
+        'cccc4444-1111-4111-8111-111111111111',
+        'Bienvenida 10%',
+        {
+          live: true,
+          ends_at: enUnMes,
+          kind: 'percentage',
+          percent_off: 10,
+          needs_coupon: true,
+        },
+        0,
+      ),
+    ]
+    const { container } = renderStorefront(
+      backend({ content: content(bloques) }),
+      '/s/casa-verde',
+    )
+
+    expect(await screen.findByRole('heading', { name: 'Bienvenida 10%' })).toBeInTheDocument()
+    expect(screen.getByText('Con cupón')).toBeInTheDocument()
+    // El servidor no manda el código y la vitrina no lo inventa: si algún día
+    // volviera a viajar, esta línea lo caza.
+    expect(container.innerHTML).not.toContain('bienvenida')
+  })
+
+  it('la última semana la campaña cuenta los días', async () => {
+    const enTresDias = new Date(Date.now() + 3 * 86_400_000 + 3_600_000).toISOString()
+    const bloques = [
+      campaña(
+        'cccc5555-1111-4111-8111-111111111111',
+        'Cierre de temporada',
+        { live: true, ends_at: enTresDias, kind: 'percentage', percent_off: 30 },
+        0,
+      ),
+    ]
+    renderStorefront(backend({ content: content(bloques) }), '/s/casa-verde')
+
+    expect(await screen.findByText('Quedan 4 días')).toBeInTheDocument()
+  })
+})

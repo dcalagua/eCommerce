@@ -216,6 +216,7 @@ export function StoreHomePage() {
         storeSlug={storeSlug}
         assets={assets}
         images={images}
+        currency={store.currency}
         leadingHeading={hasCmsHero}
       />
 

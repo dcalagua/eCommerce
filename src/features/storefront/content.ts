@@ -84,8 +84,25 @@ const collectionItemSchema = z.discriminatedUnion('kind', [
 ])
 export type ContentCollectionItem = z.infer<typeof collectionItemSchema>
 
+/**
+ * La campana, tal y como la resuelve el servidor.
+ *
+ * Viaja la FORMA del descuento —cuanto y de que manera— y nunca el codigo del
+ * cupon. Todo numerico llega como `number | null` porque una promocion de
+ * porcentaje no tiene importe y una de 3x2 no tiene ninguno de los dos.
+ */
 const campaignSchema = z
-  .object({ live: z.boolean().nullable().default(false), ends_at: z.string().nullable().default(null) })
+  .object({
+    live: z.boolean().nullable().default(false),
+    ends_at: z.string().nullable().default(null),
+    kind: z.string().nullable().default(null),
+    percent_off: z.coerce.number().nullable().default(null),
+    amount_off: z.coerce.number().nullable().default(null),
+    buy_quantity: z.coerce.number().nullable().default(null),
+    free_quantity: z.coerce.number().nullable().default(null),
+    min_subtotal: z.coerce.number().nullable().default(null),
+    needs_coupon: z.boolean().nullable().default(false),
+  })
   .nullable()
   .default(null)
 
@@ -112,6 +129,17 @@ const rawBlockSchema = z.object({
   items: z.array(collectionItemSchema).default([]),
 })
 
+/** Que descuenta una campana, en el vocabulario de la vitrina. */
+export interface CampaignOffer {
+  readonly kind: string | null
+  readonly percentOff: number | null
+  readonly amountOff: number | null
+  readonly buyQuantity: number | null
+  readonly freeQuantity: number | null
+  readonly minSubtotal: number | null
+  readonly needsCoupon: boolean
+}
+
 export interface ContentBlock {
   readonly id: string
   readonly type: ContentBlockType
@@ -126,6 +154,7 @@ export interface ContentBlock {
   readonly settings: ContentSettings
   readonly campaignLive: boolean
   readonly campaignEndsAt: string | null
+  readonly campaign: CampaignOffer | null
   readonly items: readonly ContentCollectionItem[]
 }
 
@@ -225,6 +254,17 @@ export function toStoreContent(raw: unknown): StoreContent {
         settings: contentSettingsSchema.safeParse(block.settings).data ?? {},
         campaignLive: block.campaign?.live ?? false,
         campaignEndsAt: block.campaign?.ends_at ?? null,
+        campaign: block.campaign
+          ? {
+              kind: block.campaign.kind,
+              percentOff: block.campaign.percent_off,
+              amountOff: block.campaign.amount_off,
+              buyQuantity: block.campaign.buy_quantity,
+              freeQuantity: block.campaign.free_quantity,
+              minSubtotal: block.campaign.min_subtotal,
+              needsCoupon: block.campaign.needs_coupon ?? false,
+            }
+          : null,
         items: block.items,
       })),
   }

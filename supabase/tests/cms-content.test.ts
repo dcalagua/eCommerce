@@ -761,3 +761,148 @@ describe('la vista del backoffice dice el estado EFECTIVO', () => {
     await svc(`delete from public.content_pages where id = $1`, [page])
   })
 })
+
+/**
+ * La campana que viaja a la vitrina.
+ *
+ * El bloque `campaign` apunta a una promocion, y la vitrina necesita decir
+ * CUANTO descuenta —«-20 %», «3x2»— o el cartel no vende nada. Lo que no puede
+ * salir por esa misma puerta es el codigo del cupon: enumerar los codigos
+ * activos a un desconocido es regalar el folleto de las campanas secretas.
+ *
+ * Las dos mitades de esa frase se comprueban aqui, contra la funcion real y por
+ * la puerta anonima.
+ */
+describe('la forma del descuento sale; el codigo del cupon no', () => {
+  async function promocion(input: {
+    code: string
+    kind: string
+    percent?: number | null
+    amount?: number | null
+    buy?: number | null
+    free?: number | null
+    minSubtotal?: number | null
+    coupon?: boolean
+  }): Promise<string> {
+    return id(
+      `insert into public.promotions
+         (organization_id, company_id, store_id, code, name, kind, status,
+          value_percent, value_amount, buy_quantity, free_quantity, min_subtotal,
+          requires_coupon, valid_from, valid_to)
+       values ($1, $2, $3, $4, $5, $6::public.promotion_kind, 'active',
+               $7, $8, $9, $10, $11, $12, now() - interval '1 day', now() + interval '30 days')
+       returning id`,
+      [
+        TENANT_A.organizationId, TENANT_A.companyId, storeA, input.code,
+        `Campana ${input.code}`, input.kind,
+        input.percent ?? null, input.amount ?? null, input.buy ?? null,
+        input.free ?? null, input.minSubtotal ?? null, input.coupon ?? false,
+      ],
+    )
+  }
+
+  async function campaignBlock(page: string, promotionId: string, title: string): Promise<void> {
+    await svc(
+      `insert into public.content_blocks
+         (organization_id, company_id, store_id, page_id, block_type, position, title, promotion_id)
+       values ($1, $2, $3, $4, 'campaign', 0, $5, $6)`,
+      [TENANT_A.organizationId, TENANT_A.companyId, storeA, page, title, promotionId],
+    )
+  }
+
+  it('un porcentaje vigente viaja con su valor y con la fecha de fin', async () => {
+    const page = await createPage({ slug: 'inicio', kind: 'home' })
+    const promo = await promocion({ code: 'dermo-20', kind: 'percentage', percent: 20 })
+    await campaignBlock(page, promo, 'Semana dermo')
+
+    const campaign = (blocks(await publicPage())[0] as Json).campaign as Json
+    expect(campaign.live).toBe(true)
+    expect(campaign.kind).toBe('percentage')
+    expect(Number(campaign.percent_off)).toBe(20)
+    expect(campaign.needs_coupon).toBe(false)
+    expect(campaign.ends_at).toBeTruthy()
+
+    await svc(`delete from public.content_pages where id = $1`, [page])
+    await svc(`delete from public.promotions where id = $1`, [promo])
+  })
+
+  it('el 3x2 viaja como lo que se lleva y lo que sale gratis', async () => {
+    const page = await createPage({ slug: 'inicio', kind: 'home' })
+    const promo = await promocion({ code: 'nutri-3x2', kind: 'x_for_y', buy: 3, free: 1 })
+    await campaignBlock(page, promo, 'Lleva 3, paga 2')
+
+    const campaign = (blocks(await publicPage())[0] as Json).campaign as Json
+    expect(campaign.kind).toBe('x_for_y')
+    expect(Number(campaign.buy_quantity)).toBe(3)
+    expect(Number(campaign.free_quantity)).toBe(1)
+
+    await svc(`delete from public.content_pages where id = $1`, [page])
+    await svc(`delete from public.promotions where id = $1`, [promo])
+  })
+
+  it('el importe fijo lleva el minimo de compra: sin el, el cartel enganaria', async () => {
+    const page = await createPage({ slug: 'inicio', kind: 'home' })
+    const promo = await promocion({
+      code: 'ahorro-150',
+      kind: 'fixed_amount',
+      amount: 20,
+      minSubtotal: 150,
+    })
+    await campaignBlock(page, promo, '20 soles sobre 150')
+
+    const campaign = (blocks(await publicPage())[0] as Json).campaign as Json
+    expect(Number(campaign.amount_off)).toBe(20)
+    expect(Number(campaign.min_subtotal)).toBe(150)
+
+    await svc(`delete from public.content_pages where id = $1`, [page])
+    await svc(`delete from public.promotions where id = $1`, [promo])
+  })
+
+  it('una campana con cupon lo DECLARA, pero el codigo no aparece por ningun lado', async () => {
+    const page = await createPage({ slug: 'inicio', kind: 'home' })
+    const promo = await promocion({
+      code: 'secreto-vip',
+      kind: 'percentage',
+      percent: 30,
+      coupon: true,
+    })
+    await svc(
+      `insert into public.coupons (organization_id, company_id, store_id, promotion_id, code, is_active)
+       values ($1, $2, $3, $4, 'VIP30', true)`,
+      [TENANT_A.organizationId, TENANT_A.companyId, storeA, promo],
+    )
+    await campaignBlock(page, promo, 'Solo para invitados')
+
+    const result = await publicPage()
+    const campaign = (blocks(result)[0] as Json).campaign as Json
+    expect(campaign.needs_coupon).toBe(true)
+    // Y la respuesta ENTERA, no solo la campana: el codigo no puede salir por
+    // ninguna otra clave del jsonb.
+    expect(JSON.stringify(result)).not.toContain('VIP30')
+
+    await svc(`delete from public.content_pages where id = $1`, [page])
+    await svc(`delete from public.coupons where promotion_id = $1`, [promo])
+    await svc(`delete from public.promotions where id = $1`, [promo])
+  })
+
+  it('una promocion CADUCADA deja de estar viva, aunque el bloque siga publicado', async () => {
+    const page = await createPage({ slug: 'inicio', kind: 'home' })
+    const promo = await promocion({ code: 'vieja-10', kind: 'percentage', percent: 10 })
+    await svc(
+      `update public.promotions
+          set valid_from = now() - interval '60 days', valid_to = now() - interval '1 day'
+        where id = $1`,
+      [promo],
+    )
+    await campaignBlock(page, promo, 'Se acabo')
+
+    const campaign = (blocks(await publicPage())[0] as Json).campaign as Json
+    // El bloque sigue saliendo —eso lo decide el editor— pero deja de decir que
+    // esta descontando, que es lo unico que la vitrina no puede inventarse.
+    expect(campaign.live).toBe(false)
+    expect(campaign.kind).toBe('percentage')
+
+    await svc(`delete from public.content_pages where id = $1`, [page])
+    await svc(`delete from public.promotions where id = $1`, [promo])
+  })
+})
