@@ -5,7 +5,6 @@ import { useState } from 'react'
 import type { SearchSort } from '@/domain'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
-import { R } from '@/theme/tokens'
 
 const OPTIONS: ReadonlyArray<{ value: SearchSort; label: MessageKey }> = [
   { value: 'relevance', label: 'store.sort.relevance' },
@@ -50,10 +49,12 @@ export function StoreSortMenu({
           textTransform: 'none',
           fontWeight: 700,
           color: 'var(--text)',
-          border: '1px solid var(--border)',
-          borderRadius: `${R.md}px`,
-          px: 1.5,
+          border: '1px solid var(--sf-line-strong)',
+          borderRadius: 'var(--sf-pill)',
+          px: 2,
+          py: 0.75,
           bgcolor: 'var(--card)',
+          boxShadow: 'var(--sf-shadow)',
           '&:hover': { borderColor: 'var(--accent)', bgcolor: 'var(--card)' },
         }}
       >
@@ -66,7 +67,9 @@ export function StoreSortMenu({
         onClose={() => setAnchor(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        slotProps={{ paper: { sx: { minWidth: 230, borderRadius: `${R.lg}px`, mt: 0.5 } } }}
+        slotProps={{
+          paper: { sx: { minWidth: 230, borderRadius: 'var(--sf-radius-sm)', mt: 0.75 } },
+        }}
       >
         <MenuList sx={{ py: 0.5 }}>
           {OPTIONS.map((option) => (

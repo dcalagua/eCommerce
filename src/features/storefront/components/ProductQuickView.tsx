@@ -86,7 +86,7 @@ export function ProductQuickView({
       maxWidth="md"
       aria-label={item?.name ?? t('store.product.quickView')}
       slotProps={{
-        paper: { sx: { borderRadius: `${R.lg}px`, bgcolor: 'var(--bg)', backgroundImage: 'none' } },
+        paper: { sx: { borderRadius: 'var(--sf-radius)', bgcolor: 'var(--bg)', backgroundImage: 'none' } },
       }}
     >
       {/* Migas a la izquierda y cerrar a la derecha: dónde estás y por dónde
@@ -141,7 +141,16 @@ export function ProductQuickView({
             como un precio que aún no se sabe, o peor, como uno tachado. */}
         {product.isPending && slug !== null && (
           <Stack aria-hidden direction={{ xs: 'column', md: 'row' }} sx={{ gap: 2 }}>
-            <Card sx={{ p: 2, width: { md: 400 }, flexShrink: 0 }}>
+            <Card
+              sx={{
+                p: 2,
+                width: { md: 400 },
+                flexShrink: 0,
+                borderRadius: 'var(--sf-radius)',
+                border: '1px solid var(--sf-line)',
+                boxShadow: 'var(--sf-shadow)',
+              }}
+            >
               <Skeleton
                 variant="rectangular"
                 sx={{ width: '100%', aspectRatio: '4 / 3', borderRadius: `${R.md}px` }}
@@ -172,12 +181,28 @@ export function ProductQuickView({
                 una estampilla en la que no se distingue el acabado, que es
                 justo lo que se mira antes de comprar. Lo que se pierde a la
                 derecha es aire, no contenido. */}
-            <Card sx={{ p: 2, width: { md: 400 }, flexShrink: 0 }}>
+            <Card
+              sx={{
+                p: 2,
+                width: { md: 400 },
+                flexShrink: 0,
+                borderRadius: 'var(--sf-radius)',
+                border: '1px solid var(--sf-line)',
+                boxShadow: 'var(--sf-shadow)',
+              }}
+            >
               <ProductGallery images={gallery.data ?? []} alt={item.name} />
             </Card>
 
             <Stack sx={{ flex: 1, minWidth: 0, gap: 2 }}>
-              <Card sx={{ p: { xs: 2, md: 2.5 } }}>
+              <Card
+                sx={{
+                  p: { xs: 2, md: 2.5 },
+                  borderRadius: 'var(--sf-radius)',
+                  border: '1px solid var(--sf-line)',
+                  boxShadow: 'var(--sf-shadow)',
+                }}
+              >
                 <Stack sx={{ gap: 1 }}>
                   {discount !== null && (
                     <Chip

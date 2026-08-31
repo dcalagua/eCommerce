@@ -111,6 +111,20 @@ function ContentBlockView({
  * «esto es interno» sobre una cadena que no lo era. `isInternalPath` es la
  * misma pregunta hecha bien.
  */
+/**
+ * Velo de la portada SIN foto.
+ *
+ * El degradado de suite es oscuro por arriba y verde medio por abajo, y encima
+ * iba texto en `--text`, que en claro es casi negro: negro sobre verde es el
+ * peor contraste de la pantalla y ademas se ve viejo. Ahora el texto es blanco
+ * SIEMPRE, y para que eso valga con cualquier acento —el color es del tenant y
+ * puede ser un amarillo palido— se tumba un velo oscuro por encima del
+ * degradado antes del texto. El acento sigue mandando en el ambiente; lo que se
+ * garantiza es el suelo de contraste.
+ */
+const HERO_SCRIM =
+  'linear-gradient(180deg, rgba(6,20,16,0.25) 0%, rgba(6,20,16,0.55) 60%, rgba(6,20,16,0.72) 100%)'
+
 function BlockCta({ block, contrast = false }: { block: ContentBlock; contrast?: boolean }) {
   if (!block.ctaHref || !block.ctaLabel || !isSafeHref(block.ctaHref)) return null
 
@@ -118,7 +132,18 @@ function BlockCta({ block, contrast = false }: { block: ContentBlock; contrast?:
   const sx = {
     alignSelf: 'flex-start',
     fontWeight: 700,
-    ...(contrast ? { bgcolor: '#FFFFFF', color: 'var(--accent-deep)' } : {}),
+    textTransform: 'none' as const,
+    borderRadius: 'var(--sf-pill)',
+    px: 2.5,
+    py: 1,
+    boxShadow: 'none',
+    ...(contrast
+      ? {
+          bgcolor: '#FFFFFF',
+          color: 'var(--accent-deep)',
+          '&:hover': { bgcolor: 'rgba(255,255,255,0.9)', boxShadow: 'none' },
+        }
+      : { '&:hover': { boxShadow: 'none' } }),
   }
 
   return internal ? (
@@ -161,13 +186,14 @@ function HeroBlock({
       aria-label={block.title ?? undefined}
       sx={{
         position: 'relative',
-        borderRadius: 'var(--radius-hero, 18px)',
+        borderRadius: 'var(--sf-radius)',
         overflow: 'hidden',
-        border: '1px solid var(--border)',
         background: url ? 'var(--neutral-soft)' : 'var(--hero-grad)',
-        minHeight: { xs: 240, md: 360 },
+        // 340 y no 400: el texto vive abajo, y con 400 la mitad superior era
+        // degradado y nada mas. Aire, no vacio.
+        minHeight: { xs: 260, md: 340 },
         display: 'flex',
-        boxShadow: 'var(--shadow-hero)',
+        boxShadow: 'var(--sf-shadow)',
       }}
     >
       {url ? (
@@ -197,26 +223,28 @@ function HeroBlock({
             }}
           />
         </>
-      ) : null}
+      ) : (
+        <Box aria-hidden sx={{ position: 'absolute', inset: 0, background: HERO_SCRIM }} />
+      )}
 
       <Stack
         sx={{
           position: 'relative',
           justifyContent: 'flex-end',
-          gap: 1.25,
-          p: { xs: 3, md: 5 },
+          gap: 1.5,
+          p: { xs: 3, md: 6 },
           maxWidth: 680,
-          color: url ? '#FFFFFF' : 'var(--text)',
+          color: '#FFFFFF',
         }}
       >
         {block.title ? (
           <Typography
             component={heading}
             sx={{
-              fontSize: { xs: 28, md: 44 },
+              fontSize: { xs: 30, md: 52 },
               fontWeight: 800,
-              letterSpacing: '-0.02em',
-              lineHeight: 1.08,
+              letterSpacing: '-0.03em',
+              lineHeight: 1.05,
               textWrap: 'balance',
             }}
           >
@@ -224,11 +252,21 @@ function HeroBlock({
           </Typography>
         ) : null}
         {block.subtitle ? (
-          <Typography sx={{ fontSize: { xs: T.bodyStrong, md: 16 }, lineHeight: 1.5, maxWidth: 560 }}>
+          <Typography
+            sx={{
+              fontSize: { xs: T.bodyStrong, md: 17 },
+              lineHeight: 1.55,
+              maxWidth: 560,
+              opacity: 0.92,
+            }}
+          >
             {block.subtitle}
           </Typography>
         ) : null}
-        <BlockCta block={block} contrast={Boolean(url)} />
+        {/* Contraste SIEMPRE, no solo con foto: desde que el texto es blanco,
+            la portada sin imagen tambien es una superficie oscura, y el boton
+            de acento sobre el degradado del acento era verde sobre verde. */}
+        <BlockCta block={block} contrast />
       </Stack>
     </Box>
   )
@@ -461,12 +499,17 @@ function BlockHeading({ block }: { block: ContentBlock }) {
   return (
     <Stack sx={{ gap: 0.25 }}>
       {block.title ? (
-        <Typography component="h2" sx={{ fontSize: T.pageTitle, fontWeight: 800 }}>
+        <Typography
+          component="h2"
+          sx={{ fontSize: { xs: 20, md: 24 }, fontWeight: 800, letterSpacing: '-0.02em' }}
+        >
           {block.title}
         </Typography>
       ) : null}
       {block.subtitle ? (
-        <Typography sx={{ fontSize: T.body, color: 'var(--muted)' }}>{block.subtitle}</Typography>
+        <Typography sx={{ fontSize: T.bodyStrong, color: 'var(--muted)' }}>
+          {block.subtitle}
+        </Typography>
       ) : null}
     </Stack>
   )
@@ -493,29 +536,47 @@ function CollectionCard({
       component={Link}
       to={`/s/${storeSlug}/product/${item.slug}`}
       sx={{
-        p: 1.25,
+        p: 1.5,
         display: 'grid',
-        gap: 0.75,
+        gap: 0.5,
+        alignContent: 'start',
         textDecoration: 'none',
         color: 'inherit',
+        borderRadius: 'var(--sf-radius)',
+        border: '1px solid var(--sf-line)',
+        boxShadow: 'var(--sf-shadow)',
         scrollSnapAlign: snap ? 'start' : undefined,
-        '&:hover': { boxShadow: 'var(--shadow-md)' },
+        transition: 'box-shadow .18s ease, transform .18s ease',
+        '&:hover': { boxShadow: 'var(--sf-shadow-hover)', transform: 'translateY(-3px)' },
+        '@media (prefers-reduced-motion: reduce)': {
+          transition: 'none',
+          '&:hover': { transform: 'none' },
+        },
+        '& .sf-collection-media': {
+          borderRadius: 'var(--sf-radius-sm)',
+          overflow: 'hidden',
+          bgcolor: 'var(--sf-media-bg)',
+          mb: 0.75,
+        },
       }}
     >
+      <Box className="sf-collection-media">
       <ProductMedia
         url={item.image_path ? (images[item.image_path] ?? null) : null}
         alt={item.image_alt ?? item.name}
       />
-      <Typography sx={{ fontSize: T.bodyStrong, fontWeight: 700, lineHeight: 1.3 }}>
-        {item.name}
-      </Typography>
+      </Box>
+      <Typography sx={{ fontSize: 15, fontWeight: 650, lineHeight: 1.35 }}>{item.name}</Typography>
       {item.kind === 'variant' && item.variant_label ? (
         <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
           {item.variant_label}
         </Typography>
       ) : null}
       {showPrice && price && item.currency ? (
-        <Typography sx={{ fontSize: T.body, fontWeight: 800, color: 'var(--accent-deep)' }}>
+        <Typography
+          className="tnum"
+          sx={{ fontSize: 17, fontWeight: 800, letterSpacing: '-0.02em', mt: 0.25 }}
+        >
           {formatMoney(Number(price), item.currency, locale)}
         </Typography>
       ) : null}

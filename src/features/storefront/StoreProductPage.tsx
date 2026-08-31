@@ -198,11 +198,30 @@ export function StoreProductPage() {
       >
         {/* Cada mitad en su tarjeta: sobre el fondo desnudo, la foto y los datos
             parecían dos cosas que están cerca por casualidad. */}
-        <Card sx={{ p: { xs: 1.5, md: 2 } }}>
+        <Card
+          sx={{
+            p: { xs: 1.5, md: 2 },
+            borderRadius: 'var(--sf-radius)',
+            border: '1px solid var(--sf-line)',
+            boxShadow: 'var(--sf-shadow)',
+          }}
+        >
           <ProductGallery images={gallery.data ?? []} alt={item.name} />
         </Card>
 
-        <Card sx={{ p: { xs: 2, md: 2.5 } }}>
+        {/* La compra y la ficha de datos, en la MISMA columna y pegadas arriba.
+            Antes los datos iban abajo a lo ancho y la columna de compra se
+            quedaba flotando sobre medio metro de fondo vacio: la mirada acababa
+            en un hueco justo al lado del boton que hay que pulsar. */}
+        <Stack sx={{ gap: 2, position: { md: 'sticky' }, top: { md: 88 } }}>
+        <Card
+          sx={{
+            p: { xs: 2, md: 2.5 },
+            borderRadius: 'var(--sf-radius)',
+            border: '1px solid var(--sf-line)',
+            boxShadow: 'var(--sf-shadow)',
+          }}
+        >
         <Stack sx={{ gap: 1.25 }}>
           {item.brand_name && (
             <Typography sx={{ fontSize: T.label, fontWeight: 800, color: 'var(--accent-deep)' }}>
@@ -248,15 +267,20 @@ export function StoreProductPage() {
             )}
           </Stack>
 
-          <Typography
+          <Box
             sx={{
-              fontSize: T.bodyStrong,
+              alignSelf: 'flex-start',
+              px: 1,
+              py: 0.25,
+              borderRadius: 'var(--sf-pill)',
+              fontSize: T.body,
               fontWeight: 700,
+              bgcolor: available ? 'var(--accent-soft)' : 'var(--neutral-soft)',
               color: available ? 'var(--accent-deep)' : 'var(--muted)',
             }}
           >
             {available ? t('store.availability.inStock') : t('store.availability.outOfStock')}
-          </Typography>
+          </Box>
 
           <AddToCart
             product={item}
@@ -267,56 +291,84 @@ export function StoreProductPage() {
 
         </Stack>
         </Card>
-      </Box>
 
-      {/* Descripción y datos, uno al lado del otro y DEBAJO de la compra: lo que
-          hace falta para decidir va arriba; esto es lo que se lee cuando ya casi
-          se ha decidido. */}
-      <Card sx={{ p: { xs: 2, md: 3 } }}>
-        <Box
+        <Card
           sx={{
-            display: 'grid',
-            gap: { xs: 2, md: 4 },
-            gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1.6fr) minmax(0, 1fr)' },
+            p: { xs: 2, md: 2.5 },
+            borderRadius: 'var(--sf-radius)',
+            border: '1px solid var(--sf-line)',
+            boxShadow: 'var(--sf-shadow)',
           }}
         >
-          <Box>
-            <Typography component="h2" sx={{ fontSize: T.cardTitle, fontWeight: 800, mb: 1 }}>
-              {t('store.product.description')}
-            </Typography>
-            <Typography
-              sx={{
-                fontSize: T.body,
-                color: item.description ? 'var(--text)' : 'var(--muted)',
-                whiteSpace: 'pre-line',
-                lineHeight: 1.65,
-              }}
-            >
-              {item.description?.trim() || t('store.product.noDescription')}
-            </Typography>
-          </Box>
+          <Typography
+            component="h2"
+            sx={{
+              fontSize: T.label,
+              fontWeight: 800,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              color: 'var(--muted)',
+              mb: 1,
+            }}
+          >
+            {t('store.product.sheet')}
+          </Typography>
+          <Stack>
+            <SheetRow label={t('store.filter.brand')} value={item.brand_name} />
+            <SheetRow label={t('store.filter.category')} value={item.category_name} />
+            <SheetRow
+              label={t('store.product.availabilityLabel')}
+              value={
+                available ? t('store.availability.inStock') : t('store.availability.outOfStock')
+              }
+            />
+          </Stack>
+        </Card>
+        </Stack>
+      </Box>
 
-          <Box>
-            <Typography component="h2" sx={{ fontSize: T.cardTitle, fontWeight: 800, mb: 1 }}>
-              {t('store.product.sheet')}
-            </Typography>
-            <Stack>
-              <SheetRow label={t('store.filter.brand')} value={item.brand_name} />
-              <SheetRow label={t('store.filter.category')} value={item.category_name} />
-              <SheetRow
-                label={t('store.product.availabilityLabel')}
-                value={
-                  available ? t('store.availability.inStock') : t('store.availability.outOfStock')
-                }
-              />
-            </Stack>
-          </Box>
-        </Box>
+      {/* La descripción, a lo ancho y debajo: es texto corrido, y en una columna
+          estrecha al lado de la foto se lee peor que en una línea larga. */}
+      <Card
+        sx={{
+          p: { xs: 2, md: 3 },
+          borderRadius: 'var(--sf-radius)',
+          border: '1px solid var(--sf-line)',
+          boxShadow: 'var(--sf-shadow)',
+        }}
+      >
+        <Typography
+          component="h2"
+          sx={{
+            fontSize: T.label,
+            fontWeight: 800,
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            color: 'var(--muted)',
+            mb: 1,
+          }}
+        >
+          {t('store.product.description')}
+        </Typography>
+        <Typography
+          sx={{
+            fontSize: 15,
+            color: item.description ? 'var(--text)' : 'var(--muted)',
+            whiteSpace: 'pre-line',
+            lineHeight: 1.7,
+            maxWidth: '72ch',
+          }}
+        >
+          {item.description?.trim() || t('store.product.noDescription')}
+        </Typography>
       </Card>
 
       {related.length > 0 && (
         <Box component="section">
-          <Typography component="h2" sx={{ fontSize: T.cardTitle, fontWeight: 800, mb: 1.5 }}>
+          <Typography
+            component="h2"
+            sx={{ fontSize: { xs: 20, md: 24 }, fontWeight: 800, letterSpacing: '-0.02em', mb: 2 }}
+          >
             {t('store.product.related')}
           </Typography>
           <ProductGrid products={related} storeSlug={storeSlug} thumbnails={relatedThumbs} />

@@ -1,10 +1,10 @@
 import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
-import { Box, Button, Card, Chip, Stack, Typography } from '@mui/material'
+import { Box, Button, Card, Stack, Typography } from '@mui/material'
 import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
-import { R, T } from '@/theme/tokens'
+import { T } from '@/theme/tokens'
 import { track } from '../analytics'
 import { useCart } from '../cart/cart-context'
 import { discountPercent, type PublicProduct } from '../types'
@@ -28,6 +28,19 @@ import { ProductMedia } from './ProductMedia'
  * de pantalla anuncia «Silla de roble, enlace», y ctrl-clic o rueda abren la
  * ficha en otra pestaña. El botón se pone por encima de esa capa, así que
  * pulsarlo compra y no navega, sin necesidad de `stopPropagation`.
+ *
+ * ## La jerarquía, de arriba abajo
+ *
+ * Cuatro niveles y ni uno más, porque la rejilla se recorre en diagonal y con
+ * el rabillo del ojo: **categoría** en versalitas diminutas y gris (contexto,
+ * casi un susurro), **nombre** en el cuerpo de la tarjeta, **precio** como la
+ * cifra grande —es la que decide, y antes competía en tamaño con el nombre— y
+ * **estado** en una pastilla suave. Lo que hace moderna a una tarjeta no es el
+ * radio de la esquina, es que esos cuatro pesos se distingan sin leerlos.
+ *
+ * La foto va sobre su propio fondo (`--sf-media-bg`), un tono por debajo de la
+ * tarjeta: separa imagen de texto sin dibujar una caja, y una foto con fondo
+ * blanco —la mitad del catálogo— deja de fundirse con la tarjeta.
  *
  * ## Qué hace el botón
  *
@@ -76,22 +89,26 @@ export function ProductCard({
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        p: 1.25,
+        p: { xs: 1.25, md: 1.5 },
         gap: 1,
-        borderRadius: `${R.lg}px`,
+        borderRadius: 'var(--sf-radius)',
+        // La separación entre tarjetas la da la sombra, no el borde: una línea
+        // nítida alrededor de cada una convierte la rejilla en una cuadrícula.
+        border: '1px solid var(--sf-line)',
+        boxShadow: 'var(--sf-shadow)',
         // El movimiento es la única señal de que la tarjeta es pulsable, así
         // que se anula entero con prefers-reduced-motion en vez de acortarlo.
         transition: 'transform .18s ease, box-shadow .18s ease, border-color .18s ease',
         '&:hover': {
-          borderColor: 'var(--accent)',
-          boxShadow: 'var(--shadow-md)',
-          transform: 'translateY(-4px)',
+          borderColor: 'var(--sf-line-strong)',
+          boxShadow: 'var(--sf-shadow-hover)',
+          transform: 'translateY(-3px)',
         },
         '@media (prefers-reduced-motion: reduce)': {
           transition: 'none',
           '&:hover': { transform: 'none' },
         },
-        '&:hover .eb-card-media img': { transform: 'scale(1.06)' },
+        '&:hover .eb-card-media img': { transform: 'scale(1.05)' },
         // El foco se pinta en la tarjeta aunque lo reciba el enlace de dentro:
         // si no, con el teclado se ilumina solo el nombre y no se ve qué
         // tarjeta está seleccionada.
@@ -102,44 +119,54 @@ export function ProductCard({
         className="eb-card-media"
         sx={{
           position: 'relative',
+          borderRadius: 'var(--sf-radius-sm)',
+          overflow: 'hidden',
+          bgcolor: 'var(--sf-media-bg)',
           '& img': {
             transition: 'transform .35s ease',
             '@media (prefers-reduced-motion: reduce)': { transition: 'none', transform: 'none' },
           },
           // Agotado: la foto se apaga para que el estado se lea de un vistazo
           // en la rejilla, no solo al llegar a la línea de texto.
-          ...(available ? {} : { '& img': { filter: 'grayscale(1)', opacity: 0.55 } }),
+          ...(available ? {} : { '& img': { filter: 'grayscale(1)', opacity: 0.5 } }),
         }}
       >
         <ProductMedia url={imageUrl} alt={product.primary_image_alt ?? product.name} />
         {discount !== null && (
-          <Chip
-            label={`-${discount}%`}
-            size="small"
+          // Pastilla plana y compacta, no un `Chip` con su alto de 24 px y su
+          // sombra: sobre la foto lo que hace falta es una etiqueta que se lea,
+          // no un control que parezca pulsable.
+          <Box
             sx={{
               position: 'absolute',
-              top: 8,
-              left: 8,
+              top: 10,
+              left: 10,
+              px: 0.875,
+              py: 0.25,
+              borderRadius: 'var(--sf-pill)',
               bgcolor: 'var(--accent)',
               color: '#FFFFFF',
-              fontWeight: 800,
               fontSize: T.label,
+              fontWeight: 800,
               letterSpacing: '0.02em',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.28)',
+              lineHeight: 1.6,
             }}
-          />
+          >
+            {`-${discount}%`}
+          </Box>
         )}
       </Box>
 
-      <Stack sx={{ gap: 0.25, flex: 1 }}>
+      <Stack sx={{ gap: 0.5, flex: 1 }}>
         {product.category_name && (
           <Typography
             sx={{
-              fontSize: T.label,
-              fontWeight: 700,
-              letterSpacing: 0.4,
+              fontSize: 10.5,
+              fontWeight: 800,
+              letterSpacing: '0.1em',
               textTransform: 'uppercase',
               color: 'var(--muted)',
+              lineHeight: 1.4,
             }}
           >
             {product.category_name}
@@ -148,9 +175,10 @@ export function ProductCard({
         <Typography
           component="h3"
           sx={{
-            fontSize: T.cardTitle,
-            fontWeight: 700,
+            fontSize: 15,
+            fontWeight: 650,
             lineHeight: 1.35,
+            letterSpacing: '-0.005em',
             // Dos líneas y elipsis: los nombres largos no pueden descuadrar la
             // rejilla ni empujar el precio fuera de la tarjeta.
             display: '-webkit-box',
@@ -187,32 +215,45 @@ export function ProductCard({
         </Typography>
       </Stack>
 
-      <Stack
-        direction="row"
-        sx={{ alignItems: 'baseline', gap: 0.75, flexWrap: 'wrap', mt: 'auto' }}
-      >
-        <Typography sx={{ fontSize: T.cardTitle, fontWeight: 800, letterSpacing: '-0.01em' }}>
-          {formatMoney(Number(product.price), product.currency, locale)}
-        </Typography>
-        {discount !== null && product.compare_at_price && (
+      <Stack sx={{ gap: 0.75, mt: 'auto' }}>
+        <Stack direction="row" sx={{ alignItems: 'baseline', gap: 0.75, flexWrap: 'wrap' }}>
+          {/* La cifra que decide. Sube a 19 px y el nombre baja a 15: antes
+              pesaban lo mismo y la tarjeta no tenía protagonista. */}
           <Typography
-            component="s"
-            sx={{ fontSize: T.label, color: 'var(--muted)', fontWeight: 600 }}
+            className="tnum"
+            sx={{ fontSize: 19, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.2 }}
           >
-            {formatMoney(Number(product.compare_at_price), product.currency, locale)}
+            {formatMoney(Number(product.price), product.currency, locale)}
           </Typography>
-        )}
-      </Stack>
+          {discount !== null && product.compare_at_price && (
+            <Typography
+              component="s"
+              className="tnum"
+              sx={{ fontSize: 12.5, color: 'var(--muted)', fontWeight: 600 }}
+            >
+              {formatMoney(Number(product.compare_at_price), product.currency, locale)}
+            </Typography>
+          )}
+        </Stack>
 
-      <Typography
-        sx={{
-          fontSize: T.label,
-          fontWeight: 700,
-          color: available ? 'var(--accent-deep)' : 'var(--muted)',
-        }}
-      >
-        {available ? t('store.availability.inStock') : t('store.availability.outOfStock')}
-      </Typography>
+        {/* El estado, en pastilla: en una línea de texto suelta se confunde con
+            el resto de la ficha, y es lo que decide si el botón sirve. */}
+        <Box
+          sx={{
+            alignSelf: 'flex-start',
+            px: 0.875,
+            py: 0.125,
+            borderRadius: 'var(--sf-pill)',
+            fontSize: T.label,
+            fontWeight: 700,
+            lineHeight: 1.7,
+            bgcolor: available ? 'var(--accent-soft)' : 'var(--neutral-soft)',
+            color: available ? 'var(--accent-deep)' : 'var(--muted)',
+          }}
+        >
+          {available ? t('store.availability.inStock') : t('store.availability.outOfStock')}
+        </Box>
+      </Stack>
 
       {/* Por encima de la capa que hace pulsable la tarjeta: pulsar aquí compra,
           no navega. */}
@@ -237,7 +278,17 @@ export function ProductCard({
             quantity: 1,
           })
         }}
-        sx={{ position: 'relative', zIndex: 1, mt: 0.5, textTransform: 'none', fontWeight: 700 }}
+        sx={{
+          position: 'relative',
+          zIndex: 1,
+          mt: 0.25,
+          textTransform: 'none',
+          fontWeight: 700,
+          borderRadius: 'var(--sf-radius-sm)',
+          py: 0.75,
+          boxShadow: 'none',
+          '&:hover': { boxShadow: 'none' },
+        }}
       >
         {hasVariants ? t('store.product.chooseOptions') : t('store.product.addToCart')}
       </Button>

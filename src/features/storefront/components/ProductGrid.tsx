@@ -1,5 +1,4 @@
 import { Box, Card, Skeleton, Stack } from '@mui/material'
-import { R } from '@/theme/tokens'
 import type { PublicProduct } from '../types'
 import { ProductCard } from './ProductCard'
 
@@ -10,7 +9,7 @@ import { ProductCard } from './ProductCard'
  */
 const GRID_SX = {
   display: 'grid',
-  gap: { xs: 1.5, md: 2 },
+  gap: { xs: 1.5, md: 2.5 },
   gridTemplateColumns: {
     xs: 'repeat(2, minmax(0, 1fr))',
     sm: 'repeat(3, minmax(0, 1fr))',
@@ -63,8 +62,19 @@ export function ProductGridSkeleton({ count = 8 }: { count?: number }) {
   return (
     <Box sx={GRID_SX} aria-hidden data-testid="catalog-skeleton">
       {Array.from({ length: count }, (_, index) => (
-        <Card key={index} sx={{ p: 1.25, borderRadius: `${R.lg}px` }}>
-          <Skeleton variant="rectangular" sx={{ aspectRatio: '1 / 1', borderRadius: `${R.md}px` }} />
+        <Card
+          key={index}
+          sx={{
+            p: 1.5,
+            borderRadius: 'var(--sf-radius)',
+            border: '1px solid var(--sf-line)',
+            boxShadow: 'var(--sf-shadow)',
+          }}
+        >
+          <Skeleton
+            variant="rectangular"
+            sx={{ aspectRatio: '1 / 1', borderRadius: 'var(--sf-radius-sm)' }}
+          />
           <Stack sx={{ gap: 0.5, mt: 1 }}>
             <Skeleton width="45%" height={12} />
             <Skeleton width="90%" height={18} />

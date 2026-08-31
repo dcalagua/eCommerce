@@ -102,12 +102,18 @@ export function StoreQuickSearch({ storeSlug }: { storeSlug: string }) {
           sx={{
             alignItems: 'center',
             gap: 1,
-            px: 1.5,
-            py: 0.75,
-            border: '1px solid var(--border)',
-            borderRadius: `${R.md}px`,
+            px: 2,
+            py: 0.875,
+            border: '1px solid var(--sf-line-strong)',
+            borderRadius: 'var(--sf-pill)',
             bgcolor: 'var(--card)',
-            '&:focus-within': { borderColor: 'var(--accent)' },
+            transition: 'border-color .15s ease, box-shadow .15s ease',
+            '&:hover': { borderColor: 'var(--muted)' },
+            '&:focus-within': {
+              borderColor: 'var(--accent)',
+              boxShadow: '0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent)',
+            },
+            '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
           }}
         >
           <SearchRoundedIcon sx={{ fontSize: 20, color: 'var(--muted)' }} />
@@ -174,7 +180,7 @@ export function StoreQuickSearch({ storeSlug }: { storeSlug: string }) {
             sx={{
               mt: 0.5,
               border: '1px solid var(--border)',
-              borderRadius: `${R.lg}px`,
+              borderRadius: 'var(--sf-radius-sm)',
               boxShadow: 'var(--shadow-lg)',
               overflow: 'hidden',
             }}

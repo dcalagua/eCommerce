@@ -1,0 +1,74 @@
+/**
+ * Piel de la VITRINA. Solo de la vitrina.
+ *
+ * ## Por que existe este archivo y no unos tokens nuevos
+ *
+ * El backoffice y la tienda publica no compiten por lo mismo. El backoffice es
+ * una herramienta de trabajo: densidad, bordes que separan filas, sombras
+ * discretas para que nada distraiga de los datos. La vitrina vende: superficies
+ * amplias, esquinas generosas, sombra difusa en vez de linea dura, y aire
+ * alrededor de la foto, que es el argumento de venta.
+ *
+ * Tocar `theme/tokens.css` para conseguir eso habria cambiado las dos cosas a
+ * la vez. Aqui se define un AMBITO —`.sf-scope`, que cuelga del layout de la
+ * tienda— con sus propias variables. Fuera de la vitrina no existen, asi que el
+ * backoffice queda exactamente como estaba.
+ *
+ * ## Lo que NO se redefine
+ *
+ * Ni un color de marca. `--accent`, `--accent-deep`, `--text` y `--muted`
+ * siguen siendo los del tenant (contrato §4.4: el color es 100 % suyo). Lo que
+ * vive aqui es geometria y profundidad —radios, sombras, superficies— que es
+ * lenguaje de la suite y no identidad del comercio.
+ */
+
+.sf-scope {
+  /* Radios mas generosos que en el backoffice: una tarjeta de producto a 14 px
+     de radio se lee como una fila de tabla con foto. */
+  --sf-radius: 20px;
+  --sf-radius-sm: 14px;
+  --sf-pill: 999px;
+
+  /* La linea deja de ser el borde de la tarjeta y pasa a ser un apoyo: la
+     separacion la da la sombra. En claro, un borde nitido alrededor de cada
+     tarjeta convierte la rejilla en una cuadricula. */
+  --sf-line: color-mix(in srgb, var(--border) 55%, transparent);
+  --sf-line-strong: var(--border);
+
+  /* Dos sombras por estado: una de contacto (1 px, define el canto) y otra
+     difusa y muy abierta (la que da la sensacion de peso). Una sola sombra
+     grande flota; una sola pequena se ve plana. */
+  --sf-shadow: 0 1px 2px rgba(16, 24, 32, 0.04), 0 12px 32px -20px rgba(16, 24, 32, 0.35);
+  --sf-shadow-hover: 0 2px 6px rgba(16, 24, 32, 0.07), 0 26px 56px -26px rgba(16, 24, 32, 0.45);
+
+  /* Fondo del hueco de la foto. Casi blanco, apenas un tono por debajo de la
+     tarjeta: separa la imagen del texto sin dibujar una caja. */
+  --sf-media-bg: color-mix(in srgb, var(--neutral-soft) 55%, var(--card));
+
+  /* Cabecera translucida. El desenfoque solo se aplica donde el navegador lo
+     soporta; sin el, el color de respaldo es opaco y legible igual. */
+  --sf-header-bg: color-mix(in srgb, var(--card) 88%, transparent);
+}
+
+/* En oscuro la sombra no separa —todo es oscuro sobre oscuro—, asi que el canto
+   vuelve a ser la linea, y la profundidad la da una sombra mucho mas negra. */
+:root:not([data-theme='light']) .sf-scope {
+  --sf-line: color-mix(in srgb, var(--border) 85%, transparent);
+  --sf-shadow: 0 1px 0 rgba(255, 255, 255, 0.03), 0 16px 36px -22px rgba(0, 0, 0, 0.75);
+  --sf-shadow-hover: 0 1px 0 rgba(255, 255, 255, 0.05), 0 28px 60px -26px rgba(0, 0, 0, 0.85);
+  --sf-media-bg: color-mix(in srgb, var(--neutral-soft) 75%, var(--card));
+}
+
+:root[data-theme='light'] .sf-scope {
+  --sf-line: color-mix(in srgb, var(--border) 55%, transparent);
+  --sf-shadow: 0 1px 2px rgba(16, 24, 32, 0.04), 0 12px 32px -20px rgba(16, 24, 32, 0.35);
+  --sf-shadow-hover: 0 2px 6px rgba(16, 24, 32, 0.07), 0 26px 56px -26px rgba(16, 24, 32, 0.45);
+  --sf-media-bg: color-mix(in srgb, var(--neutral-soft) 55%, var(--card));
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .sf-scope .sf-header {
+    backdrop-filter: saturate(160%) blur(12px);
+    background: var(--sf-header-bg);
+  }
+}

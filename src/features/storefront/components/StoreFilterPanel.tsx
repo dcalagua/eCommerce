@@ -13,7 +13,7 @@ import {
 } from '@mui/material'
 import { useState, type ReactNode } from 'react'
 import { useI18n } from '@/shared/i18n/i18n-context'
-import { R, T } from '@/theme/tokens'
+import { T } from '@/theme/tokens'
 
 export interface FacetOption {
   /** Slug de categoría o código de marca. `null` no se pinta: no se puede filtrar por nada. */
@@ -79,10 +79,17 @@ export function StoreFilterPanel({
     <Card
       component="aside"
       aria-label={t('store.filter.title')}
-      sx={{ p: 2, borderRadius: `${R.lg}px`, position: { md: 'sticky' }, top: { md: 88 } }}
+      sx={{
+        p: 2.25,
+        borderRadius: 'var(--sf-radius)',
+        border: '1px solid var(--sf-line)',
+        boxShadow: 'var(--sf-shadow)',
+        position: { md: 'sticky' },
+        top: { md: 88 },
+      }}
     >
       <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-        <Typography component="h2" sx={{ fontSize: T.cardTitle, fontWeight: 800 }}>
+        <Typography component="h2" sx={{ fontSize: 15, fontWeight: 800, letterSpacing: '-0.01em' }}>
           {t('store.filter.title')}
         </Typography>
         {/* Solo cuando hay algo que quitar: un botón que no hace nada enseña a
@@ -153,7 +160,7 @@ function FacetGroup({ title, children }: { title: string; children: ReactNode })
   const shown = all ? items : items.slice(0, VISIBLE)
 
   return (
-    <Box sx={{ borderTop: '1px solid var(--border)', pt: 1.25, mt: 1.25 }}>
+    <Box sx={{ borderTop: '1px solid var(--sf-line)', pt: 1.5, mt: 1.5 }}>
       <Stack
         component="button"
         type="button"
@@ -172,7 +179,16 @@ function FacetGroup({ title, children }: { title: string; children: ReactNode })
           color: 'inherit',
         }}
       >
-        <Typography component="h3" sx={{ fontSize: T.body, fontWeight: 800 }}>
+        <Typography
+          component="h3"
+          sx={{
+            fontSize: T.label,
+            fontWeight: 800,
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            color: 'var(--muted)',
+          }}
+        >
           {title}
         </Typography>
         {open ? (

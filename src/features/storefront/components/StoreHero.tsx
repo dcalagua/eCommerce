@@ -1,6 +1,6 @@
 import { Box, Stack, Typography } from '@mui/material'
 import { useT } from '@/shared/i18n/i18n-context'
-import { R, T } from '@/theme/tokens'
+import { T } from '@/theme/tokens'
 import type { PublicStore } from '../types'
 
 /**
@@ -33,13 +33,12 @@ export function StoreHero({ store }: { store: PublicStore }) {
       aria-label={title}
       sx={{
         position: 'relative',
-        borderRadius: `${R.xl}px`,
+        borderRadius: 'var(--sf-radius)',
         overflow: 'hidden',
-        border: '1px solid var(--border)',
         background: hasImage ? 'var(--neutral-soft)' : 'var(--hero-grad)',
-        minHeight: { xs: 240, md: 360 },
+        minHeight: { xs: 260, md: 340 },
         display: 'flex',
-        boxShadow: 'var(--shadow-hero)',
+        boxShadow: 'var(--sf-shadow)',
       }}
     >
       {hasImage ? (
@@ -79,27 +78,41 @@ export function StoreHero({ store }: { store: PublicStore }) {
       ) : (
         /* Halo del acento del tenant sobre el degradado de suite. Da profundidad
            sin introducir un solo color que no sea suyo. */
-        <Box
-          aria-hidden
-          sx={{
-            position: 'absolute',
-            inset: 0,
-            background:
-              'radial-gradient(120% 90% at 85% 15%, color-mix(in srgb, var(--accent) 55%, transparent) 0%, transparent 60%)',
-            mixBlendMode: 'screen',
-            opacity: 0.85,
-          }}
-        />
+        <>
+          <Box
+            aria-hidden
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              background:
+                'radial-gradient(120% 90% at 85% 15%, color-mix(in srgb, var(--accent) 55%, transparent) 0%, transparent 60%)',
+              mixBlendMode: 'screen',
+              opacity: 0.85,
+            }}
+          />
+          {/* Texto blanco tambien sin foto: negro sobre el verde del degradado
+              era el peor contraste de la portada. El velo garantiza el suelo
+              con cualquier acento del tenant. */}
+          <Box
+            aria-hidden
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              background:
+                'linear-gradient(180deg, rgba(6,20,16,0.25) 0%, rgba(6,20,16,0.55) 60%, rgba(6,20,16,0.72) 100%)',
+            }}
+          />
+        </>
       )}
 
       <Stack
         sx={{
           position: 'relative',
           justifyContent: 'flex-end',
-          gap: 1,
-          p: { xs: 3, md: 5 },
+          gap: 1.25,
+          p: { xs: 3, md: 6 },
           maxWidth: 680,
-          color: hasImage ? '#FFFFFF' : 'var(--text)',
+          color: '#FFFFFF',
         }}
       >
         <Typography
@@ -118,10 +131,10 @@ export function StoreHero({ store }: { store: PublicStore }) {
           sx={{
             // Escala fluida: llena la portada en escritorio sin desbordar en
             // móvil, que es donde compra el canal B2C.
-            fontSize: { xs: 30, md: 46 },
+            fontSize: { xs: 30, md: 52 },
             fontWeight: 800,
-            letterSpacing: '-0.02em',
-            lineHeight: 1.08,
+            letterSpacing: '-0.03em',
+            lineHeight: 1.05,
             textWrap: 'balance',
           }}
         >
@@ -129,10 +142,10 @@ export function StoreHero({ store }: { store: PublicStore }) {
         </Typography>
         <Typography
           sx={{
-            fontSize: { xs: T.bodyStrong, md: 16 },
-            lineHeight: 1.5,
+            fontSize: { xs: T.bodyStrong, md: 17 },
+            lineHeight: 1.55,
             maxWidth: 560,
-            opacity: hasImage ? 0.94 : 0.85,
+            opacity: 0.92,
           }}
         >
           {subtitle}

@@ -31,6 +31,7 @@ import { CartProvider } from './cart/CartProvider'
 import { useCart } from './cart/cart-context'
 import { usePublicStore, useStoreNavigation, type StorefrontOutlet } from './hooks'
 import type { PublicStore } from './types'
+import './storefront.css'
 
 /**
  * Vitrina pública.
@@ -110,7 +111,13 @@ export function StorefrontLayout() {
         currency={store.currency}
         authenticated={sessionStatus === 'authenticated'}
       >
-        <Box sx={{ minHeight: '100dvh', bgcolor: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+        {/* `sf-scope`: las variables de piel de la vitrina (radios, sombras,
+            superficies) viven solo bajo esta clase, asi que el backoffice
+            —que comparte tokens de color— no se entera de nada. */}
+        <Box
+          className="sf-scope"
+          sx={{ minHeight: '100dvh', bgcolor: 'var(--bg)', display: 'flex', flexDirection: 'column' }}
+        >
           {/* Primer elemento enfocable del documento: sin él, llegar al
               catálogo con el teclado obliga a pasar por el logo, el menú, la
               cuenta y el carrito en CADA página. El destino ya existía
@@ -155,16 +162,20 @@ function StoreHeader({ store, storeSlug }: { store: PublicStore; storeSlug: stri
   return (
     <Box
       component="header"
+      className="sf-header"
       sx={{
         position: 'sticky',
         top: 0,
         zIndex: 2,
+        // El desenfoque lo pone `storefront.css` donde el navegador lo soporta;
+        // este color es el respaldo opaco, que es lo que garantiza que la
+        // cabecera se lea sobre el catalogo con el que se solapa.
         bgcolor: 'var(--card)',
-        borderBottom: '1px solid var(--border)',
+        borderBottom: '1px solid var(--sf-line)',
       }}
     >
       <Container maxWidth="lg" disableGutters>
-        <Toolbar sx={{ gap: 1.5, px: { xs: 2, md: 3 } }}>
+        <Toolbar sx={{ gap: 1.5, px: { xs: 2, md: 3 }, minHeight: { xs: 60, md: 68 } }}>
           <Box
             component={Link}
             to={`/s/${storeSlug}`}
@@ -191,8 +202,8 @@ function StoreHeader({ store, storeSlug }: { store: PublicStore; storeSlug: stri
               <Box
                 aria-hidden
                 sx={{
-                  width: 30,
-                  height: 30,
+                  width: 34,
+                  height: 34,
                   flexShrink: 0,
                   display: 'grid',
                   placeItems: 'center',
