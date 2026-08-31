@@ -135,7 +135,15 @@ export async function uploadProductImage(input: {
 
   const { error: uploadError } = await supabase.storage
     .from(PRODUCT_IMAGES_BUCKET)
-    .upload(path, input.file, { contentType: input.file.type, upsert: false })
+    .upload(path, input.file, {
+      contentType: input.file.type,
+      upsert: false,
+      // La ruta lleva un uuid: este objeto NUNCA cambia de contenido, así que
+      // el navegador puede quedárselo y no volver a pedirlo. Siete días y no
+      // un año: los bytes siguen siendo de un bucket privado, y una caché
+      // eterna sobreviviría a despublicar el producto.
+      cacheControl: '604800',
+    })
 
   if (uploadError) throw catalogErrorFromDb(uploadError)
 

@@ -141,7 +141,7 @@ export function ProductQuickView({
             como un precio que aún no se sabe, o peor, como uno tachado. */}
         {product.isPending && slug !== null && (
           <Stack aria-hidden direction={{ xs: 'column', md: 'row' }} sx={{ gap: 2 }}>
-            <Card sx={{ p: 2, width: { md: 300 }, flexShrink: 0 }}>
+            <Card sx={{ p: 2, width: { md: 400 }, flexShrink: 0 }}>
               <Skeleton
                 variant="rectangular"
                 sx={{ width: '100%', aspectRatio: '4 / 3', borderRadius: `${R.md}px` }}
@@ -167,8 +167,12 @@ export function ProductQuickView({
              hasta la altura de la columna derecha y dejaba un palmo de blanco
              bajo la foto, porque la foto tiene su proporción y no crece. */
           <Stack direction={{ xs: 'column', md: 'row' }} sx={{ gap: 2, alignItems: 'flex-start' }}>
-            {/* Galería en su propia tarjeta, con las miniaturas dentro. */}
-            <Card sx={{ p: 2, width: { md: 300 }, flexShrink: 0 }}>
+            {/* Galería en su propia tarjeta, con las miniaturas dentro.
+                400 px y no 300: a 300 la foto de la vista rápida se quedaba en
+                una estampilla en la que no se distingue el acabado, que es
+                justo lo que se mira antes de comprar. Lo que se pierde a la
+                derecha es aire, no contenido. */}
+            <Card sx={{ p: 2, width: { md: 400 }, flexShrink: 0 }}>
               <ProductGallery images={gallery.data ?? []} alt={item.name} />
             </Card>
 

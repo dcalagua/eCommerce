@@ -552,6 +552,35 @@ describe('ficha de producto', () => {
     )
   })
 
+  it('pulsar la foto la abre en grande, se pasa de una a otra y se cierra', async () => {
+    const user = userEvent.setup()
+    renderStorefront(backend(), '/s/casa-nordica/product/silla-roble')
+
+    await screen.findByRole('img', { name: 'Silla de roble de frente' })
+    await user.click(screen.getByRole('button', { name: 'Ver la imagen en grande' }))
+
+    // El contador es lo que dice si queda algo por ver o se está dando vueltas.
+    const viewer = await screen.findByRole('dialog')
+    expect(within(viewer).getByText('Imagen 1 de 2')).toBeInTheDocument()
+
+    await user.click(within(viewer).getByRole('button', { name: 'Imagen siguiente' }))
+    expect(within(viewer).getByText('Imagen 2 de 2')).toBeInTheDocument()
+
+    await user.click(within(viewer).getByRole('button', { name: 'Cerrar la imagen' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('la miniatura abre el visor: a 64 px no se mira una foto, se elige', async () => {
+    const user = userEvent.setup()
+    renderStorefront(backend(), '/s/casa-nordica/product/silla-roble')
+
+    await screen.findByRole('img', { name: 'Silla de roble de frente' })
+    await user.click(screen.getByRole('button', { name: 'Imagen 2' }))
+
+    const viewer = await screen.findByRole('dialog')
+    expect(within(viewer).getByText('Imagen 2 de 2')).toBeInTheDocument()
+  })
+
   it('sin descripción lo dice, en vez de dejar un hueco', async () => {
     renderStorefront(backend(), '/s/casa-nordica/product/silla-lino')
 

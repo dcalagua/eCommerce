@@ -27,6 +27,7 @@ import {
   trackedOrderSchema,
   type TrackedOrder,
 } from './types'
+import { signedUrls, SIGN_TTL_SECONDS } from './signed-url-cache'
 
 /**
  * Acceso a datos de la vitrina pública.
@@ -339,24 +340,29 @@ export async function fetchGallery(productId: string | null): Promise<GalleryIma
 }
 
 /**
- * Firma un lote de rutas. Una firma que falle no puede tumbar el catálogo
- * entero: el producto se sigue viendo con el marcador neutral en vez de la foto.
+ * Firma un lote de rutas, reutilizando las que siguen vivas.
+ *
+ * La caché ([`signed-url-cache`](./signed-url-cache.ts)) es lo que hace que
+ * volver al catálogo no vuelva a bajar las mismas fotos: firmar otra vez cambia
+ * la URL, y una URL nueva es, para el navegador, otra imagen que descargar.
+ *
+ * Una firma que falle no puede tumbar el catálogo entero: el producto se sigue
+ * viendo con el marcador neutral en vez de la foto.
  */
 export async function signPaths(paths: string[]): Promise<Record<string, string>> {
-  const unique = [...new Set(paths.filter(Boolean))]
-  if (unique.length === 0) return {}
+  return signedUrls(PRODUCT_IMAGES_BUCKET, paths, async (missing) => {
+    const { data, error } = await storefront()
+      .storage.from(PRODUCT_IMAGES_BUCKET)
+      .createSignedUrls(missing, SIGN_TTL_SECONDS)
 
-  const { data, error } = await storefront()
-    .storage.from(PRODUCT_IMAGES_BUCKET)
-    .createSignedUrls(unique, 3600)
+    if (error) return {}
 
-  if (error) return {}
-
-  const map: Record<string, string> = {}
-  for (const item of data ?? []) {
-    if (item.path && item.signedUrl) map[item.path] = item.signedUrl
-  }
-  return map
+    const map: Record<string, string> = {}
+    for (const item of data ?? []) {
+      if (item.path && item.signedUrl) map[item.path] = item.signedUrl
+    }
+    return map
+  })
 }
 
 /**
@@ -372,20 +378,19 @@ export async function signPaths(paths: string[]): Promise<Record<string, string>
  * vive en el mismo bucket privado que el logo del tenant.
  */
 export async function signStoreAssetPaths(paths: string[]): Promise<Record<string, string>> {
-  const unique = [...new Set(paths.filter(Boolean))]
-  if (unique.length === 0) return {}
+  return signedUrls(STORE_ASSETS_BUCKET, paths, async (missing) => {
+    const { data, error } = await storefront()
+      .storage.from(STORE_ASSETS_BUCKET)
+      .createSignedUrls(missing, SIGN_TTL_SECONDS)
 
-  const { data, error } = await storefront()
-    .storage.from(STORE_ASSETS_BUCKET)
-    .createSignedUrls(unique, 3600)
+    if (error) return {}
 
-  if (error) return {}
-
-  const map: Record<string, string> = {}
-  for (const item of data ?? []) {
-    if (item.path && item.signedUrl) map[item.path] = item.signedUrl
-  }
-  return map
+    const map: Record<string, string> = {}
+    for (const item of data ?? []) {
+      if (item.path && item.signedUrl) map[item.path] = item.signedUrl
+    }
+    return map
+  })
 }
 
 /**

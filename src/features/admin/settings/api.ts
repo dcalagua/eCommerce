@@ -220,7 +220,13 @@ export async function uploadStoreAsset(input: {
 
   const { error } = await client()
     .storage.from(STORE_ASSETS_BUCKET)
-    .upload(path, input.file, { contentType: input.file.type, upsert: false })
+    .upload(path, input.file, {
+      contentType: input.file.type,
+      upsert: false,
+      // Mismo criterio que las fotos de producto: ruta con uuid, contenido
+      // inmutable, siete días de caché de navegador.
+      cacheControl: '604800',
+    })
 
   if (error) throw settingsErrorFromDb(error)
   return path
