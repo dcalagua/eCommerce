@@ -132,3 +132,5 @@ export async function fetchMyOrderDetail(orderId: string): Promise<MyOrderDetail
 export const myOrdersKey = () => ['storefront', 'my-orders'] as const
 export const myStatementKey = () => ['storefront', 'my-statement'] as const
 export const myCouponsKey = (storeId: string) => ['storefront', 'my-coupons', storeId] as const
+export const myOrderDetailKey = (orderId: string) =>
+  ['storefront', 'my-order', orderId] as const

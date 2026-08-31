@@ -245,6 +245,8 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'store.cart.stockUnknown': 'Availability unconfirmed',
     'store.checkout.error.generic':
       'We could not place the order. Please try again in a moment.',
+    'store.checkout.error.cartGone':
+      'Your saved cart is gone. We retried with what is on screen; if it fails again, add the products once more.',
     'store.order.title': 'Order placed',
     'store.order.body':
       'We sent the confirmation by email. The store will contact you to arrange payment and delivery.',
@@ -1171,6 +1173,14 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'account.orders.date': 'Date',
     'account.orders.state': 'Status',
     'account.orders.total': 'Total',
+    'account.orders.detail': 'View details',
+    'account.orders.item': 'Product',
+    'account.orders.quantity': 'Quantity',
+    'account.orders.lineTotal': 'Amount',
+    'account.orders.subtotal': 'Subtotal',
+    'account.orders.discount': 'Discount',
+    'account.orders.tax': 'Tax',
+    'account.orders.shipping': 'Shipping',
     'account.orders.tracking': 'Detailed tracking arrives in the confirmation email of each order.',
     'account.statement.empty': 'No account statement',
     'account.statement.emptyBody': 'Your user is not linked to any buying company.',

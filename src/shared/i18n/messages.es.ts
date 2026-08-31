@@ -249,6 +249,8 @@ export const es = {
     'store.cart.stockUnknown': 'Disponibilidad sin confirmar',
     'store.checkout.error.generic':
       'No pudimos registrar el pedido. Vuelve a intentarlo en un momento.',
+    'store.checkout.error.cartGone':
+      'Tu carrito guardado ya no existe. Lo reintentamos con lo que tienes en pantalla; si vuelve a fallar, vuelve a añadir los productos.',
     'store.order.title': 'Pedido registrado',
     'store.order.body':
       'Te enviamos la confirmación por correo. La tienda te contactará para coordinar el pago y la entrega.',
@@ -1180,6 +1182,14 @@ export const es = {
     'account.orders.date': 'Fecha',
     'account.orders.state': 'Estado',
     'account.orders.total': 'Total',
+    'account.orders.detail': 'Ver el detalle',
+    'account.orders.item': 'Producto',
+    'account.orders.quantity': 'Cantidad',
+    'account.orders.lineTotal': 'Importe',
+    'account.orders.subtotal': 'Subtotal',
+    'account.orders.discount': 'Descuento',
+    'account.orders.tax': 'Impuesto',
+    'account.orders.shipping': 'Envío',
     'account.orders.tracking': 'El seguimiento detallado llega en el correo de confirmación de cada pedido.',
     'account.statement.empty': 'Sin estado de cuenta',
     'account.statement.emptyBody': 'Tu usuario no está vinculado a ninguna empresa compradora.',

@@ -12,13 +12,15 @@ import {
   Typography,
 } from '@mui/material'
 import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { useI18n } from '@/shared/i18n/i18n-context'
-import type { MessageKey } from '@/shared/i18n/messages'
 import { formatDate, formatMoney } from '@/shared/lib/format'
 import { BrandLoader } from '@/shared/ui/BrandLoader'
 import { EmptyState, ErrorState } from '@/shared/ui/states'
 import { T } from '@/theme/tokens'
 import { fetchMyOrders, myOrdersKey, type MyOrder } from '../portal'
+import { EstadoChip } from './EstadoChip'
+import { MyOrderDrawer } from './MyOrderDrawer'
 
 /**
  * Mis pedidos.
@@ -35,6 +37,7 @@ import { fetchMyOrders, myOrdersKey, type MyOrder } from '../portal'
 export function MyOrdersSection({ storeSlug }: { storeSlug: string }) {
   const { t, locale } = useI18n()
   const query = useQuery({ queryKey: myOrdersKey(), queryFn: () => fetchMyOrders(50) })
+  const [abierto, setAbierto] = useState<MyOrder | null>(null)
 
   if (query.isPending) return <BrandLoader />
   if (query.isError) return <ErrorState error={query.error} onRetry={() => void query.refetch()} />
@@ -63,7 +66,24 @@ export function MyOrdersSection({ storeSlug }: { storeSlug: string }) {
         </TableHead>
         <TableBody>
           {orders.map((order) => (
-            <TableRow key={order.order_id} hover>
+            <TableRow
+              key={order.order_id}
+              hover
+              // La fila entera abre el detalle: el objetivo mas grande de la
+              // pantalla es el que se pulsa, y un enlace de dos palabras en la
+              // ultima columna se falla en movil.
+              role="button"
+              tabIndex={0}
+              aria-label={`${t('account.orders.detail')}: ${order.order_number}`}
+              onClick={() => setAbierto(order)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  setAbierto(order)
+                }
+              }}
+              sx={{ cursor: 'pointer' }}
+            >
               <TableCell>
                 <Typography sx={{ fontSize: T.body, fontWeight: 800 }}>
                   {order.order_number}
@@ -102,33 +122,13 @@ export function MyOrdersSection({ storeSlug }: { storeSlug: string }) {
           {t('account.orders.tracking').replace('{store}', storeSlug)}
         </Typography>
       </Box>
+
+      <MyOrderDrawer
+        orderId={abierto?.order_id ?? null}
+        orderNumber={abierto?.order_number ?? null}
+        onClose={() => setAbierto(null)}
+      />
     </Card>
-  )
-}
-
-/**
- * Estado en pastilla, con su traducción y su color.
- *
- * Cae al valor crudo si el diccionario no tiene la clave: un estado nuevo del
- * servidor tiene que verse, aunque sea sin traducir. Esconderlo sería peor.
- */
-function EstadoChip({ valor, clave }: { valor: string; clave: string }) {
-  const { t } = useI18n()
-  const key = `${clave}.${valor}` as MessageKey
-  const etiqueta = t(key)
-  const tono =
-    valor === 'paid' || valor === 'fulfilled'
-      ? { bgcolor: 'var(--accent-soft)', color: 'var(--accent-deep)' }
-      : valor === 'cancelled' || valor === 'failed'
-        ? { bgcolor: 'var(--red-soft)', color: 'var(--red)' }
-        : { bgcolor: 'var(--neutral-soft)', color: 'var(--muted)' }
-
-  return (
-    <Chip
-      size="small"
-      label={etiqueta === key ? valor : etiqueta}
-      sx={{ ...tono, fontWeight: 700, fontSize: T.label }}
-    />
   )
 }
 
