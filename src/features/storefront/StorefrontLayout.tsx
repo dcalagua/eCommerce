@@ -116,7 +116,19 @@ export function StorefrontLayout() {
             —que comparte tokens de color— no se entera de nada. */}
         <Box
           className="sf-scope"
-          sx={{ minHeight: '100dvh', bgcolor: 'var(--bg)', display: 'flex', flexDirection: 'column' }}
+          sx={{
+            // `100vh` primero y `100dvh` solo donde existe. El pie ya iba al
+            // final de la columna, pero en vistas embebidas —el navegador
+            // simple del editor, un iframe de previsualizacion— `dvh` calcula
+            // MENOS que el alto real y quedaba una banda de fondo bajo el pie.
+            // Con las dos, el que no entienda `dvh` se queda con `vh` y nadie
+            // ve el hueco.
+            minHeight: '100vh',
+            '@supports (min-height: 100dvh)': { minHeight: '100dvh' },
+            bgcolor: 'var(--bg)',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
         >
           {/* Primer elemento enfocable del documento: sin él, llegar al
               catálogo con el teclado obliga a pasar por el logo, el menú, la
