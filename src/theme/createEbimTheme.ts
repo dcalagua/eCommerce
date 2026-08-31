@@ -112,10 +112,31 @@ export function createEbimTheme({
           },
         },
       },
+      /**
+       * Los tres niveles de `shared/ui/buttons` en el tema, para que la jerarquia
+       * no dependa de que cada pantalla acierte con sus `sx`.
+       *
+       * `contained` es el unico que RELLENA con el acento: es el nivel 1 y solo
+       * hay uno por superficie. Los otros dos escriben con `accentDeep` y no con
+       * `main`, que es la regla AA del contrato (§4.4): el acento vale para
+       * fondos, nunca como color de texto. El contorno del secundario es la
+       * linea neutra del tema y solo se tine del acento al pasar por encima; con
+       * el borde ya en verde, un secundario al lado de un primario pesaban casi
+       * igual y la pantalla dejaba de decir cual es la accion que se espera.
+       *
+       * Solo se tocan los sufijos `*Primary`: un boton `color="error"` conserva
+       * su rojo, que ahi el color SI es el dato.
+       */
       MuiButton: {
         defaultProps: { disableElevation: true },
         styleOverrides: {
           root: { borderRadius: R.md, minHeight: d.controlH, paddingInline: d.padX },
+          textPrimary: { color: deep },
+          outlinedPrimary: {
+            color: deep,
+            borderColor: 'var(--border)',
+            '&:hover': { borderColor: deep, backgroundColor: 'var(--accent-soft)' },
+          },
         },
       },
       MuiOutlinedInput: {

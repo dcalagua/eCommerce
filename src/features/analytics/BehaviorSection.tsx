@@ -1,22 +1,29 @@
-import { StatusChip } from '@/shared/ui/StatusChip'
-import {
-  Card,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Typography,
-} from '@mui/material'
+import AddShoppingCartRoundedIcon from '@mui/icons-material/AddShoppingCartRounded'
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
+import FilterAltRoundedIcon from '@mui/icons-material/FilterAltRounded'
+import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
+import ManageSearchRoundedIcon from '@mui/icons-material/ManageSearchRounded'
+import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
+import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
+import RemoveShoppingCartRoundedIcon from '@mui/icons-material/RemoveShoppingCartRounded'
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
+import ShoppingCartCheckoutRoundedIcon from '@mui/icons-material/ShoppingCartCheckoutRounded'
+import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
+import { Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material'
+import type { ReactNode } from 'react'
+import { NotEntitledState } from '@/features/capabilities/CapabilityGate'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
-import { NotEntitledState } from '@/features/capabilities/CapabilityGate'
+import { AppIcon } from '@/shared/ui/AppIcon'
+import { MiniBar } from '@/shared/ui/MiniBar'
+import { SectionCard } from '@/shared/ui/SectionCard'
+import { StatusChip } from '@/shared/ui/StatusChip'
 import { EmptyState, ErrorState } from '@/shared/ui/states'
 import { TableSkeleton } from '@/shared/ui/TableSkeleton'
+import { T } from '@/theme/tokens'
 import { isNotEntitled } from './errors'
 import { useAnalyticsWindow, useFunnel, useSearchTerms } from './hooks'
-import type { AnalyticsRange } from './types'
+import { ANALYTICS_EVENT_TYPES, type AnalyticsRange } from './types'
 
 /**
  * Comportamiento del comprador: lo que sale de la SERIE DE HECHOS.
@@ -47,6 +54,23 @@ const EVENT_LABEL: Record<string, MessageKey> = {
 }
 
 /**
+ * Un icono por hecho: el embudo se recorre de arriba abajo y el icono es lo que
+ * deja distinguir «empezó la compra» de «terminó la compra» sin leer las dos
+ * filas enteras. Decorativo — el nombre del hecho va al lado.
+ */
+const EVENT_ICON: Record<string, ReactNode> = {
+  product_view: <VisibilityRoundedIcon />,
+  search: <SearchRoundedIcon />,
+  add_to_cart: <AddShoppingCartRoundedIcon />,
+  checkout_started: <ShoppingCartCheckoutRoundedIcon />,
+  checkout_completed: <PaymentsRoundedIcon />,
+  cart_abandoned: <RemoveShoppingCartRoundedIcon />,
+  order_created: <ReceiptLongRoundedIcon />,
+  order_completed: <CheckCircleRoundedIcon />,
+  promotion_used: <LocalOfferRoundedIcon />,
+}
+
+/**
  * Nombre legible del hecho, con respaldo al código crudo.
  *
  * El respaldo no es defensa contra lo imposible: el día que la base gane un
@@ -56,6 +80,20 @@ const EVENT_LABEL: Record<string, MessageKey> = {
 function eventLabel(type: string, t: (key: MessageKey) => string): string {
   const key = EVENT_LABEL[type]
   return key ? t(key) : type
+}
+
+/**
+ * Orden del embudo: el del enum de la base, que es el del recorrido real —ver,
+ * buscar, añadir, pagar—.
+ *
+ * Un embudo ordenado por cantidad no es un embudo: es un ranking, y deja de
+ * responder a la única pregunta que justifica la forma, que es «dónde se cae la
+ * gente». Un hecho que no esté en la lista canónica va al final, sin inventarle
+ * un sitio.
+ */
+function funnelOrder(type: string): number {
+  const index = (ANALYTICS_EVENT_TYPES as readonly string[]).indexOf(type)
+  return index === -1 ? ANALYTICS_EVENT_TYPES.length : index
 }
 
 export function BehaviorSection({
@@ -76,15 +114,25 @@ export function BehaviorSection({
   if (funnel.isError) return <ErrorState error={funnel.error} onRetry={() => void funnel.refetch()} />
   if (funnel.isPending) return <TableSkeleton columns={3} />
 
-  const rows = funnel.data ?? []
+  const rows = [...(funnel.data ?? [])].sort(
+    (a, b) => funnelOrder(a.event_type) - funnelOrder(b.event_type),
+  )
   const total = rows.reduce((sum, row) => sum + row.events, 0)
+  // El largo de cada barra se mide contra el paso MÁS ALTO, que es la boca del
+  // embudo. Contra el total sería contra una suma de cosas distintas —vistas
+  // más pedidos— y no significaría nada.
+  const funnelMax = Math.max(...rows.map((row) => row.events), 0)
+
+  const termRows = terms.data ?? []
+  const termsMax = Math.max(...termRows.map((row) => row.searches), 0)
 
   return (
     <Stack sx={{ gap: 2.5 }}>
-      <Card>
-        <Typography component="h3" sx={{ p: 2, pb: 0, fontSize: 14, fontWeight: 800 }}>
-          {t('analytics.funnel.title')}
-        </Typography>
+      <SectionCard
+        icon={<FilterAltRoundedIcon />}
+        title={t('analytics.funnel.title')}
+        subtitle={t('analytics.funnel.subtitle')}
+      >
         {total === 0 ? (
           <EmptyState
             title={t('analytics.funnel.empty')}
@@ -95,30 +143,50 @@ export function BehaviorSection({
             <TableHead>
               <TableRow>
                 <TableCell>{t('analytics.funnel.event')}</TableCell>
-                <TableCell align="right">{t('analytics.funnel.events')}</TableCell>
+                <TableCell align="right" sx={{ width: 180 }}>
+                  {t('analytics.funnel.events')}
+                </TableCell>
                 <TableCell align="right">{t('analytics.funnel.sessions')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {rows.map((row) => (
-                <TableRow key={row.event_type}>
-                  <TableCell>{eventLabel(row.event_type, t)}</TableCell>
-                  <TableCell align="right">{row.events}</TableCell>
-                  <TableCell align="right">{row.sessions ?? '—'}</TableCell>
+                <TableRow key={row.event_type} hover>
+                  <TableCell>
+                    <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
+                      <AppIcon tone="neutral" size="sm">
+                        {EVENT_ICON[row.event_type] ?? <VisibilityRoundedIcon />}
+                      </AppIcon>
+                      <Typography sx={{ fontSize: T.body, fontWeight: 600 }}>
+                        {eventLabel(row.event_type, t)}
+                      </Typography>
+                    </Stack>
+                  </TableCell>
+                  <TableCell align="right" sx={{ width: 180 }}>
+                    <Typography className="tnum" sx={{ fontSize: T.body, fontWeight: 800 }}>
+                      {row.events}
+                    </Typography>
+                    <MiniBar value={row.events} max={funnelMax} />
+                  </TableCell>
+                  <TableCell align="right" className="tnum">
+                    {row.sessions ?? '—'}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         )}
-      </Card>
+      </SectionCard>
 
-      <Card>
-        <Typography component="h3" sx={{ p: 2, pb: 0, fontSize: 14, fontWeight: 800 }}>
-          {t('analytics.terms.title')}
-        </Typography>
+      <SectionCard
+        icon={<ManageSearchRoundedIcon />}
+        title={t('analytics.terms.title')}
+        subtitle={t('analytics.terms.subtitle')}
+        meta={termRows.length > 0 ? String(termRows.length) : undefined}
+      >
         {terms.isPending ? (
           <TableSkeleton columns={3} />
-        ) : (terms.data ?? []).length === 0 ? (
+        ) : termRows.length === 0 ? (
           <EmptyState
             title={t('analytics.terms.empty')}
             description={t('analytics.terms.emptyBody')}
@@ -128,15 +196,24 @@ export function BehaviorSection({
             <TableHead>
               <TableRow>
                 <TableCell>{t('analytics.terms.term')}</TableCell>
-                <TableCell align="right">{t('analytics.terms.searches')}</TableCell>
+                <TableCell align="right" sx={{ width: 180 }}>
+                  {t('analytics.terms.searches')}
+                </TableCell>
                 <TableCell align="right">{t('analytics.terms.zero')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {(terms.data ?? []).map((row) => (
-                <TableRow key={row.term}>
-                  <TableCell>{row.term}</TableCell>
-                  <TableCell align="right">{row.searches}</TableCell>
+              {termRows.map((row) => (
+                <TableRow key={row.term} hover>
+                  <TableCell>
+                    <Typography sx={{ fontSize: T.body, fontWeight: 600 }}>{row.term}</Typography>
+                  </TableCell>
+                  <TableCell align="right" sx={{ width: 180 }}>
+                    <Typography className="tnum" sx={{ fontSize: T.body, fontWeight: 800 }}>
+                      {row.searches}
+                    </Typography>
+                    <MiniBar value={row.searches} max={termsMax} />
+                  </TableCell>
                   <TableCell align="right">
                     {row.zero_results > 0 ? (
                       // Lo accionable de esta tabla entera: un término buscado y
@@ -145,7 +222,7 @@ export function BehaviorSection({
                       // los que sí encontraron.
                       <StatusChip tone="warning" label={String(row.zero_results)} />
                     ) : (
-                      row.zero_results
+                      <span className="tnum">{row.zero_results}</span>
                     )}
                   </TableCell>
                 </TableRow>
@@ -153,7 +230,7 @@ export function BehaviorSection({
             </TableBody>
           </Table>
         )}
-      </Card>
+      </SectionCard>
     </Stack>
   )
 }

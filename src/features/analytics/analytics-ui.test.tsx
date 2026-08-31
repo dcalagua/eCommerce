@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '@/test/render'
 import {
@@ -102,9 +102,21 @@ class ModuloNoContratado extends Error {
 }
 
 function backend(
-  options: { entitlements?: string[]; kpis?: Record<string, unknown>; advanced?: boolean } = {},
+  options: {
+    entitlements?: string[]
+    kpis?: Record<string, unknown>
+    advanced?: boolean
+    funnel?: Array<Record<string, unknown>>
+    serie?: Array<Record<string, unknown>>
+  } = {},
 ): FakeSupabase {
-  const { entitlements = ADVANCED, kpis = KPIS_CON_DATOS, advanced = true } = options
+  const {
+    entitlements = ADVANCED,
+    kpis = KPIS_CON_DATOS,
+    advanced = true,
+    funnel = EMBUDO,
+    serie = SERIE,
+  } = options
   const negado = () => {
     throw new ModuloNoContratado()
   }
@@ -130,7 +142,7 @@ function backend(
     rpc: {
       effective_capabilities: () => makePlatformContext({ entitlements, source: 'hub' }),
       analytics_kpis: () => kpis,
-      analytics_timeseries: () => SERIE,
+      analytics_timeseries: () => serie,
       analytics_top_products: () => [
         {
           product_id: null,
@@ -154,7 +166,7 @@ function backend(
           currency: 'PEN',
         },
       ],
-      analytics_funnel: advanced ? () => EMBUDO : negado,
+      analytics_funnel: advanced ? () => funnel : negado,
       analytics_search_terms: advanced
         ? () => [{ term: 'jabon', searches: 12, zero_results: 12, sessions: 9 }]
         : negado,
@@ -193,7 +205,11 @@ describe('Analítica — la pantalla', () => {
   it('enseña los indicadores que la base devolvió, sin recalcular ninguno', async () => {
     renderAnalytics(backend())
     expect(await screen.findByText('S/ 900.00')).toBeInTheDocument()
-    expect(screen.getByText('S/ 300.00')).toBeInTheDocument()
+    // Se pregunta por la tarjeta, no por el texto suelto: el mismo importe
+    // puede aparecer tambien en la serie diaria, y una cifra correcta en el
+    // sitio equivocado no es una cifra correcta.
+    const ticket = screen.getByRole('article', { name: 'Ticket promedio' })
+    expect(within(ticket).getByText('S/ 300.00')).toBeInTheDocument()
     expect(screen.getByText('40.00 %')).toBeInTheDocument()
     expect(screen.getByText('60.00 %')).toBeInTheDocument()
     // El denominador se enseña al lado de la razón: un porcentaje sin decir
@@ -237,6 +253,24 @@ describe('Analítica — la pantalla', () => {
     const boton = await screen.findByRole('button', { name: 'Exportar' })
     expect(boton).toBeEnabled()
   })
+
+  /**
+   * La serie diaria es UNA curva, y una curva solo se puede dibujar si todos
+   * sus puntos están en la misma unidad. Con dos monedas en el periodo se dice
+   * que no hay serie comparable en vez de pintar una línea que suma soles con
+   * dólares: es el mismo criterio que el guion de los importes.
+   */
+  it('con dos monedas en el periodo no se dibuja la serie: se dice por qué', async () => {
+    renderAnalytics(
+      backend({
+        serie: [
+          { day: '2026-08-27', orders: 1, units: 2, revenue: '300.00', currency: 'PEN' },
+          { day: '2026-08-28', orders: 1, units: 1, revenue: '90.00', currency: 'USD' },
+        ],
+      }),
+    )
+    expect(await screen.findByText(/mezcla monedas/i)).toBeInTheDocument()
+  })
 })
 
 describe('Analítica — el módulo vendible', () => {
@@ -264,6 +298,32 @@ describe('Analítica — el módulo vendible', () => {
     renderAnalytics(backend())
     const fila = (await screen.findByText('Pedido creado')).closest('tr')
     expect(fila?.textContent).toContain('—')
+  })
+
+  /**
+   * Un embudo ordenado por cantidad es un ranking, no un embudo: deja de
+   * responder «dónde se cae la gente», que es lo único que justifica la forma.
+   * La base puede devolver los hechos en cualquier orden; la pantalla los pone
+   * en el del recorrido de compra.
+   */
+  it('el embudo se pinta en el orden del recorrido, no en el que llegó', async () => {
+    window.history.replaceState(null, '', '#comportamiento')
+    renderAnalytics(
+      backend({
+        funnel: [
+          { event_type: 'order_created', events: 4, sessions: null },
+          { event_type: 'product_view', events: 120, sessions: 40 },
+          { event_type: 'add_to_cart', events: 30, sessions: 18 },
+        ],
+      }),
+    )
+    const primera = await screen.findByText('Vio una ficha')
+    const filas = [...(primera.closest('tbody')?.querySelectorAll('tr') ?? [])]
+    expect(filas.map((fila) => fila.querySelector('td')?.textContent)).toEqual([
+      'Vio una ficha',
+      'Añadió al carrito',
+      'Pedido creado',
+    ])
   })
 
   it('los términos sin resultados se resaltan: son catálogo que falta', async () => {
