@@ -44,17 +44,33 @@ import { randomUUID } from 'node:crypto'
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const STORE_SLUG = 'miquimica'
 
+/**
+ * Configuracion: `.env` primero, y las variables de entorno mandan por encima.
+ *
+ * El entorno gana a proposito. Una credencial que solo hace falta para una
+ * corrida —y menos aun si es de produccion— no tiene por que quedarse escrita
+ * en el disco: pasandola en la invocacion vive lo que vive el proceso.
+ */
 function env() {
-  const raw = readFileSync(join(ROOT, '.env'), 'utf8')
-  return Object.fromEntries(
-    raw
-      .split(/\r?\n/)
-      .filter((line) => line && !line.startsWith('#') && line.includes('='))
-      .map((line) => {
-        const i = line.indexOf('=')
-        return [line.slice(0, i).trim(), line.slice(i + 1).trim()]
-      }),
+  let file = {}
+  try {
+    const raw = readFileSync(join(ROOT, '.env'), 'utf8')
+    file = Object.fromEntries(
+      raw
+        .split(/\r?\n/)
+        .filter((line) => line && !line.startsWith('#') && line.includes('='))
+        .map((line) => {
+          const i = line.indexOf('=')
+          return [line.slice(0, i).trim(), line.slice(i + 1).trim()]
+        }),
+    )
+  } catch {
+    // Sin `.env` se puede trabajar entero desde el entorno.
+  }
+  const fromEnv = Object.fromEntries(
+    Object.entries(process.env).filter(([, value]) => Boolean(value)),
   )
+  return { ...file, ...fromEnv }
 }
 
 /** Consulta al microservicio. Solo lectura. */
@@ -182,11 +198,36 @@ async function main() {
     secret: values.SUPABASE_SECRET_KEY,
   }
 
+  /**
+   * El filtro, con la forma EXACTA que manda su app (`ProductBusiness`).
+   *
+   * Nada de mandar medio objeto: su servicio inserta lo que recibe en tablas
+   * intermedias, y un campo ausente le revienta con «String or binary data
+   * would be truncated», que es un error suyo provocado por una peticion mal
+   * formada nuestra. Se mandan todos los campos, vacios cuando no aplican.
+   *
+   * `CustomerCode` y compania NO son opcionales de verdad: el precio de este
+   * servicio es POR CLIENTE (B2B). Sin cliente, lo que vuelva —si vuelve— no es
+   * el precio de nadie.
+   */
   const baseFilter = {
-    societyCode: cfg.society,
-    SaleOrg: cfg.saleOrg,
+    productCode: '',
+    productCodes: [],
+    productDescription: '',
+    lineCode: lines[0] ?? '',
     lineCodes: lines,
+    societyCode: cfg.society,
+    codCentro: values.QS_COD_CENTRO ?? '',
+    treatmentCode: values.QS_TREATMENT_CODE ?? '',
+    oficina: values.QS_OFICINA ?? '',
+    BusinessFeature: values.QS_BUSINESS_FEATURE ?? '',
+    SaleOrg: cfg.saleOrg,
+    CustomerCode: values.QS_CUSTOMER_CODE ?? '',
+    Categories: [],
+    isFilterBonif: false,
+    isFilterScale: false,
     totalFilter: limit,
+    Cod_Almacen: '',
   }
 
   if (probe) {
