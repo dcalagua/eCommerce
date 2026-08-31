@@ -1,23 +1,41 @@
+import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
+import KeyboardArrowDownRoundedIcon from '@mui/icons-material/KeyboardArrowDownRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
-import { MenuItem, Stack, TextField, Typography } from '@mui/material'
+import {
+  Box,
+  Button,
+  ListItemIcon,
+  Menu,
+  MenuItem,
+  MenuList,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material'
+import { useState } from 'react'
 import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
+import { AppIcon } from '@/shared/ui/AppIcon'
+import { R, T } from '@/theme/tokens'
 
 /**
  * Selector de tienda.
  *
  * Con UNA sola tienda no es un selector: es una etiqueta. Un desplegable
- * deshabilitado de un solo elemento promete una eleccion que no existe, y el
+ * deshabilitado de un solo elemento promete una elección que no existe, y el
  * usuario que trabaja siempre en el mismo cliente lo lee como algo roto. Mismo
  * criterio que `CompanySwitcher`, que ya se ocultaba con una sola sociedad.
  *
- * El componente sigue existiendo porque el modelo admite varias tiendas por
- * sociedad (`stores.company_id`): en cuanto haya una segunda, el selector
- * aparece solo, sin repasar una consulta del backoffice.
+ * Con varias es un BOTÓN con menú, no un `TextField select`. El campo de
+ * formulario con su etiqueta flotante decía «rellena esto», y esto no se
+ * rellena: se elige un contexto, y el contexto cambia lo que muestra media
+ * aplicación. El menú además deja poner icono, marca de selección y el slug
+ * debajo del nombre, que es lo que distingue dos tiendas con nombres parecidos.
  */
 export function StoreSwitcher() {
   const { stores, activeStore, setActiveStore } = useTenant()
   const { t } = useI18n()
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
 
   if (stores.length === 0) {
     return (
@@ -27,14 +45,10 @@ export function StoreSwitcher() {
     )
   }
 
-  // Una sola tienda: se muestra cual es, sin fingir que se puede cambiar.
+  // Una sola tienda: se muestra cuál es, sin fingir que se puede cambiar.
   if (stores.length === 1) {
     return (
-      <Stack
-        direction="row"
-        spacing={0.75}
-        sx={{ alignItems: 'center', color: 'var(--muted)' }}
-      >
+      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', color: 'var(--muted)' }}>
         <StorefrontRoundedIcon sx={{ fontSize: 16 }} />
         <Typography sx={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
           {activeStore?.name ?? stores[0]?.name}
@@ -44,23 +58,74 @@ export function StoreSwitcher() {
   }
 
   return (
-    <TextField
-      select
-      size="small"
-      value={activeStore?.id ?? ''}
-      onChange={(event) => setActiveStore(event.target.value)}
-      label={t('admin.store.label')}
-      sx={{ minWidth: 180, '& .MuiInputBase-root': { fontSize: 13, fontWeight: 700 } }}
-    >
-      {stores.map((store) => (
-        <MenuItem key={store.id} value={store.id}>
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-            <StorefrontRoundedIcon sx={{ fontSize: 16 }} />
-            <span>{store.name}</span>
-          </Stack>
-        </MenuItem>
-      ))}
-    </TextField>
+    <>
+      <Button
+        onClick={(event) => setAnchor(event.currentTarget)}
+        aria-haspopup="menu"
+        aria-expanded={Boolean(anchor)}
+        aria-label={t('admin.store.label')}
+        endIcon={<KeyboardArrowDownRoundedIcon />}
+        sx={{
+          gap: 0.5,
+          pl: 0.75,
+          pr: 1,
+          py: 0.5,
+          borderRadius: `${R.md}px`,
+          textTransform: 'none',
+          color: 'var(--text)',
+          bgcolor: 'var(--neutral-soft)',
+          '&:hover': { bgcolor: 'color-mix(in srgb, var(--muted) 18%, var(--card))' },
+        }}
+      >
+        <AppIcon tone="accent" size="sm">
+          <StorefrontRoundedIcon />
+        </AppIcon>
+        <Box sx={{ textAlign: 'left', minWidth: 0, ml: 0.5 }}>
+          <Typography sx={{ fontSize: T.micro, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)', lineHeight: 1.2 }}>
+            {t('admin.store.label')}
+          </Typography>
+          <Typography sx={{ fontSize: 13, fontWeight: 800, lineHeight: 1.2 }}>
+            {activeStore?.name ?? '—'}
+          </Typography>
+        </Box>
+      </Button>
+
+      <Menu
+        anchorEl={anchor}
+        open={Boolean(anchor)}
+        onClose={() => setAnchor(null)}
+        slotProps={{ paper: { sx: { minWidth: 260, borderRadius: `${R.lg}px`, mt: 0.5 } } }}
+      >
+        <MenuList sx={{ py: 0.5 }}>
+          {stores.map((store) => {
+            const active = store.id === activeStore?.id
+            return (
+              <MenuItem
+                key={store.id}
+                selected={active}
+                onClick={() => {
+                  setActiveStore(store.id)
+                  setAnchor(null)
+                }}
+                sx={{ gap: 1, py: 1 }}
+              >
+                <ListItemIcon sx={{ minWidth: 0 }}>
+                  <AppIcon tone={active ? 'accent' : 'neutral'} size="sm">
+                    <StorefrontRoundedIcon />
+                  </AppIcon>
+                </ListItemIcon>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography sx={{ fontSize: 13, fontWeight: 700 }}>{store.name}</Typography>
+                  {/* El slug distingue dos tiendas que se llamen parecido. */}
+                  <Typography sx={{ fontSize: 11, color: 'var(--muted)' }}>{store.slug}</Typography>
+                </Box>
+                {active && <CheckRoundedIcon sx={{ fontSize: 18, color: 'var(--accent-deep)' }} />}
+              </MenuItem>
+            )
+          })}
+        </MenuList>
+      </Menu>
+    </>
   )
 }
 
@@ -83,16 +148,16 @@ export function CompanySwitcher() {
       value={activeCompanyId ?? ''}
       onChange={(event) => setActiveCompany(event.target.value)}
       label={t('admin.company.label')}
-      sx={{ minWidth: 170, '& .MuiInputBase-root': { fontSize: 13, fontWeight: 700 } }}
+      sx={{ minWidth: 180, '& .MuiInputBase-root': { fontSize: 13, fontWeight: 700 } }}
     >
-      {memberships.map((membership) => (
-        <MenuItem key={membership.company_id} value={membership.company_id}>
-          {/* El hub es el dueño del nombre de la sociedad; hasta que
-              `platform-context` esté cableado (P03 pendiente de project ref) se
-              muestra un identificador corto en vez de inventar un nombre. */}
-          {membership.company_id.slice(0, 8)} · {membership.role}
-        </MenuItem>
-      ))}
+      {companies.map((companyId) => {
+        const membership = memberships.find((item) => item.company_id === companyId)
+        return (
+          <MenuItem key={companyId} value={companyId}>
+            {companyId.slice(0, 8)} · {membership?.role ?? '—'}
+          </MenuItem>
+        )
+      })}
     </TextField>
   )
 }

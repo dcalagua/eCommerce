@@ -30,6 +30,7 @@ import { useCapabilities } from '@/features/capabilities/capabilities-context'
 import { RequireTenant } from '@/features/tenant/RequireTenant'
 import { useTenant } from '@/features/tenant/tenant-context'
 import { R, T } from '@/theme/tokens'
+import { GlobalSearch } from '@/features/search/GlobalSearch'
 import { AppIcon } from '@/shared/ui/AppIcon'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { AppBreadcrumbs } from '@/shared/ui/AppBreadcrumbs'
@@ -318,6 +319,10 @@ function AdminChrome() {
               items={crumbsForPath(location.pathname, t)}
               ariaLabel={t('admin.breadcrumb')}
             />
+          </Box>
+
+          <Box sx={{ mr: 1 }}>
+            <GlobalSearch />
           </Box>
 
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>

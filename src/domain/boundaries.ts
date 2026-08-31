@@ -395,8 +395,12 @@ export const BOUNDARIES: readonly Boundary[] = [
     kind: 'platform',
     state: 'implemented',
     responsibility:
-      'El armazón: router, providers, layout del backoffice, design system, i18n y utilidades compartidas.',
-    paths: ['app', 'shared', 'theme', 'features/admin', 'main.tsx'],
+      'El armazón: router, providers, layout del backoffice, design system, i18n, buscador global y utilidades compartidas.',
+    // `features/search` es NAVEGACION, no un dominio: lee pedidos y productos
+    // pero no decide nada sobre ellos, solo lleva a su pantalla. Sus secciones
+    // salen de `visibleNavItems`, la misma fuente que el sidebar, asi que no
+    // puede convertirse en un atajo a lo que el rol no permite.
+    paths: ['app', 'shared', 'theme', 'features/admin', 'features/search', 'main.tsx'],
   },
 ]
 
