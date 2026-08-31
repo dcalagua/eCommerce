@@ -1,3 +1,8 @@
+import { usePagedRows } from '@/shared/ui/usePagedRows'
+import { TablePager } from '@/shared/ui/TablePager'
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
+import { RowActions } from '@/shared/ui/RowActions'
 import { FilterBar } from '@/shared/ui/FilterBar'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import ManageSearchRoundedIcon from '@mui/icons-material/ManageSearchRounded'
@@ -95,6 +100,12 @@ export function SynonymsSection() {
     }
   }
 
+  // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
+  // aligerar la consulta. Va ANTES de la primera guarda con retorno,
+  // porque un hook detras de un `return` cambia de orden entre renders.
+  // Ver `usePagedRows`.
+  const pager = usePagedRows(list)
+
   if (!canManage) {
     return (
       <UnauthorizedState
@@ -152,7 +163,7 @@ export function SynonymsSection() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {list.map((row) => (
+              {pager.rows.map((row) => (
                 <TableRow key={row.id} hover>
                   <TableCell>
                     <Typography sx={{ fontWeight: 700 }}>{row.term}</Typography>
@@ -174,34 +185,48 @@ export function SynonymsSection() {
                     />
                   </TableCell>
                   <TableCell align="right">
-                    <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                      <Button
-                        size="small"
-                        onClick={() => {
-                          setForm({
-                            term: row.term,
-                            expansions: row.expansions.join(', '),
-                            is_active: row.is_active,
-                          })
-                          setEditing(row)
-                          setOpen(true)
-                        }}
-                      >
-                        {t('common.edit')}
-                      </Button>
-                      <Button
-                        size="small"
-                        color="error"
-                        onClick={() => void remove.mutateAsync(row.id)}
-                      >
-                        {t('common.delete')}
-                      </Button>
-                    </Stack>
+                    <RowActions
+                      actions={[
+                        {
+                          id: '0',
+                          icon: <EditRoundedIcon fontSize="small" />,
+                          label: t('common.edit'),
+                          tone: 'neutral',
+                          onClick: () => {
+                            setForm({
+                              term: row.term,
+                              expansions: row.expansions.join(', '),
+                              is_active: row.is_active,
+                            })
+                            setEditing(row)
+                            setOpen(true)
+                          },
+                        },
+                        {
+                          id: '1',
+                          icon: <DeleteRoundedIcon fontSize="small" />,
+                          label: t('common.delete'),
+                          tone: 'danger',
+                          onClick: () => void remove.mutateAsync(row.id),
+                        },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+        )}
+        {/* El paginador solo aparece cuando hay algo que paginar: un
+            "0-0 de 0" bajo un estado vacio es ruido que contradice al
+            propio estado vacio. */}
+        {pager.total > 0 && (
+          <TablePager
+            page={pager.page}
+            pageSize={pager.pageSize}
+            total={pager.total}
+            onPageChange={pager.setPage}
+          />
         )}
       </Card>
 

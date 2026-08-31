@@ -1,3 +1,6 @@
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
+import { RowActions } from '@/shared/ui/RowActions'
 import { FilterBar } from '@/shared/ui/FilterBar'
 import { TablePager } from '@/shared/ui/TablePager'
 import { StatusChip } from '@/shared/ui/StatusChip'
@@ -177,23 +180,25 @@ export function CustomersSection() {
                     />
                   </TableCell>
                   <TableCell align="right">
-                    <Button
-                      size="small"
-                      onClick={() => setDrawer({ open: true, customer })}
-                      aria-label={`${t('common.edit')}: ${customer.name}`}
-                    >
-                      {t('common.edit')}
-                    </Button>
-                    {canDelete && (
-                      <Button
-                        size="small"
-                        color="error"
-                        onClick={() => setDeleteTarget(customer)}
-                        aria-label={`${t('common.delete')}: ${customer.name}`}
-                      >
-                        {t('common.delete')}
-                      </Button>
-                    )}
+                    <RowActions
+                      actions={[
+                        {
+                          id: '0',
+                          icon: <EditRoundedIcon fontSize="small" />,
+                          label: `${t('common.edit')}: ${customer.name}`,
+                          tone: 'neutral',
+                          onClick: () => setDrawer({ open: true, customer }),
+                        },
+                        {
+                          id: '1',
+                          icon: <DeleteRoundedIcon fontSize="small" />,
+                          label: `${t('common.delete')}: ${customer.name}`,
+                          tone: 'danger',
+                          disabled: !(canDelete),
+                          onClick: () => setDeleteTarget(customer),
+                        },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

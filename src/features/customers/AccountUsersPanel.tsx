@@ -1,3 +1,5 @@
+import { usePagedRows } from '@/shared/ui/usePagedRows'
+import { TablePager } from '@/shared/ui/TablePager'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import { RowActions } from '@/shared/ui/RowActions'
 import { StatusChip } from '@/shared/ui/StatusChip'
@@ -107,6 +109,12 @@ export function AccountUsersPanel({
 
   const rows = users.data ?? []
 
+  // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
+  // aligerar la consulta. Va ANTES de la primera guarda con retorno,
+  // porque un hook detras de un `return` cambia de orden entre renders.
+  // Ver `usePagedRows`.
+  const pager = usePagedRows(rows)
+
   return (
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('customers.users.help')}</Typography>
@@ -215,7 +223,7 @@ export function AccountUsersPanel({
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows.map((user) => (
+            {pager.rows.map((user) => (
               <TableRow key={user.id} hover>
                 <TableCell>{user.email}</TableCell>
                 <TableCell>
@@ -269,6 +277,17 @@ export function AccountUsersPanel({
             ))}
           </TableBody>
         </Table>
+      )}
+      {/* El paginador solo aparece cuando hay algo que paginar: un
+          "0-0 de 0" bajo un estado vacio es ruido que contradice al
+          propio estado vacio. */}
+      {pager.total > 0 && (
+        <TablePager
+          page={pager.page}
+          pageSize={pager.pageSize}
+          total={pager.total}
+          onPageChange={pager.setPage}
+        />
       )}
     </Stack>
   )

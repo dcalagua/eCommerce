@@ -1,3 +1,5 @@
+import { usePagedRows } from '@/shared/ui/usePagedRows'
+import { TablePager } from '@/shared/ui/TablePager'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import {
   Alert,
@@ -100,6 +102,12 @@ export function ApiClientsSection() {
   const [scopes, setScopes] = useState<string[]>([])
   const [credential, setCredential] = useState<NewCredential | null>(null)
 
+  // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
+  // aligerar la consulta. Va ANTES de la primera guarda con retorno,
+  // porque un hook detras de un `return` cambia de orden entre renders.
+  // Ver `usePagedRows`.
+  const pager = usePagedRows((clients.data ?? []))
+
   if (isForbidden(clients.error)) {
     return (
       <UnauthorizedState
@@ -150,7 +158,7 @@ export function ApiClientsSection() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {(clients.data ?? []).map((row) => (
+              {pager.rows.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell>
                     <Typography sx={{ fontSize: 13, fontWeight: 700 }}>{row.name}</Typography>
@@ -191,6 +199,17 @@ export function ApiClientsSection() {
               ))}
             </TableBody>
           </Table>
+        )}
+        {/* El paginador solo aparece cuando hay algo que paginar: un
+            "0-0 de 0" bajo un estado vacio es ruido que contradice al
+            propio estado vacio. */}
+        {pager.total > 0 && (
+          <TablePager
+            page={pager.page}
+            pageSize={pager.pageSize}
+            total={pager.total}
+            onPageChange={pager.setPage}
+          />
         )}
       </Card>
 

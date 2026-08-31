@@ -1,3 +1,11 @@
+import { usePagedRows } from '@/shared/ui/usePagedRows'
+import { TablePager } from '@/shared/ui/TablePager'
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
+import FormatListBulletedRoundedIcon from '@mui/icons-material/FormatListBulletedRounded'
+import ArrowDownwardRoundedIcon from '@mui/icons-material/ArrowDownwardRounded'
+import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded'
+import { RowActions } from '@/shared/ui/RowActions'
 import { FilterBar } from '@/shared/ui/FilterBar'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import ViewQuiltRoundedIcon from '@mui/icons-material/ViewQuiltRounded'
@@ -186,6 +194,12 @@ export function BlocksSection({ pageId }: { pageId: string | null }) {
     }
   }
 
+  // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
+  // aligerar la consulta. Va ANTES de la primera guarda con retorno,
+  // porque un hook detras de un `return` cambia de orden entre renders.
+  // Ver `usePagedRows`.
+  const pager = usePagedRows(list)
+
   if (!canManage) {
     return (
       <UnauthorizedState
@@ -241,7 +255,7 @@ export function BlocksSection({ pageId }: { pageId: string | null }) {
               </TableRow>
             </TableHead>
             <TableBody>
-              {list.map((row, index) => (
+              {pager.rows.map((row, index) => (
                 <TableRow key={row.id} hover>
                   <TableCell align="right">{row.position}</TableCell>
                   <TableCell>{t(`content.block.${row.block_type}` as MessageKey)}</TableCell>
@@ -253,44 +267,68 @@ export function BlocksSection({ pageId }: { pageId: string | null }) {
                     />
                   </TableCell>
                   <TableCell align="right">
-                    <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                      <Button
-                        size="small"
-                        disabled={index === 0 || move.isPending}
-                        onClick={() =>
-                          void move.mutateAsync({ id: row.id, position: Math.max(row.position - 1, 0) })
-                        }
-                        aria-label={`${t('content.blocks.up')} ${row.title ?? row.block_type}`}
-                      >
-                        {t('content.blocks.up')}
-                      </Button>
-                      <Button
-                        size="small"
-                        disabled={index === list.length - 1 || move.isPending}
-                        onClick={() =>
-                          void move.mutateAsync({ id: row.id, position: row.position + 1 })
-                        }
-                        aria-label={`${t('content.blocks.down')} ${row.title ?? row.block_type}`}
-                      >
-                        {t('content.blocks.down')}
-                      </Button>
-                      {blockAcceptsItems(row.block_type) && (
-                        <Button size="small" onClick={() => setItemsFor(row)}>
-                          {t('content.items.manage')}
-                        </Button>
-                      )}
-                      <Button size="small" onClick={() => openEdit(row)}>
-                        {t('common.edit')}
-                      </Button>
-                      <Button size="small" color="error" onClick={() => void drop(row)}>
-                        {t('common.delete')}
-                      </Button>
-                    </Stack>
+                    <RowActions
+                      actions={[
+                        {
+                          id: '0',
+                          icon: <ArrowUpwardRoundedIcon fontSize="small" />,
+                          label: `${t('content.blocks.up')} ${row.title ?? row.block_type}`,
+                          tone: 'neutral',
+                          disabled: index === 0 || move.isPending,
+                          onClick: () =>
+                            void move.mutateAsync({ id: row.id, position: Math.max(row.position - 1, 0) })
+                          ,
+                        },
+                        {
+                          id: '1',
+                          icon: <ArrowDownwardRoundedIcon fontSize="small" />,
+                          label: `${t('content.blocks.down')} ${row.title ?? row.block_type}`,
+                          tone: 'neutral',
+                          disabled: index === list.length - 1 || move.isPending,
+                          onClick: () =>
+                            void move.mutateAsync({ id: row.id, position: row.position + 1 })
+                          ,
+                        },
+                        {
+                          id: '2',
+                          icon: <FormatListBulletedRoundedIcon fontSize="small" />,
+                          label: t('content.items.manage'),
+                          tone: 'accent',
+                          disabled: !(blockAcceptsItems(row.block_type)),
+                          onClick: () => setItemsFor(row),
+                        },
+                        {
+                          id: '3',
+                          icon: <EditRoundedIcon fontSize="small" />,
+                          label: t('common.edit'),
+                          tone: 'neutral',
+                          onClick: () => openEdit(row),
+                        },
+                        {
+                          id: '4',
+                          icon: <DeleteRoundedIcon fontSize="small" />,
+                          label: t('common.delete'),
+                          tone: 'danger',
+                          onClick: () => void drop(row),
+                        },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+        )}
+        {/* El paginador solo aparece cuando hay algo que paginar: un
+            "0-0 de 0" bajo un estado vacio es ruido que contradice al
+            propio estado vacio. */}
+        {pager.total > 0 && (
+          <TablePager
+            page={pager.page}
+            pageSize={pager.pageSize}
+            total={pager.total}
+            onPageChange={pager.setPage}
+          />
         )}
       </Card>
 

@@ -1,3 +1,5 @@
+import { usePagedRows } from '@/shared/ui/usePagedRows'
+import { TablePager } from '@/shared/ui/TablePager'
 import { RowActions } from '@/shared/ui/RowActions'
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import {
@@ -137,6 +139,12 @@ export function PriceItemsPanel({ list, canWrite }: { list: PriceList; canWrite:
     }
   }
 
+  // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
+  // aligerar la consulta. Va ANTES de la primera guarda con retorno,
+  // porque un hook detras de un `return` cambia de orden entre renders.
+  // Ver `usePagedRows`.
+  const pager = usePagedRows((items.data ?? []))
+
   return (
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('pricing.items.help')}</Typography>
@@ -250,7 +258,7 @@ export function PriceItemsPanel({ list, canWrite }: { list: PriceList; canWrite:
             </TableRow>
           </TableHead>
           <TableBody>
-            {(items.data ?? []).map((item) => (
+            {pager.rows.map((item) => (
               <TableRow key={item.id} hover>
                 <TableCell sx={{ fontFamily: 'monospace', fontSize: 12 }}>
                   {productLabel.get(item.product_id) ?? item.product_id.slice(0, 8)}
@@ -282,6 +290,17 @@ export function PriceItemsPanel({ list, canWrite }: { list: PriceList; canWrite:
             ))}
           </TableBody>
         </Table>
+      )}
+      {/* El paginador solo aparece cuando hay algo que paginar: un
+          "0-0 de 0" bajo un estado vacio es ruido que contradice al
+          propio estado vacio. */}
+      {pager.total > 0 && (
+        <TablePager
+          page={pager.page}
+          pageSize={pager.pageSize}
+          total={pager.total}
+          onPageChange={pager.setPage}
+        />
       )}
     </Stack>
   )

@@ -1,3 +1,7 @@
+import { usePagedRows } from '@/shared/ui/usePagedRows'
+import { TablePager } from '@/shared/ui/TablePager'
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
+import { RowActions } from '@/shared/ui/RowActions'
 import { FilterBar } from '@/shared/ui/FilterBar'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import ApartmentRoundedIcon from '@mui/icons-material/ApartmentRounded'
@@ -57,6 +61,12 @@ export function BusinessAccountsSection() {
 
   const isEmpty = !query.isPending && !query.isError && accounts.length === 0
 
+  // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
+  // aligerar la consulta. Va ANTES de la primera guarda con retorno,
+  // porque un hook detras de un `return` cambia de orden entre renders.
+  // Ver `usePagedRows`.
+  const pager = usePagedRows(accounts)
+
   return (
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('customers.accounts.help')}</Typography>
@@ -95,7 +105,7 @@ export function BusinessAccountsSection() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {accounts.map((account) => (
+              {pager.rows.map((account) => (
                 <TableRow key={account.id} hover>
                   <TableCell sx={{ fontWeight: 700 }}>{account.code}</TableCell>
                   <TableCell>{account.name}</TableCell>
@@ -112,18 +122,33 @@ export function BusinessAccountsSection() {
                     />
                   </TableCell>
                   <TableCell align="right">
-                    <Button
-                      size="small"
-                      onClick={() => setDrawer({ open: true, account })}
-                      aria-label={`${t('common.edit')}: ${account.name}`}
-                    >
-                      {t('common.edit')}
-                    </Button>
+                    <RowActions
+                      actions={[
+                        {
+                          id: '0',
+                          icon: <EditRoundedIcon fontSize="small" />,
+                          label: `${t('common.edit')}: ${account.name}`,
+                          tone: 'neutral',
+                          onClick: () => setDrawer({ open: true, account }),
+                        },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+        )}
+        {/* El paginador solo aparece cuando hay algo que paginar: un
+            "0-0 de 0" bajo un estado vacio es ruido que contradice al
+            propio estado vacio. */}
+        {pager.total > 0 && (
+          <TablePager
+            page={pager.page}
+            pageSize={pager.pageSize}
+            total={pager.total}
+            onPageChange={pager.setPage}
+          />
         )}
       </Card>
 

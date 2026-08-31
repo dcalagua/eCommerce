@@ -1,3 +1,10 @@
+import { usePagedRows } from '@/shared/ui/usePagedRows'
+import { TablePager } from '@/shared/ui/TablePager'
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
+import ToggleOnRoundedIcon from '@mui/icons-material/ToggleOnRounded'
+import ToggleOffRoundedIcon from '@mui/icons-material/ToggleOffRounded'
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
+import { RowActions } from '@/shared/ui/RowActions'
 import { FilterBar } from '@/shared/ui/FilterBar'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded'
@@ -70,6 +77,12 @@ export function CategoriesPage() {
         category.name.toLowerCase().includes(term) || category.slug.includes(term),
     )
   }, [categories.data, search])
+
+  // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
+  // aligerar la consulta. Va ANTES de la primera guarda con retorno,
+  // porque un hook detras de un `return` cambia de orden entre renders.
+  // Ver `usePagedRows`.
+  const pager = usePagedRows(visible)
 
   if (tenantStatus === 'loading') {
     return (
@@ -180,7 +193,7 @@ export function CategoriesPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {visible.map((category) => (
+                {pager.rows.map((category) => (
                   <TableRow key={category.id} hover>
                     <TableCell sx={{ fontWeight: 700 }}>{category.name}</TableCell>
                     <TableCell sx={{ color: 'var(--muted)' }}>{category.slug}</TableCell>
@@ -195,41 +208,53 @@ export function CategoriesPage() {
                       />
                     </TableCell>
                     <TableCell align="right">
-                      <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
-                        <Button
-                          size="small"
-                          onClick={() => setDrawer({ open: true, category })}
-                        >
-                          {t('common.edit')}
-                        </Button>
-                        {canWrite && (
-                          <Button
-                            size="small"
-                            onClick={() => void onToggleActive(category)}
-                            disabled={toggleActive.isPending}
-                          >
-                            {t(
-                              category.is_active
-                                ? 'catalog.categories.deactivate'
-                                : 'catalog.categories.activate',
-                            )}
-                          </Button>
-                        )}
-                        {canWrite && (
-                          <Button
-                            size="small"
-                            color="error"
-                            onClick={() => setDeleteTarget(category)}
-                          >
-                            {t('common.delete')}
-                          </Button>
-                        )}
-                      </Stack>
+                      <RowActions
+                        actions={[
+                          {
+                            id: '0',
+                            icon: <EditRoundedIcon fontSize="small" />,
+                            label: t('common.edit'),
+                            tone: 'neutral',
+                            onClick: () => setDrawer({ open: true, category }),
+                          },
+                          {
+                            id: '1',
+                            icon: category.is_active ? <ToggleOffRoundedIcon fontSize="small" /> : <ToggleOnRoundedIcon fontSize="small" />,
+                            label: t(
+                                category.is_active
+                                  ? 'catalog.categories.deactivate'
+                                  : 'catalog.categories.activate',
+                              ),
+                            tone: category.is_active ? 'danger' : 'accent',
+                            disabled: !(canWrite) || toggleActive.isPending,
+                            onClick: () => void onToggleActive(category),
+                          },
+                          {
+                            id: '2',
+                            icon: <DeleteRoundedIcon fontSize="small" />,
+                            label: t('common.delete'),
+                            tone: 'danger',
+                            disabled: !(canWrite),
+                            onClick: () => setDeleteTarget(category),
+                          },
+                        ]}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
+          )}
+          {/* El paginador solo aparece cuando hay algo que paginar: un
+              "0-0 de 0" bajo un estado vacio es ruido que contradice al
+              propio estado vacio. */}
+          {pager.total > 0 && (
+            <TablePager
+              page={pager.page}
+              pageSize={pager.pageSize}
+              total={pager.total}
+              onPageChange={pager.setPage}
+            />
           )}
         </Card>
       </Stack>

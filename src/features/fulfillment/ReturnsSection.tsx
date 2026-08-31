@@ -1,3 +1,5 @@
+import { usePagedRows } from '@/shared/ui/usePagedRows'
+import { TablePager } from '@/shared/ui/TablePager'
 import { FilterBar } from '@/shared/ui/FilterBar'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import AssignmentReturnRoundedIcon from '@mui/icons-material/AssignmentReturnRounded'
@@ -65,6 +67,12 @@ export function ReturnsSection() {
   const list = queue.data ?? []
   const isEmpty = !queue.isPending && !queue.isError && list.length === 0
 
+  // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
+  // aligerar la consulta. Va ANTES de la primera guarda con retorno,
+  // porque un hook detras de un `return` cambia de orden entre renders.
+  // Ver `usePagedRows`.
+  const pager = usePagedRows(list)
+
   return (
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('returns.help')}</Typography>
@@ -115,7 +123,7 @@ export function ReturnsSection() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {list.map((row) => (
+              {pager.rows.map((row) => (
                 <TableRow
                   key={row.return_request_id}
                   hover
@@ -148,6 +156,17 @@ export function ReturnsSection() {
               ))}
             </TableBody>
           </Table>
+        )}
+        {/* El paginador solo aparece cuando hay algo que paginar: un
+            "0-0 de 0" bajo un estado vacio es ruido que contradice al
+            propio estado vacio. */}
+        {pager.total > 0 && (
+          <TablePager
+            page={pager.page}
+            pageSize={pager.pageSize}
+            total={pager.total}
+            onPageChange={pager.setPage}
+          />
         )}
       </Card>
 

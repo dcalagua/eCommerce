@@ -1,3 +1,7 @@
+import { usePagedRows } from '@/shared/ui/usePagedRows'
+import { TablePager } from '@/shared/ui/TablePager'
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
+import { RowActions } from '@/shared/ui/RowActions'
 import { FilterBar } from '@/shared/ui/FilterBar'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import SellRoundedIcon from '@mui/icons-material/SellRounded'
@@ -61,6 +65,12 @@ export function PriceListsSection() {
 
   const isEmpty = !query.isPending && !query.isError && lists.length === 0
 
+  // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
+  // aligerar la consulta. Va ANTES de la primera guarda con retorno,
+  // porque un hook detras de un `return` cambia de orden entre renders.
+  // Ver `usePagedRows`.
+  const pager = usePagedRows(lists)
+
   return (
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('pricing.lists.help')}</Typography>
@@ -99,7 +109,7 @@ export function PriceListsSection() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {lists.map((list) => {
+              {pager.rows.map((list) => {
                 const validity = validityOf(list)
                 return (
                   <TableRow key={list.id} hover>
@@ -120,19 +130,34 @@ export function PriceListsSection() {
                       </Stack>
                     </TableCell>
                     <TableCell align="right">
-                      <Button
-                        size="small"
-                        onClick={() => setEditing({ open: true, list })}
-                        aria-label={`${t('common.edit')}: ${list.name}`}
-                      >
-                        {t('common.edit')}
-                      </Button>
+                      <RowActions
+                        actions={[
+                          {
+                            id: '0',
+                            icon: <EditRoundedIcon fontSize="small" />,
+                            label: `${t('common.edit')}: ${list.name}`,
+                            tone: 'neutral',
+                            onClick: () => setEditing({ open: true, list }),
+                          },
+                        ]}
+                      />
                     </TableCell>
                   </TableRow>
                 )
               })}
             </TableBody>
           </Table>
+        )}
+        {/* El paginador solo aparece cuando hay algo que paginar: un
+            "0-0 de 0" bajo un estado vacio es ruido que contradice al
+            propio estado vacio. */}
+        {pager.total > 0 && (
+          <TablePager
+            page={pager.page}
+            pageSize={pager.pageSize}
+            total={pager.total}
+            onPageChange={pager.setPage}
+          />
         )}
       </Card>
 

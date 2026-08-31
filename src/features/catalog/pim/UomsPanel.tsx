@@ -1,3 +1,7 @@
+import { usePagedRows } from '@/shared/ui/usePagedRows'
+import { TablePager } from '@/shared/ui/TablePager'
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
+import { RowActions } from '@/shared/ui/RowActions'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Alert,
@@ -78,13 +82,19 @@ export function UomsPanel({
     return map
   }, [units.data])
 
+  const list = uoms.data ?? []
+  // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
+  // aligerar la consulta. Va ANTES de la primera guarda con retorno,
+  // porque un hook detras de un `return` cambia de orden entre renders.
+  // Ver `usePagedRows`.
+  const pager = usePagedRows(list)
+
   if (!product) {
     return <PanelHint title={t('pim.uoms.title')} body={t('pim.uoms.saveFirst')} />
   }
 
   if (uoms.isPending) return <LoadingState />
 
-  const list = uoms.data ?? []
   const available = (units.data ?? []).filter((unit) => unit.is_active)
 
   async function onSubmit(values: ProductUomFormValues) {
@@ -151,7 +161,7 @@ export function UomsPanel({
             </TableRow>
           </TableHead>
           <TableBody>
-            {list.map((uom) => (
+            {pager.rows.map((uom) => (
               <TableRow key={uom.id} hover>
                 <TableCell sx={{ fontWeight: 700 }}>
                   {unitName.get(uom.uom_id) ?? uom.uom_id}
@@ -171,19 +181,34 @@ export function UomsPanel({
                 </TableCell>
                 <TableCell>{uom.is_sellable ? t('common.yes') : t('common.no')}</TableCell>
                 <TableCell align="right">
-                  <Button
-                    size="small"
-                    disabled={!canWrite}
-                    aria-label={`${t('common.edit')}: ${unitName.get(uom.uom_id) ?? uom.uom_id}`}
-                    onClick={() => setEditing({ open: true, uom })}
-                  >
-                    {t('common.edit')}
-                  </Button>
+                  <RowActions
+                    actions={[
+                      {
+                        id: '0',
+                        icon: <EditRoundedIcon fontSize="small" />,
+                        label: `${t('common.edit')}: ${unitName.get(uom.uom_id) ?? uom.uom_id}`,
+                        tone: 'neutral',
+                        disabled: !canWrite,
+                        onClick: () => setEditing({ open: true, uom }),
+                      },
+                    ]}
+                  />
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
+      )}
+      {/* El paginador solo aparece cuando hay algo que paginar: un
+          "0-0 de 0" bajo un estado vacio es ruido que contradice al
+          propio estado vacio. */}
+      {pager.total > 0 && (
+        <TablePager
+          page={pager.page}
+          pageSize={pager.pageSize}
+          total={pager.total}
+          onPageChange={pager.setPage}
+        />
       )}
     </Stack>
   )

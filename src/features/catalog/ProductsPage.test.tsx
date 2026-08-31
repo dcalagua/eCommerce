@@ -113,10 +113,17 @@ function renderPage(fake: FakeSupabase) {
   )
 }
 
-/** Abre el menú de acciones de la fila y devuelve el menú. */
-async function openRowMenu(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await screen.findByRole('button', { name: /Acciones: Silla A/ }))
-  return screen.findByRole('menu')
+/**
+ * Acciones de la fila de «Silla A».
+ *
+ * Antes vivian detras de un menu de tres puntos y habia que abrirlo; ahora
+ * son botones con icono en la propia fila, asi que se consultan dentro de su
+ * `<tr>`. Acotar al `<tr>` no es un detalle: «Archivar» tambien existe en el
+ * dialogo de borrado, y sin acotar la consulta encontraria dos.
+ */
+async function rowActions() {
+  const row = (await screen.findByText('Silla A')).closest('tr')
+  return within(row as HTMLElement)
 }
 
 beforeEach(() => {
@@ -242,8 +249,8 @@ describe('ProductsPage — alta y edicion', () => {
     const user = userEvent.setup()
     renderPage(backend())
 
-    const menu = await openRowMenu(userEvent.setup())
-    await user.click(within(menu).getByRole('menuitem', { name: 'Editar' }))
+    const row = await rowActions()
+    await user.click(row.getByRole('button', { name: /Editar: Silla A/ }))
 
     const drawer = await screen.findByRole('dialog')
     expect(within(drawer).getByLabelText('Nombre')).toHaveValue('Silla A')
@@ -286,8 +293,8 @@ describe('ProductsPage — publicar y despublicar', () => {
     const fake = backend()
     renderPage(fake)
 
-    const menu = await openRowMenu(user)
-    await user.click(within(menu).getByRole('menuitem', { name: 'Publicar' }))
+    const row = await rowActions()
+    await user.click(row.getByRole('button', { name: 'Publicar' }))
 
     await waitFor(() => expect(fake.state.invocations).toHaveLength(1))
     expect(fake.state.invocations[0]?.body).toEqual({
@@ -298,23 +305,25 @@ describe('ProductsPage — publicar y despublicar', () => {
   })
 
   it('un producto publicado ofrece despublicar en vez de publicar', async () => {
-    const user = userEvent.setup()
+    // Sin `userEvent`: esta prueba ya no pulsa nada. Antes hacia falta para
+    // abrir el menu; ahora las dos acciones se ven sin abrir nada, que es
+    // justo lo que se comprueba.
     const published = defaultProducts()
     published[0]!.status = 'published'
     const fake = backend('admin', published)
     renderPage(fake)
 
-    const menu = await openRowMenu(user)
-    expect(within(menu).getByRole('menuitem', { name: 'Despublicar' })).toBeInTheDocument()
-    expect(within(menu).queryByRole('menuitem', { name: 'Publicar' })).not.toBeInTheDocument()
+    const row = await rowActions()
+    expect(row.getByRole('button', { name: 'Despublicar' })).toBeInTheDocument()
+    expect(row.queryByRole('button', { name: 'Publicar' })).not.toBeInTheDocument()
   })
 
   it('confirma con un aviso al usuario', async () => {
     const user = userEvent.setup()
     renderPage(backend())
 
-    const menu = await openRowMenu(user)
-    await user.click(within(menu).getByRole('menuitem', { name: 'Publicar' }))
+    const row = await rowActions()
+    await user.click(row.getByRole('button', { name: 'Publicar' }))
 
     expect(await screen.findByText('Producto publicado')).toBeInTheDocument()
   })
@@ -325,8 +334,8 @@ describe('ProductsPage — eliminacion segura (contrato §4.2)', () => {
     const user = userEvent.setup()
     renderPage(backend())
 
-    const menu = await openRowMenu(user)
-    await user.click(within(menu).getByRole('menuitem', { name: 'Eliminar' }))
+    const row = await rowActions()
+    await user.click(row.getByRole('button', { name: /Eliminar: Silla A/ }))
 
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('Uso real de este registro')).toBeInTheDocument()
@@ -341,8 +350,8 @@ describe('ProductsPage — eliminacion segura (contrato §4.2)', () => {
     const fake = backend()
     renderPage(fake)
 
-    const menu = await openRowMenu(user)
-    await user.click(within(menu).getByRole('menuitem', { name: 'Eliminar' }))
+    const row = await rowActions()
+    await user.click(row.getByRole('button', { name: /Eliminar: Silla A/ }))
     const dialog = await screen.findByRole('dialog')
     await user.click(within(dialog).getByRole('button', { name: 'Archivar' }))
 
@@ -356,8 +365,8 @@ describe('ProductsPage — eliminacion segura (contrato §4.2)', () => {
     const fake = backend()
     renderPage(fake)
 
-    const menu = await openRowMenu(user)
-    await user.click(within(menu).getByRole('menuitem', { name: 'Eliminar' }))
+    const row = await rowActions()
+    await user.click(row.getByRole('button', { name: /Eliminar: Silla A/ }))
     const dialog = await screen.findByRole('dialog')
     await user.click(within(dialog).getByRole('button', { name: 'Eliminar de todas formas' }))
 

@@ -1,3 +1,5 @@
+import { usePagedRows } from '@/shared/ui/usePagedRows'
+import { TablePager } from '@/shared/ui/TablePager'
 import {
   Alert,
   Button,
@@ -71,13 +73,19 @@ export function RelationsPanel({
     [products, productId],
   )
 
+  const list = relations.data ?? []
+  // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
+  // aligerar la consulta. Va ANTES de la primera guarda con retorno,
+  // porque un hook detras de un `return` cambia de orden entre renders.
+  // Ver `usePagedRows`.
+  const pager = usePagedRows(list)
+
   if (!product) {
     return <PanelHint title={t('pim.relations.title')} body={t('pim.relations.saveFirst')} />
   }
 
   if (relations.isPending) return <LoadingState />
 
-  const list = relations.data ?? []
 
   async function onAdd() {
     if (!product || !target) return
@@ -154,7 +162,7 @@ export function RelationsPanel({
             </TableRow>
           </TableHead>
           <TableBody>
-            {list.map((relation) => (
+            {pager.rows.map((relation) => (
               <TableRow key={relation.id} hover>
                 <TableCell sx={{ fontWeight: 700 }}>
                   {byId.get(relation.related_product_id)?.name ?? t('common.none')}
@@ -166,6 +174,17 @@ export function RelationsPanel({
             ))}
           </TableBody>
         </Table>
+      )}
+      {/* El paginador solo aparece cuando hay algo que paginar: un
+          "0-0 de 0" bajo un estado vacio es ruido que contradice al
+          propio estado vacio. */}
+      {pager.total > 0 && (
+        <TablePager
+          page={pager.page}
+          pageSize={pager.pageSize}
+          total={pager.total}
+          onPageChange={pager.setPage}
+        />
       )}
     </Stack>
   )

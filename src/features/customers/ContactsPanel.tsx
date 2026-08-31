@@ -1,3 +1,5 @@
+import { usePagedRows } from '@/shared/ui/usePagedRows'
+import { TablePager } from '@/shared/ui/TablePager'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import { RowActions } from '@/shared/ui/RowActions'
 import { StatusChip } from '@/shared/ui/StatusChip'
@@ -108,6 +110,12 @@ export function ContactsPanel({
 
   const rows = contacts.data ?? []
 
+  // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
+  // aligerar la consulta. Va ANTES de la primera guarda con retorno,
+  // porque un hook detras de un `return` cambia de orden entre renders.
+  // Ver `usePagedRows`.
+  const pager = usePagedRows(rows)
+
   return (
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('customers.contacts.help')}</Typography>
@@ -183,7 +191,7 @@ export function ContactsPanel({
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows.map((contact) => (
+            {pager.rows.map((contact) => (
               <TableRow key={contact.id} hover>
                 <TableCell>
                   <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
@@ -230,6 +238,17 @@ export function ContactsPanel({
             ))}
           </TableBody>
         </Table>
+      )}
+      {/* El paginador solo aparece cuando hay algo que paginar: un
+          "0-0 de 0" bajo un estado vacio es ruido que contradice al
+          propio estado vacio. */}
+      {pager.total > 0 && (
+        <TablePager
+          page={pager.page}
+          pageSize={pager.pageSize}
+          total={pager.total}
+          onPageChange={pager.setPage}
+        />
       )}
     </Stack>
   )

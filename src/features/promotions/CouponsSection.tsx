@@ -1,3 +1,5 @@
+import { usePagedRows } from '@/shared/ui/usePagedRows'
+import { TablePager } from '@/shared/ui/TablePager'
 import { FilterBar } from '@/shared/ui/FilterBar'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import ConfirmationNumberRoundedIcon from '@mui/icons-material/ConfirmationNumberRounded'
@@ -123,6 +125,12 @@ export function CouponsSection() {
     }
   }
 
+  // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
+  // aligerar la consulta. Va ANTES de la primera guarda con retorno,
+  // porque un hook detras de un `return` cambia de orden entre renders.
+  // Ver `usePagedRows`.
+  const pager = usePagedRows(list)
+
   if (!canManage) {
     return (
       <UnauthorizedState
@@ -182,7 +190,7 @@ export function CouponsSection() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {list.map((coupon) => (
+              {pager.rows.map((coupon) => (
                 <TableRow key={coupon.id} hover>
                   <TableCell>
                     <Typography sx={{ fontWeight: 700, fontFamily: 'monospace' }}>
@@ -235,6 +243,17 @@ export function CouponsSection() {
               ))}
             </TableBody>
           </Table>
+        )}
+        {/* El paginador solo aparece cuando hay algo que paginar: un
+            "0-0 de 0" bajo un estado vacio es ruido que contradice al
+            propio estado vacio. */}
+        {pager.total > 0 && (
+          <TablePager
+            page={pager.page}
+            pageSize={pager.pageSize}
+            total={pager.total}
+            onPageChange={pager.setPage}
+          />
         )}
       </Card>
 

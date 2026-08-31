@@ -1,3 +1,8 @@
+import { usePagedRows } from '@/shared/ui/usePagedRows'
+import { TablePager } from '@/shared/ui/TablePager'
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
+import { RowActions } from '@/shared/ui/RowActions'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import CreditCardRoundedIcon from '@mui/icons-material/CreditCardRounded'
 import {
@@ -131,6 +136,12 @@ export function MethodsSection() {
     }
   }
 
+  // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
+  // aligerar la consulta. Va ANTES de la primera guarda con retorno,
+  // porque un hook detras de un `return` cambia de orden entre renders.
+  // Ver `usePagedRows`.
+  const pager = usePagedRows(list)
+
   return (
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('payments.methods.help')}</Typography>
@@ -170,7 +181,7 @@ export function MethodsSection() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {list.map((method) => (
+              {pager.rows.map((method) => (
                 <TableRow key={method.id} hover>
                   <TableCell>{method.code}</TableCell>
                   <TableCell>{method.display_name}</TableCell>
@@ -187,33 +198,49 @@ export function MethodsSection() {
                     />
                   </TableCell>
                   <TableCell align="right">
-                    <Button
-                      size="small"
-                      disabled={!canWrite}
-                      onClick={() => setDrawer({ open: true, method })}
-                    >
-                      {t('common.edit')}
-                    </Button>
-                    <Button
-                      size="small"
-                      color="error"
-                      disabled={!canWrite}
-                      onClick={async () => {
-                        try {
-                          await remove.mutateAsync(method.id)
-                          notify(t('payments.methods.deleted'), 'success')
-                        } catch (error) {
-                          report(error)
-                        }
-                      }}
-                    >
-                      {t('common.delete')}
-                    </Button>
+                    <RowActions
+                      actions={[
+                        {
+                          id: '0',
+                          icon: <EditRoundedIcon fontSize="small" />,
+                          label: t('common.edit'),
+                          tone: 'neutral',
+                          disabled: !canWrite,
+                          onClick: () => setDrawer({ open: true, method }),
+                        },
+                        {
+                          id: '1',
+                          icon: <DeleteRoundedIcon fontSize="small" />,
+                          label: t('common.delete'),
+                          tone: 'danger',
+                          disabled: !canWrite,
+                          onClick: async () => {
+                            try {
+                              await remove.mutateAsync(method.id)
+                              notify(t('payments.methods.deleted'), 'success')
+                            } catch (error) {
+                              report(error)
+                            }
+                          },
+                        },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+        )}
+        {/* El paginador solo aparece cuando hay algo que paginar: un
+            "0-0 de 0" bajo un estado vacio es ruido que contradice al
+            propio estado vacio. */}
+        {pager.total > 0 && (
+          <TablePager
+            page={pager.page}
+            pageSize={pager.pageSize}
+            total={pager.total}
+            onPageChange={pager.setPage}
+          />
         )}
       </Card>
 

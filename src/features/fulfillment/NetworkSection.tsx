@@ -1,3 +1,8 @@
+import { usePagedRows } from '@/shared/ui/usePagedRows'
+import { TablePager } from '@/shared/ui/TablePager'
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
+import { RowActions } from '@/shared/ui/RowActions'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import MapRoundedIcon from '@mui/icons-material/MapRounded'
 import {
@@ -222,6 +227,12 @@ export function NetworkSection() {
   const zoneList = zones.data ?? []
   const carrierAllowed = methodValues.strategy === 'ship'
 
+  // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
+  // aligerar la consulta. Va ANTES de la primera guarda con retorno,
+  // porque un hook detras de un `return` cambia de orden entre renders.
+  // Ver `usePagedRows`.
+  const pager = usePagedRows(methodList)
+
   return (
     <Stack spacing={4}>
       {/* ---------------- Métodos ------------------------------------------ */}
@@ -264,7 +275,7 @@ export function NetworkSection() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {methodList.map((method) => {
+                {pager.rows.map((method) => {
                   const hasRate = rateList.some(
                     (rate) => rate.delivery_method_id === method.id && rate.is_active,
                   )
@@ -300,34 +311,50 @@ export function NetworkSection() {
                         </Stack>
                       </TableCell>
                       <TableCell align="right">
-                        <Button
-                          size="small"
-                          disabled={!canWrite}
-                          onClick={() => setMethodDrawer({ open: true, method })}
-                        >
-                          {t('common.edit')}
-                        </Button>
-                        <Button
-                          size="small"
-                          color="error"
-                          disabled={!canWrite}
-                          onClick={async () => {
-                            try {
-                              await removeMethod.mutateAsync(method.id)
-                              notify(t('fulfillment.methods.deleted'), 'success')
-                            } catch (error) {
-                              report(error)
-                            }
-                          }}
-                        >
-                          {t('common.delete')}
-                        </Button>
+                        <RowActions
+                          actions={[
+                            {
+                              id: '0',
+                              icon: <EditRoundedIcon fontSize="small" />,
+                              label: t('common.edit'),
+                              tone: 'neutral',
+                              disabled: !canWrite,
+                              onClick: () => setMethodDrawer({ open: true, method }),
+                            },
+                            {
+                              id: '1',
+                              icon: <DeleteRoundedIcon fontSize="small" />,
+                              label: t('common.delete'),
+                              tone: 'danger',
+                              disabled: !canWrite,
+                              onClick: async () => {
+                                try {
+                                  await removeMethod.mutateAsync(method.id)
+                                  notify(t('fulfillment.methods.deleted'), 'success')
+                                } catch (error) {
+                                  report(error)
+                                }
+                              },
+                            },
+                          ]}
+                        />
                       </TableCell>
                     </TableRow>
                   )
                 })}
               </TableBody>
             </Table>
+          )}
+          {/* El paginador solo aparece cuando hay algo que paginar: un
+              "0-0 de 0" bajo un estado vacio es ruido que contradice al
+              propio estado vacio. */}
+          {pager.total > 0 && (
+            <TablePager
+              page={pager.page}
+              pageSize={pager.pageSize}
+              total={pager.total}
+              onPageChange={pager.setPage}
+            />
           )}
         </Card>
       </Stack>

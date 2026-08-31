@@ -1,3 +1,5 @@
+import { usePagedRows } from '@/shared/ui/usePagedRows'
+import { TablePager } from '@/shared/ui/TablePager'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Alert,
@@ -82,6 +84,13 @@ export function BundlePanel({
     return map
   }, [units.data])
 
+  const list = items.data ?? []
+  // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
+  // aligerar la consulta. Va ANTES de la primera guarda con retorno,
+  // porque un hook detras de un `return` cambia de orden entre renders.
+  // Ver `usePagedRows`.
+  const pager = usePagedRows(list)
+
   if (!product) {
     return <PanelHint title={t('pim.bundle.title')} body={t('pim.bundle.saveFirst')} />
   }
@@ -92,7 +101,6 @@ export function BundlePanel({
 
   if (items.isPending) return <LoadingState />
 
-  const list = items.data ?? []
 
   // Cuántos kits salen con lo que hay. Se omite el componente que esta pantalla
   // no puede evaluar: el que no está en la página cargada del listado, y el que
@@ -168,7 +176,7 @@ export function BundlePanel({
             </TableRow>
           </TableHead>
           <TableBody>
-            {list.map((item) => {
+            {pager.rows.map((item) => {
               const component = byId.get(item.component_product_id)
               return (
                 <TableRow key={item.id} hover>
@@ -192,6 +200,17 @@ export function BundlePanel({
             })}
           </TableBody>
         </Table>
+      )}
+      {/* El paginador solo aparece cuando hay algo que paginar: un
+          "0-0 de 0" bajo un estado vacio es ruido que contradice al
+          propio estado vacio. */}
+      {pager.total > 0 && (
+        <TablePager
+          page={pager.page}
+          pageSize={pager.pageSize}
+          total={pager.total}
+          onPageChange={pager.setPage}
+        />
       )}
     </Stack>
   )

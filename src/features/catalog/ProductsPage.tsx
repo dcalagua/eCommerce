@@ -1,17 +1,19 @@
+import { RowActions } from '@/shared/ui/RowActions'
+import ArchiveRoundedIcon from '@mui/icons-material/ArchiveRounded'
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
+import VisibilityOffRoundedIcon from '@mui/icons-material/VisibilityOffRounded'
+import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
 import { FilterBar } from '@/shared/ui/FilterBar'
 import { TablePager } from '@/shared/ui/TablePager'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
-import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import {
   Box,
   Button,
   Card,
   Chip,
-  IconButton,
-  Menu,
-  MenuItem,
   Stack,
   Tab,
   Table,
@@ -88,7 +90,6 @@ export function ProductsPage() {
     open: false,
     product: null,
   })
-  const [menu, setMenu] = useState<{ anchor: HTMLElement; product: Product } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null)
 
   const storeId = activeStore?.id ?? null
@@ -140,7 +141,6 @@ export function ProductsPage() {
   }
 
   async function onChangeStatus(product: Product, next: ProductStatus, toast: MessageKey) {
-    setMenu(null)
     try {
       await changeStatus.mutateAsync({ productId: product.id, status: next })
       notify(t(toast))
@@ -289,14 +289,64 @@ export function ProductsPage() {
                         label={t(STATUS_LABEL[product.status])}
                       />
                     </TableCell>
+                    {/* El menu de tres puntos escondia CUATRO acciones detras de
+                        un icono que no dice ninguna: para saber si un producto
+                        se puede despublicar habia que abrirlo. Aqui se ven, y
+                        el color lo pone lo que cada una HACE.
+
+                        Archivar va en neutro y no en rojo aunque retire el
+                        producto: es reversible y conserva el registro. El rojo
+                        se guarda para lo que no tiene vuelta —despublicar, que
+                        lo saca de la tienda ya mismo, y borrar—, porque un rojo
+                        que sale en todo deja de avisar de nada. */}
                     <TableCell align="right">
-                      <IconButton
-                        size="small"
-                        aria-label={`${t('common.actions')}: ${product.name}`}
-                        onClick={(event) => setMenu({ anchor: event.currentTarget, product })}
-                      >
-                        <MoreVertRoundedIcon fontSize="small" />
-                      </IconButton>
+                      <RowActions
+                        actions={[
+                          {
+                            id: 'edit',
+                            icon: <EditRoundedIcon fontSize="small" />,
+                            label: `${t('common.edit')}: ${product.name}`,
+                            tone: 'neutral',
+                            onClick: () => setDrawer({ open: true, product }),
+                          },
+                          {
+                            id: 'publish',
+                            icon:
+                              product.status === 'published' ? (
+                                <VisibilityOffRoundedIcon fontSize="small" />
+                              ) : (
+                                <VisibilityRoundedIcon fontSize="small" />
+                              ),
+                            label:
+                              product.status === 'published'
+                                ? t('catalog.action.unpublish')
+                                : t('catalog.action.publish'),
+                            tone: product.status === 'published' ? 'danger' : 'accent',
+                            disabled: !canWrite,
+                            onClick: () =>
+                              product.status === 'published'
+                                ? void onChangeStatus(product, 'draft', 'catalog.toast.unpublished')
+                                : void onChangeStatus(product, 'published', 'catalog.toast.published'),
+                          },
+                          {
+                            id: 'archive',
+                            icon: <ArchiveRoundedIcon fontSize="small" />,
+                            label: t('catalog.action.archive'),
+                            tone: 'neutral',
+                            disabled: !canWrite || product.status === 'archived',
+                            onClick: () =>
+                              void onChangeStatus(product, 'archived', 'catalog.toast.archived'),
+                          },
+                          {
+                            id: 'delete',
+                            icon: <DeleteRoundedIcon fontSize="small" />,
+                            label: `${t('common.delete')}: ${product.name}`,
+                            tone: 'danger',
+                            disabled: !canWrite,
+                            onClick: () => setDeleteTarget(product),
+                          },
+                        ]}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -315,54 +365,7 @@ export function ProductsPage() {
         </Card>
       </Stack>
 
-      <Menu anchorEl={menu?.anchor ?? null} open={Boolean(menu)} onClose={() => setMenu(null)}>
-        <MenuItem
-          onClick={() => {
-            if (menu) setDrawer({ open: true, product: menu.product })
-            setMenu(null)
-          }}
-        >
-          {t('common.edit')}
-        </MenuItem>
-        {canWrite && menu?.product.status !== 'published' && (
-          <MenuItem
-            onClick={() =>
-              menu && void onChangeStatus(menu.product, 'published', 'catalog.toast.published')
-            }
-          >
-            {t('catalog.action.publish')}
-          </MenuItem>
-        )}
-        {canWrite && menu?.product.status === 'published' && (
-          <MenuItem
-            onClick={() =>
-              menu && void onChangeStatus(menu.product, 'draft', 'catalog.toast.unpublished')
-            }
-          >
-            {t('catalog.action.unpublish')}
-          </MenuItem>
-        )}
-        {canWrite && menu?.product.status !== 'archived' && (
-          <MenuItem
-            onClick={() =>
-              menu && void onChangeStatus(menu.product, 'archived', 'catalog.toast.archived')
-            }
-          >
-            {t('catalog.action.archive')}
-          </MenuItem>
-        )}
-        {canWrite && (
-          <MenuItem
-            sx={{ color: 'var(--red)' }}
-            onClick={() => {
-              if (menu) setDeleteTarget(menu.product)
-              setMenu(null)
-            }}
-          >
-            {t('common.delete')}
-          </MenuItem>
-        )}
-      </Menu>
+
 
       <ProductDrawer
         open={drawer.open}

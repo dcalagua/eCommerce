@@ -1,3 +1,5 @@
+import { usePagedRows } from '@/shared/ui/usePagedRows'
+import { TablePager } from '@/shared/ui/TablePager'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import { RowActions } from '@/shared/ui/RowActions'
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
@@ -83,6 +85,12 @@ export function ExternalIdsPanel({
 
   const rows = externalIds.data ?? []
 
+  // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
+  // aligerar la consulta. Va ANTES de la primera guarda con retorno,
+  // porque un hook detras de un `return` cambia de orden entre renders.
+  // Ver `usePagedRows`.
+  const pager = usePagedRows(rows)
+
   return (
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('customers.externalIds.help')}</Typography>
@@ -130,7 +138,7 @@ export function ExternalIdsPanel({
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows.map((row) => (
+            {pager.rows.map((row) => (
               <TableRow key={row.id} hover>
                 <TableCell sx={{ fontWeight: 700 }}>{row.system_code}</TableCell>
                 <TableCell>{row.external_id}</TableCell>
@@ -170,6 +178,17 @@ export function ExternalIdsPanel({
             ))}
           </TableBody>
         </Table>
+      )}
+      {/* El paginador solo aparece cuando hay algo que paginar: un
+          "0-0 de 0" bajo un estado vacio es ruido que contradice al
+          propio estado vacio. */}
+      {pager.total > 0 && (
+        <TablePager
+          page={pager.page}
+          pageSize={pager.pageSize}
+          total={pager.total}
+          onPageChange={pager.setPage}
+        />
       )}
     </Stack>
   )

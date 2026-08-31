@@ -1,3 +1,5 @@
+import { usePagedRows } from '@/shared/ui/usePagedRows'
+import { TablePager } from '@/shared/ui/TablePager'
 import { FilterBar } from '@/shared/ui/FilterBar'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
@@ -82,6 +84,12 @@ export function LevelsSection() {
   const isEmpty = !query.isPending && !query.isError && (query.data ?? []).length === 0
   const noWarehouses = !warehouses.isPending && (warehouses.data ?? []).length === 0
 
+  // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
+  // aligerar la consulta. Va ANTES de la primera guarda con retorno,
+  // porque un hook detras de un `return` cambia de orden entre renders.
+  // Ver `usePagedRows`.
+  const pager = usePagedRows((query.data ?? []))
+
   return (
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('inventory.levels.help')}</Typography>
@@ -138,7 +146,7 @@ export function LevelsSection() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {(query.data ?? []).map((row) => (
+              {pager.rows.map((row) => (
                 <TableRow key={row.id} hover>
                   <TableCell>
                     <Stack>
@@ -176,6 +184,17 @@ export function LevelsSection() {
               ))}
             </TableBody>
           </Table>
+        )}
+        {/* El paginador solo aparece cuando hay algo que paginar: un
+            "0-0 de 0" bajo un estado vacio es ruido que contradice al
+            propio estado vacio. */}
+        {pager.total > 0 && (
+          <TablePager
+            page={pager.page}
+            pageSize={pager.pageSize}
+            total={pager.total}
+            onPageChange={pager.setPage}
+          />
         )}
       </Card>
 

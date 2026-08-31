@@ -1,3 +1,5 @@
+import { usePagedRows } from '@/shared/ui/usePagedRows'
+import { TablePager } from '@/shared/ui/TablePager'
 import { StatusChip } from '@/shared/ui/StatusChip'
 /**
  * Configuración de impuestos del tenant.
@@ -68,10 +70,16 @@ export function TaxesSection({ organizationId, companyId, canManage }: Props) {
 
   const [form, setForm] = useState({ name: '', code: '', rate: '', isDefault: false })
 
+  const rows = categories.data ?? []
+  // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
+  // aligerar la consulta. Va ANTES de la primera guarda con retorno,
+  // porque un hook detras de un `return` cambia de orden entre renders.
+  // Ver `usePagedRows`.
+  const pager = usePagedRows(rows)
+
   if (categories.isLoading) return <LoadingState />
   if (categories.isError) return <ErrorState description={t('taxes.loadError')} />
 
-  const rows = categories.data ?? []
 
   function draftFor(row: TaxCategory): string {
     const draft = drafts[row.id]
@@ -149,7 +157,7 @@ export function TaxesSection({ organizationId, companyId, canManage }: Props) {
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows.map((row) => (
+            {pager.rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
                   <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
@@ -178,6 +186,17 @@ export function TaxesSection({ organizationId, companyId, canManage }: Props) {
             ))}
           </TableBody>
         </Table>
+      )}
+      {/* El paginador solo aparece cuando hay algo que paginar: un
+          "0-0 de 0" bajo un estado vacio es ruido que contradice al
+          propio estado vacio. */}
+      {pager.total > 0 && (
+        <TablePager
+          page={pager.page}
+          pageSize={pager.pageSize}
+          total={pager.total}
+          onPageChange={pager.setPage}
+        />
       )}
 
       <Stack direction="row" spacing={1.5}>

@@ -1,3 +1,5 @@
+import { usePagedRows } from '@/shared/ui/usePagedRows'
+import { TablePager } from '@/shared/ui/TablePager'
 import { FilterBar } from '@/shared/ui/FilterBar'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
@@ -122,9 +124,12 @@ export function CampaignsSection() {
     }
   }
 
-  // Gating por PERMISO, ortogonal a la capacidad que gatea la ruta entera. La
-  // autoridad sigue siendo la RLS: esconder el botón evita un 403 inútil, no
-  // impide un PATCH directo.
+  // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
+  // aligerar la consulta. Va ANTES de la primera guarda con retorno,
+  // porque un hook detras de un `return` cambia de orden entre renders.
+  // Ver `usePagedRows`.
+  const pager = usePagedRows(list)
+
   if (!canManage) {
     return (
       <UnauthorizedState
@@ -198,7 +203,7 @@ export function CampaignsSection() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {list.map((promotion) => {
+              {pager.rows.map((promotion) => {
                 const summary = promotionSummary(promotion)
                 return (
                   <TableRow
@@ -250,6 +255,17 @@ export function CampaignsSection() {
               })}
             </TableBody>
           </Table>
+        )}
+        {/* El paginador solo aparece cuando hay algo que paginar: un
+            "0-0 de 0" bajo un estado vacio es ruido que contradice al
+            propio estado vacio. */}
+        {pager.total > 0 && (
+          <TablePager
+            page={pager.page}
+            pageSize={pager.pageSize}
+            total={pager.total}
+            onPageChange={pager.setPage}
+          />
         )}
       </Card>
 

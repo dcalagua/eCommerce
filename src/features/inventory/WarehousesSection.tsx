@@ -1,3 +1,8 @@
+import { usePagedRows } from '@/shared/ui/usePagedRows'
+import { TablePager } from '@/shared/ui/TablePager'
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
+import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
+import { RowActions } from '@/shared/ui/RowActions'
 import { FilterBar } from '@/shared/ui/FilterBar'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import WarehouseRoundedIcon from '@mui/icons-material/WarehouseRounded'
@@ -114,6 +119,12 @@ export function WarehousesSection() {
     notify(t('inventory.toast.saved'))
   }
 
+  // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
+  // aligerar la consulta. Va ANTES de la primera guarda con retorno,
+  // porque un hook detras de un `return` cambia de orden entre renders.
+  // Ver `usePagedRows`.
+  const pager = usePagedRows(warehouses)
+
   return (
     <Stack spacing={2}>
       <Typography sx={{ color: 'var(--muted)' }}>{t('inventory.warehouses.help')}</Typography>
@@ -155,7 +166,7 @@ export function WarehousesSection() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {warehouses.map((warehouse) => (
+              {pager.rows.map((warehouse) => (
                 <TableRow key={warehouse.id} hover>
                   <TableCell sx={{ fontWeight: 700 }}>{warehouse.code}</TableCell>
                   <TableCell>
@@ -188,35 +199,51 @@ export function WarehousesSection() {
                     />
                   </TableCell>
                   <TableCell align="right">
-                    <Stack direction="row" spacing={0.5} sx={{ justifyContent: 'flex-end' }}>
-                      {canWrite && activeStore && (
-                        <Button
-                          size="small"
-                          onClick={async () => {
+                    <RowActions
+                      actions={[
+                        {
+                          id: '0',
+                          icon: <TuneRoundedIcon fontSize="small" />,
+                          label: `${t('inventory.warehouses.seed')}: ${warehouse.code}`,
+                          tone: 'accent',
+                          disabled: !(canWrite && activeStore),
+                          onClick: async () => {
+                            // `disabled` lo impide en la interfaz, pero eso no estrecha el
+                            // tipo: sin esto, `activeStore.id` es un fallo en tiempo de
+                            // ejecucion esperando a que alguien cambie el `disabled`.
+                            if (!activeStore) return
                             const seeded = await seed.mutateAsync({
                               warehouseId: warehouse.id,
                               storeId: activeStore.id,
                             })
                             notify(`${t('inventory.toast.seeded')} (${seeded})`)
-                          }}
-                          aria-label={`${t('inventory.warehouses.seed')}: ${warehouse.code}`}
-                        >
-                          {t('inventory.warehouses.seed')}
-                        </Button>
-                      )}
-                      <Button
-                        size="small"
-                        onClick={() => setEditing({ open: true, warehouse })}
-                        aria-label={`${t('common.edit')}: ${warehouse.name}`}
-                      >
-                        {t('common.edit')}
-                      </Button>
-                    </Stack>
+                          },
+                        },
+                        {
+                          id: '1',
+                          icon: <EditRoundedIcon fontSize="small" />,
+                          label: `${t('common.edit')}: ${warehouse.name}`,
+                          tone: 'neutral',
+                          onClick: () => setEditing({ open: true, warehouse }),
+                        },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+        )}
+        {/* El paginador solo aparece cuando hay algo que paginar: un
+            "0-0 de 0" bajo un estado vacio es ruido que contradice al
+            propio estado vacio. */}
+        {pager.total > 0 && (
+          <TablePager
+            page={pager.page}
+            pageSize={pager.pageSize}
+            total={pager.total}
+            onPageChange={pager.setPage}
+          />
         )}
       </Card>
 

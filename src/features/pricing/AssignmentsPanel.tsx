@@ -1,3 +1,5 @@
+import { usePagedRows } from '@/shared/ui/usePagedRows'
+import { TablePager } from '@/shared/ui/TablePager'
 import { RowActions } from '@/shared/ui/RowActions'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
@@ -97,6 +99,12 @@ export function AssignmentsPanel({ list, canWrite }: { list: PriceList; canWrite
       setError(caught instanceof PricingError ? caught.key : 'pricing.error.generic')
     }
   }
+
+  // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
+  // aligerar la consulta. Va ANTES de la primera guarda con retorno,
+  // porque un hook detras de un `return` cambia de orden entre renders.
+  // Ver `usePagedRows`.
+  const pager = usePagedRows((assignments.data ?? []))
 
   return (
     <Stack spacing={2}>
@@ -199,7 +207,7 @@ export function AssignmentsPanel({ list, canWrite }: { list: PriceList; canWrite
             </TableRow>
           </TableHead>
           <TableBody>
-            {(assignments.data ?? []).map((assignment) => {
+            {pager.rows.map((assignment) => {
               const target =
                 assignment.channel_id ?? assignment.segment_id ?? assignment.customer_id ?? null
               return (
@@ -234,6 +242,17 @@ export function AssignmentsPanel({ list, canWrite }: { list: PriceList; canWrite
             })}
           </TableBody>
         </Table>
+      )}
+      {/* El paginador solo aparece cuando hay algo que paginar: un
+          "0-0 de 0" bajo un estado vacio es ruido que contradice al
+          propio estado vacio. */}
+      {pager.total > 0 && (
+        <TablePager
+          page={pager.page}
+          pageSize={pager.pageSize}
+          total={pager.total}
+          onPageChange={pager.setPage}
+        />
       )}
     </Stack>
   )

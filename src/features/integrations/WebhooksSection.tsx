@@ -1,3 +1,5 @@
+import { usePagedRows } from '@/shared/ui/usePagedRows'
+import { TablePager } from '@/shared/ui/TablePager'
 import { FilterBar } from '@/shared/ui/FilterBar'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import {
@@ -198,6 +200,12 @@ export function WebhooksSection() {
   const [creating, setCreating] = useState(false)
   const [replayId, setReplayId] = useState<string | null>(null)
 
+  // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
+  // aligerar la consulta. Va ANTES de la primera guarda con retorno,
+  // porque un hook detras de un `return` cambia de orden entre renders.
+  // Ver `usePagedRows`.
+  const pager = usePagedRows((endpoints.data ?? []))
+
   if (isForbidden(endpoints.error)) {
     return (
       <UnauthorizedState
@@ -251,7 +259,7 @@ export function WebhooksSection() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {(endpoints.data ?? []).map((endpoint) => (
+              {pager.rows.map((endpoint) => (
                 <TableRow key={endpoint.id}>
                   <TableCell>
                     <Typography sx={{ fontSize: 13, fontWeight: 700 }}>{endpoint.name}</Typography>
@@ -283,6 +291,17 @@ export function WebhooksSection() {
               ))}
             </TableBody>
           </Table>
+        )}
+        {/* El paginador solo aparece cuando hay algo que paginar: un
+            "0-0 de 0" bajo un estado vacio es ruido que contradice al
+            propio estado vacio. */}
+        {pager.total > 0 && (
+          <TablePager
+            page={pager.page}
+            pageSize={pager.pageSize}
+            total={pager.total}
+            onPageChange={pager.setPage}
+          />
         )}
       </Card>
 
