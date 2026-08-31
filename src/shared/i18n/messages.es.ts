@@ -1845,6 +1845,8 @@ export const es = {
     'content.blocks.body': 'Contenido',
     'content.editor.paragraph': 'Párrafo',
     'content.editor.toolbar': 'Formato del contenido',
+    'content.editor.undo': 'Deshacer',
+    'content.editor.redo': 'Rehacer',
     'content.editor.heading': 'Titular',
     'content.editor.subheading': 'Subtitular',
     'content.editor.list': 'Lista',
@@ -1853,7 +1855,7 @@ export const es = {
     'content.editor.previewEmpty': 'Escribe algo y aquí lo verás tal como sale en la tienda.',
     'content.editor.blocks': '{n} bloques',
     'content.blocks.bodyHelp':
-      'Una línea por párrafo. «## » titular, «### » subtitular, «> » cita, «- » elemento de lista. No se admiten etiquetas HTML.',
+      'Da formato con la barra de arriba: titular, subtitular, lista y cita. No se admiten etiquetas HTML.',
     'content.blocks.ctaLabel': 'Texto del botón',
     'content.blocks.ctaHref': 'Destino del botón',
     'content.blocks.ctaHrefHelp': 'Una dirección https, una ruta interna, mailto: o tel:.',
@@ -2411,4 +2413,5 @@ export const es = {
   'store.product.availabilityLabel': 'Disponibilidad',
   'store.product.chooseOptions': 'Elegir opciones',
   'store.product.buyGroup': 'Comprar',
+  'store.product.noData': 'Sin informacion disponible',
 } as const

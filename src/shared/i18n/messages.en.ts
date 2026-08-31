@@ -1834,6 +1834,8 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'content.blocks.body': 'Content',
     'content.editor.paragraph': 'Paragraph',
     'content.editor.toolbar': 'Content formatting',
+    'content.editor.undo': 'Undo',
+    'content.editor.redo': 'Redo',
     'content.editor.heading': 'Heading',
     'content.editor.subheading': 'Subheading',
     'content.editor.list': 'List',
@@ -1842,7 +1844,7 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'content.editor.previewEmpty': 'Type something and you will see it here exactly as the store shows it.',
     'content.editor.blocks': '{n} blocks',
     'content.blocks.bodyHelp':
-      'One line per paragraph. Two hashes for a heading, three for a subheading, a greater-than sign for a quote and a dash for a list item. HTML tags are not allowed.',
+      'Use the toolbar above: heading, subheading, list and quote. HTML tags are not allowed.',
     'content.blocks.ctaLabel': 'Button text',
     'content.blocks.ctaHref': 'Button target',
     'content.blocks.ctaHrefHelp': 'An https address, an internal path, mailto or tel.',
@@ -2401,4 +2403,5 @@ export const en: Readonly<Record<MessageKey, string>> = {
   'store.product.availabilityLabel': 'Availability',
   'store.product.chooseOptions': 'Choose options',
   'store.product.buyGroup': 'Buy',
+  'store.product.noData': 'No information available',
 }

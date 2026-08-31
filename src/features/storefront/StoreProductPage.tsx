@@ -1,13 +1,10 @@
-import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
-import RemoveRoundedIcon from '@mui/icons-material/RemoveRounded'
 import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
 import {
   Box,
   Button,
   Card,
   Chip,
-  IconButton,
   MenuItem,
   Stack,
   TextField,
@@ -20,15 +17,15 @@ import { formatMoney } from '@/shared/lib/format'
 import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
 import { AppBreadcrumbs } from '@/shared/ui/AppBreadcrumbs'
 import { EmptyState, ErrorState } from '@/shared/ui/states'
-import { R, T } from '@/theme/tokens'
+import { T } from '@/theme/tokens'
 import { StorefrontNotFoundError } from './api'
 import { ProductPageSkeleton } from './components/ProductPageSkeleton'
 import { notFoundMeta, productMeta } from './seo'
-import { MAX_LINE_QUANTITY } from './cart/cart'
 import { track } from './analytics'
 import { useCart } from './cart/cart-context'
 import { ProductGallery } from './components/ProductGallery'
 import { ProductGrid } from './components/ProductGrid'
+import { QuantityStepper } from './components/QuantityStepper'
 import {
   useGallery,
   usePublicProduct,
@@ -443,41 +440,7 @@ function AddToCart({
       )}
 
       <Stack direction="row" sx={{ gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Stack
-          direction="row"
-          sx={{
-            alignItems: 'center',
-            gap: 0.5,
-            border: '1px solid var(--border)',
-            borderRadius: `${R.md}px`,
-            px: 0.5,
-          }}
-        >
-          <IconButton
-            size="small"
-            aria-label={t('store.cart.decrease')}
-            disabled={quantity <= 1}
-            onClick={() => setQuantity((value) => Math.max(1, value - 1))}
-          >
-            <RemoveRoundedIcon fontSize="small" />
-          </IconButton>
-          <Typography
-            component="output"
-            aria-live="polite"
-            aria-label={t('store.cart.quantity')}
-            sx={{ minWidth: 28, textAlign: 'center', fontWeight: 800 }}
-          >
-            {quantity}
-          </Typography>
-          <IconButton
-            size="small"
-            aria-label={t('store.cart.increase')}
-            disabled={quantity >= MAX_LINE_QUANTITY}
-            onClick={() => setQuantity((value) => Math.min(MAX_LINE_QUANTITY, value + 1))}
-          >
-            <AddRoundedIcon fontSize="small" />
-          </IconButton>
-        </Stack>
+        <QuantityStepper value={quantity} onChange={setQuantity} />
 
         <Button
           variant="contained"
