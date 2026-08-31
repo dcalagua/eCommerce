@@ -148,6 +148,12 @@ $fn$;
 --
 -- `remaining_uses` es null cuando no hay tope por cliente: null es «sin limite»,
 -- y ponerlo a un numero grande seria mentir con precision.
+--
+-- Una promocion, UN cupon. Una tienda puede emitir cien codigos de la misma
+-- promocion —uno por cliente— y al comprador solo le sirve el suyo: enseñarle
+-- seis «Bienvenida 10 %» con codigos distintos no le da seis descuentos, le da
+-- seis maneras de dudar. Se queda el que caduca antes, que es el que conviene
+-- gastar primero.
 -- ---------------------------------------------------------------------------
 create or replace function public.my_coupons(p_store_id uuid)
 returns jsonb
@@ -166,7 +172,7 @@ begin
   select coalesce(jsonb_agg(row_to_json(t)::jsonb order by t.valid_to nulls last, t.code), '[]'::jsonb)
     into v_rows
   from (
-    select distinct on (c.id)
+    select distinct on (p.id)
            c.code,
            p.name                as promotion_name,
            p.description         as promotion_description,
@@ -207,6 +213,7 @@ begin
          or (aud.audience_kind = 'business_account' and aud.business_account_id = a.id)
          or (aud.audience_kind = 'customer' and aud.customer_id = a.customer_id)
        )
+     order by p.id, c.valid_to nulls last, c.code
   ) t;
 
   return v_rows;
