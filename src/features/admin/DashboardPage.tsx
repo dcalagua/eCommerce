@@ -31,61 +31,29 @@ import { Meter } from './Meter'
 import { useDashboardKpis, useRecentOrders, type DashboardKpis } from './useDashboardKpis'
 
 /**
- * Tarjeta de cifra.
+ * Tarjeta de cifra del resumen.
  *
- * El icono es DECORATIVO (`aria-hidden`): la etiqueta ya nombra la cifra, y un
- * icono anunciado por el lector seria ruido repetido. Va en gris de texto, no
- * en el acento: el acento es del dato, y si lo llevan icono y cifra a la vez
- * deja de senalar nada.
+ * Una sola forma para las cuatro. La protagonista (`emphasis`) se distingue por
+ * el borde de acento y por el cuerpo de la cifra, NO por ocupar media pantalla:
+ * antes ventas se llevaba la mitad del ancho para un numero de doce caracteres
+ * y el resto de la tarjeta era aire. Con cuatro columnas iguales la fila se lee
+ * como una fila y la jerarquia sigue estando donde tiene que estar.
+ *
+ * El icono es DECORATIVO (`aria-hidden`, lo pone `AppIcon`): la etiqueta ya
+ * nombra la cifra, y anunciarlo seria ruido repetido.
+ *
+ * El enlace va anclado abajo (`mt: 'auto'`): asi las dos tarjetas que lo llevan
+ * lo tienen a la misma altura, y el hueco que deja el texto desigual queda en
+ * un solo sitio en vez de repartido por toda la tarjeta.
  */
-/**
- * Figura protagonista. La guia de visualizacion reserva este tratamiento para
- * «la cifra con la que un panel encabeza»: aqui son las ventas. El resto de
- * tarjetas quedan a su tamano normal para que haya jerarquia y no cuatro
- * numeros gritando lo mismo.
- */
-function HeroCard({ label, value, hint, icon }: {
-  label: string
-  value: string
-  hint?: string
-  icon?: ReactNode
-}) {
-  return (
-    <Card sx={{ height: '100%', borderColor: 'var(--accent)' }}>
-      <CardContent>
-        <Stack direction="row" sx={{ alignItems: 'center', gap: 0.75 }}>
-          <AppIcon tone="accent">{icon}</AppIcon>
-          <Typography
-            sx={{
-              fontSize: T.label,
-              fontWeight: 800,
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              color: 'var(--muted)',
-            }}
-          >
-            {label}
-          </Typography>
-        </Stack>
-        <Typography
-          className="tnum"
-          sx={{ fontSize: { xs: 34, md: 44 }, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.1, mt: 0.5 }}
-        >
-          {value}
-        </Typography>
-        {hint && <Typography sx={{ fontSize: 11.5, color: 'var(--muted)' }}>{hint}</Typography>}
-      </CardContent>
-    </Card>
-  )
-}
-
-function KpiCard({
+function KpiTile({
   label,
   value,
   hint,
   icon,
   to,
   actionLabel,
+  emphasis = false,
 }: {
   label: string
   value: string
@@ -94,12 +62,26 @@ function KpiCard({
   /** Adonde lleva la cifra: una cifra sin salida obliga a buscarla en el menu. */
   to?: string
   actionLabel?: string
+  emphasis?: boolean
 }) {
   return (
-    <Card sx={{ height: '100%' }}>
-      <CardContent>
-        <Stack direction="row" sx={{ alignItems: 'center', gap: 0.75 }}>
-          <AppIcon tone="neutral" size="sm">{icon}</AppIcon>
+    <Card sx={{ height: '100%', ...(emphasis ? { borderColor: 'var(--accent)' } : {}) }}>
+      <CardContent
+        sx={{
+          // `CardContent` reserva 24 px de fondo para el ultimo hijo: en una
+          // tarjeta de una cifra eso es una franja vacia bajo el numero.
+          p: 2,
+          '&:last-child': { pb: 2 },
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 0.25,
+        }}
+      >
+        <Stack direction="row" sx={{ alignItems: 'center', gap: 0.75, minWidth: 0 }}>
+          <AppIcon tone={emphasis ? 'accent' : 'neutral'} size="sm">
+            {icon}
+          </AppIcon>
           <Typography
             sx={{
               fontSize: T.label,
@@ -107,22 +89,40 @@ function KpiCard({
               letterSpacing: '0.1em',
               textTransform: 'uppercase',
               color: 'var(--muted)',
+              lineHeight: 1.3,
             }}
           >
             {label}
           </Typography>
         </Stack>
-        <Typography className="tnum" sx={{ fontSize: T.kpiCard, fontWeight: 800, mt: 0.5 }}>
+        <Typography
+          className="tnum"
+          sx={{
+            fontSize: emphasis ? T.kpiBig : T.kpiCard,
+            fontWeight: 800,
+            letterSpacing: '-0.02em',
+            lineHeight: 1.15,
+            // Una cifra partida en dos lineas dentro de una tarjeta estrecha se
+            // lee como dos numeros.
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
           {value}
         </Typography>
-        {hint && <Typography sx={{ fontSize: 11.5, color: 'var(--muted)' }}>{hint}</Typography>}
+        {hint && (
+          <Typography sx={{ fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.35 }}>
+            {hint}
+          </Typography>
+        )}
         {to && actionLabel && (
           <Button
             component={RouterLink}
             to={to}
             size="small"
             endIcon={<ArrowForwardRoundedIcon />}
-            sx={{ mt: 0.5, ml: -1 }}
+            sx={{ mt: 'auto', ml: -1, alignSelf: 'flex-start' }}
           >
             {actionLabel}
           </Button>
@@ -299,9 +299,12 @@ export function DashboardPage() {
         <InsightBanner insights={insights} />
 
         <SectionHeader icon={<QueryStatsRoundedIcon fontSize="small" />} title={t('admin.dashboard.section.sales')} />
+        {/* Cuatro columnas iguales: la cifra protagonista manda por el borde y
+            el cuerpo, no por el ancho. */}
         <Grid container spacing={2}>
-          <Grid item xs={12} md={6}>
-            <HeroCard
+          <Grid item xs={12} sm={6} md={3}>
+            <KpiTile
+              emphasis
               label={t(hero.label)}
               value={hero.value}
               icon={hero.icon}
@@ -309,8 +312,8 @@ export function DashboardPage() {
             />
           </Grid>
           {cards.map((card) => (
-            <Grid item xs={12} sm={4} md={2} key={card.key}>
-              <KpiCard
+            <Grid item xs={12} sm={6} md={3} key={card.key}>
+              <KpiTile
                 label={t(card.label)}
                 value={card.value}
                 icon={card.icon}
