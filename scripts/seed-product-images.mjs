@@ -55,7 +55,7 @@
  *   node scripts/seed-product-images.mjs --check      (que haria, sin escribir)
  *   node scripts/seed-product-images.mjs --fix-cache  (cabecera de cache de lo ya subido)
  *   node scripts/seed-product-images.mjs --count 4
- *   node scripts/seed-product-images.mjs --sku SIL-ROB-01
+ *   node scripts/seed-product-images.mjs --sku MED-PAR-500
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -73,8 +73,8 @@ const MAX_BYTES = 5 * 1024 * 1024
  * Que buscar para cada SKU, y como reconocer un acierto.
  *
  * Escrito a mano y en ingles porque el buscador de Commons es de titulos y
- * categorias: «silla de roble nordica» no encuentra nada y «oak chair»
- * encuentra sillas. Un SKU que no este aqui se queda sin foto y se avisa, que
+ * categorias: «paracetamol 500 mg» no encuentra nada y «paracetamol tablets»
+ * encuentra cajas de paracetamol. Un SKU que no este aqui se queda sin foto y se avisa, que
  * es mejor que adivinar con el nombre y colgarle cualquier cosa.
  *
  * `must` es lo que salva la busqueda de si misma: si el titulo del archivo no
@@ -82,71 +82,72 @@ const MAX_BYTES = 5 * 1024 * 1024
  * que ya lo nombran.
  */
 const TERMS = {
-  'SIL-ROB-01': {
-    queries: ['oak chair furniture', 'wooden chair furniture', 'chair wood seat'],
-    must: ['chair'],
-    nice: ['oak', 'wooden', 'wood', 'dining'],
+  'MED-PAR-500': {
+    queries: ['paracetamol tablets', 'acetaminophen tablets blister', 'pill blister pack'],
+    must: ['tablet', 'pill', 'blister', 'paracetamol', 'acetaminophen'],
+    nice: ['paracetamol', 'acetaminophen', 'blister', 'box'],
   },
-  'SIL-TAP-02': {
-    queries: ['upholstered chair', 'armchair fabric', 'armchair textile'],
-    must: ['chair'],
-    nice: ['upholstered', 'fabric', 'linen', 'armchair'],
+  'MED-IBU-400': {
+    queries: ['ibuprofen tablets', 'ibuprofen blister pack', 'ibuprofen box'],
+    must: ['ibuprofen', 'tablet', 'pill', 'blister'],
+    nice: ['ibuprofen', 'blister', 'box'],
   },
-  'SIL-PLE-03': {
-    queries: ['folding chair wooden', 'folding chair', 'chair folding seat'],
-    must: ['chair'],
-    nice: ['folding', 'wooden', 'wood'],
+  'MED-LOR-010': {
+    queries: ['loratadine tablets', 'antihistamine tablets', 'tablets blister pack'],
+    must: ['tablet', 'pill', 'blister', 'loratadine'],
+    nice: ['loratadine', 'antihistamine', 'blister'],
   },
-  'SIL-OLD-99': {
-    queries: ['antique wooden chair', 'vintage chair furniture', 'old wooden chair'],
-    must: ['chair'],
-    nice: ['antique', 'vintage', 'wooden', 'wood'],
+  'MED-AMO-500': {
+    queries: ['amoxicillin capsules', 'antibiotic capsules', 'capsules blister pack'],
+    must: ['capsule', 'amoxicillin', 'antibiotic'],
+    nice: ['amoxicillin', 'capsule', 'blister'],
   },
-  'MES-COM-01': {
-    queries: ['dining table wooden', 'wooden table furniture', 'kitchen table wood'],
-    must: ['table'],
-    nice: ['dining', 'oak', 'wooden', 'wood', 'kitchen'],
+  'MED-JAR-099': {
+    queries: ['cough syrup bottle', 'medicine syrup bottle', 'pharmaceutical bottle liquid'],
+    must: ['syrup', 'bottle'],
+    nice: ['medicine', 'cough', 'pharmaceutical'],
   },
-  'MES-AUX-02': {
-    queries: ['round side table', 'small round table wooden', 'coffee table round'],
-    must: ['table'],
-    nice: ['round', 'side', 'small', 'coffee', 'wooden'],
+  'CPE-SOL-050': {
+    queries: ['sunscreen bottle', 'sunscreen lotion tube', 'sun cream bottle'],
+    must: ['sunscreen', 'sun cream', 'lotion'],
+    nice: ['bottle', 'tube', 'spf'],
   },
-  'MES-PRO-09': {
-    queries: ['workbench wooden', 'work table wooden', 'wooden bench table'],
-    must: ['table', 'workbench', 'bench'],
-    nice: ['work', 'wooden', 'wood'],
+  'CPE-ALC-070': {
+    queries: ['hand sanitizer bottle', 'alcohol gel dispenser bottle', 'hand sanitiser gel'],
+    must: ['sanitizer', 'sanitiser', 'alcohol', 'gel'],
+    nice: ['hand', 'bottle', 'dispenser'],
   },
-  'ILU-COL-01': {
-    queries: ['pendant lamp', 'hanging lamp ceiling', 'ceiling lamp glass'],
-    must: ['lamp', 'chandelier', 'luminaire'],
-    nice: ['pendant', 'hanging', 'ceiling', 'glass', 'opal'],
+  'VIT-VTC-1G0': {
+    queries: ['effervescent vitamin tablets', 'vitamin c tablets tube', 'effervescent tablet water'],
+    must: ['vitamin', 'effervescent', 'tablet'],
+    nice: ['vitamin c', 'effervescent', 'tube'],
   },
-  'ILU-PIE-02': {
-    queries: ['floor lamp', 'standing lamp', 'lamp interior light'],
-    must: ['lamp'],
-    nice: ['floor', 'standing', 'arc'],
+  'VIT-OMG-030': {
+    queries: ['fish oil capsules', 'omega 3 softgel capsules', 'dietary supplement capsules'],
+    must: ['capsule', 'softgel', 'supplement', 'fish oil'],
+    nice: ['omega', 'fish oil', 'bottle'],
   },
-  'ACC-COJ-01': {
-    queries: ['wool cushion', 'pillow cushion textile', 'cushion seat'],
-    must: ['cushion', 'pillow'],
-    nice: ['wool', 'grey', 'gray', 'textile'],
+  'BOT-MAS-095': {
+    queries: ['kn95 respirator mask', 'ffp2 mask', 'surgical face mask'],
+    must: ['mask', 'respirator'],
+    nice: ['kn95', 'ffp2', 'medical', 'surgical'],
   },
   'TB-SECRET-01': {
-    queries: ['table lamp', 'desk lamp'],
-    must: ['lamp'],
-    nice: ['table', 'desk'],
+    queries: ['pharmacy shelf medicine', 'medicine boxes shelf'],
+    must: ['pharmacy', 'medicine', 'shelf'],
+    nice: ['pharmacy', 'medicine'],
   },
   'P09-RUNTIME-01': {
-    queries: ['wooden stool', 'stool furniture'],
-    must: ['stool', 'chair'],
-    nice: ['wooden', 'wood'],
+    queries: ['digital thermometer', 'clinical thermometer'],
+    must: ['thermometer'],
+    nice: ['digital', 'clinical', 'medical'],
   },
 }
 
 /**
  * Palabras que descalifican una foto de catalogo aunque nombre el objeto: una
- * lampara rota es una lampara, pero no es el producto que se vende.
+ * caja de medicinas tirada en la basura sigue siendo una caja de medicinas,
+ * pero no es el producto que se vende.
  */
 const REJECT = [
   'shattered', 'broken', 'damaged', 'burnt', 'burned', 'ruin', 'destroyed',
@@ -157,8 +158,8 @@ const REJECT = [
   'drawing', 'design for', 'sketch', 'engraving', 'lithograph', 'etching',
   'patent', 'blueprint', 'diagram', 'illustration', 'woodcut', 'painting',
   'plate', 'catalogue', 'catalog',
-  // Y de gente: «Baby in wooden high chair» es una silla de madera, pero la
-  // foto es del bebe. En una ficha de producto el protagonista es el producto.
+  // Y de gente: «Nurse holding a syringe» nombra la jeringa, pero la foto es
+  // de la enfermera. En una ficha de producto el protagonista es el producto.
   'baby', 'child', 'girl', 'boy', 'portrait', 'people', 'woman', 'family',
   'wedding', 'selfie',
 ]

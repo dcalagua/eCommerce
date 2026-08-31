@@ -1,10 +1,16 @@
 -- =============================================================================
 -- Seed de DEMO — solo para el stack LOCAL (`supabase db reset`).
 --
--- Sirve para ver la vitrina de `/s/casa-nordica` con categorías y productos sin
+-- Sirve para ver la vitrina de `/s/miquimica` con categorías y productos sin
 -- tener que dar de alta nada a mano. No es un fixture de producción y no se
 -- aplica en remoto: `supabase db reset` es un comando de desarrollo y esta
 -- migración no existe (esto no es una migración, es `seed.sql`).
+--
+-- El tenant de demo es una BOTICA: medicamentos de venta libre, cuidado
+-- personal y suplementos. Se eligió un catálogo de farmacia porque ejercita
+-- cosas que el de muebles no tocaba —presentaciones como eje de variante, un
+-- producto que exige receta, lotes que caducan— y porque los tickets pequeños y
+-- las cantidades altas dan otra forma a la analítica.
 --
 -- Reglas que sigue igual que el resto del proyecto:
 --   · La jerarquía es organization → company → store → catálogo, con los uuid
@@ -16,15 +22,20 @@
 --   · Sin `product_images`: el objeto de Storage no existe en un `db reset`, y
 --     una fila apuntando a una ruta vacía daría imágenes rotas en vez del
 --     fallback neutral que la vitrina ya sabe pintar.
+--
+-- Sobre los textos de los productos: dicen QUÉ ES y QUÉ TRAE —principio activo,
+-- presentación, contenido—, nunca para qué tomarlo ni cuánto. Una ficha de
+-- catálogo no es un prospecto, y una demo tampoco es sitio para dar indicación
+-- médica. Lo que exige receta lo dice en su propia ficha.
 -- =============================================================================
 
 -- Cuenta (organization) del hub. En demo el uuid es fijo para poder repetir.
 insert into public.tenants (organization_id, slug, name, admin_email, status)
 values (
   'd0000000-0000-4000-8000-000000000001',
-  'casa-nordica',
-  'Casa Nórdica',
-  'admin@casanordica.demo',
+  'miquimica',
+  'MiQuímica',
+  'admin@miquimica.demo',
   'active'
 )
 on conflict (organization_id) do nothing;
@@ -35,22 +46,22 @@ values (
   'd0000000-0000-4000-8000-0000000000a1',
   'd0000000-0000-4000-8000-000000000001',
   'd0000000-0000-4000-8000-0000000000c1',
-  'casa-nordica',
-  'Casa Nórdica',
+  'miquimica',
+  'MiQuímica',
   'active',
   'PEN'
 )
 on conflict (id) do nothing;
 
 -- Una segunda tienda EN BORRADOR: existe para comprobar de un vistazo que el
--- storefront devuelve 404 en `/s/taller-cerrado` y no la lista en ningún sitio.
+-- storefront devuelve 404 en `/s/botica-cerrada` y no la lista en ningún sitio.
 insert into public.stores (id, organization_id, company_id, slug, name, status, currency)
 values (
   'd0000000-0000-4000-8000-0000000000a2',
   'd0000000-0000-4000-8000-000000000001',
   'd0000000-0000-4000-8000-0000000000c1',
-  'taller-cerrado',
-  'Taller Cerrado',
+  'botica-cerrada',
+  'Botica Cerrada',
   'draft',
   'PEN'
 )
@@ -67,13 +78,13 @@ values (
   'd0000000-0000-4000-8000-0000000000a1',
   'd0000000-0000-4000-8000-000000000001',
   'd0000000-0000-4000-8000-0000000000c1',
-  '#056769',
+  '#0E7C66',
   'es',
-  'hola@casanordica.demo',
-  'Muebles que duran',
-  'Fabricación propia en madera certificada. Envíos a todo el país.',
+  'hola@miquimica.demo',
+  'Tu botica en línea',
+  'Medicamentos, cuidado personal y suplementos con entrega el mismo día en Lima.',
   '+51 999 111 222',
-  'Av. Primavera 120, Lima'
+  'Av. Arequipa 1420, Lima'
 )
 on conflict (store_id) do nothing;
 
@@ -82,16 +93,16 @@ insert into public.categories (id, organization_id, company_id, store_id, slug, 
 values
   ('d0000000-0000-4000-8000-0000000000b1', 'd0000000-0000-4000-8000-000000000001',
    'd0000000-0000-4000-8000-0000000000c1', 'd0000000-0000-4000-8000-0000000000a1',
-   'sillas', 'Sillas', 1, true),
+   'medicamentos', 'Medicamentos', 1, true),
   ('d0000000-0000-4000-8000-0000000000b2', 'd0000000-0000-4000-8000-000000000001',
    'd0000000-0000-4000-8000-0000000000c1', 'd0000000-0000-4000-8000-0000000000a1',
-   'mesas', 'Mesas', 2, true),
+   'cuidado-personal', 'Cuidado personal', 2, true),
   ('d0000000-0000-4000-8000-0000000000b3', 'd0000000-0000-4000-8000-000000000001',
    'd0000000-0000-4000-8000-0000000000c1', 'd0000000-0000-4000-8000-0000000000a1',
-   'iluminacion', 'Iluminación', 3, true),
+   'vitaminas', 'Vitaminas y suplementos', 3, true),
   ('d0000000-0000-4000-8000-0000000000b4', 'd0000000-0000-4000-8000-000000000001',
    'd0000000-0000-4000-8000-0000000000c1', 'd0000000-0000-4000-8000-0000000000a1',
-   'descatalogado', 'Descatalogado', 9, false)
+   'descontinuado', 'Descontinuado', 9, false)
 on conflict (id) do nothing;
 
 -- Productos. Hay publicados con y sin stock, un borrador y un archivado: es lo
@@ -104,71 +115,74 @@ values
   ('d0000000-0000-4000-8000-0000000000e1', 'd0000000-0000-4000-8000-000000000001',
    'd0000000-0000-4000-8000-0000000000c1', 'd0000000-0000-4000-8000-0000000000a1',
    'd0000000-0000-4000-8000-0000000000b1',
-   'SIL-ROB-01', 'silla-roble-nordica', 'Silla de roble nórdica',
-   'Silla de comedor en roble macizo con acabado al aceite. Estructura ensamblada a espiga, sin tornillería a la vista.',
-   '389.00', '450.00', 'PEN', 24, 'published', now() - interval '10 days'),
+   'MED-PAR-500', 'paracetamol-500-mg', 'Paracetamol 500 mg',
+   'Analgésico y antipirético de venta libre. Caja con 20 tabletas ranuradas en blíster de aluminio. Lee el prospecto antes de usarlo.',
+   '8.90', '11.50', 'PEN', 24, 'published', now() - interval '10 days'),
 
   ('d0000000-0000-4000-8000-0000000000e2', 'd0000000-0000-4000-8000-000000000001',
    'd0000000-0000-4000-8000-0000000000c1', 'd0000000-0000-4000-8000-0000000000a1',
    'd0000000-0000-4000-8000-0000000000b1',
-   'SIL-TAP-02', 'silla-tapizada-lino', 'Silla tapizada en lino',
-   'Asiento tapizado en lino natural sobre base de haya. Funda desmontable y lavable.',
-   '429.00', null, 'PEN', 0, 'published', now() - interval '8 days'),
+   'MED-IBU-400', 'ibuprofeno-400-mg', 'Ibuprofeno 400 mg',
+   'Antiinflamatorio de venta libre. Caja con 10 tabletas recubiertas. Lee el prospecto antes de usarlo.',
+   '12.50', null, 'PEN', 0, 'published', now() - interval '8 days'),
 
   ('d0000000-0000-4000-8000-0000000000e3', 'd0000000-0000-4000-8000-000000000001',
    'd0000000-0000-4000-8000-0000000000c1', 'd0000000-0000-4000-8000-0000000000a1',
    'd0000000-0000-4000-8000-0000000000b1',
-   'SIL-PLE-03', 'silla-plegable-abedul', 'Silla plegable de abedul',
-   'Plegable, apilable y pensada para espacios chicos. Contrachapado de abedul de nueve capas.',
-   '259.00', null, 'PEN', 7, 'published', now() - interval '6 days'),
+   'MED-LOR-010', 'loratadina-10-mg', 'Loratadina 10 mg',
+   'Antihistamínico de venta libre. Caja con 10 tabletas. Lee el prospecto antes de usarlo.',
+   '9.90', null, 'PEN', 7, 'published', now() - interval '6 days'),
 
+  -- El único que exige receta: la ficha lo dice y el atributo lo marca. Es lo
+  -- que hace visible en la demo un catálogo mixto, que es el caso real de
+  -- cualquier botica.
   ('d0000000-0000-4000-8000-0000000000e4', 'd0000000-0000-4000-8000-000000000001',
    'd0000000-0000-4000-8000-0000000000c1', 'd0000000-0000-4000-8000-0000000000a1',
-   'd0000000-0000-4000-8000-0000000000b2',
-   'MES-COM-01', 'mesa-comedor-extensible', 'Mesa de comedor extensible',
-   'De cuatro a ocho comensales con un solo gesto. Tablero de roble y guías metálicas ocultas.',
-   '1890.00', '2150.00', 'PEN', 5, 'published', now() - interval '5 days'),
+   'd0000000-0000-4000-8000-0000000000b1',
+   'MED-AMO-500', 'amoxicilina-500-mg', 'Amoxicilina 500 mg',
+   'Antibiótico de venta bajo receta médica. Caja con 12 cápsulas. La botica valida la receta antes de despachar el pedido.',
+   '24.90', '29.00', 'PEN', 5, 'published', now() - interval '5 days'),
 
   ('d0000000-0000-4000-8000-0000000000e5', 'd0000000-0000-4000-8000-000000000001',
    'd0000000-0000-4000-8000-0000000000c1', 'd0000000-0000-4000-8000-0000000000a1',
    'd0000000-0000-4000-8000-0000000000b2',
-   'MES-AUX-02', 'mesa-auxiliar-redonda', 'Mesa auxiliar redonda',
-   'Mesa de apoyo de 45 cm con tapa de mármol y patas de fresno.',
-   '540.00', null, 'PEN', 12, 'published', now() - interval '4 days'),
+   'CPE-SOL-050', 'protector-solar-fps-50', 'Protector solar facial FPS 50',
+   'Fluido de textura ligera, sin perfume, apto para piel sensible. Frasco de 60 ml con dosificador.',
+   '54.00', null, 'PEN', 12, 'published', now() - interval '4 days'),
 
   ('d0000000-0000-4000-8000-0000000000e6', 'd0000000-0000-4000-8000-000000000001',
    'd0000000-0000-4000-8000-0000000000c1', 'd0000000-0000-4000-8000-0000000000a1',
-   'd0000000-0000-4000-8000-0000000000b3',
-   'ILU-COL-01', 'lampara-colgante-opalo', 'Lámpara colgante ópalo',
-   'Pantalla de vidrio opal soplado y cable textil de dos metros. Casquillo E27.',
-   '320.00', null, 'PEN', 18, 'published', now() - interval '3 days'),
+   'd0000000-0000-4000-8000-0000000000b2',
+   'CPE-ALC-070', 'alcohol-en-gel-70', 'Alcohol en gel 70°',
+   'Gel antiséptico para manos con 70 % de alcohol y glicerina. Frasco de 500 ml con válvula dosificadora.',
+   '14.90', null, 'PEN', 18, 'published', now() - interval '3 days'),
 
   ('d0000000-0000-4000-8000-0000000000e7', 'd0000000-0000-4000-8000-000000000001',
    'd0000000-0000-4000-8000-0000000000c1', 'd0000000-0000-4000-8000-0000000000a1',
    'd0000000-0000-4000-8000-0000000000b3',
-   'ILU-PIE-02', 'lampara-de-pie-arco', 'Lámpara de pie de arco',
-   'Arco de acero con base de mármol y regulador de intensidad en el cable.',
-   '760.00', '850.00', 'PEN', 3, 'published', now() - interval '2 days'),
+   'VIT-VTC-1G0', 'vitamina-c-1-g-efervescente', 'Vitamina C 1 g efervescente',
+   'Suplemento alimenticio en tabletas efervescentes sabor naranja. Tubo con 10 tabletas.',
+   '19.90', '24.00', 'PEN', 3, 'published', now() - interval '2 days'),
 
   -- Sin categoría: el catálogo tiene que seguir mostrándolo.
   ('d0000000-0000-4000-8000-0000000000e8', 'd0000000-0000-4000-8000-000000000001',
    'd0000000-0000-4000-8000-0000000000c1', 'd0000000-0000-4000-8000-0000000000a1',
    null,
-   'ACC-COJ-01', 'cojin-lana-gris', 'Cojín de lana gris',
-   'Cojín de 45x45 en lana virgen con relleno de plumón reciclado.',
-   '95.00', null, 'PEN', 40, 'published', now() - interval '1 day'),
+   'BOT-MAS-095', 'mascarilla-kn95', 'Mascarilla KN95',
+   'Mascarilla de cinco capas con clip nasal ajustable. Caja con 10 unidades empacadas por separado.',
+   '19.00', null, 'PEN', 40, 'published', now() - interval '1 day'),
 
   -- Borrador: NO debe aparecer en la vitrina.
   ('d0000000-0000-4000-8000-0000000000e9', 'd0000000-0000-4000-8000-000000000001',
    'd0000000-0000-4000-8000-0000000000c1', 'd0000000-0000-4000-8000-0000000000a1',
-   'd0000000-0000-4000-8000-0000000000b2',
-   'MES-PRO-09', 'mesa-prototipo', 'Mesa prototipo',
-   'Todavía en diseño.', '999.00', null, 'PEN', 1, 'draft', null),
+   'd0000000-0000-4000-8000-0000000000b3',
+   'VIT-OMG-030', 'omega-3-1000-mg', 'Omega 3 1000 mg',
+   'Todavía en alta: falta la ficha del proveedor.', '49.90', null, 'PEN', 1, 'draft', null),
 
   -- Archivado: tampoco.
   ('d0000000-0000-4000-8000-0000000000ea', 'd0000000-0000-4000-8000-000000000001',
    'd0000000-0000-4000-8000-0000000000c1', 'd0000000-0000-4000-8000-0000000000a1',
    'd0000000-0000-4000-8000-0000000000b4',
-   'SIL-OLD-99', 'silla-descatalogada', 'Silla descatalogada',
-   'Fuera de catálogo.', '199.00', null, 'PEN', 0, 'archived', now() - interval '400 days')
+   'MED-JAR-099', 'jarabe-descontinuado', 'Jarabe descontinuado',
+   'Fuera de catálogo: el laboratorio dejó de fabricarlo.', '17.90', null, 'PEN', 0, 'archived', now() - interval '400 days')
 on conflict (id) do nothing;

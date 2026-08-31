@@ -15,6 +15,11 @@
  *
  *   node scripts/apply-demo-data.mjs
  *   node scripts/apply-demo-data.mjs --check   (solo cuenta filas, no escribe)
+ *   node scripts/apply-demo-data.mjs --file supabase/demo-purge.sql
+ *
+ * `--file` aplica CUALQUIER fichero SQL del repo por la misma via. Existe para
+ * el ciclo de cambio de cliente —vaciar, sembrar la base, sembrar la demo— sin
+ * tener que escribir tres scripts que hacen lo mismo con otro nombre.
  */
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -67,10 +72,16 @@ if (!url) throw new Error('Falta VITE_SUPABASE_URL en .env')
 const ref = new URL(url).hostname.split('.')[0]
 const ctx = { token, ref }
 
+const fileFlag = process.argv.indexOf('--file')
+// Una ruta relativa a la raiz del repo, no absoluta: lo que se aplica a la base
+// de DEV tiene que estar versionado y ser revisable en un diff.
+const target = fileFlag === -1 ? join('supabase', 'demo-data.sql') : process.argv[fileFlag + 1]
+
 if (!process.argv.includes('--check')) {
-  const sql = readFileSync(join(ROOT, 'supabase', 'demo-data.sql'), 'utf8')
+  if (!target) throw new Error('Falta la ruta del fichero tras --file')
+  const sql = readFileSync(join(ROOT, target), 'utf8')
   await run(sql, ctx)
-  console.log(`Datos de demostracion aplicados a ${ref}.`)
+  console.log(`${target} aplicado a ${ref}.`)
 }
 
 const counts = await run(

@@ -427,5 +427,210 @@
       "autor": "Henry Ojonugwa",
       "bytes": 574040
     }
+  ],
+  "BOT-MAS-095": [
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e8/8e84064b-ae1d-4eca-b6f0-0f83d55de8f2.jpg",
+      "posicion": 0,
+      "origen": "https://commons.wikimedia.org/wiki/File:A_surgical_mask_(2017).jpg",
+      "titulo": "File:A surgical mask (2017).jpg",
+      "licencia": "CC0",
+      "autor": "AlexChirkin",
+      "bytes": 256762
+    }
+  ],
+  "CPE-ALC-070": [
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e6/c5e5a83c-10e5-49bd-b60c-d6f8505e8dcc.jpg",
+      "posicion": 0,
+      "origen": "https://commons.wikimedia.org/wiki/File:Hand_sanitizer_banner.jpg",
+      "titulo": "File:Hand sanitizer banner.jpg",
+      "licencia": "CC0",
+      "autor": "Mx. Granger",
+      "bytes": 70099
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e6/0f48c271-4193-4f96-96c4-76d19c3963b7.jpg",
+      "posicion": 1,
+      "origen": "https://commons.wikimedia.org/wiki/File:A_bottle_of_alcohol_gel_-_no_label.JPG",
+      "titulo": "File:A bottle of alcohol gel - no label.JPG",
+      "licencia": "Public domain",
+      "autor": "Seraphim Whipp",
+      "bytes": 16610
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e6/9652931a-984d-4102-aaf5-63aac37d6225.jpg",
+      "posicion": 2,
+      "origen": "https://commons.wikimedia.org/wiki/File:Purell_hand_sanitizer_gel_in_bottle_(8487014501).jpg",
+      "titulo": "File:Purell hand sanitizer gel in bottle (8487014501).jpg",
+      "licencia": "CC0",
+      "autor": "Chiara Coetzee from Menlo Park, CA, USA",
+      "bytes": 265516
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e6/fa2ab868-bf3d-4f6f-91c7-65212231aff6.jpg",
+      "posicion": 3,
+      "origen": "https://commons.wikimedia.org/wiki/File:Hand_sanitizer_in_Bangkok_in_March_2020_-_3.jpg",
+      "titulo": "File:Hand sanitizer in Bangkok in March 2020 - 3.jpg",
+      "licencia": "CC0",
+      "autor": "Mx. Granger",
+      "bytes": 289043
+    }
+  ],
+  "MED-AMO-500": [
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e4/25d69215-ae55-4ff7-bcc1-51c1852c6f69.jpg",
+      "posicion": 0,
+      "origen": "https://commons.wikimedia.org/wiki/File:Ubenimex_capsules_in_China.jpg",
+      "titulo": "File:Ubenimex capsules in China.jpg",
+      "licencia": "CC0",
+      "autor": "Vack Xu",
+      "bytes": 202467
+    }
+  ],
+  "MED-IBU-400": [
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e2/5bdb90d5-3418-4b37-9f06-753ba0fd93ac.jpg",
+      "posicion": 0,
+      "origen": "https://commons.wikimedia.org/wiki/File:Ibuprofen_tablets_in_palm_of_hand.jpg",
+      "titulo": "File:Ibuprofen tablets in palm of hand.jpg",
+      "licencia": "CC0",
+      "autor": "Derrick Coetzee (User:Dcoetzee)",
+      "bytes": 190943
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e2/051bd8a5-1f0a-4d4b-a6d3-a505ea7b0763.jpg",
+      "posicion": 1,
+      "origen": "https://commons.wikimedia.org/wiki/File:Nurofen_tablets_on_pharmacy_shelf.jpg",
+      "titulo": "File:Nurofen tablets on pharmacy shelf.jpg",
+      "licencia": "Public domain",
+      "autor": "Maksym Kozlenko",
+      "bytes": 337840
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e2/55fa54e1-cf7c-4403-9527-8ec44cf7ae10.jpg",
+      "posicion": 2,
+      "origen": "https://commons.wikimedia.org/wiki/File:Bottle_of_Ibuprofen_tablets_with_cap_removed_and_tablets_in_front.jpg",
+      "titulo": "File:Bottle of Ibuprofen tablets with cap removed and tablets in front.jpg",
+      "licencia": "CC0",
+      "autor": "Derrick Coetzee (User:Dcoetzee)",
+      "bytes": 194584
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e2/47cedb3d-e52f-401d-bf51-375925f688b1.jpg",
+      "posicion": 3,
+      "origen": "https://commons.wikimedia.org/wiki/File:Pile_of_200mg_generic_Ibuprofen_tablets.jpg",
+      "titulo": "File:Pile of 200mg generic Ibuprofen tablets.jpg",
+      "licencia": "CC0",
+      "autor": "Derrick Coetzee (User:Dcoetzee)",
+      "bytes": 251611
+    }
+  ],
+  "MED-JAR-099": [
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000ea/8a33dec2-5751-414c-93c2-acd0d556fc84.png",
+      "posicion": 0,
+      "origen": "https://commons.wikimedia.org/wiki/File:Vintage_Turkish_pediatric_cough_syrup_bottle.png",
+      "titulo": "File:Vintage Turkish pediatric cough syrup bottle.png",
+      "licencia": "CC0",
+      "autor": "Necatorina",
+      "bytes": 1631786
+    }
+  ],
+  "MED-LOR-010": [
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e3/2b8b9c12-3765-401d-ac01-62f4050dad72.jpg",
+      "posicion": 0,
+      "origen": "https://commons.wikimedia.org/wiki/File:Clonazepam_in_blister_pack.jpg",
+      "titulo": "File:Clonazepam in blister pack.jpg",
+      "licencia": "CC0",
+      "autor": "SupArse",
+      "bytes": 97370
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e3/1ad1a15c-591f-4a16-be01-5fd1630681c5.jpg",
+      "posicion": 1,
+      "origen": "https://commons.wikimedia.org/wiki/File:Robenacoxib_blister_package.jpg",
+      "titulo": "File:Robenacoxib blister package.jpg",
+      "licencia": "CC0",
+      "autor": "Marbletan",
+      "bytes": 254388
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e3/dba78055-7afb-40aa-9514-80286cd54ba5.jpg",
+      "posicion": 2,
+      "origen": "https://commons.wikimedia.org/wiki/File:Valaciclovir_Blister_packs.jpg",
+      "titulo": "File:Valaciclovir Blister packs.jpg",
+      "licencia": "CC0",
+      "autor": "Hanabishi",
+      "bytes": 347173
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e3/dc7dc3a7-a263-4bcd-9bcc-bd061cd6b722.jpg",
+      "posicion": 3,
+      "origen": "https://commons.wikimedia.org/wiki/File:Toledomin-tablets-12.5mg-front.jpg",
+      "titulo": "File:Toledomin-tablets-12.5mg-front.jpg",
+      "licencia": "Public domain",
+      "autor": "Yu TANAKA",
+      "bytes": 1183961
+    }
+  ],
+  "MED-PAR-500": [
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e1/761c3856-b6ad-4593-9a35-ec57107760f2.jpg",
+      "posicion": 0,
+      "origen": "https://commons.wikimedia.org/wiki/File:Hydrocodone-paracetamol-5-500.jpg",
+      "titulo": "File:Hydrocodone-paracetamol-5-500.jpg",
+      "licencia": "Public domain",
+      "autor": "Elbreapoly",
+      "bytes": 169629
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e1/f35267b5-9d10-48f4-82d0-cca760f645a8.jpg",
+      "posicion": 1,
+      "origen": "https://commons.wikimedia.org/wiki/File:Pills_in_blister_pack.jpg",
+      "titulo": "File:Pills in blister pack.jpg",
+      "licencia": "CC0",
+      "autor": "Unknown",
+      "bytes": 380519
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e1/185a9356-d1b9-4460-8bdd-b8ce6182eeff.jpg",
+      "posicion": 2,
+      "origen": "https://commons.wikimedia.org/wiki/File:Emergency_contraception_1_pill.jpg",
+      "titulo": "File:Emergency contraception 1 pill.jpg",
+      "licencia": "Public domain",
+      "autor": "Mettiche",
+      "bytes": 133687
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e1/8185af18-6ce7-40d3-8fea-456fe7719d27.jpg",
+      "posicion": 3,
+      "origen": "https://commons.wikimedia.org/wiki/File:Contraceptive_Pills.jpg",
+      "titulo": "File:Contraceptive Pills.jpg",
+      "licencia": "CC0",
+      "autor": "Anqa",
+      "bytes": 356957
+    }
+  ],
+  "VIT-OMG-030": [
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e9/7fb94665-2727-4e51-a358-11529b0387c3.jpg",
+      "posicion": 0,
+      "origen": "https://commons.wikimedia.org/wiki/File:Fish_Oil_Capsules.jpg",
+      "titulo": "File:Fish Oil Capsules.jpg",
+      "licencia": "CC0",
+      "autor": "Oddman47",
+      "bytes": 296678
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e9/d1ab9b2c-a2c1-46fc-8f55-051daee73f1e.jpg",
+      "posicion": 1,
+      "origen": "https://commons.wikimedia.org/wiki/File:Vegan_calcium_supplements.jpg",
+      "titulo": "File:Vegan calcium supplements.jpg",
+      "licencia": "CC0",
+      "autor": "Mx. Granger",
+      "bytes": 230113
+    }
   ]
 }

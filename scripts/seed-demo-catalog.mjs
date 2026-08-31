@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Catalogo de DEMOSTRACION a escala: ~100 productos con fotos, en la tienda
- * `casa-nordica` del proyecto de DEV/QAS.
+ * Catalogo de DEMOSTRACION a escala: ~100 productos con fotos, en la botica
+ * `miquimica` del proyecto de DEV/QAS.
  *
  * Por que existe: con doce productos no se ve nada de lo que hay que ensenar en
  * una demo —paginacion, filtros que descartan de verdad, orden por precio,
@@ -48,7 +48,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const MANIFEST = join(ROOT, 'supabase', 'demo-images.json')
 
 /** Tienda de demo. Las otras dos (borrador y tenant B) se dejan como estan. */
-const STORE_SLUG = 'casa-nordica'
+const STORE_SLUG = 'miquimica'
 const PREFIX = 'DEMO-'
 
 /**
@@ -56,75 +56,78 @@ const PREFIX = 'DEMO-'
  * salen sus fotos y con que piezas se componen sus nombres.
  *
  * `photoFrom` es el prefijo de SKU sembrado por `seed-product-images.mjs`: las
- * fotos de sillas para las sillas. Una lampara con foto de mesa se nota a la
- * primera y estropea justo lo que la demo quiere ensenar.
+ * fotos de medicamentos para los medicamentos. Un jarabe con foto de gasas se
+ * nota a la primera y estropea justo lo que la demo quiere ensenar.
+ *
+ * Los textos dicen QUE ES y QUE TRAE —principio activo, concentracion,
+ * presentacion—, nunca para que tomarlo ni cuanto. Una ficha de catalogo no es
+ * un prospecto, y una demo no es sitio para dar indicacion medica.
  */
 const FAMILIES = [
   {
-    key: 'sillas',
-    price: [129, 690],
-    categorySlug: 'sillas',
-    photoFrom: ['SIL-', 'P09-'],
+    key: 'medicamentos',
+    price: [4, 48],
+    categorySlug: 'medicamentos',
+    photoFrom: ['MED-', 'P09-'],
     weight: 34,
-    types: ['Silla', 'Silla de comedor', 'Butaca', 'Taburete', 'Banqueta', 'Silla de escritorio'],
-    materials: ['de roble', 'de haya', 'de nogal', 'de abedul', 'de fresno', 'tapizada en lino', 'tapizada en bouclé', 'de ratán'],
-    finishes: ['natural', 'al aceite', 'ahumado', 'blanco mate', 'nogal oscuro', 'gris piedra', 'arena'],
+    types: ['Paracetamol', 'Ibuprofeno', 'Naproxeno', 'Loratadina', 'Cetirizina', 'Omeprazol', 'Sales de rehidratación', 'Antigripal'],
+    materials: ['500 mg', '400 mg', '250 mg', '10 mg', '20 mg', '120 ml', 'solución oral'],
+    finishes: ['caja de 10', 'caja de 20', 'caja de 30', 'blíster de 10', 'frasco de 120 ml', 'tubo de 10'],
     copy: [
-      'Estructura ensamblada a espiga, sin tornillería a la vista.',
-      'Asiento moldeado en contrachapado de nueve capas.',
-      'Apilable y pensada para espacios chicos.',
-      'Tapizado desmontable y lavable en agua fría.',
-      'Patas con regatones de fieltro para no marcar el suelo.',
+      'De venta libre. Lee el prospecto antes de usarlo.',
+      'Blíster de aluminio con lote y vencimiento impresos.',
+      'Cada despacho lo revisa un químico farmacéutico.',
+      'Tabletas ranuradas, fáciles de partir.',
+      'Se conserva por debajo de 30 °C, en su envase original.',
     ],
   },
   {
-    key: 'mesas',
-    price: [290, 1890],
-    categorySlug: 'mesas',
-    photoFrom: ['MES-'],
-    weight: 30,
-    types: ['Mesa de comedor', 'Mesa auxiliar', 'Mesa de centro', 'Escritorio', 'Consola', 'Mesa alta'],
-    materials: ['de roble macizo', 'de pino', 'de nogal', 'con sobre de mármol', 'con tapa de linóleo', 'de acero y madera'],
-    finishes: ['extensible', 'redonda', 'rectangular', 'plegable', 'de 140 cm', 'de 180 cm'],
+    key: 'cuidado',
+    price: [9, 95],
+    categorySlug: 'cuidado-personal',
+    photoFrom: ['CPE-'],
+    weight: 28,
+    types: ['Alcohol en gel', 'Jabón líquido antibacterial', 'Protector solar', 'Crema hidratante', 'Shampoo dermatológico', 'Pasta dental', 'Enjuague bucal', 'Toallitas húmedas'],
+    materials: ['con glicerina', 'sin perfume', 'FPS 50', 'con avena', 'para piel sensible', 'con flúor'],
+    finishes: ['frasco de 250 ml', 'frasco de 500 ml', 'tubo de 100 g', 'pack de 3', 'sachet de 60 ml'],
     copy: [
-      'Sobre de una sola pieza, canto biselado a mano.',
-      'Estructura atornillada por dentro: se monta en diez minutos.',
-      'Tratada con aceite duro, apta para uso diario.',
-      'Patas desmontables para pasar por puertas estrechas.',
-      'Admite hasta 80 kg repartidos sobre el sobre.',
+      'Uso externo. Mantener fuera del alcance de los niños.',
+      'Dermatológicamente probado, apto para uso diario.',
+      'Envase con válvula dosificadora que no gotea.',
+      'Sin parabenos ni colorantes añadidos.',
+      'Fórmula hipoalergénica, también para piel atópica.',
     ],
   },
   {
-    key: 'iluminacion',
-    price: [89, 780],
-    categorySlug: 'iluminacion',
-    photoFrom: ['ILU-', 'TB-'],
+    key: 'suplementos',
+    price: [15, 130],
+    categorySlug: 'vitaminas',
+    photoFrom: ['VIT-'],
     weight: 22,
-    types: ['Lámpara colgante', 'Lámpara de pie', 'Lámpara de mesa', 'Aplique', 'Flexo', 'Plafón'],
-    materials: ['de vidrio opal', 'de latón', 'de acero mate', 'de cerámica', 'con pantalla de lino', 'de aluminio'],
-    finishes: ['E27', 'regulable', 'de 40 cm', 'con cable textil', 'orientable', 'de tres luces'],
+    types: ['Vitamina C', 'Vitamina D3', 'Complejo B', 'Omega 3', 'Magnesio', 'Colágeno hidrolizado', 'Hierro', 'Zinc'],
+    materials: ['1 g', '1000 UI', '500 mg', '60 cápsulas', '30 tabletas'],
+    finishes: ['tubo efervescente', 'frasco de 60 cápsulas', 'caja de 30 sobres', 'polvo de 300 g'],
     copy: [
-      'Casquillo E27, bombilla no incluida.',
-      'Cable textil de dos metros con interruptor de paso.',
-      'Regulador de intensidad en el propio cable.',
-      'Difusor de vidrio soplado, cada pieza es distinta.',
-      'Instalación a techo con florón incluido.',
+      'Suplemento alimenticio. No sustituye una dieta equilibrada.',
+      'Sabor naranja, sin azúcar añadida.',
+      'Cápsulas blandas de origen vegetal.',
+      'Envase con cierre de seguridad para niños.',
     ],
   },
   {
-    key: 'textil',
-    price: [29, 189],
-    categorySlug: 'sillas',
-    photoFrom: ['ACC-'],
-    weight: 14,
-    types: ['Cojín', 'Funda de cojín', 'Manta', 'Plaid', 'Almohadón'],
-    materials: ['de lana', 'de algodón peinado', 'de lino lavado', 'de mezcla de lana', 'de terciopelo'],
-    finishes: ['gris', 'crudo', 'verde salvia', 'ocre', 'de 45×45', 'de 60×60'],
+    key: 'botiquin',
+    price: [5, 85],
+    categorySlug: 'cuidado-personal',
+    photoFrom: ['BOT-'],
+    weight: 16,
+    types: ['Mascarilla KN95', 'Gasa estéril', 'Esparadrapo', 'Venda elástica', 'Termómetro digital', 'Alcohol medicinal', 'Algodón hidrófilo', 'Guantes de nitrilo'],
+    materials: ['de cinco capas', 'hipoalergénico', 'de 10 × 10 cm', 'de 70°', 'de un solo uso'],
+    finishes: ['caja de 10', 'caja de 50', 'rollo', 'unidad', 'pack de 2'],
     copy: [
-      'Relleno de fibra hueca siliconada, incluido.',
-      'Funda con cremallera oculta, lavable a 30°.',
-      'Tejido en telar tradicional, remate a mano.',
-      'Encoge menos de un 2 % en el primer lavado.',
+      'Empacado por unidad, estéril hasta la apertura.',
+      'Producto sanitario de un solo uso.',
+      'Se guarda seco y lejos de fuentes de calor.',
+      'Con registro sanitario vigente impreso en el envase.',
     ],
   },
 ]
@@ -132,7 +135,7 @@ const FAMILIES = [
 /**
  * Existencias de los productos sembrados, EN LOS ALMACENES.
  *
- * `products.stock` no es la existencia de esta tienda. Casa Nordica tiene
+ * `products.stock` no es la existencia de esta tienda. MiQuimica tiene
  * almacenes que la sirven, y en ese caso `ebim.atp` —de quien cuelga el
  * `in_stock` de la vitrina— suma `inventory_levels` de los almacenes servidores
  * e IGNORA la columna del catalogo, que es el camino corto del tenant que aun
@@ -334,7 +337,7 @@ async function main() {
   let index = 0
   while (made < total && index < total * 6) {
     index += 1
-    // Reparto por peso: mas sillas que cojines, como en una tienda de verdad.
+    // Reparto por peso: mas medicamentos que botiquin, como en una botica de verdad.
     let ticket = random() * weightTotal
     const family = FAMILIES.find((item) => (ticket -= item.weight) < 0) ?? FAMILIES[0]
 
@@ -366,7 +369,7 @@ async function main() {
       sku,
       slug: `${slugBase}-${String(made + 1).padStart(3, '0')}`,
       name,
-      description: `${family.copy[Math.floor(random() * family.copy.length)]} ${type} ${material}, acabado ${finish}.`,
+      description: `${family.copy[Math.floor(random() * family.copy.length)]} ${type} ${material}, ${finish}.`,
       price,
       compare,
       stock,
