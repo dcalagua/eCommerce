@@ -1,5 +1,14 @@
-import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
+import ContactMailRoundedIcon from '@mui/icons-material/ContactMailRounded'
+import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded'
+import DensityMediumRoundedIcon from '@mui/icons-material/DensityMediumRounded'
 import LaunchRoundedIcon from '@mui/icons-material/LaunchRounded'
+import MailOutlineRoundedIcon from '@mui/icons-material/MailOutlineRounded'
+import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded'
+import PhotoLibraryRoundedIcon from '@mui/icons-material/PhotoLibraryRounded'
+import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
+import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
+import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
+import WorkspacePremiumRoundedIcon from '@mui/icons-material/WorkspacePremiumRounded'
 import {
   Alert,
   Box,
@@ -7,6 +16,7 @@ import {
   Card,
   CardContent,
   FormControlLabel,
+  Grid,
   MenuItem,
   Link as MuiLink,
   Stack,
@@ -14,7 +24,6 @@ import {
   TextField,
   ToggleButton,
   ToggleButtonGroup,
-  Typography,
 } from '@mui/material'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, type ReactNode } from 'react'
@@ -25,7 +34,10 @@ import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { PageHeader } from '@/shared/ui/PageHeader'
+import { SectionCard } from '@/shared/ui/SectionCard'
 import { SectionTabs } from '@/shared/ui/SectionTabs'
+import { StatusChip } from '@/shared/ui/StatusChip'
+import { GhostButton, PrimaryButton } from '@/shared/ui/buttons'
 import { TaxesSection } from './settings/TaxesSection'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import { EmptyState, ErrorState, LoadingState, UnauthorizedState } from '@/shared/ui/states'
@@ -35,10 +47,12 @@ import {
   BRAND_RADII,
   COLOR_MODES,
   DENSITIES,
+  R,
   type ColorMode,
   type Density,
 } from '@/theme/tokens'
 import { SettingsError } from './settings/api'
+import { BrandPreview } from './settings/BrandPreview'
 import { StoreAssetField } from './settings/StoreAssetField'
 import { storeFormSchema, toForm, type StoreFormValues } from './settings/types'
 import {
@@ -57,6 +71,27 @@ function fieldError(message: string | undefined, t: (key: MessageKey) => string)
 }
 
 /**
+ * La etiqueta flotante va SIEMPRE arriba en este formulario.
+ *
+ * Los campos se rellenan con `values` de react-hook-form, que escribe en el DOM
+ * sin pasar por el `onChange` de React; MUI decide si encoge la etiqueta mirando
+ * su propio estado, y con ese camino no se entera de que el campo ya tiene
+ * texto. El resultado era la etiqueta a media altura ENCIMA del valor —el
+ * «Teléfono» montado sobre el número—. Forzarla arriba lo arregla de raíz y
+ * además deja los diez campos con el mismo aspecto estén llenos o vacíos.
+ */
+const SHRINK = { inputLabel: { shrink: true } }
+
+/** Estados (cargando, sin permiso, error) con la misma caja que el formulario. */
+function StateCard({ children }: { children: ReactNode }) {
+  return (
+    <Card>
+      <CardContent>{children}</CardContent>
+    </Card>
+  )
+}
+
+/**
  * Apariencia por usuario: SOLO modo y densidad.
  * No hay selector de paleta — el color es 100% del tenant (contrato §4.4).
  */
@@ -65,15 +100,19 @@ function AppearanceSection() {
   const { appearance, setMode, setDensity } = useAppearance()
 
   return (
-    <Card>
-      <CardContent>
-        <Stack spacing={3}>
-          <Alert severity="info" icon={false}>
-            {t('admin.settings.appearance.note')}
-          </Alert>
+    <Stack spacing={2.5}>
+      <Alert severity="info" icon={false}>
+        {t('admin.settings.appearance.note')}
+      </Alert>
 
-          <Box>
-            <Typography sx={{ fontWeight: 700, mb: 1 }}>{t('admin.settings.appearance.mode')}</Typography>
+      <Grid container spacing={2.5}>
+        <Grid item xs={12} md={6}>
+          <SectionCard
+            icon={<DarkModeRoundedIcon />}
+            title={t('admin.settings.appearance.mode')}
+            subtitle={t('admin.settings.appearance.modeHelp')}
+            padded
+          >
             <ToggleButtonGroup
               exclusive
               size="small"
@@ -87,10 +126,16 @@ function AppearanceSection() {
                 </ToggleButton>
               ))}
             </ToggleButtonGroup>
-          </Box>
+          </SectionCard>
+        </Grid>
 
-          <Box>
-            <Typography sx={{ fontWeight: 700, mb: 1 }}>{t('admin.settings.appearance.density')}</Typography>
+        <Grid item xs={12} md={6}>
+          <SectionCard
+            icon={<DensityMediumRoundedIcon />}
+            title={t('admin.settings.appearance.density')}
+            subtitle={t('admin.settings.appearance.densityHelp')}
+            padded
+          >
             <ToggleButtonGroup
               exclusive
               size="small"
@@ -100,14 +145,14 @@ function AppearanceSection() {
             >
               {DENSITIES.map((density) => (
                 <ToggleButton key={density} value={density} sx={{ textTransform: 'none' }}>
-                  {density}
+                  {t(`appearance.density.${density}` as MessageKey)}
                 </ToggleButton>
               ))}
             </ToggleButtonGroup>
-          </Box>
-        </Stack>
-      </CardContent>
-    </Card>
+          </SectionCard>
+        </Grid>
+      </Grid>
+    </Stack>
   )
 }
 
@@ -120,7 +165,11 @@ function ManagedSection({ children }: { children: ReactNode }) {
   const { can } = useTenant()
   const { t } = useI18n()
   if (!can('store.manage')) {
-    return <UnauthorizedState description={t('admin.settings.unauthorized')} />
+    return (
+      <StateCard>
+        <UnauthorizedState description={t('admin.settings.unauthorized')} />
+      </StateCard>
+    )
   }
   return <>{children}</>
 }
@@ -135,6 +184,16 @@ function ManagedSection({ children }: { children: ReactNode }) {
  *
  * Todo lo que se edita aquí lo lee la vitrina de `public_stores`, así que el
  * cambio se ve en `/s/:slug` en cuanto react-query revalida.
+ *
+ * ## Por qué el formulario está en tarjetas y en rejilla
+ *
+ * Era una columna de diez campos a todo lo ancho, uno debajo de otro y sin más
+ * separación que el aire: para saber qué tenía delante había que leerse las diez
+ * etiquetas, y un campo de teléfono de mil cuatrocientos píxeles no ayuda a
+ * escribir nueve dígitos. Ahora cada grupo —identidad, contacto, color,
+ * imágenes, estilo, correo— es una tarjeta con su rótulo y su icono, y dentro de
+ * cada una los campos ocupan el ancho que pide su contenido. La pantalla se
+ * recorre saltando de rótulo en rótulo y el ojo sabe siempre en qué bloque está.
  */
 export function SettingsPage() {
   const { t } = useI18n()
@@ -163,6 +222,14 @@ export function SettingsPage() {
   const banner = form.watch('banner_url')
   const favicon = form.watch('favicon_url')
   const assetUrls = useAssetUrls([logo, banner, favicon])
+
+  // Lo que pinta la muestra de marca. Se mira con `watch` para que reaccione a
+  // cada tecla: una vista previa que solo se entera al guardar no es una vista
+  // previa, es una confirmación.
+  const previewName = form.watch('name')
+  const previewAccent = form.watch('accent_color')
+  const previewRadius = form.watch('ui_radius')
+  const previewFont = form.watch('font_family')
 
   async function onSubmit(values: StoreFormValues) {
     if (!storeId || !activeCompanyId || !tenant) return
@@ -194,13 +261,21 @@ export function SettingsPage() {
    */
   const gate: ReactNode | null =
     tenantStatus === 'loading' ? (
-      <LoadingState />
+      <StateCard>
+        <LoadingState />
+      </StateCard>
     ) : !storeId ? (
-      <EmptyState title={t('admin.store.none')} description={t('admin.store.noneBody')} />
+      <StateCard>
+        <EmptyState title={t('admin.store.none')} description={t('admin.store.noneBody')} />
+      </StateCard>
     ) : settings.isError ? (
-      <ErrorState error={settings.error} onRetry={() => void settings.refetch()} />
+      <StateCard>
+        <ErrorState error={settings.error} onRetry={() => void settings.refetch()} />
+      </StateCard>
     ) : settings.isPending ? (
-      <LoadingState />
+      <StateCard>
+        <LoadingState />
+      </StateCard>
     ) : null
 
   return (
@@ -208,6 +283,7 @@ export function SettingsPage() {
       <PageHeader
         icon={<SettingsRoundedIcon />}
         title={t('admin.settings.title')}
+        subtitle={activeStore?.name}
         actions={
           storeUrl && (
             <Button
@@ -230,89 +306,125 @@ export function SettingsPage() {
             id: 'general',
             label: t('admin.settings.tab.general'),
             content: (
-              <Card>
-                <CardContent>
-                  <ManagedSection>
-                    {gate ?? (
-                      <Stack spacing={2.5}>
-                        <TextField
-                          label={t('settings.name')}
-                          helperText={
-                            fieldError(form.formState.errors.name?.message, t) ??
-                            t('settings.nameHelp')
-                          }
-                          error={Boolean(form.formState.errors.name)}
-                          disabled={busy}
-                          inputProps={{ maxLength: 200 }}
-                          {...form.register('name')}
-                        />
-                        <TextField
-                          label={t('settings.description')}
-                          helperText={
-                            fieldError(form.formState.errors.hero_subtitle?.message, t) ??
-                            t('settings.descriptionHelp')
-                          }
-                          error={Boolean(form.formState.errors.hero_subtitle)}
-                          disabled={busy}
-                          multiline
-                          minRows={2}
-                          inputProps={{ maxLength: 240 }}
-                          {...form.register('hero_subtitle')}
-                        />
+              <ManagedSection>
+                {gate ?? (
+                  <Stack spacing={2.5}>
+                    <SectionCard
+                      icon={<StorefrontRoundedIcon />}
+                      title={t('settings.section.identity')}
+                      subtitle={t('settings.section.identityHelp')}
+                      padded
+                    >
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} md={5}>
+                          <TextField
+                            fullWidth
+                            slotProps={SHRINK}
+                            label={t('settings.name')}
+                            helperText={
+                              fieldError(form.formState.errors.name?.message, t) ??
+                              t('settings.nameHelp')
+                            }
+                            error={Boolean(form.formState.errors.name)}
+                            disabled={busy}
+                            inputProps={{ maxLength: 200 }}
+                            {...form.register('name')}
+                          />
+                        </Grid>
+                        <Grid item xs={12} md={7}>
+                          <TextField
+                            fullWidth
+                            slotProps={SHRINK}
+                            label={t('settings.description')}
+                            helperText={
+                              fieldError(form.formState.errors.hero_subtitle?.message, t) ??
+                              t('settings.descriptionHelp')
+                            }
+                            error={Boolean(form.formState.errors.hero_subtitle)}
+                            disabled={busy}
+                            multiline
+                            minRows={2}
+                            inputProps={{ maxLength: 240 }}
+                            {...form.register('hero_subtitle')}
+                          />
+                        </Grid>
+                      </Grid>
+                    </SectionCard>
 
-                        <Typography sx={{ fontWeight: 800, fontSize: 14, pt: 1 }}>
-                          {t('settings.contact')}
-                        </Typography>
-                        <TextField
-                          label={t('settings.contactEmail')}
-                          type="email"
-                          helperText={fieldError(form.formState.errors.support_email?.message, t)}
-                          error={Boolean(form.formState.errors.support_email)}
-                          disabled={busy}
-                          inputProps={{ maxLength: 320 }}
-                          {...form.register('support_email')}
-                        />
-                        <TextField
-                          label={t('settings.contactPhone')}
-                          helperText={fieldError(form.formState.errors.contact_phone?.message, t)}
-                          error={Boolean(form.formState.errors.contact_phone)}
-                          disabled={busy}
-                          inputProps={{ maxLength: 40 }}
-                          {...form.register('contact_phone')}
-                        />
-                        <TextField
-                          label={t('settings.contactAddress')}
-                          helperText={fieldError(form.formState.errors.contact_address?.message, t)}
-                          error={Boolean(form.formState.errors.contact_address)}
-                          disabled={busy}
-                          inputProps={{ maxLength: 240 }}
-                          {...form.register('contact_address')}
-                        />
-                      </Stack>
-                    )}
-                  </ManagedSection>
-                </CardContent>
-              </Card>
+                    <SectionCard
+                      icon={<ContactMailRoundedIcon />}
+                      title={t('settings.contact')}
+                      subtitle={t('settings.section.contactHelp')}
+                      padded
+                    >
+                      {/* Tres campos en una fila y con el ancho que pide cada
+                          uno: un teléfono no necesita el ancho de una dirección,
+                          y darle el mismo hace pensar que cabe algo más. */}
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} md={4}>
+                          <TextField
+                            fullWidth
+                            slotProps={SHRINK}
+                            label={t('settings.contactEmail')}
+                            type="email"
+                            helperText={fieldError(form.formState.errors.support_email?.message, t)}
+                            error={Boolean(form.formState.errors.support_email)}
+                            disabled={busy}
+                            inputProps={{ maxLength: 320 }}
+                            {...form.register('support_email')}
+                          />
+                        </Grid>
+                        <Grid item xs={12} md={3}>
+                          <TextField
+                            fullWidth
+                            slotProps={SHRINK}
+                            label={t('settings.contactPhone')}
+                            helperText={fieldError(form.formState.errors.contact_phone?.message, t)}
+                            error={Boolean(form.formState.errors.contact_phone)}
+                            disabled={busy}
+                            inputProps={{ maxLength: 40 }}
+                            {...form.register('contact_phone')}
+                          />
+                        </Grid>
+                        <Grid item xs={12} md={5}>
+                          <TextField
+                            fullWidth
+                            slotProps={SHRINK}
+                            label={t('settings.contactAddress')}
+                            helperText={fieldError(form.formState.errors.contact_address?.message, t)}
+                            error={Boolean(form.formState.errors.contact_address)}
+                            disabled={busy}
+                            inputProps={{ maxLength: 240 }}
+                            {...form.register('contact_address')}
+                          />
+                        </Grid>
+                      </Grid>
+                    </SectionCard>
+                  </Stack>
+                )}
+              </ManagedSection>
             ),
           },
           {
             id: 'branding',
             label: t('admin.settings.tab.branding'),
             content: (
-              <Card>
-                <CardContent>
-                  <ManagedSection>
-                    {gate ?? (
-                      <Stack spacing={3}>
-                        <Controller
-                          control={form.control}
-                          name="accent_color"
-                          render={({ field, fieldState }) => (
-                            <Stack spacing={1}>
-                              <Typography sx={{ fontWeight: 700, fontSize: 14 }}>
-                                {t('settings.accent')}
-                              </Typography>
-                              <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+              <ManagedSection>
+                {gate ?? (
+                  <Stack spacing={2.5}>
+                    <SectionCard
+                      icon={<PaletteRoundedIcon />}
+                      title={t('settings.accent')}
+                      subtitle={t('settings.section.colorHelp')}
+                      padded
+                    >
+                      <Grid container spacing={2.5} sx={{ alignItems: 'flex-start' }}>
+                        <Grid item xs={12} md={5}>
+                          <Controller
+                            control={form.control}
+                            name="accent_color"
+                            render={({ field, fieldState }) => (
+                              <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start' }}>
                                 <Box
                                   component="input"
                                   type="color"
@@ -324,153 +436,190 @@ export function SettingsPage() {
                                     width: 52,
                                     height: 40,
                                     p: 0,
+                                    flexShrink: 0,
                                     border: '1px solid var(--border)',
-                                    borderRadius: '8px',
+                                    borderRadius: `${R.sm}px`,
                                     background: 'none',
                                     cursor: 'pointer',
                                   }}
                                 />
                                 <TextField
+                                  fullWidth
                                   size="small"
                                   value={field.value}
                                   onChange={(event) => field.onChange(event.target.value)}
                                   disabled={busy}
                                   error={Boolean(fieldState.error)}
                                   helperText={
-                                    fieldError(fieldState.error?.message, t) ?? t('settings.accentHelp')
+                                    fieldError(fieldState.error?.message, t) ??
+                                    t('settings.accentHelp')
                                   }
                                   inputProps={{ maxLength: 7, 'aria-label': t('settings.accentHex') }}
-                                  sx={{ maxWidth: 220 }}
                                 />
                               </Stack>
-                            </Stack>
-                          )}
-                        />
+                            )}
+                          />
+                        </Grid>
+                        <Grid item xs={12} md={7}>
+                          <BrandPreview
+                            color={previewAccent}
+                            radius={previewRadius}
+                            font={previewFont}
+                            storeName={previewName}
+                          />
+                        </Grid>
+                      </Grid>
+                    </SectionCard>
 
-                        <Controller
-                          control={form.control}
-                          name="logo_url"
-                          render={({ field }) => (
-                            <StoreAssetField
-                              kind="logo"
-                              ratio="1 / 1"
-                              label={t('settings.logo')}
-                              help={t('settings.logoHelp')}
-                              value={field.value}
-                              previewUrl={field.value ? (assetUrls[field.value] ?? null) : null}
-                              disabled={busy}
-                              organizationId={tenant?.organization_id ?? ''}
-                              storeId={storeId ?? ''}
-                              onChange={field.onChange}
-                            />
-                          )}
-                        />
+                    <SectionCard
+                      icon={<PhotoLibraryRoundedIcon />}
+                      title={t('settings.section.images')}
+                      subtitle={t('settings.section.imagesHelp')}
+                      padded
+                    >
+                      {/* Los tres huecos en una fila y a la misma altura: son
+                          tres piezas de la misma decisión, y apiladas obligaban
+                          a hacer scroll para comparar el logo con el favicon. */}
+                      <Grid container spacing={2.5} sx={{ alignItems: 'stretch' }}>
+                        <Grid item xs={12} sm={6} md={3}>
+                          <Controller
+                            control={form.control}
+                            name="logo_url"
+                            render={({ field }) => (
+                              <StoreAssetField
+                                kind="logo"
+                                ratio="1 / 1"
+                                label={t('settings.logo')}
+                                help={t('settings.logoHelp')}
+                                value={field.value}
+                                previewUrl={field.value ? (assetUrls[field.value] ?? null) : null}
+                                disabled={busy}
+                                organizationId={tenant?.organization_id ?? ''}
+                                storeId={storeId ?? ''}
+                                onChange={field.onChange}
+                              />
+                            )}
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={6}>
+                          <Controller
+                            control={form.control}
+                            name="banner_url"
+                            render={({ field }) => (
+                              <StoreAssetField
+                                kind="banner"
+                                ratio="16 / 6"
+                                label={t('settings.banner')}
+                                help={t('settings.bannerHelp')}
+                                value={field.value}
+                                previewUrl={field.value ? (assetUrls[field.value] ?? null) : null}
+                                disabled={busy}
+                                organizationId={tenant?.organization_id ?? ''}
+                                storeId={storeId ?? ''}
+                                onChange={field.onChange}
+                              />
+                            )}
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                          <Controller
+                            control={form.control}
+                            name="favicon_url"
+                            render={({ field }) => (
+                              <StoreAssetField
+                                kind="favicon"
+                                ratio="1 / 1"
+                                label={t('settings.favicon')}
+                                help={t('settings.faviconHelp')}
+                                value={field.value}
+                                previewUrl={field.value ? (assetUrls[field.value] ?? null) : null}
+                                disabled={busy}
+                                organizationId={tenant?.organization_id ?? ''}
+                                storeId={storeId ?? ''}
+                                onChange={field.onChange}
+                              />
+                            )}
+                          />
+                        </Grid>
+                      </Grid>
+                    </SectionCard>
 
-                        <Controller
-                          control={form.control}
-                          name="banner_url"
-                          render={({ field }) => (
-                            <StoreAssetField
-                              kind="banner"
-                              ratio="16 / 6"
-                              label={t('settings.banner')}
-                              help={t('settings.bannerHelp')}
-                              value={field.value}
-                              previewUrl={field.value ? (assetUrls[field.value] ?? null) : null}
-                              disabled={busy}
-                              organizationId={tenant?.organization_id ?? ''}
-                              storeId={storeId ?? ''}
-                              onChange={field.onChange}
-                            />
-                          )}
-                        />
+                    {/* Radio y densidad: tematización, NO addon. El lockup de la
+                        suite sigue puesto, así que cobrar por elegir esquinas
+                        redondeadas sería vender una casilla en vez de una
+                        capacidad. La raya del premium está escrita en la
+                        migración 20260828140200. */}
+                    <SectionCard
+                      icon={<TuneRoundedIcon />}
+                      title={t('settings.section.style')}
+                      subtitle={t('settings.section.styleHelp')}
+                      padded
+                    >
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} md={4}>
+                          <Controller
+                            control={form.control}
+                            name="ui_radius"
+                            render={({ field }) => (
+                              <TextField
+                                select
+                                fullWidth
+                                slotProps={SHRINK}
+                                label={t('settings.radius')}
+                                helperText={t('settings.radiusHelp')}
+                                value={field.value}
+                                disabled={busy}
+                                onChange={(event) => field.onChange(event.target.value)}
+                              >
+                                <MenuItem value="">{t('settings.tokenDefault')}</MenuItem>
+                                {BRAND_RADII.map((value) => (
+                                  <MenuItem key={value} value={value}>
+                                    {t(`settings.radius.${value}` as MessageKey)}
+                                  </MenuItem>
+                                ))}
+                              </TextField>
+                            )}
+                          />
+                        </Grid>
 
-                        <Controller
-                          control={form.control}
-                          name="favicon_url"
-                          render={({ field }) => (
-                            <StoreAssetField
-                              kind="favicon"
-                              ratio="1 / 1"
-                              label={t('settings.favicon')}
-                              help={t('settings.faviconHelp')}
-                              value={field.value}
-                              previewUrl={field.value ? (assetUrls[field.value] ?? null) : null}
-                              disabled={busy}
-                              organizationId={tenant?.organization_id ?? ''}
-                              storeId={storeId ?? ''}
-                              onChange={field.onChange}
-                            />
-                          )}
-                        />
+                        <Grid item xs={12} md={4}>
+                          <Controller
+                            control={form.control}
+                            name="ui_density"
+                            render={({ field }) => (
+                              <TextField
+                                select
+                                fullWidth
+                                slotProps={SHRINK}
+                                label={t('settings.density')}
+                                helperText={t('settings.densityHelp')}
+                                value={field.value}
+                                disabled={busy}
+                                onChange={(event) => field.onChange(event.target.value)}
+                              >
+                                <MenuItem value="">{t('settings.tokenDefault')}</MenuItem>
+                                {DENSITIES.map((value) => (
+                                  <MenuItem key={value} value={value}>
+                                    {t(`appearance.density.${value}` as MessageKey)}
+                                  </MenuItem>
+                                ))}
+                              </TextField>
+                            )}
+                          />
+                        </Grid>
 
-                        <TextField
-                          label={t('settings.businessName')}
-                          helperText={t('settings.businessNameHelp')}
-                          disabled={busy}
-                          {...form.register('business_display_name')}
-                        />
-
-                        {/* Radio y densidad: tematización, NO addon. El lockup
-                            de la suite sigue puesto, así que cobrar por elegir
-                            esquinas redondeadas sería vender una casilla en vez
-                            de una capacidad. La raya del premium está escrita
-                            en la migración 20260828140200. */}
-                        <Controller
-                          control={form.control}
-                          name="ui_radius"
-                          render={({ field }) => (
-                            <TextField
-                              select
-                              label={t('settings.radius')}
-                              helperText={t('settings.radiusHelp')}
-                              value={field.value}
-                              disabled={busy}
-                              onChange={(event) => field.onChange(event.target.value)}
-                            >
-                              <MenuItem value="">{t('settings.tokenDefault')}</MenuItem>
-                              {BRAND_RADII.map((value) => (
-                                <MenuItem key={value} value={value}>
-                                  {t(`settings.radius.${value}` as MessageKey)}
-                                </MenuItem>
-                              ))}
-                            </TextField>
-                          )}
-                        />
-
-                        <Controller
-                          control={form.control}
-                          name="ui_density"
-                          render={({ field }) => (
-                            <TextField
-                              select
-                              label={t('settings.density')}
-                              helperText={t('settings.densityHelp')}
-                              value={field.value}
-                              disabled={busy}
-                              onChange={(event) => field.onChange(event.target.value)}
-                            >
-                              <MenuItem value="">{t('settings.tokenDefault')}</MenuItem>
-                              {DENSITIES.map((value) => (
-                                <MenuItem key={value} value={value}>
-                                  {t(`appearance.density.${value}` as MessageKey)}
-                                </MenuItem>
-                              ))}
-                            </TextField>
-                          )}
-                        />
-
-                        {/* Tipografía e identidad de correo: PREMIUM. Son las
-                            que hacen que la tienda —y su correo— dejen de
-                            parecer de la suite. */}
+                        {/* Tipografía: PREMIUM. Es de las que hacen que la
+                            tienda deje de parecer de la suite. */}
                         <CapabilityFeature capability="content.white_label">
-                          <Stack spacing={3}>
+                          <Grid item xs={12} md={4}>
                             <Controller
                               control={form.control}
                               name="font_family"
                               render={({ field }) => (
                                 <TextField
                                   select
+                                  fullWidth
+                                  slotProps={SHRINK}
                                   label={t('settings.font')}
                                   helperText={t('settings.fontHelp')}
                                   value={field.value}
@@ -486,13 +635,46 @@ export function SettingsPage() {
                                 </TextField>
                               )}
                             />
+                          </Grid>
+                        </CapabilityFeature>
+                      </Grid>
+                    </SectionCard>
+
+                    <SectionCard
+                      icon={<MailOutlineRoundedIcon />}
+                      title={t('settings.section.email')}
+                      subtitle={t('settings.section.emailHelp')}
+                      padded
+                    >
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} md={4}>
+                          <TextField
+                            fullWidth
+                            slotProps={SHRINK}
+                            label={t('settings.businessName')}
+                            helperText={t('settings.businessNameHelp')}
+                            disabled={busy}
+                            {...form.register('business_display_name')}
+                          />
+                        </Grid>
+
+                        {/* Identidad del correo: PREMIUM, igual que la
+                            tipografía. */}
+                        <CapabilityFeature capability="content.white_label">
+                          <Grid item xs={12} md={4}>
                             <TextField
+                              fullWidth
+                              slotProps={SHRINK}
                               label={t('settings.emailFromName')}
                               helperText={t('settings.emailFromNameHelp')}
                               disabled={busy}
                               {...form.register('email_from_name')}
                             />
+                          </Grid>
+                          <Grid item xs={12} md={4}>
                             <TextField
+                              fullWidth
+                              slotProps={SHRINK}
                               label={t('settings.emailReplyTo')}
                               helperText={
                                 fieldError(form.formState.errors.email_reply_to?.message, t) ??
@@ -502,59 +684,62 @@ export function SettingsPage() {
                               disabled={busy}
                               {...form.register('email_reply_to')}
                             />
-                          </Stack>
+                          </Grid>
                         </CapabilityFeature>
+                      </Grid>
+                    </SectionCard>
 
-                        {/* Marca blanca: addon premium de suite (contrato §4.3).
-                            Es el primer módulo vendible con superficie real, y
-                            está aquí explicado en vez de escondido: un control
-                            que desaparece sin dejar rastro es la forma más
-                            rápida de que nadie descubra que existe. */}
-                        <CapabilityFeature capability="content.white_label">
-                          <Controller
-                            control={form.control}
-                            name="white_label"
-                            render={({ field }) => (
-                              <Stack spacing={0.5}>
-                                <FormControlLabel
-                                  control={
-                                    <Switch
-                                      checked={field.value}
-                                      disabled={busy}
-                                      onChange={(event) => field.onChange(event.target.checked)}
-                                    />
-                                  }
-                                  label={t('settings.whiteLabel')}
+                    {/* Marca blanca: addon premium de suite (contrato §4.3). Es
+                        el primer módulo vendible con superficie real, y está
+                        aquí explicado en vez de escondido: un control que
+                        desaparece sin dejar rastro es la forma más rápida de que
+                        nadie descubra que existe. */}
+                    <CapabilityFeature capability="content.white_label">
+                      <SectionCard
+                        icon={<WorkspacePremiumRoundedIcon />}
+                        title={t('settings.whiteLabel')}
+                        subtitle={t('settings.whiteLabelHelp')}
+                        tone="warning"
+                        padded
+                      >
+                        <Controller
+                          control={form.control}
+                          name="white_label"
+                          render={({ field }) => (
+                            <FormControlLabel
+                              control={
+                                <Switch
+                                  checked={field.value}
+                                  disabled={busy}
+                                  onChange={(event) => field.onChange(event.target.checked)}
                                 />
-                                <Typography sx={{ color: 'var(--muted)', fontSize: 13 }}>
-                                  {t('settings.whiteLabelHelp')}
-                                </Typography>
-                              </Stack>
-                            )}
-                          />
-                        </CapabilityFeature>
-                      </Stack>
-                    )}
-                  </ManagedSection>
-                </CardContent>
-              </Card>
+                              }
+                              label={t('settings.whiteLabel')}
+                            />
+                          )}
+                        />
+                      </SectionCard>
+                    </CapabilityFeature>
+                  </Stack>
+                )}
+              </ManagedSection>
             ),
           },
           {
             id: 'taxes',
             label: t('admin.settings.tab.taxes'),
             content: (
-              <Card>
-                <CardContent>
-                  <ManagedSection>
+              <ManagedSection>
+                <Card>
+                  <CardContent>
                     <TaxesSection
                       organizationId={tenant?.organization_id ?? null}
                       companyId={activeCompanyId}
                       canManage={canManage}
                     />
-                  </ManagedSection>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </ManagedSection>
             ),
           },
           {
@@ -564,36 +749,45 @@ export function SettingsPage() {
           },
         ]}
       />
+
+      {/* Barra de guardar persistente. Va en tarjeta y no como una franja del
+          fondo: pegada abajo sobre el mismo gris de la página parecía parte del
+          lienzo, y lo que hace es esperar una decisión. */}
       <Box
         sx={{
           display: canManage ? 'flex' : 'none',
           position: 'sticky',
-          bottom: 0,
+          bottom: 16,
+          zIndex: 2,
           mt: 3,
-          py: 2,
+          px: 2,
+          py: 1.5,
           alignItems: 'center',
           justifyContent: 'flex-end',
           gap: 1,
-          bgcolor: 'var(--bg)',
-          borderTop: '1px solid var(--border)',
+          flexWrap: 'wrap',
+          rowGap: 1,
+          bgcolor: 'var(--card)',
+          border: '1px solid var(--border)',
+          borderRadius: `${R.lg}px`,
+          boxShadow: 'var(--shadow-md)',
         }}
       >
         {form.formState.isDirty && (
-          <Typography sx={{ color: 'var(--muted)', fontSize: 13, mr: 'auto' }}>
-            {t('settings.unsaved')}
-          </Typography>
+          <Box sx={{ mr: 'auto' }}>
+            <StatusChip tone="warning" label={t('settings.unsaved')} />
+          </Box>
         )}
-        <Button
-          variant="text"
+        <GhostButton
           type="button"
           disabled={busy || !form.formState.isDirty}
           onClick={() => form.reset()}
         >
           {t('common.cancel')}
-        </Button>
-        <Button variant="contained" type="submit" disabled={busy || !storeId}>
+        </GhostButton>
+        <PrimaryButton type="submit" disabled={busy || !storeId}>
           {t('common.save')}
-        </Button>
+        </PrimaryButton>
       </Box>
     </Box>
   )

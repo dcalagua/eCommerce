@@ -159,7 +159,16 @@ export const blockFormSchema = z.object({
   position: z.coerce.number().int().min(0).max(999),
   title: optionalText(160, 'content.error.title'),
   subtitle: optionalText(320, 'content.error.subtitle'),
-  body: z.string(),
+  /**
+   * El cuerpo YA es el documento, no un texto que haya que interpretar.
+   *
+   * Se acepta cualquier array para que el formulario siga parseando aunque el
+   * contenido todavia no valide —una etiqueta a medio escribir— y sea
+   * `validateBlockForm` quien de el mensaje preciso junto al campo. Con
+   * `richTextSchema` aqui, un `<b>` tumbaria el formulario entero y el error
+   * saldria sin decir de que campo es.
+   */
+  body: z.custom<RichTextDocument | null>((value) => value === null || Array.isArray(value)),
   media_url: z.string().nullable(),
   media_alt: optionalText(200, 'content.error.mediaAlt'),
   cta_label: optionalText(60, 'content.error.ctaLabel'),
@@ -189,13 +198,15 @@ export type ValidationIssue = { field: keyof BlockFormValues; key: string }
  */
 export function validateBlockForm(values: BlockFormValues): ValidationIssue[] {
   const issues: ValidationIssue[] = []
-  const body = parseBodyDraft(values.body)
+  // El mismo juez que la base: si esto pasa y el CHECK no, es que las dos
+  // mitades se han separado — y hay un test que lo comprueba contra Postgres.
+  const parsedBody = values.body === null ? null : richTextSchema.safeParse(values.body)
 
   if (!blockShapeIsComplete({
     type: values.block_type,
     title: values.title || null,
     mediaUrl: values.media_url,
-    body: body.doc,
+    body: parsedBody?.success ? parsedBody.data : null,
   })) {
     issues.push({
       field: values.block_type === 'rich_text' ? 'body' : 'title',
@@ -203,8 +214,12 @@ export function validateBlockForm(values: BlockFormValues): ValidationIssue[] {
     })
   }
 
-  if (values.body.trim() !== '' && body.doc === null) {
-    issues.push({ field: 'body', key: body.key })
+  if (parsedBody && !parsedBody.success) {
+    const message = parsedBody.error.issues[0]?.message ?? ''
+    issues.push({
+      field: 'body',
+      key: message.startsWith('content.') ? message : 'content.error.body',
+    })
   }
 
   // Un botón sin destino es un botón roto; un destino sin botón no se pulsa.
@@ -228,79 +243,6 @@ export function validateBlockForm(values: BlockFormValues): ValidationIssue[] {
   }
 
   return issues
-}
-
-/**
- * El editor guarda el contenido enriquecido como TEXTO plano con una sintaxis
- * mínima, y aquí se convierte al documento.
- *
- * Sintaxis: `## ` titular nivel 2, `### ` nivel 3, `> ` cita, `- ` elemento de
- * lista, y cualquier otra línea es un párrafo. Se eligió esto y no un editor
- * WYSIWYG por la misma razón que el documento no es HTML: un editor rico
- * produce marcado, y el marcado hay que sanearlo. Con esto, lo que el tenant
- * escribe **no puede** contener una etiqueta — el analizador no la reconoce y
- * `looksLikeMarkup` la rechaza.
- */
-export function parseBodyDraft(draft: string): { doc: RichTextDocument | null; key: string } {
-  const text = draft.trim()
-  if (text === '') return { doc: null, key: 'content.error.body' }
-
-  const nodes: unknown[] = []
-  let listBuffer: string[] = []
-
-  const flushList = () => {
-    if (listBuffer.length > 0) {
-      nodes.push({ type: 'list', items: listBuffer })
-      listBuffer = []
-    }
-  }
-
-  for (const rawLine of text.split(/\r?\n/)) {
-    const line = rawLine.trim()
-    if (line === '') {
-      flushList()
-      continue
-    }
-    if (line.startsWith('- ')) {
-      listBuffer.push(line.slice(2).trim())
-      continue
-    }
-    flushList()
-    if (line.startsWith('### ')) nodes.push({ type: 'heading', level: 3, text: line.slice(4).trim() })
-    else if (line.startsWith('## ')) nodes.push({ type: 'heading', level: 2, text: line.slice(3).trim() })
-    else if (line.startsWith('> ')) nodes.push({ type: 'quote', text: line.slice(2).trim() })
-    else nodes.push({ type: 'paragraph', text: line })
-  }
-  flushList()
-
-  const parsed = richTextSchema.safeParse(nodes)
-  if (!parsed.success) {
-    const message = parsed.error.issues[0]?.message ?? ''
-    return {
-      doc: null,
-      key: message.startsWith('content.') ? message : 'content.error.body',
-    }
-  }
-  return { doc: parsed.data, key: '' }
-}
-
-/** El camino de vuelta: documento → el texto que el editor enseña. */
-export function toBodyDraft(doc: RichTextDocument | null): string {
-  if (!doc) return ''
-  return doc
-    .map((node) => {
-      switch (node.type) {
-        case 'heading':
-          return `${node.level === 2 ? '##' : '###'} ${node.text}`
-        case 'quote':
-          return `> ${node.text}`
-        case 'list':
-          return node.items.map((item) => `- ${item}`).join('\n')
-        default:
-          return node.text
-      }
-    })
-    .join('\n')
 }
 
 /** Un texto vacío se guarda como NULL: los CHECK de longitud no admiten `''`. */

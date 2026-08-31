@@ -111,6 +111,22 @@ describe('SettingsPage — datos de la tienda', () => {
     expect(screen.getByDisplayValue('Av. Primavera 120')).toBeInTheDocument()
   })
 
+  /**
+   * El valor de estos campos lo escribe react-hook-form directamente en el DOM,
+   * sin pasar por el `onChange` de React, asi que MUI no se enteraba de que el
+   * campo estaba lleno y dejaba la etiqueta a media altura ENCIMA del valor
+   * («Telefono» montado sobre el numero). La unica senal observable de que esta
+   * arreglado es que la etiqueta lleve su clase de encogida.
+   */
+  it('la etiqueta no se monta sobre el valor que puso el formulario', async () => {
+    renderPage()
+
+    const phone = await screen.findByDisplayValue('+51 999 111 222')
+    const label = phone.closest('.MuiFormControl-root')?.querySelector('label')
+    expect(label?.textContent).toBe('Teléfono')
+    expect(label?.className).toContain('MuiInputLabel-shrink')
+  })
+
   it('guarda el nombre en `stores` y el resto en `store_settings`', async () => {
     const user = userEvent.setup()
     const client = holder.client as FakeSupabase

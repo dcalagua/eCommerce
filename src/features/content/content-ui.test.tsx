@@ -351,7 +351,9 @@ describe('los bloques', () => {
     await screen.findByText('Rebajas de verano')
     await user.click(screen.getByRole('button', { name: 'Nuevo bloque' }))
 
-    expect(screen.getByText(/No se admiten etiquetas HTML/)).toBeInTheDocument()
+    // El editor viaja en su propio chunk (`lazy`): hasta que resuelve hay un
+    // esqueleto, asi que se espera en vez de mirar el primer pintado.
+    expect(await screen.findByText(/No se admiten etiquetas HTML/)).toBeInTheDocument()
   })
 
   it('un botón sin destino no deja guardar, y lo dice antes de enviar', async () => {

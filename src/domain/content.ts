@@ -84,18 +84,82 @@ const hrefSchema = z
   .refine((value) => isSafeHref(value), { message: 'content.error.href' })
 
 /**
- * Los cuatro nodos, y por qué son cuatro.
+ * El `href` de un TRAMO no admite la cadena vacía.
  *
- * Los cuatro son `.strict()`: una clave que el vocabulario no declara —un
+ * En un nodo, `href` ausente y `href` vacío son lo mismo —no hay enlace— y
+ * `isSafeHref` los deja pasar a los dos. En un tramo no: el tramo existe para
+ * ser un enlace, y uno con destino vacío es texto subrayado que no lleva a
+ * ninguna parte.
+ */
+const spanHrefSchema = z
+  .string()
+  .min(1)
+  .refine((value) => isSafeHref(value), { message: 'content.error.href' })
+
+/**
+ * Un TRAMO de texto: lo que permite negrita, cursiva y enlaces en línea sin
+ * guardar una sola etiqueta.
+ *
+ * Las marcas son BOOLEANOS de un vocabulario cerrado, no marcado: `bold: true`
+ * no se puede convertir en `<b onclick=…>` porque nunca es una cadena que
+ * alguien interprete — el renderizador elige un componente de React y ya. Es la
+ * misma decisión que gobierna el archivo entero, aplicada un nivel más abajo.
+ *
+ * El `href` de un tramo pasa por el mismo guard que el del nodo (`isSafeHref`),
+ * porque el sumidero es idéntico: un `<a>` en el DOM del comprador.
+ */
+export const richTextSpanSchema = z
+  .object({
+    text: safeText(2000),
+    bold: z.boolean().optional(),
+    italic: z.boolean().optional(),
+    underline: z.boolean().optional(),
+    strike: z.boolean().optional(),
+    href: spanHrefSchema.optional(),
+  })
+  .strict()
+
+export type RichTextSpan = z.infer<typeof richTextSpanSchema>
+
+/**
+ * El texto de un nodo: una CADENA o una lista de tramos.
+ *
+ * La cadena no es un atajo, es el formato que ya está guardado: los documentos
+ * escritos antes de que existieran las marcas siguen siendo válidos y siguen
+ * pintándose igual. Migrar filas para ganar una forma nueva habría sido cambiar
+ * datos publicados por comodidad del código.
+ */
+export const richTextValueSchema = z.union([
+  safeText(2000),
+  z.array(richTextSpanSchema).min(1).max(50),
+])
+export type RichTextValue = z.infer<typeof richTextValueSchema>
+
+/** Alineación del bloque. Tres valores: lo que se puede leer, no lo que se puede pedir. */
+export const RICH_TEXT_ALIGNMENTS = ['left', 'center', 'right'] as const
+export type RichTextAlign = (typeof RICH_TEXT_ALIGNMENTS)[number]
+const alignSchema = z.enum(RICH_TEXT_ALIGNMENTS)
+
+/** El texto plano de un valor: lo que se cuenta, se busca o se resume. */
+export function richTextPlainText(value: RichTextValue): string {
+  return typeof value === 'string' ? value : value.map((span) => span.text).join('')
+}
+
+/**
+ * Los cinco nodos, y por qué son cinco.
+ *
+ * Los cinco son `.strict()`: una clave que el vocabulario no declara —un
  * `onclick`, un `style`— NO se ignora al leer, invalida el nodo entero. Zod
  * descarta las claves de más por defecto, y ese defecto convertiría «esto no
  * está permitido» en «esto se pierde en silencio», que es justo la diferencia
  * entre rechazar y aceptar a medias. Es la misma regla que el CHECK de la base.
  *
- * `paragraph`, `heading`, `list` y `quote` cubren lo que una página de comercio
- * necesita escribir. No hay anidamiento: un árbol admite profundidad arbitraria
- * y la profundidad arbitraria es, en la práctica, un lenguaje — con su coste de
- * validación, de renderizado y de auditoría.
+ * `paragraph`, `heading`, `list`, `quote` y `divider` cubren lo que una página
+ * de comercio necesita escribir. **No hay anidamiento**: un árbol admite
+ * profundidad arbitraria y la profundidad arbitraria es, en la práctica, un
+ * lenguaje — con su coste de validación, de renderizado y de auditoría. Por eso
+ * tampoco hay tablas: una tabla es un árbol de filas y celdas, y en un móvil se
+ * sale del ancho de la vitrina.
  *
  * El titular solo tiene dos niveles (`2` y `3`): el `h1` es el título de la
  * página, y dejar que un bloque escriba otro rompe el árbol de encabezados, que
@@ -105,7 +169,11 @@ export const richTextNodeSchema = z.discriminatedUnion('type', [
   z
     .object({
       type: z.literal('paragraph'),
-      text: safeText(2000),
+      text: richTextValueSchema,
+      align: alignSchema.optional(),
+      // Enlace de PÁRRAFO: es anterior a los tramos y sigue vivo porque hay
+      // contenido publicado que lo usa. Para un enlace dentro de la frase, lo
+      // que corresponde hoy es un tramo con `href`.
       href: hrefSchema.optional(),
       linkLabel: safeText(120).optional(),
     })
@@ -114,16 +182,24 @@ export const richTextNodeSchema = z.discriminatedUnion('type', [
     .object({
       type: z.literal('heading'),
       level: z.union([z.literal(2), z.literal(3)]),
-      text: safeText(2000),
+      text: richTextValueSchema,
+      align: alignSchema.optional(),
     })
     .strict(),
-  z.object({ type: z.literal('quote'), text: safeText(2000) }).strict(),
+  z
+    .object({ type: z.literal('quote'), text: richTextValueSchema, align: alignSchema.optional() })
+    .strict(),
   z
     .object({
       type: z.literal('list'),
-      items: z.array(safeText(300)).min(1).max(20),
+      items: z.array(richTextValueSchema).min(1).max(20),
+      /** Numerada. Ausente es la de viñetas, que es la de siempre. */
+      ordered: z.boolean().optional(),
     })
     .strict(),
+  // Separador: no lleva texto ni ninguna otra clave. Es el único nodo que no
+  // dice nada, y por eso el único que no puede llevar nada dentro.
+  z.object({ type: z.literal('divider') }).strict(),
 ])
 
 export type RichTextNode = z.infer<typeof richTextNodeSchema>

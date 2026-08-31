@@ -7,14 +7,14 @@ import {
   looksLikeMarkup,
   parseRichText,
   contentSettingsSchema,
+  type RichTextDocument,
 } from '@/domain/content'
 import {
-  parseBodyDraft,
   parseExpansions,
-  toBodyDraft,
   validateBlockForm,
   type BlockFormValues,
 } from './types'
+import { documentToTiptap, tiptapToDocument } from './tiptapDocument'
 
 /**
  * P11-SaaS · La mitad de CLIENTE de las reglas del CMS.
@@ -33,7 +33,7 @@ function form(overrides: Partial<BlockFormValues> = {}): BlockFormValues {
     position: 0,
     title: 'Rebajas',
     subtitle: '',
-    body: '',
+    body: null,
     media_url: null,
     media_alt: '',
     cta_label: '',
@@ -121,35 +121,67 @@ describe('el documento enriquecido', () => {
 })
 
 describe('el editor de texto: ida y vuelta sin perder nada', () => {
-  it('convierte las marcas mínimas en nodos', () => {
-    const { doc } = parseBodyDraft(
-      ['## Envíos', 'Llegamos a todo el país.', '- Lima en 24 h', '- Provincia en 72 h', '> Gratis desde 200'].join(
-        '\n',
-      ),
-    )
-    expect(doc).toEqual([
+  it('traduce los cinco nodos del dominio y sus marcas', () => {
+    const doc = [
       { type: 'heading', level: 2, text: 'Envíos' },
       { type: 'paragraph', text: 'Llegamos a todo el país.' },
       { type: 'list', items: ['Lima en 24 h', 'Provincia en 72 h'] },
+      { type: 'list', items: ['Primero', 'Después'], ordered: true },
       { type: 'quote', text: 'Gratis desde 200' },
+      { type: 'divider' },
+      {
+        type: 'paragraph',
+        align: 'center',
+        text: [
+          { text: 'Envíos ' },
+          { text: 'gratis', bold: true },
+          { text: ' aquí', href: 'https://ejemplo.test' },
+        ],
+      },
+    ] satisfies RichTextDocument
+
+    // La vuelta completa: dominio → TipTap → dominio. Si alguna clave se
+    // perdiera por el camino, el contenido publicado cambiaría al editarlo.
+    expect(tiptapToDocument(documentToTiptap(doc))).toEqual(doc)
+  })
+
+  it('el texto sin ninguna marca se guarda como CADENA, no como un tramo', () => {
+    // Envolver todo en tramos llenaría la base de `[{text: '…'}]` y haría
+    // ilegible cualquier diff de contenido.
+    const doc = tiptapToDocument({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hola' }] }],
+    })
+    expect(doc).toEqual([{ type: 'paragraph', text: 'Hola' }])
+  })
+
+  it('un enlace de párrafo del formato antiguo se abre como tramo con enlace', () => {
+    const doc = tiptapToDocument(
+      documentToTiptap([
+        { type: 'paragraph', text: 'Ver zonas', href: '/s/tienda/p/envios', linkLabel: 'aquí' },
+      ]),
+    )
+    expect(doc).toEqual([
+      {
+        type: 'paragraph',
+        text: [{ text: 'Ver zonas ' }, { text: 'aquí', href: '/s/tienda/p/envios' }],
+      },
     ])
   })
 
-  it('el camino de vuelta reconstruye el mismo texto', () => {
-    const draft = ['## Envíos', 'Llegamos a todo el país.', '- Lima en 24 h', '> Gratis desde 200'].join('\n')
-    const { doc } = parseBodyDraft(draft)
-    expect(toBodyDraft(doc)).toBe(draft)
+  it('un documento sin nada que guardar es NULL, no un array vacío', () => {
+    expect(tiptapToDocument({ type: 'doc', content: [{ type: 'paragraph' }] })).toBeNull()
   })
 
-  it('una línea con una etiqueta NO se sanea: se rechaza entera', () => {
-    const result = parseBodyDraft('Hola <script>alert(1)</script>')
-    expect(result.doc).toBeNull()
-    expect(result.key).toMatch(/^content\.error\./)
-  })
-
-  it('un borrador vacío no es un documento', () => {
-    expect(parseBodyDraft('   ').doc).toBeNull()
-    expect(toBodyDraft(null)).toBe('')
+  it('una etiqueta escrita a mano NO se sanea: el documento entero se rechaza', () => {
+    const doc = tiptapToDocument({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hola <script>' }] }],
+    })
+    // El texto se conserva —no se borra el trabajo de nadie— pero no valida, y
+    // es el mismo juez que el CHECK de la base.
+    expect(doc).toEqual([{ type: 'paragraph', text: 'Hola <script>' }])
+    expect(isSafeRichText(doc)).toBe(false)
   })
 })
 

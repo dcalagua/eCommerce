@@ -12,8 +12,10 @@ import ViewQuiltRoundedIcon from '@mui/icons-material/ViewQuiltRounded'
 import {
   Box,
   Button,
-  Card,  Divider,
+  Card,
+  Divider,
   MenuItem,
+  Skeleton,
   Stack,
   Switch,
   Table,
@@ -24,13 +26,24 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, lazy, Suspense } from 'react'
 import { CONTENT_BLOCK_TYPES, blockAcceptsItems } from '@/domain/content'
 import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { useDebouncedValue } from '@/shared/lib/useDebouncedValue'
 import { FormDrawer } from '@/shared/ui/FormDrawer'
+/**
+ * El editor se carga cuando se abre el panel, no con la pantalla.
+ *
+ * TipTap y ProseMirror pesan ~138 kB gzip: mas que todo el resto de la pagina
+ * de Contenido junta. Cargarlo con el listado obligaria a bajarlo tambien a
+ * quien solo viene a mirar el orden de los bloques. Aqui llega con el panel de
+ * edicion, que es el unico sitio donde se escribe.
+ */
+const RichTextEditor = lazy(() =>
+  import('./RichTextEditor').then((module) => ({ default: module.RichTextEditor })),
+)
 import { SearchField } from '@/shared/ui/SearchField'
 import { TableSkeleton } from '@/shared/ui/TableSkeleton'
 import { useFeedback } from '@/shared/ui/feedback-context'
@@ -48,7 +61,6 @@ import {
 } from './hooks'
 import {
   blockFormSchema,
-  toBodyDraft,
   validateBlockForm,
   type BlockFormValues,
   type ContentBlockRow,
@@ -62,7 +74,7 @@ function emptyForm(): BlockFormValues {
     position: 0,
     title: '',
     subtitle: '',
-    body: '',
+    body: null,
     media_url: null,
     media_alt: '',
     cta_label: '',
@@ -86,7 +98,7 @@ function toForm(row: ContentBlockRow): BlockFormValues {
     position: row.position,
     title: row.title ?? '',
     subtitle: row.subtitle ?? '',
-    body: toBodyDraft(parseRichText(row.body)),
+    body: parseRichText(row.body),
     media_url: row.media_url,
     media_alt: row.media_alt ?? '',
     cta_label: row.cta_label ?? '',
@@ -403,14 +415,15 @@ export function BlocksSection({ pageId }: { pageId: string | null }) {
               ))}
             </TextField>
           )}
-          <TextField
-            label={t('content.blocks.body')}
-            value={form.body}
-            onChange={(event) => setForm({ ...form, body: event.target.value })}
-            multiline
-            minRows={5}
-            helperText={t('content.blocks.bodyHelp')}
-          />
+          <Suspense fallback={<Skeleton variant="rounded" height={260} />}>
+            <RichTextEditor
+              label={t('content.blocks.body')}
+              value={form.body}
+              onChange={(next) => setForm({ ...form, body: next })}
+              helperText={t('content.blocks.bodyHelp')}
+              disabled={save.isPending}
+            />
+          </Suspense>
           <TextField
             label={t('content.blocks.ctaLabel')}
             value={form.cta_label}

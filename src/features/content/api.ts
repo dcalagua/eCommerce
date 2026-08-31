@@ -15,7 +15,6 @@ import {
   contentBlockSchema,
   contentPageSchema,
   orNull,
-  parseBodyDraft,
   parseExpansions,
   searchSynonymSchema,
   type BlockFormValues,
@@ -194,13 +193,12 @@ export async function fetchBlocks(pageId: string | null): Promise<ContentBlockRo
 }
 
 function blockPatch(values: BlockFormValues) {
-  const body = values.body.trim() === '' ? null : parseBodyDraft(values.body).doc
   return {
     block_type: values.block_type,
     position: values.position,
     title: orNull(values.title),
     subtitle: orNull(values.subtitle),
-    body,
+    body: values.body,
     media_url: values.media_url,
     media_alt: orNull(values.media_alt),
     cta_label: orNull(values.cta_label),

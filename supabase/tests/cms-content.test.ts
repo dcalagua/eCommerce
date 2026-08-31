@@ -463,8 +463,55 @@ describe('el contenido enriquecido NO es HTML, y la base lo demuestra', () => {
     ['un documento que no es un array', '{"type":"paragraph","text":"hola"}'],
     ['un nodo sin texto', '[{"type":"paragraph"}]'],
     ['un titular de nivel 1', '[{"type":"heading","level":1,"text":"hola"}]'],
+    // P17 · lo que llega con las marcas de texto y los tramos.
+    ['una marca que no es booleana', '[{"type":"paragraph","text":[{"text":"hola","bold":"si"}]}]'],
+    ['una marca inventada', '[{"type":"paragraph","text":[{"text":"hola","blink":true}]}]'],
+    ['una etiqueta dentro de un tramo', '[{"type":"paragraph","text":[{"text":"<b>hola</b>"}]}]'],
+    ['un enlace ejecutable en un tramo', '[{"type":"paragraph","text":[{"text":"x","href":"javascript:alert(1)"}]}]'],
+    ['un tramo sin texto', '[{"type":"paragraph","text":[{"bold":true}]}]'],
+    ['un separador con texto', '[{"type":"divider","text":"hola"}]'],
+    ['una alineacion inventada', '[{"type":"paragraph","text":"hola","align":"justify"}]'],
+    ['una lista alineada', '[{"type":"list","items":["a"],"align":"center"}]'],
+    ['un `ordered` que no es booleano', '[{"type":"list","items":["a"],"ordered":"si"}]'],
   ])('rechaza %s', async (_label, body) => {
     expect(await insertBody(body)).toMatch(/content_blocks_body_safe|violates check/i)
+  })
+
+  /**
+   * P17 · El editor gano marcas, y la base tiene que admitir exactamente esas.
+   *
+   * Es la mitad de servidor de lo que el editor ofrece: si esto no pasara, el
+   * operador veria su negrita guardada en pantalla y perdida al recargar.
+   */
+  it('acepta las marcas, el enlace en linea, la lista numerada y el separador', async () => {
+    // `publicPage()` sin argumentos resuelve la PORTADA de la tienda: la pagina
+    // tiene que ser `home` para que el bloque llegue a pintarse.
+    const page = await createPage({ slug: 'marcas', kind: 'home' })
+    const doc = JSON.stringify([
+      { type: 'heading', level: 2, text: 'Envios', align: 'center' },
+      {
+        type: 'paragraph',
+        text: [
+          { text: 'Envios ' },
+          { text: 'gratis', bold: true, italic: true },
+          { text: ' aqui', href: '/s/tienda-a/p/envios' },
+        ],
+      },
+      { type: 'list', items: ['Lima en 24 h'], ordered: true },
+      { type: 'divider' },
+    ])
+    await svc(
+      `insert into public.content_blocks
+         (organization_id, company_id, store_id, page_id, block_type, title, body)
+       values ($1, $2, $3, $4, 'rich_text', 'Marcas', $5::jsonb)`,
+      [TENANT_A.organizationId, TENANT_A.companyId, storeA, page, doc],
+    )
+
+    const body = blocks(await publicPage())[0]?.body as Json[]
+    expect(body).toHaveLength(4)
+    expect(body[3]).toEqual({ type: 'divider' })
+
+    await svc(`delete from public.content_pages where id = $1`, [page])
   })
 
   it('rechaza tambien a service_role: no es una validacion de pantalla', async () => {
