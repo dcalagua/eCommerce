@@ -1,9 +1,10 @@
-import { lazy, Suspense, type ReactNode } from 'react'
+import { Suspense, type ReactNode } from 'react'
 import { createBrowserRouter, type RouteObject } from 'react-router-dom'
 import type { CapabilityId } from '@/domain'
 import { ProtectedArea } from '@/features/auth/ProtectedArea'
 import { CapabilityGate } from '@/features/capabilities/CapabilityGate'
 import { LoadingState } from '@/shared/ui/states'
+import { lazyPage } from './lazyPage'
 import { NotFoundPage } from './NotFoundPage'
 import { RootErrorRoute } from './RootErrorRoute'
 
@@ -15,95 +16,95 @@ import { RootErrorRoute } from './RootErrorRoute'
  *                   crea el servidor, que también resuelve la tienda)
  */
 
-const LoginPage = lazy(() => import('@/features/auth/LoginPage').then((m) => ({ default: m.LoginPage })))
-const ForgotPasswordPage = lazy(() =>
+const LoginPage = lazyPage(() => import('@/features/auth/LoginPage').then((m) => ({ default: m.LoginPage })))
+const ForgotPasswordPage = lazyPage(() =>
   import('@/features/auth/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })),
 )
-const ResetPasswordPage = lazy(() =>
+const ResetPasswordPage = lazyPage(() =>
   import('@/features/auth/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })),
 )
-const OnboardingPage = lazy(() =>
+const OnboardingPage = lazyPage(() =>
   import('@/features/onboarding/OnboardingPage').then((m) => ({ default: m.OnboardingPage })),
 )
-const AdminLayout = lazy(() =>
+const AdminLayout = lazyPage(() =>
   import('@/features/admin/AdminLayout').then((m) => ({ default: m.AdminLayout })),
 )
-const DashboardPage = lazy(() =>
+const DashboardPage = lazyPage(() =>
   import('@/features/admin/DashboardPage').then((m) => ({ default: m.DashboardPage })),
 )
-const SettingsPage = lazy(() =>
+const SettingsPage = lazyPage(() =>
   import('@/features/admin/SettingsPage').then((m) => ({ default: m.SettingsPage })),
 )
-const ProductsPage = lazy(() =>
+const ProductsPage = lazyPage(() =>
   import('@/features/catalog/ProductsPage').then((m) => ({ default: m.ProductsPage })),
 )
-const CategoriesPage = lazy(() =>
+const CategoriesPage = lazyPage(() =>
   import('@/features/catalog/CategoriesPage').then((m) => ({ default: m.CategoriesPage })),
 )
-const PimPage = lazy(() =>
+const PimPage = lazyPage(() =>
   import('@/features/catalog/pim/PimPage').then((m) => ({ default: m.PimPage })),
 )
-const PricingPage = lazy(() =>
+const PricingPage = lazyPage(() =>
   import('@/features/pricing/PricingPage').then((m) => ({ default: m.PricingPage })),
 )
-const InventoryPage = lazy(() =>
+const InventoryPage = lazyPage(() =>
   import('@/features/inventory/InventoryPage').then((m) => ({ default: m.InventoryPage })),
 )
-const CustomersPage = lazy(() =>
+const CustomersPage = lazyPage(() =>
   import('@/features/customers/CustomersPage').then((m) => ({ default: m.CustomersPage })),
 )
-const OrdersPage = lazy(() =>
+const OrdersPage = lazyPage(() =>
   import('@/features/orders/OrdersPage').then((m) => ({ default: m.OrdersPage })),
 )
-const PaymentsPage = lazy(() =>
+const PaymentsPage = lazyPage(() =>
   import('@/features/payments/PaymentsPage').then((m) => ({ default: m.PaymentsPage })),
 )
-const FulfillmentPage = lazy(() =>
+const FulfillmentPage = lazyPage(() =>
   import('@/features/fulfillment/FulfillmentPage').then((m) => ({ default: m.FulfillmentPage })),
 )
-const PromotionsPage = lazy(() =>
+const PromotionsPage = lazyPage(() =>
   import('@/features/promotions/PromotionsPage').then((m) => ({ default: m.PromotionsPage })),
 )
-const ContentPage = lazy(() =>
+const ContentPage = lazyPage(() =>
   import('@/features/content/ContentPage').then((m) => ({ default: m.ContentPage })),
 )
-const AnalyticsPage = lazy(() =>
+const AnalyticsPage = lazyPage(() =>
   import('@/features/analytics/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })),
 )
-const OperationsPage = lazy(() =>
+const OperationsPage = lazyPage(() =>
   import('@/features/ops/OperationsPage').then((m) => ({ default: m.OperationsPage })),
 )
-const IntegrationsPage = lazy(() =>
+const IntegrationsPage = lazyPage(() =>
   import('@/features/integrations/IntegrationsPage').then((m) => ({ default: m.IntegrationsPage })),
 )
-const DiagnosticsPage = lazy(() =>
+const DiagnosticsPage = lazyPage(() =>
   import('@/features/capabilities/DiagnosticsPage').then((m) => ({ default: m.DiagnosticsPage })),
 )
-const StorefrontLayout = lazy(() =>
+const StorefrontLayout = lazyPage(() =>
   import('@/features/storefront/StorefrontLayout').then((m) => ({ default: m.StorefrontLayout })),
 )
-const StoreHomePage = lazy(() =>
+const StoreHomePage = lazyPage(() =>
   import('@/features/storefront/StoreHomePage').then((m) => ({ default: m.StoreHomePage })),
 )
-const StoreProductPage = lazy(() =>
+const StoreProductPage = lazyPage(() =>
   import('@/features/storefront/StoreProductPage').then((m) => ({ default: m.StoreProductPage })),
 )
-const StoreCartPage = lazy(() =>
+const StoreCartPage = lazyPage(() =>
   import('@/features/storefront/StoreCartPage').then((m) => ({ default: m.StoreCartPage })),
 )
-const StoreCheckoutPage = lazy(() =>
+const StoreCheckoutPage = lazyPage(() =>
   import('@/features/storefront/StoreCheckoutPage').then((m) => ({ default: m.StoreCheckoutPage })),
 )
-const StoreAccountPage = lazy(() =>
+const StoreAccountPage = lazyPage(() =>
   import('@/features/storefront/StoreAccountPage').then((m) => ({ default: m.StoreAccountPage })),
 )
-const StoreContentPage = lazy(() =>
+const StoreContentPage = lazyPage(() =>
   import('@/features/storefront/StoreContentPage').then((m) => ({ default: m.StoreContentPage })),
 )
-const StoreOrderPage = lazy(() =>
+const StoreOrderPage = lazyPage(() =>
   import('@/features/storefront/StoreOrderPage').then((m) => ({ default: m.StoreOrderPage })),
 )
-const LandingPage = lazy(() =>
+const LandingPage = lazyPage(() =>
   import('@/features/storefront/pages').then((m) => ({ default: m.LandingPage })),
 )
 

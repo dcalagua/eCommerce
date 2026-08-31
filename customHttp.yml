@@ -1,0 +1,29 @@
+# Cabeceras HTTP del alojamiento (AWS Amplify lee este fichero de la raíz).
+#
+# El problema que resuelve se vio en QAS: «Failed to fetch dynamically imported
+# module .../PromotionsPage-xZAYVR3U.js». Cada versión estrena el nombre de sus
+# trozos —lleva el hash del contenido— y el `index.html` es quien dice cuáles
+# son los de ahora. Si un navegador o la CDN guardan un `index.html` viejo,
+# pedirá trozos que ya no existen y la pantalla no cargará.
+#
+# De ahí el reparto: el `index.html` NO se guarda nunca, y los trozos, que son
+# inmutables por definición, se guardan un año. Es lo contrario de lo que se
+# suele hacer por inercia (cachear la página y no los ficheros) y es lo único
+# que hace que un despliegue se vea al instante sin romper nada.
+#
+# La aplicación además se cura sola si le pilla el cambio con la pestaña
+# abierta: ver `src/app/lazyPage.ts`. Esto es el cinturón; aquello, los tirantes.
+customHeaders:
+  - pattern: '/index.html'
+    headers:
+      - key: 'Cache-Control'
+        value: 'no-store, max-age=0, must-revalidate'
+  - pattern: '/'
+    headers:
+      - key: 'Cache-Control'
+        value: 'no-store, max-age=0, must-revalidate'
+  # Nombre con hash = contenido fijo. Si cambia el contenido, cambia el nombre.
+  - pattern: '/assets/**'
+    headers:
+      - key: 'Cache-Control'
+        value: 'public, max-age=31536000, immutable'

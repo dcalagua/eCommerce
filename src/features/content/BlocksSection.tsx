@@ -26,7 +26,8 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useMemo, useState, lazy, Suspense } from 'react'
+import { useMemo, useState, Suspense } from 'react'
+import { lazyPage } from '@/app/lazyPage'
 import { CONTENT_BLOCK_TYPES, blockAcceptsItems } from '@/domain/content'
 import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
@@ -41,7 +42,7 @@ import { FormDrawer } from '@/shared/ui/FormDrawer'
  * quien solo viene a mirar el orden de los bloques. Aqui llega con el panel de
  * edicion, que es el unico sitio donde se escribe.
  */
-const RichTextEditor = lazy(() =>
+const RichTextEditor = lazyPage(() =>
   import('./RichTextEditor').then((module) => ({ default: module.RichTextEditor })),
 )
 import { SearchField } from '@/shared/ui/SearchField'
