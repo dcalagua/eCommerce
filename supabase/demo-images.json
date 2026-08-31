@@ -1,0 +1,431 @@
+{
+  "ILU-COL-01": [
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e6/3db3ba47-b4a1-4319-9120-588a50070036.jpg",
+      "posicion": 0,
+      "origen": "https://commons.wikimedia.org/wiki/File:Hanging_lamp.JPG",
+      "titulo": "File:Hanging lamp.JPG",
+      "licencia": "Public domain",
+      "autor": "SeppVei",
+      "bytes": 182248
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e6/221d538f-a9e6-4726-be73-9d04cc05e722.jpg",
+      "posicion": 1,
+      "origen": "https://commons.wikimedia.org/wiki/File:Glass_pendant_in_the_form_of_a_lamp_MET_DP121032.jpg",
+      "titulo": "File:Glass pendant in the form of a lamp MET DP121032.jpg",
+      "licencia": "CC0",
+      "autor": null,
+      "bytes": 110744
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e6/3ae359da-f587-4cc1-ba3c-6a34c1ac92f2.jpg",
+      "posicion": 2,
+      "origen": "https://commons.wikimedia.org/wiki/File:Decorative_lamp.jpg",
+      "titulo": "File:Decorative lamp.jpg",
+      "licencia": "CC0",
+      "autor": "Jebulon",
+      "bytes": 133044
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e6/571dcacd-a6e4-40e4-b006-5b99d6855f16.jpg",
+      "posicion": 3,
+      "origen": "https://commons.wikimedia.org/wiki/File:Byzantine-revival_pendant_in_the_form_of_an_oil_lamp_MET_DP-12365-012.jpg",
+      "titulo": "File:Byzantine-revival pendant in the form of an oil lamp MET DP-12365-012.jpg",
+      "licencia": "CC0",
+      "autor": "Castellani",
+      "bytes": 65881
+    }
+  ],
+  "ILU-PIE-02": [
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e7/86389392-72c5-4278-9dc0-ace2e98886dc.jpg",
+      "posicion": 0,
+      "origen": "https://commons.wikimedia.org/wiki/File:Floor_lamp_(5906).JPG",
+      "titulo": "File:Floor lamp (5906).JPG",
+      "licencia": "Public domain",
+      "autor": "No machine-readable author provided. Jiang assumed (based on copyright claims).",
+      "bytes": 47146
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e7/c306f5d9-814d-45f4-9035-0fbc38b5cf36.jpg",
+      "posicion": 1,
+      "origen": "https://commons.wikimedia.org/wiki/File:Free_standing_lamp.jpg",
+      "titulo": "File:Free standing lamp.jpg",
+      "licencia": "Public domain",
+      "autor": "Godslave",
+      "bytes": 211723
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e7/544a275c-1b22-48ba-9b9a-afcf17261b43.jpg",
+      "posicion": 2,
+      "origen": "https://commons.wikimedia.org/wiki/File:Floor_Lamp_MET_25l.jpg",
+      "titulo": "File:Floor Lamp MET 25l.jpg",
+      "licencia": "CC0",
+      "autor": "Louis Comfort Tiffany / Tiffany Studios",
+      "bytes": 36043
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e7/ed9b2f8c-46e9-48e1-8e95-13a840946557.jpg",
+      "posicion": 3,
+      "origen": "https://commons.wikimedia.org/wiki/File:Floor_Lamp_MET_ADA5713.jpg",
+      "titulo": "File:Floor Lamp MET ADA5713.jpg",
+      "licencia": "CC0",
+      "autor": "Louis Comfort Tiffany / Tiffany Studios",
+      "bytes": 359003
+    }
+  ],
+  "MES-AUX-02": [
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e5/57d9b681-d245-43fe-888c-dc1702d25544.jpg",
+      "posicion": 0,
+      "origen": "https://commons.wikimedia.org/wiki/File:Round,_wicker_table_painted_brown,_table_top_wicker_wbottom_wicker_shelf,_balled_feet._Table_top_%26_shelf_have_small_wooden_(a69d800d-9227-4703-9459-d689f476df2d).jpg",
+      "titulo": "File:Round, wicker table painted brown, table top wicker wbottom wicker shelf, balled feet. Table top & shelf have small wooden (a69d800d-9227-4703-9459-d689f476df2d).jpg",
+      "licencia": "Public domain",
+      "autor": "National Park Service Picture – Courtesy of Hot Springs National Park Archives",
+      "bytes": 513330
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e5/66cb0051-bf67-4ffb-ac0b-8ec70fee85f0.jpg",
+      "posicion": 1,
+      "origen": "https://commons.wikimedia.org/wiki/File:Periodic_Round_Table_-_DPLA_-_c18d8953a35be54ebb63ba3e25825ef2_(page_1).jpg",
+      "titulo": "File:Periodic Round Table - DPLA - c18d8953a35be54ebb63ba3e25825ef2 (page 1).jpg",
+      "licencia": "Public domain",
+      "autor": "Katz, Gary",
+      "bytes": 174644
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e5/4970601a-5491-46a7-acc9-44669eb8e4ef.jpg",
+      "posicion": 2,
+      "origen": "https://commons.wikimedia.org/wiki/File:Periodic_Round_Table_-_DPLA_-_c18d8953a35be54ebb63ba3e25825ef2_(page_2).jpg",
+      "titulo": "File:Periodic Round Table - DPLA - c18d8953a35be54ebb63ba3e25825ef2 (page 2).jpg",
+      "licencia": "Public domain",
+      "autor": "Katz, Gary",
+      "bytes": 162034
+    }
+  ],
+  "MES-COM-01": [
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e4/12641e02-f01a-465c-a774-c3c3aa8078b8.jpg",
+      "posicion": 0,
+      "origen": "https://commons.wikimedia.org/wiki/File:Drop-leaf_Dining_Table_MET_17656.jpg",
+      "titulo": "File:Drop-leaf Dining Table MET 17656.jpg",
+      "licencia": "CC0",
+      "autor": null,
+      "bytes": 84474
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e4/ab7bfd47-5c6e-48a9-9576-7a8c07a25fa8.jpg",
+      "posicion": 1,
+      "origen": "https://commons.wikimedia.org/wiki/File:Wooden_table_with_two_chairs.jpg",
+      "titulo": "File:Wooden table with two chairs.jpg",
+      "licencia": "CC0",
+      "autor": "JesusisGreat7",
+      "bytes": 104726
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e4/16f837fa-28df-476b-9ae9-f0fc90d56d4d.png",
+      "posicion": 2,
+      "origen": "https://commons.wikimedia.org/wiki/File:Dinner_table_side_pine_wood_large_table_2.png",
+      "titulo": "File:Dinner table side pine wood large table 2.png",
+      "licencia": "CC0",
+      "autor": "Kurtkaiser",
+      "bytes": 233121
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e4/0c63f55a-090c-475a-9b68-8c6d6924b52e.png",
+      "posicion": 3,
+      "origen": "https://commons.wikimedia.org/wiki/File:Dinner_table_side_pine_wood_large_table_side.png",
+      "titulo": "File:Dinner table side pine wood large table side.png",
+      "licencia": "CC0",
+      "autor": "Kurtkaiser",
+      "bytes": 182152
+    }
+  ],
+  "MES-PRO-09": [
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e9/85dd8654-b34f-4221-ba78-21a0b312ed5d.jpg",
+      "posicion": 0,
+      "origen": "https://commons.wikimedia.org/wiki/File:Wooden_table_with_two_chairs.jpg",
+      "titulo": "File:Wooden table with two chairs.jpg",
+      "licencia": "CC0",
+      "autor": "JesusisGreat7",
+      "bytes": 104726
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e9/b1c5a126-d735-4834-b2eb-f6895a03d0e3.jpg",
+      "posicion": 1,
+      "origen": "https://commons.wikimedia.org/wiki/File:Long_wooden_table_at_Loddebo.jpg",
+      "titulo": "File:Long wooden table at Loddebo.jpg",
+      "licencia": "CC0",
+      "autor": "W.carter",
+      "bytes": 764396
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e9/cb0468a1-6e61-401e-b215-223bfc771812.jpg",
+      "posicion": 2,
+      "origen": "https://commons.wikimedia.org/wiki/File:Weatherworn_top_of_wooden_table.jpg",
+      "titulo": "File:Weatherworn top of wooden table.jpg",
+      "licencia": "CC0",
+      "autor": "W.carter",
+      "bytes": 456972
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e9/a59ba4a9-6120-4c4d-803d-8c71f3043d28.jpg",
+      "posicion": 3,
+      "origen": "https://commons.wikimedia.org/wiki/File:Wooden_Antique_Table_Lamp.jpg",
+      "titulo": "File:Wooden Antique Table Lamp.jpg",
+      "licencia": "CC0",
+      "autor": "Amitbalani",
+      "bytes": 769485
+    }
+  ],
+  "SIL-OLD-99": [
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000ea/ff8a2332-1870-457d-b3e4-b39e9140cec7.jpg",
+      "posicion": 0,
+      "origen": "https://commons.wikimedia.org/wiki/File:Antique_Wooden_Plantation_Chair.jpg",
+      "titulo": "File:Antique Wooden Plantation Chair.jpg",
+      "licencia": "CC0",
+      "autor": "Amitbalani",
+      "bytes": 809629
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000ea/18f31574-6d0c-4a1b-a1fc-bd7a59f1d9b2.jpg",
+      "posicion": 1,
+      "origen": "https://commons.wikimedia.org/wiki/File:Antique_Wooden_Chair_from_Bharat.jpg",
+      "titulo": "File:Antique Wooden Chair from Bharat.jpg",
+      "licencia": "CC0",
+      "autor": "Amitbalani",
+      "bytes": 447313
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000ea/8c7cc496-df32-43ed-9cf2-53deb0f426b8.jpg",
+      "posicion": 2,
+      "origen": "https://commons.wikimedia.org/wiki/File:A_State_Chair_by_Jancowski,_York.jpg",
+      "titulo": "File:A State Chair by Jancowski, York.jpg",
+      "licencia": "Public domain",
+      "autor": "Frederick Litchfield",
+      "bytes": 98719
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000ea/1dd3a747-4cca-4467-8fcc-71c4f5f86afa.jpg",
+      "posicion": 3,
+      "origen": "https://commons.wikimedia.org/wiki/File:Chair_of_Anna_Boleyn.jpg",
+      "titulo": "File:Chair of Anna Boleyn.jpg",
+      "licencia": "Public domain",
+      "autor": null,
+      "bytes": 47309
+    }
+  ],
+  "SIL-PLE-03": [
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e3/93bae7bb-7ccc-4217-bd7e-4b7dcdc8fb61.jpg",
+      "posicion": 0,
+      "origen": "https://commons.wikimedia.org/wiki/File:Folding_Chair_Lifetime.jpg",
+      "titulo": "File:Folding Chair Lifetime.jpg",
+      "licencia": "Public domain",
+      "autor": "GreenGlass1972",
+      "bytes": 91791
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e3/7fa30c4b-6a63-4c2e-bc54-85cd97313cc0.jpg",
+      "posicion": 1,
+      "origen": "https://commons.wikimedia.org/wiki/File:Folding_Armchair_MET_235588.jpg",
+      "titulo": "File:Folding Armchair MET 235588.jpg",
+      "licencia": "CC0",
+      "autor": "George Jakob Hunzinger",
+      "bytes": 222554
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e3/3397e1b4-6cba-4181-8d5d-24181564e595.jpg",
+      "posicion": 2,
+      "origen": "https://commons.wikimedia.org/wiki/File:Folding_chair_MET_ES4958.jpg",
+      "titulo": "File:Folding chair MET ES4958.jpg",
+      "licencia": "CC0",
+      "autor": null,
+      "bytes": 258983
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e3/5fb3f0f7-a078-4415-b38d-9ed3295825a8.jpg",
+      "posicion": 3,
+      "origen": "https://commons.wikimedia.org/wiki/File:Folding_chair_MET_DP-14129-132.jpg",
+      "titulo": "File:Folding chair MET DP-14129-132.jpg",
+      "licencia": "CC0",
+      "autor": null,
+      "bytes": 314349
+    }
+  ],
+  "SIL-ROB-01": [
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e1/c048136c-c337-4515-8726-f5949d43efbb.jpg",
+      "posicion": 0,
+      "origen": "https://commons.wikimedia.org/wiki/File:Carved_Oak_Chairs.jpg",
+      "titulo": "File:Carved Oak Chairs.jpg",
+      "licencia": "Public domain",
+      "autor": null,
+      "bytes": 66495
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e1/f55afbf6-bfa1-49e6-8561-293e641766df.jpg",
+      "posicion": 1,
+      "origen": "https://commons.wikimedia.org/wiki/File:Side_Chair_MET_ADA4953.jpg",
+      "titulo": "File:Side Chair MET ADA4953.jpg",
+      "licencia": "CC0",
+      "autor": "Creator:Conrad Henninger",
+      "bytes": 307614
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e1/1dcd3a7e-c45e-43d8-b56b-8b79f5591e2a.jpg",
+      "posicion": 2,
+      "origen": "https://commons.wikimedia.org/wiki/File:Easy_chair_MET_124684.jpg",
+      "titulo": "File:Easy chair MET 124684.jpg",
+      "licencia": "CC0",
+      "autor": null,
+      "bytes": 258269
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e1/b5782d1b-9185-4353-b906-fdd89f9836fe.jpg",
+      "posicion": 3,
+      "origen": "https://commons.wikimedia.org/wiki/File:Easy_chair_MET_120109.jpg",
+      "titulo": "File:Easy chair MET 120109.jpg",
+      "licencia": "CC0",
+      "autor": null,
+      "bytes": 423344
+    }
+  ],
+  "SIL-TAP-02": [
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e2/c52c11b2-423c-4a75-bd3d-6e320c2c55a8.jpg",
+      "posicion": 0,
+      "origen": "https://commons.wikimedia.org/wiki/File:Chair_upholstered_in_leather_6.jpg",
+      "titulo": "File:Chair upholstered in leather 6.jpg",
+      "licencia": "Public domain",
+      "autor": "Sergeev Pavel",
+      "bytes": 797343
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e2/6edc5629-b8a9-4abe-aa31-867fdca5d19b.jpg",
+      "posicion": 1,
+      "origen": "https://commons.wikimedia.org/wiki/File:An_upholstered_chair.jpg",
+      "titulo": "File:An upholstered chair.jpg",
+      "licencia": "CC0",
+      "autor": "Robert-brook",
+      "bytes": 769873
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e2/be0ea587-419c-417f-8412-2119f1e4ed2e.jpg",
+      "posicion": 2,
+      "origen": "https://commons.wikimedia.org/wiki/File:Armchair_MET_DT3949.jpg",
+      "titulo": "File:Armchair MET DT3949.jpg",
+      "licencia": "CC0",
+      "autor": "Creator:Adam Hains",
+      "bytes": 308642
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e2/ffba2c08-45fc-4b96-9af8-2a4fcdb2ca03.jpg",
+      "posicion": 3,
+      "origen": "https://commons.wikimedia.org/wiki/File:Armchair_MET_65410.jpg",
+      "titulo": "File:Armchair MET 65410.jpg",
+      "licencia": "CC0",
+      "autor": "Georges de Feure",
+      "bytes": 499414
+    }
+  ],
+  "TB-SECRET-01": [
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000002/d0000000-0000-4000-8000-0000000000a9/d0000000-0000-4000-8000-0000000000f1/15c4ef68-638b-4ec8-9be4-3587e90a0823.jpg",
+      "posicion": 0,
+      "origen": "https://commons.wikimedia.org/wiki/File:Table_lamp_MET_DP254463.jpg",
+      "titulo": "File:Table lamp MET DP254463.jpg",
+      "licencia": "CC0",
+      "autor": "Tiffany Studios",
+      "bytes": 177051
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000002/d0000000-0000-4000-8000-0000000000a9/d0000000-0000-4000-8000-0000000000f1/79f4cbd6-6a6f-4bb4-ab5b-634600c1e22a.jpg",
+      "posicion": 1,
+      "origen": "https://commons.wikimedia.org/wiki/File:Wooden_Antique_Table_Lamp.jpg",
+      "titulo": "File:Wooden Antique Table Lamp.jpg",
+      "licencia": "CC0",
+      "autor": "Amitbalani",
+      "bytes": 769485
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000002/d0000000-0000-4000-8000-0000000000a9/d0000000-0000-4000-8000-0000000000f1/9a1a57cf-ecab-4720-98a7-cca758e13280.jpg",
+      "posicion": 2,
+      "origen": "https://commons.wikimedia.org/wiki/File:Retro_desk_lamp.jpg",
+      "titulo": "File:Retro desk lamp.jpg",
+      "licencia": "CC0",
+      "autor": "WANGYIFAN2024",
+      "bytes": 158200
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000002/d0000000-0000-4000-8000-0000000000a9/d0000000-0000-4000-8000-0000000000f1/55f95a11-406a-4563-8854-94c4767c113e.png",
+      "posicion": 3,
+      "origen": "https://commons.wikimedia.org/wiki/File:Exhibition_of_Rosanjin%27s_original_desk_lamps_001.png",
+      "titulo": "File:Exhibition of Rosanjin's original desk lamps 001.png",
+      "licencia": "Public domain",
+      "autor": "Rosanjin",
+      "bytes": 2654629
+    }
+  ],
+  "ACC-COJ-01": [
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e8/df95534b-fa95-4901-8be4-b06c50ca3648.jpg",
+      "posicion": 1,
+      "origen": "https://commons.wikimedia.org/wiki/File:Cushions.jpg",
+      "titulo": "File:Cushions.jpg",
+      "licencia": "Public domain",
+      "autor": "Shiftchange at English Wikipedia",
+      "bytes": 52841
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e8/c9147daa-30d7-47d4-858b-caa67bac1fa5.jpg",
+      "posicion": 2,
+      "origen": "https://commons.wikimedia.org/wiki/File:Cushion_cover_MET_SC30381.jpg",
+      "titulo": "File:Cushion cover MET SC30381.jpg",
+      "licencia": "CC0",
+      "autor": null,
+      "bytes": 117353
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/d0000000-0000-4000-8000-0000000000e8/ab9f9dc0-ca67-4b1b-b47f-5799040a3bfa.jpg",
+      "posicion": 3,
+      "origen": "https://commons.wikimedia.org/wiki/File:Cushion_cover_MET_144303.jpg",
+      "titulo": "File:Cushion cover MET 144303.jpg",
+      "licencia": "CC0",
+      "autor": null,
+      "bytes": 575655
+    }
+  ],
+  "P09-RUNTIME-01": [
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/7a62c1f7-8111-4e32-be14-8fe2aefb6f72/4f57c325-19e2-4636-b6fc-1903222e63f0.jpg",
+      "posicion": 2,
+      "origen": "https://commons.wikimedia.org/wiki/File:Local_wooden_stool_02.jpg",
+      "titulo": "File:Local wooden stool 02.jpg",
+      "licencia": "CC0",
+      "autor": "Henry Ojonugwa",
+      "bytes": 590134
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/7a62c1f7-8111-4e32-be14-8fe2aefb6f72/deb25c9f-6ee8-4945-80d8-a74f54f2dc4b.jpg",
+      "posicion": 3,
+      "origen": "https://commons.wikimedia.org/wiki/File:Local_wooden_stool_03.jpg",
+      "titulo": "File:Local wooden stool 03.jpg",
+      "licencia": "CC0",
+      "autor": "Henry Ojonugwa",
+      "bytes": 659316
+    },
+    {
+      "storage_path": "d0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/7a62c1f7-8111-4e32-be14-8fe2aefb6f72/bd8826bb-add7-4deb-9415-5618be86d310.jpg",
+      "posicion": 4,
+      "origen": "https://commons.wikimedia.org/wiki/File:Local_wooden_stool_01.jpg",
+      "titulo": "File:Local wooden stool 01.jpg",
+      "licencia": "CC0",
+      "autor": "Henry Ojonugwa",
+      "bytes": 574040
+    }
+  ]
+}
