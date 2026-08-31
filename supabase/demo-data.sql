@@ -581,3 +581,34 @@ select
   (array[240, 120, 60])[n]
 from generate_series(1, 3) as g(n)
 on conflict (id) do nothing;
+
+
+-- ===== Marca y familia de cada producto =====================================
+-- Sin esto la faceta de marcas vuelve VACIA y el panel de filtros de la vitrina
+-- se queda con media cara: las marcas existian como catalogo, pero ningun
+-- producto apuntaba a ninguna.
+
+update public.products p
+   set brand_id = b.id
+  from public.brands b
+ where p.store_id = 'd0000000-0000-4000-8000-0000000000a1'
+   and p.brand_id is null
+   and b.organization_id = 'd0000000-0000-4000-8000-000000000001'
+   and b.code = case
+         when p.sku like 'ILU-%' then 'lumen'
+         when p.sku like 'SIL-%' then 'roble-lino'
+         else 'nordica'
+       end;
+
+update public.products p
+   set family_id = f.id
+  from public.product_families f
+ where p.store_id = 'd0000000-0000-4000-8000-0000000000a1'
+   and p.family_id is null
+   and f.organization_id = 'd0000000-0000-4000-8000-000000000001'
+   and f.code = case
+         when p.sku like 'SIL-%' then 'asientos'
+         when p.sku like 'MES-%' then 'superficies'
+         when p.sku like 'ILU-%' then 'iluminacion'
+         else 'superficies'
+       end;

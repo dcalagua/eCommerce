@@ -314,11 +314,14 @@ describe('con contenido publicado', () => {
       '/s/casa-verde',
     )
 
+    // Se espera al ENLACE, no solo a la cabecera. La navegación llega por su
+    // propia consulta: dar por hecho que ya está cuando aparece el `banner` era
+    // una carrera que se ganaba por casualidad, y cualquier cambio en el orden
+    // de montado de la cabecera la perdía.
     const header = await screen.findByRole('banner')
-    expect(within(header).getByRole('link', { name: 'Envíos y devoluciones' })).toHaveAttribute(
-      'href',
-      '/s/casa-verde/p/envios',
-    )
+    expect(
+      await within(header).findByRole('link', { name: 'Envíos y devoluciones' }),
+    ).toHaveAttribute('href', '/s/casa-verde/p/envios')
   })
 })
 

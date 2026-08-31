@@ -18,6 +18,7 @@ export function ProductCard({
   storeSlug,
   imageUrl = null,
   onPrefetch,
+  onQuickView,
 }: {
   product: PublicProduct
   storeSlug: string
@@ -30,6 +31,13 @@ export function ProductCard({
    * con teclado gane lo mismo que quien navega con ratón.
    */
   onPrefetch?: (slug: string) => void
+  /**
+   * Vista rapida. Si se pasa, el clic normal abre el dialogo en vez de
+   * navegar; el `href` NO se quita, asi que ctrl-clic, rueda y «abrir en
+   * pestana nueva» siguen llevando a la ficha, y un buscador la indexa.
+   * Sin JavaScript la tarjeta es un enlace y ya esta.
+   */
+  onQuickView?: (slug: string) => void
 }) {
   const { t, locale } = useI18n()
   const discount = discountPercent(product)
@@ -41,6 +49,16 @@ export function ProductCard({
       to={`/s/${storeSlug}/product/${product.slug}`}
       onMouseEnter={() => onPrefetch?.(product.slug)}
       onFocus={() => onPrefetch?.(product.slug)}
+      onClick={(event: React.MouseEvent) => {
+        if (!onQuickView) return
+        // Se respetan los gestos de «abrir en otra parte»: si el visitante
+        // pidio otra pestana, abrirle un dialogo aqui seria ignorarlo.
+        if (event.defaultPrevented) return
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+        if (event.button !== 0) return
+        event.preventDefault()
+        onQuickView(product.slug)
+      }}
       sx={{
         display: 'flex',
         flexDirection: 'column',

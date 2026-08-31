@@ -24,6 +24,7 @@ export function ProductGrid({
   storeSlug,
   thumbnails,
   onPrefetch,
+  onQuickView,
 }: {
   products: PublicProduct[]
   storeSlug: string
@@ -32,6 +33,9 @@ export function ProductGrid({
       relacionados de la ficha no lo pasan, porque ahí el siguiente clic es
       mucho menos probable que en la rejilla del catálogo. */
   onPrefetch?: (slug: string) => void
+  /** Abre la vista rapida. Sin esto la tarjeta navega a la ficha, que es
+      su comportamiento por defecto y el que conserva sin JavaScript. */
+  onQuickView?: (slug: string) => void
 }) {
   return (
     <Box sx={GRID_SX}>
@@ -40,6 +44,7 @@ export function ProductGrid({
           key={product.product_id}
           product={product}
           storeSlug={storeSlug}
+          {...(onQuickView ? { onQuickView } : {})}
           imageUrl={
             product.primary_image_path ? (thumbnails[product.primary_image_path] ?? null) : null
           }

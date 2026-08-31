@@ -401,7 +401,7 @@ describe('catálogo', () => {
     renderStorefront(backend(), '/s/casa-nordica')
 
     expect(await screen.findByText('Silla de roble')).toBeInTheDocument()
-    expect(screen.getByText('3 productos')).toBeInTheDocument()
+    expect(screen.getByText('3 resultados')).toBeInTheDocument()
     expect(screen.getByText('-14%')).toBeInTheDocument()
     expect(screen.getAllByText('Disponible')).toHaveLength(2)
     expect(screen.getByText('Sin stock')).toBeInTheDocument()
@@ -414,16 +414,23 @@ describe('catálogo', () => {
     expect(card).toHaveAttribute('href', '/s/casa-nordica/product/silla-roble')
   })
 
-  // P11-SaaS: la caja de busqueda pasa a ser un `combobox`, no un `searchbox`.
-  // No es un detalle de MUI: un campo con lista de sugerencias ES un combobox
-  // segun WAI-ARIA, y anunciarlo como caja de busqueda a secas dejaria a un
-  // lector de pantalla sin saber que hay opciones debajo.
-  it('el buscador general filtra por nombre', async () => {
+  // La caja de busqueda es un `combobox`, no un `searchbox`. No es un detalle
+  // de MUI: un campo con lista de sugerencias ES un combobox segun WAI-ARIA, y
+  // anunciarlo como caja de busqueda a secas dejaria a un lector de pantalla
+  // sin saber que hay opciones debajo. Se mantiene tras mudar el buscador a la
+  // cabecera: cambio el sitio, no la semantica.
+  it('el buscador de la cabecera filtra el catálogo al pulsar Enter', async () => {
+    // Teclear ya NO filtra solo: el buscador vive en la cabecera y esta en
+    // todas las pantallas de la tienda, asi que lo que hace es LLEVAR al
+    // catalogo filtrado. Escribir y que la rejilla cambiara sola detras del
+    // dialogo de sugerencias seria dos respuestas a la misma pulsacion.
     const user = userEvent.setup()
     renderStorefront(backend(), '/s/casa-nordica')
     await screen.findByText('Silla de roble')
 
-    await user.type(screen.getByRole('combobox', { name: 'Buscar productos' }), 'mesa')
+    const box = screen.getByRole('combobox', { name: 'Buscar en la tienda' })
+    await user.type(box, 'mesa')
+    await user.keyboard('{Enter}')
 
     await waitFor(() => expect(screen.queryByText('Silla de roble')).not.toBeInTheDocument())
     expect(screen.getByText('Mesa extensible')).toBeInTheDocument()
@@ -434,7 +441,8 @@ describe('catálogo', () => {
     renderStorefront(backend(), '/s/casa-nordica')
     await screen.findByText('Silla de roble')
 
-    await user.type(screen.getByRole('combobox', { name: 'Buscar productos' }), 'zzz')
+    await user.type(screen.getByRole('combobox', { name: 'Buscar en la tienda' }), 'zzz')
+    await user.keyboard('{Enter}')
     expect(await screen.findByText('Sin resultados')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Quitar filtros' }))

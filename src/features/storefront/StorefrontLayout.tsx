@@ -25,6 +25,7 @@ import { R, T } from '@/theme/tokens'
 import { StorefrontNotFoundError } from './api'
 import { notFoundMeta } from './seo'
 import { initials } from './branding'
+import { StoreQuickSearch } from './components/StoreQuickSearch'
 import { CartDrawer } from './cart/CartDrawer'
 import { CartProvider } from './cart/CartProvider'
 import { useCart } from './cart/cart-context'
@@ -173,8 +174,8 @@ function StoreHeader({ store, storeSlug }: { store: PublicStore; storeSlug: stri
               gap: 1.25,
               textDecoration: 'none',
               color: 'inherit',
-              flex: 1,
               minWidth: 0,
+              flexShrink: 0,
             }}
           >
             {store.logo_url ? (
@@ -211,6 +212,15 @@ function StoreHeader({ store, storeSlug }: { store: PublicStore; storeSlug: stri
             >
               {store.name}
             </Typography>
+          </Box>
+
+          {/* El buscador vive en la cabecera y no en el cuerpo del catalogo:
+              es lo primero que se usa para llegar a un producto, y desde aqui
+              esta en TODAS las pantallas de la tienda, no solo en la portada.
+              Se oculta en movil, donde la barra no da para el logo, el menu,
+              la cuenta, el carrito Y una caja de texto. */}
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, flex: 1, minWidth: 0, mx: 1 }}>
+            <StoreQuickSearch storeSlug={storeSlug} />
           </Box>
 
           <StoreNav storeSlug={storeSlug} />
