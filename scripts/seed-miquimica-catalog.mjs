@@ -192,10 +192,48 @@ const FAMILIES = [
  * ensenar lo mismo.
  */
 const PHOTO_QUERIES = {
-  MED: ['pharmaceutical tablets blister', 'medicine box pharmacy', 'pills bottle medicine'],
-  CPE: ['shampoo bottle cosmetic', 'liquid soap bottle', 'sunscreen bottle'],
-  VIT: ['vitamin supplement bottle', 'dietary supplement capsules', 'vitamin tablets bottle'],
+  MED: [
+    'pills medicine blister',
+    'medicine bottle pharmacy',
+    'pharmaceutical capsules',
+    'tablets pills white background',
+    'medical syrup bottle',
+    'pharmacy medicine box',
+    'ampoule vial medicine',
+    'inhaler asthma',
+  ],
+  CPE: [
+    'shampoo bottle',
+    'liquid soap dispenser',
+    'sunscreen lotion bottle',
+    'hand sanitizer gel',
+    'toothpaste tube',
+    'body lotion cream jar',
+    'deodorant stick',
+    'cosmetic cream container',
+  ],
+  VIT: [
+    'vitamin supplement bottle',
+    'dietary supplement capsules',
+    'fish oil omega capsules',
+    'vitamin tablets jar',
+    'protein powder container',
+    'multivitamin pills',
+    'collagen powder supplement',
+    'probiotic capsules',
+  ],
 }
+
+/**
+ * Cuantas fotos DISTINTAS se buscan por familia.
+ *
+ * La primera version se quedaba en cuatro por familia y las repartia entre 150
+ * productos: la rejilla se veia como un mosaico de la misma foto, que es peor
+ * que el marcador neutral —el marcador dice «no hay foto», la foto repetida
+ * dice «este catalogo es de mentira»—. Con treinta, cada una sale una de cada
+ * cinco tarjetas y la repeticion deja de saltar a la vista.
+ */
+const POOL_TARGET = 30
 
 const REJECT = [
   'drawing', 'engraving', 'lithograph', 'illustration', 'diagram', 'patent', 'painting',
@@ -321,49 +359,204 @@ async function copyObject(sourceKey, destinationKey, cfg) {
   if (!response.ok) throw new Error(`copy ${response.status}`)
 }
 
+/**
+ * Openverse: fotos de PRODUCTO, que es lo que Commons no tiene.
+ *
+ * Commons es un archivo enciclopedico: sus fotos libres de farmacia son piezas
+ * de museo y laminas, y de las pocas utilizables salian cuatro por familia.
+ * Openverse agrega bancos de imagen —rawpixel entre ellos— y filtra por
+ * licencia de verdad: `cc0,pdm` es dominio publico o equivalente, sin
+ * obligacion de atribuir, que es la misma regla que ya seguiamos.
+ */
+async function openverseSearch(query) {
+  const url =
+    'https://api.openverse.org/v1/images/?license=cc0,pdm&mature=false&page_size=20&q=' +
+    encodeURIComponent(query)
+  try {
+    const response = await fetch(url, { headers: { 'User-Agent': 'ebim-ecommerce-demo/1.0' } })
+    if (!response.ok) return []
+    const body = await response.json()
+    await wait(700)
+    return (body.results ?? []).map((item) => ({
+      title: String(item.title ?? ''),
+      url: item.url,
+    }))
+  } catch {
+    return []
+  }
+}
+
 /** Sube el fondo comun de fotos de una familia y devuelve sus rutas. */
-async function buildPhotoPool(family, store, cfg, wanted = 6) {
+async function buildPhotoPool(family, store, cfg, wanted = POOL_TARGET) {
   const pool = []
   const seen = new Set()
 
+  async function keep(title, source) {
+    if (pool.length >= wanted) return
+    const clean = String(title).toLowerCase()
+    if (REJECT.some((word) => clean.includes(word)) || HISTORIC.test(clean)) return
+    if (!source || seen.has(source)) return
+    seen.add(source)
+
+    try {
+      const response = await fetch(source, { headers: { 'User-Agent': 'ebim-ecommerce-demo/1.0' } })
+      if (!response.ok) return
+      const bytes = Buffer.from(await response.arrayBuffer())
+      const mime = sniff(bytes)
+      // Bytes magicos: un limitador que responde 200 con una pagina de error se
+      // subiria como «foto» y en la vitrina saldria rota.
+      if (!mime || bytes.byteLength > 5 * 1024 * 1024) return
+
+      // El fondo comun vive en una carpeta propia de la tienda: cumple el CHECK
+      // de tenant y no cuelga de ningun producto.
+      const extension = mime === 'image/png' ? 'png' : 'jpg'
+      const path = `${store.organization_id}/${store.id}/_pool/${family.key.toLowerCase()}-${randomUUID()}.${extension}`
+      await upload(path, bytes, mime, cfg)
+      pool.push(path)
+      await wait(400)
+    } catch {
+      /* una foto que no baja no puede parar la siembra */
+    }
+  }
+
+  for (const query of PHOTO_QUERIES[family.key] ?? []) {
+    if (pool.length >= wanted) break
+    for (const item of await openverseSearch(query)) {
+      if (pool.length >= wanted) break
+      await keep(item.title, item.url)
+    }
+  }
+
+  // Commons como respaldo, por si Openverse limita o no cubre una familia.
   for (const query of PHOTO_QUERIES[family.key] ?? []) {
     if (pool.length >= wanted) break
     for (const page of await commonsSearch(query)) {
       if (pool.length >= wanted) break
       const info = page.imageinfo?.[0]
       if (!info || info.mime !== 'image/jpeg' || !isFree(info.extmetadata)) continue
-      const title = String(page.title).toLowerCase()
-      if (REJECT.some((word) => title.includes(word)) || HISTORIC.test(title)) continue
-      if (seen.has(page.title)) continue
-      seen.add(page.title)
-
-      try {
-        const response = await fetch(info.thumburl ?? info.url, {
-          headers: { 'User-Agent': 'ebim-ecommerce-demo/1.0' },
-        })
-        if (!response.ok) continue
-        const bytes = Buffer.from(await response.arrayBuffer())
-        const mime = sniff(bytes)
-        if (!mime || bytes.byteLength > 5 * 1024 * 1024) continue
-
-        // El fondo comun vive en una carpeta propia de la tienda: cumple el
-        // CHECK de tenant y no cuelga de ningun producto.
-        const path = `${store.organization_id}/${store.id}/_pool/${family.key.toLowerCase()}-${randomUUID()}.jpg`
-        await upload(path, bytes, mime, cfg)
-        pool.push(path)
-        await wait(800)
-      } catch {
-        /* una foto que no baja no puede parar la siembra */
-      }
+      await keep(page.title, info.thumburl ?? info.url)
     }
   }
+
   return pool
+}
+
+/** Borrado en lote de objetos del bucket. La API acepta rutas de cien en cien. */
+async function removeObjects(paths, cfg) {
+  for (let start = 0; start < paths.length; start += 100) {
+    await fetch(`${cfg.url}/storage/v1/object/product-images`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${cfg.secret}`,
+        apikey: cfg.secret,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prefixes: paths.slice(start, start + 100) }),
+    }).catch(() => {})
+  }
+}
+
+/**
+ * Rehace SOLO las fotos de lo ya sembrado.
+ *
+ * Existe porque la primera tanda dejo cuatro fotos por familia repartidas entre
+ * ciento cincuenta productos. Rehacer el catalogo entero para cambiar las fotos
+ * habria cambiado tambien precios y SKU, y entonces la demo que alguien ya
+ * preparo deja de coincidir con lo que ve.
+ */
+async function rebuildPhotos(store, cfg) {
+  const productos = await sql(
+    `select p.id, p.sku, left(p.sku, 6) as familia, p.name
+       from public.products p
+      where p.store_id = ${lit(store.id)} and p.sku like ${lit(`${PREFIX}%`)}
+      order by p.sku`,
+    cfg,
+  )
+  if (productos.length === 0) return console.log('No hay productos MQ- que rehacer.')
+
+  const viejas = await sql(
+    `select pi.storage_path from public.product_images pi
+       join public.products p on p.id = pi.product_id
+      where p.store_id = ${lit(store.id)} and p.sku like ${lit(`${PREFIX}%`)}`,
+    cfg,
+  )
+  const pool_viejo = await sql(
+    `select name from storage.objects
+      where bucket_id = 'product-images' and name like ${lit(`${store.organization_id}/${store.id}/_pool/%`)}`,
+    cfg,
+  )
+
+  console.log(`Retirando ${viejas.length} foto(s) repetidas y ${pool_viejo.length} del fondo viejo`)
+  await sql(
+    `delete from public.product_images pi
+      using public.products p
+      where p.id = pi.product_id and p.store_id = ${lit(store.id)}
+        and p.sku like ${lit(`${PREFIX}%`)}`,
+    cfg,
+  )
+  await removeObjects(
+    [...viejas.map((row) => row.storage_path), ...pool_viejo.map((row) => row.name)],
+    cfg,
+  )
+
+  let total = 0
+  for (const family of FAMILIES) {
+    const mine = productos.filter((row) => row.familia === `${PREFIX}${family.key}`)
+    if (mine.length === 0) continue
+
+    const pool = await buildPhotoPool(family, store, cfg)
+    console.log(`  fondo ${family.key}: ${pool.length} foto(s) distintas para ${mine.length} productos`)
+    if (pool.length === 0) continue
+
+    const values_sql = []
+    for (const [index, row] of mine.entries()) {
+      const wanted = 2 + (index % 2)
+      for (let position = 0; position < wanted; position += 1) {
+        // Paso 7 y no 1: con paso 1 las tarjetas contiguas de la rejilla —que
+        // es donde se mira— salian con la misma foto.
+        const source = pool[(index * 7 + position * 3) % pool.length]
+        const extension = source.endsWith('.png') ? 'png' : 'jpg'
+        const destination = `${store.organization_id}/${store.id}/${row.id}/${randomUUID()}.${extension}`
+        try {
+          await copyObject(source, destination, cfg)
+        } catch {
+          continue
+        }
+        values_sql.push(
+          `(${lit(store.organization_id)}, ${lit(store.company_id)}, ${lit(store.id)},
+            ${lit(row.id)}, ${lit(destination)}, ${lit(row.name)}, ${lit(position)}, false)`,
+        )
+        total += 1
+      }
+      if (values_sql.length >= 100) {
+        await sql(
+          `insert into public.product_images
+             (organization_id, company_id, store_id, product_id, storage_path, alt, position, is_primary)
+           values ${values_sql.join(',\n')}`,
+          cfg,
+        )
+        values_sql.length = 0
+        console.log(`  fotos ${total}`)
+      }
+    }
+    if (values_sql.length > 0) {
+      await sql(
+        `insert into public.product_images
+           (organization_id, company_id, store_id, product_id, storage_path, alt, position, is_primary)
+         values ${values_sql.join(',\n')}`,
+        cfg,
+      )
+      console.log(`  fotos ${total}`)
+    }
+  }
+  console.log(`\nListo: ${total} fotos nuevas repartidas.`)
 }
 
 async function main() {
   const args = process.argv.slice(2)
   const check = args.includes('--check')
   const purge = args.includes('--purge')
+  const photosOnly = args.includes('--photos')
   const target = args.includes('--target') ? Number(args[args.indexOf('--target') + 1]) : 150
 
   const values = env()
@@ -390,6 +583,11 @@ async function main() {
       cfg,
     )
     console.log(`${n} producto(s) ${PREFIX} borrados.`)
+    return
+  }
+
+  if (photosOnly) {
+    await rebuildPhotos(store, cfg)
     return
   }
 

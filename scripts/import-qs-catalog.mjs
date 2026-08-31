@@ -1,40 +1,42 @@
 #!/usr/bin/env node
 /**
- * Importa el catalogo de MiQuimica desde el microservicio de Quimica Suiza.
+ * Importa el catalogo REAL de MiQuimica: productos del microservicio de Quimica
+ * Suiza y fotos de su CDN publico.
  *
- * ## Que es esto y que NO es
+ * ## Las dos mitades, y por que estaban separadas
  *
- * `D:\PROYECTOS_NET\Api` no tiene productos dentro: es un proxy .NET que pide
- * el catalogo a un microservicio externo
- * (`POST {endpoint}ProductsByLine/v1`, cabecera `Authorization_App`). Lo unico
- * local es `Scripts/Data.sql`, que trae CLIENTES REALES con su RUC: eso no
- * entra en una demo ni por asomo.
+ * El microservicio (`POST {api}Product/ProductsByLine/v1`, cabecera
+ * `Authorization_App`) devuelve el producto SIN foto: no hay campo de imagen en
+ * su modelo. La foto la COMPONE su tienda, y asi es como lo hace
+ * (`card-product.component.ts`):
  *
- * Asi que este script habla con ese microservicio, mapea su modelo al nuestro y
- * siembra la tienda de demo. Es de LECTURA contra el sistema ajeno: solo
- * consulta productos. Nada de pedidos, nada de clientes.
+ *   {base}/{lineCode}/{productCode}-s.jpg     (sociedad 1010)
+ *   {base}/{societyCode}/{lineCode}/{code}-s.jpg   (las demas)
  *
- * ## La credencial no vive aqui
+ * con `base = https://extranet.quimicasuiza.com/catalogo/`. El sufijo es el
+ * tamano: `-s` para la rejilla, `-l` para la ficha. Es un CDN publico, sin
+ * credencial. Aqui se bajan las dos y se suben a NUESTRO bucket en vez de
+ * enlazar el suyo: una vitrina que depende del CDN de un tercero se queda sin
+ * fotos el dia que ese tercero cambie una ruta.
  *
- * `QS_APP_TOKEN` sale del `.env` (git-ignored), y lo pone una persona a
- * conciencia. Los tokens que hay en el repositorio de la API son de PRODUCCION
- * y estan versionados por error —conviene rotarlos—; este script no los lee ni
- * los copia.
+ * ## Lo que hace falta para que la consulta no expire
  *
- * Por defecto apunta a QA. Cambiar a produccion es escribir la URL de
- * produccion en `QS_PRODUCT_API`, es decir, una decision explicita de quien
- * ejecuta.
+ * `lineCode`. Sin linea, el procedimiento escanea todo y muere a los 30 s. Las
+ * lineas se descubren del propio CDN, que lista directorios: una carpeta por
+ * linea. `--discover` las enumera con su nombre y su numero de productos.
  *
- *   # .env
- *   QS_PRODUCT_API=https://apiqa.quimicasuiza.com:8283/Product/
- *   QS_APP_TOKEN=<valor de la cabecera Authorization_App>
- *   QS_SOCIETY_CODE=1010
- *   QS_SALE_ORG=1011
- *   QS_IMAGES_BASE=            # opcional: UrlBaseImages de su configuracion
+ * ## El stock NO es real
  *
- *   node scripts/import-qs-catalog.mjs --probe          (que devuelve, sin escribir)
- *   node scripts/import-qs-catalog.mjs --lines 01,02 --limit 150
- *   node scripts/import-qs-catalog.mjs --limit 150      (todas las lineas que vengan)
+ * Su precio y su existencia son POR CLIENTE: sin `CustomerCode` el servicio
+ * responde `stock: 0` e `inStock: "NO"` para todo. Como una vitrina entera en
+ * agotado no se puede ensenar, el stock se SIMULA y queda anotado en
+ * `custom_fields.stock_simulado`. El precio (`priceTotal`) si viene, y es el de
+ * lista. Con un `CustomerCode` de pruebas (`QS_CUSTOMER_CODE`) llegarian los
+ * suyos y esto se cae solo.
+ *
+ *   QS_APP_TOKEN=...  node scripts/import-qs-catalog.mjs --discover
+ *   QS_APP_TOKEN=...  node scripts/import-qs-catalog.mjs --lines 041,922,305 --limit 150
+ *   QS_APP_TOKEN=...  node scripts/import-qs-catalog.mjs --lines 041 --limit 20 --no-images
  */
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -43,13 +45,17 @@ import { randomUUID } from 'node:crypto'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const STORE_SLUG = 'miquimica'
+const PREFIX = 'QS-'
+
+const DEFAULT_API = 'https://qrq.quimicasuiza.com:8283/Product/'
+const DEFAULT_IMAGES = 'https://extranet.quimicasuiza.com/catalogo/'
 
 /**
  * Configuracion: `.env` primero, y las variables de entorno mandan por encima.
  *
  * El entorno gana a proposito. Una credencial que solo hace falta para una
- * corrida —y menos aun si es de produccion— no tiene por que quedarse escrita
- * en el disco: pasandola en la invocacion vive lo que vive el proceso.
+ * corrida no tiene por que quedarse escrita en el disco: pasandola en la
+ * invocacion vive lo que vive el proceso.
  */
 function env() {
   let file = {}
@@ -73,28 +79,12 @@ function env() {
   return { ...file, ...fromEnv }
 }
 
-/** Consulta al microservicio. Solo lectura. */
-async function fetchByLine(cfg, filter) {
-  const response = await fetch(`${cfg.productApi}ProductsByLine/v1?`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization_App: cfg.token,
-    },
-    body: JSON.stringify(filter),
-  })
-  const text = await response.text()
-  if (!response.ok) throw new Error(`QS ${response.status}: ${text.slice(0, 300)}`)
-  const body = JSON.parse(text)
-  // El proxy .NET desenvuelve `Body`; aqui se acepta cualquiera de las dos
-  // formas porque el microservicio ha cambiado de envoltorio antes.
-  return body?.Body ?? body?.body ?? (Array.isArray(body) ? body : [])
-}
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 async function sql(query, cfg) {
   const response = await fetch(`https://api.supabase.com/v1/projects/${cfg.ref}/database/query`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${cfg.token_sb}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${cfg.supabaseToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ query }),
   })
   const text = await response.text()
@@ -104,146 +94,179 @@ async function sql(query, cfg) {
 
 function lit(value) {
   if (value === null || value === undefined || value === '') return 'null'
-  if (typeof value === 'number') return String(value)
+  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : 'null'
   if (typeof value === 'boolean') return value ? 'true' : 'false'
   return `'${String(value).replace(/'/g, "''")}'`
+}
+
+/** Consulta al microservicio. Solo lectura, y siempre con linea. */
+async function productsByLine(lineCode, cfg, totalFilter = 500) {
+  const filter = {
+    productCode: '',
+    productCodes: [],
+    productDescription: '',
+    lineCode,
+    lineCodes: [lineCode],
+    societyCode: cfg.society,
+    codCentro: cfg.codCentro,
+    treatmentCode: cfg.treatmentCode,
+    oficina: cfg.oficina,
+    BusinessFeature: '',
+    SaleOrg: cfg.saleOrg,
+    CustomerCode: cfg.customerCode,
+    Categories: [],
+    isFilterBonif: false,
+    isFilterScale: false,
+    totalFilter,
+    Cod_Almacen: '',
+  }
+
+  const response = await fetch(`${cfg.api}ProductsByLine/v1?`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization_App: cfg.token },
+    body: JSON.stringify(filter),
+  })
+  const text = await response.text()
+  if (!response.ok) throw new Error(`QS ${response.status}: ${text.slice(0, 200)}`)
+  const body = JSON.parse(text)
+  if (body.IsValid === false) throw new Error(`QS: ${body.Message}`)
+  return body.Body ?? []
+}
+
+/** Las lineas salen del CDN: lista directorios, una carpeta por linea. */
+async function discoverLines(cfg) {
+  const response = await fetch(cfg.images)
+  const html = await response.text()
+  return [...html.matchAll(/HREF="[^"]*\/catalogo\/([^/"]+)\/"/gi)]
+    .map((match) => match[1])
+    .filter((code) => /^\d+$/.test(code))
+}
+
+function sniff(bytes) {
+  if (bytes[0] === 0xff && bytes[1] === 0xd8) return 'image/jpeg'
+  if (bytes[0] === 0x89 && bytes[1] === 0x50) return 'image/png'
+  return null
+}
+
+/** Baja una foto del CDN. `null` si no existe o si lo que llega no es imagen. */
+async function fetchPhoto(lineCode, productCode, size, cfg) {
+  const suffix = cfg.society === '1010' ? '' : `${cfg.society}/`
+  const url = `${cfg.images}${suffix}${lineCode}/${productCode}-${size}.jpg`
+  try {
+    const response = await fetch(url)
+    if (!response.ok) return null
+    const bytes = Buffer.from(await response.arrayBuffer())
+    // Bytes magicos: el CDN responde con una pagina de error en 200 para
+    // algunas rutas, y esa «foto» acabaria rota en la vitrina.
+    const mime = sniff(bytes)
+    if (!mime || bytes.byteLength < 500 || bytes.byteLength > 5 * 1024 * 1024) return null
+    return { bytes, mime }
+  } catch {
+    return null
+  }
+}
+
+async function upload(path, bytes, mime, cfg) {
+  const response = await fetch(`${cfg.url}/storage/v1/object/product-images/${path}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${cfg.secret}`,
+      apikey: cfg.secret,
+      'Content-Type': mime,
+      'x-upsert': 'false',
+      'cache-control': 'max-age=604800',
+    },
+    body: bytes,
+  })
+  if (!response.ok) throw new Error(`storage ${response.status}`)
+}
+
+/**
+ * MAYUSCULAS DE ERP a algo legible en una vitrina.
+ *
+ * La inicial se busca por POSICION (principio, o detras de espacio, parentesis,
+ * barra o guion) y no con `\b`: en JavaScript el limite de palabra es ASCII, y
+ * «elastica» tiene frontera antes de la «a» acentuada — de ahi salia
+ * «ElÁStica». Es el fallo clasico de mayusculizar espanol con `\b`.
+ */
+function titleCase(text) {
+  return String(text ?? '')
+    .toLowerCase()
+    .replace(/(^|[\s(/\-.])([a-záéíóúüñ])/g, (_, prefix, letter) => prefix + letter.toUpperCase())
+    // Unidades y siglas que NO son nombres propios y quedan ridiculas en
+    // capital: «30 Comp Rec» se lee peor que «30 comp rec».
+    .replace(/\b(Mg|Ml|Gr|Und|Un|Comp|Rec|Cja|Tab|Cap|Caps|X)\b/g, (word) => word.toLowerCase())
+    .replace(/\bDe\b/g, 'de')
+    .trim()
 }
 
 function slugify(text, suffix) {
   const base = String(text)
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 60)
-  return `${base || 'producto'}-${suffix}`.toLowerCase()
-}
-
-/** MAYUSCULAS DE ERP a algo legible en una vitrina. */
-function titleCase(text) {
-  return String(text ?? '')
-    .toLowerCase()
-    .replace(/\b([a-záéíóúñ])/g, (letter) => letter.toUpperCase())
-    .replace(/\bDe\b/g, 'de')
-    .replace(/\bY\b/g, 'y')
-    .trim()
-}
-
-/**
- * Su modelo al nuestro.
- *
- * Lo que tiene columna propia va a su columna; lo que es dato del sector va a
- * `custom_fields`, que es exactamente para lo que existe. `Scales` y `Bonuses`
- * se guardan TAL CUAL y no se interpretan: son escalas de descuento y
- * bonificaciones con reglas propias, y traducirlas a nuestras listas de precios
- * a ojo seria inventar precios.
- */
-function mapProduct(row, index) {
-  const name = titleCase(row.ProductDescription ?? row.productDescription ?? '')
-  const code = String(row.ProductCode ?? row.productCode ?? '').trim()
-  return {
-    sku: code,
-    name: name || code,
-    slug: slugify(name || code, String(index + 1).padStart(4, '0')),
-    description: row.CommercialDescription || row.commercialDescription || null,
-    price: Number(row.PriceTotal ?? row.priceTotal ?? 0),
-    stock: Math.max(Math.trunc(Number(row.Stock ?? row.stock ?? 0)), 0),
-    lineCode: row.LineCode ?? row.lineCode ?? null,
-    lineName: titleCase(row.LineName ?? row.lineName ?? '') || null,
-    category: titleCase(row.Category ?? row.category ?? '') || null,
-    tradename: titleCase(row.Tradename ?? row.tradename ?? '') || null,
-    custom: {
-      principio_activo: row.ActivePrinciple ?? row.activePrinciple ?? null,
-      tipo_producto: row.ProductType ?? row.productType ?? null,
-      linea_codigo: row.LineCode ?? row.lineCode ?? null,
-      spart: row.Spart ?? row.spart ?? null,
-      pack_maestro: row.MasterPack ?? row.masterPack ?? null,
-      igv: row.Tax ?? row.tax ?? null,
-      escalas: row.Scales ?? row.scales ?? null,
-      bonificaciones: row.Bonuses ?? row.bonuses ?? null,
-    },
-  }
+  return `${base || 'producto'}-${suffix}`
 }
 
 async function main() {
   const args = process.argv.slice(2)
-  const probe = args.includes('--probe')
+  const discover = args.includes('--discover')
+  const noImages = args.includes('--no-images')
   const limit = args.includes('--limit') ? Number(args[args.indexOf('--limit') + 1]) : 150
   const lines = args.includes('--lines')
     ? String(args[args.indexOf('--lines') + 1]).split(',').map((code) => code.trim())
     : []
 
   const values = env()
-  for (const key of ['QS_PRODUCT_API', 'QS_APP_TOKEN']) {
-    if (!values[key]) {
-      throw new Error(
-        `Falta ${key} en .env. Este script NO lee credenciales del repositorio de la API: ` +
-          'la pone una persona a conciencia (ver cabecera del archivo).',
-      )
-    }
+  if (!values.QS_APP_TOKEN) {
+    throw new Error(
+      'Falta QS_APP_TOKEN. Este script NO lee credenciales del repositorio de la API: ' +
+        'la pone una persona a conciencia (ver cabecera del archivo).',
+    )
   }
 
   const cfg = {
-    productApi: values.QS_PRODUCT_API.endsWith('/')
-      ? values.QS_PRODUCT_API
-      : `${values.QS_PRODUCT_API}/`,
+    api: (values.QS_PRODUCT_API ?? DEFAULT_API).replace(/\/?$/, '/'),
+    images: (values.QS_IMAGES_BASE ?? DEFAULT_IMAGES).replace(/\/?$/, '/'),
     token: values.QS_APP_TOKEN,
     society: values.QS_SOCIETY_CODE ?? '1010',
     saleOrg: values.QS_SALE_ORG ?? '1011',
-    imagesBase: values.QS_IMAGES_BASE ?? '',
+    customerCode: values.QS_CUSTOMER_CODE ?? '',
+    treatmentCode: values.QS_TREATMENT_CODE ?? '',
+    codCentro: values.QS_COD_CENTRO ?? '',
+    oficina: values.QS_OFICINA ?? '',
     url: (values.VITE_SUPABASE_URL ?? '').replace(/\/$/, ''),
     ref: values.VITE_SUPABASE_URL ? new URL(values.VITE_SUPABASE_URL).hostname.split('.')[0] : '',
-    token_sb: values.SUPABASE_ACCESS_TOKEN,
+    supabaseToken: values.SUPABASE_ACCESS_TOKEN,
     secret: values.SUPABASE_SECRET_KEY,
   }
 
-  /**
-   * El filtro, con la forma EXACTA que manda su app (`ProductBusiness`).
-   *
-   * Nada de mandar medio objeto: su servicio inserta lo que recibe en tablas
-   * intermedias, y un campo ausente le revienta con «String or binary data
-   * would be truncated», que es un error suyo provocado por una peticion mal
-   * formada nuestra. Se mandan todos los campos, vacios cuando no aplican.
-   *
-   * `CustomerCode` y compania NO son opcionales de verdad: el precio de este
-   * servicio es POR CLIENTE (B2B). Sin cliente, lo que vuelva —si vuelve— no es
-   * el precio de nadie.
-   */
-  const baseFilter = {
-    productCode: '',
-    productCodes: [],
-    productDescription: '',
-    lineCode: lines[0] ?? '',
-    lineCodes: lines,
-    societyCode: cfg.society,
-    codCentro: values.QS_COD_CENTRO ?? '',
-    treatmentCode: values.QS_TREATMENT_CODE ?? '',
-    oficina: values.QS_OFICINA ?? '',
-    BusinessFeature: values.QS_BUSINESS_FEATURE ?? '',
-    SaleOrg: cfg.saleOrg,
-    CustomerCode: values.QS_CUSTOMER_CODE ?? '',
-    Categories: [],
-    isFilterBonif: false,
-    isFilterScale: false,
-    totalFilter: limit,
-    Cod_Almacen: '',
-  }
-
-  if (probe) {
-    const rows = await fetchByLine(cfg, { ...baseFilter, totalFilter: 5 })
-    console.log(`Respuesta: ${rows.length} fila(s). Primera, tal cual:`)
-    console.log(JSON.stringify(rows[0] ?? null, null, 2))
-    const porLinea = {}
-    for (const row of rows) {
-      const key = `${row.LineCode ?? row.lineCode} · ${row.LineName ?? row.lineName}`
-      porLinea[key] = (porLinea[key] ?? 0) + 1
+  if (discover) {
+    const codes = lines.length > 0 ? lines : await discoverLines(cfg)
+    console.log(`${codes.length} carpeta(s) de linea en el CDN. Preguntando por cada una...\n`)
+    const found = []
+    for (const code of codes) {
+      try {
+        const rows = await productsByLine(code, cfg, 1)
+        const first = rows[0]
+        if (first?.total > 0) {
+          found.push({ code, nombre: first.lineName, productos: first.total })
+          console.log(`  ${code.padEnd(5)} ${String(first.total).padStart(5)}  ${first.lineName}`)
+        }
+      } catch (error) {
+        console.log(`  ${code.padEnd(5)}     ?  ${error.message.slice(0, 60)}`)
+      }
+      await wait(300)
     }
-    console.log('Lineas vistas:', porLinea)
+    console.log(`\n${found.length} linea(s) con catalogo.`)
     return
   }
 
-  if (!cfg.ref || !cfg.token_sb) throw new Error('Falta VITE_SUPABASE_URL o SUPABASE_ACCESS_TOKEN')
+  if (lines.length === 0) throw new Error('Indica al menos una linea: --lines 041,922')
+  if (!cfg.ref || !cfg.supabaseToken) throw new Error('Falta VITE_SUPABASE_URL o SUPABASE_ACCESS_TOKEN')
 
   const [store] = await sql(
     `select id, organization_id, company_id, currency from public.stores where slug = ${lit(STORE_SLUG)}`,
@@ -251,52 +274,210 @@ async function main() {
   )
   if (!store) throw new Error(`No existe la tienda ${STORE_SLUG}`)
 
-  const rows = await fetchByLine(cfg, baseFilter)
-  console.log(`Recibidos ${rows.length} producto(s) del microservicio`)
-
-  const mapped = rows.map(mapProduct).filter((row) => row.sku)
-  const categories = await sql(
-    `select id, slug, name from public.categories where store_id = ${lit(store.id)}`,
+  const existing = await sql(
+    `select lower(sku) as sku from public.products where store_id = ${lit(store.id)}`,
     cfg,
   )
-  const brands = await sql(`select id, code, name from public.brands`, cfg)
+  const already = new Set(existing.map((row) => row.sku))
 
-  const categoryId = (name) =>
-    categories.find((row) => row.name?.toLowerCase() === String(name ?? '').toLowerCase())?.id ??
-    null
-  const brandId = (name) =>
-    brands.find((row) => row.name?.toLowerCase() === String(name ?? '').toLowerCase())?.id ?? null
+  let creados = 0
+  let fotos = 0
 
-  let inserted = 0
-  for (let start = 0; start < mapped.length; start += 25) {
-    const batch = mapped.slice(start, start + 25)
-    const values_sql = batch
-      .map(
-        (row) => `(${lit(randomUUID())}, ${lit(store.organization_id)}, ${lit(store.company_id)},
-         ${lit(store.id)}, ${lit(categoryId(row.category ?? row.lineName))}, ${lit(brandId(row.tradename))},
-         ${lit(row.sku)}, ${lit(row.slug)}, ${lit(row.name)}, ${lit(row.description)},
-         ${lit(row.price)}, ${lit(store.currency)}, ${lit(row.stock)}, 'published'::product_status,
-         now(), ${lit(JSON.stringify(row.custom))}::jsonb)`,
+  for (const lineCode of lines) {
+    let rows
+    try {
+      rows = await productsByLine(lineCode, cfg)
+    } catch (error) {
+      console.log(`! linea ${lineCode}: ${error.message}`)
+      continue
+    }
+
+    const useful = rows
+      .filter((row) => row.productCode && row.productDescription)
+      .filter((row) => !already.has(`${PREFIX}${row.productCode}`.toLowerCase()))
+      .slice(0, limit)
+
+    console.log(`\nLinea ${lineCode} · ${rows[0]?.lineName ?? '?'} · ${rows.length} recibidos, ${useful.length} nuevos`)
+    if (useful.length === 0) continue
+
+    // Categorias y marcas REALES: la categoria viene en el producto y la marca
+    // es el laboratorio (la linea). Se crean las que falten.
+    const categorias = [...new Set(useful.map((row) => row.category?.trim() || rows[0]?.lineName))]
+    for (const nombre of categorias.filter(Boolean)) {
+      await sql(
+        `insert into public.categories (organization_id, company_id, store_id, slug, name, position, is_active)
+         values (${lit(store.organization_id)}, ${lit(store.company_id)}, ${lit(store.id)},
+                 ${lit(slugify(nombre, 'qs'))}, ${lit(nombre)}, 50, true)
+         on conflict do nothing`,
+        cfg,
       )
-      .join(',\n')
+    }
+    const marca = rows[0]?.lineName
+    if (marca) {
+      await sql(
+        `insert into public.brands (organization_id, company_id, code, name, is_active)
+         values (${lit(store.organization_id)}, ${lit(store.company_id)},
+                 ${lit(slugify(marca, lineCode))}, ${lit(titleCase(marca))}, true)
+         on conflict do nothing`,
+        cfg,
+      )
+    }
 
-    await sql(
-      `insert into public.products
-         (id, organization_id, company_id, store_id, category_id, brand_id, sku, slug, name,
-          description, price, currency, stock, status, published_at, custom_fields)
-       values ${values_sql}
-       on conflict do nothing`,
+    const cats = await sql(
+      `select id, name from public.categories where store_id = ${lit(store.id)}`,
       cfg,
     )
-    inserted += batch.length
-    console.log(`  ${inserted}/${mapped.length}`)
+    const brands = await sql(`select id, name from public.brands`, cfg)
+    const catId = (nombre) =>
+      cats.find((row) => row.name?.toLowerCase() === String(nombre ?? '').toLowerCase())?.id ?? null
+    const brandId =
+      brands.find((row) => row.name?.toLowerCase() === titleCase(marca).toLowerCase())?.id ?? null
+
+    const prepared = useful.map((row, index) => {
+      const name = titleCase(row.tradename?.trim() || row.productDescription)
+      return {
+        id: randomUUID(),
+        code: row.productCode,
+        sku: `${PREFIX}${row.productCode}`,
+        slug: slugify(name, row.productCode),
+        name,
+        description: row.commercialDescription?.trim() || null,
+        price: Number(row.priceTotal ?? 0),
+        // Su existencia es por cliente y sin cliente responde 0: se simula y
+        // queda anotado que es simulada.
+        stock: Number(row.stock) > 0 ? Math.trunc(Number(row.stock)) : 20 + ((index * 7) % 180),
+        categoryId: catId(row.category?.trim() || rows[0]?.lineName),
+        custom: {
+          codigo_qs: row.productCode,
+          ean: row.ean || null,
+          principio_activo: row.activePrinciple || null,
+          nombre_comercial: row.tradename || null,
+          tipo_producto: row.productType || null,
+          linea_codigo: row.lineCode,
+          linea: row.lineName,
+          categoria_qs: row.category || null,
+          id_categoria_qs: row.idCategory || null,
+          pack_maestro: row.masterPack ?? null,
+          igv: row.tax ?? null,
+          escalas: row.itemsScales ?? [],
+          bonificaciones: row.itemsBonuses ?? [],
+          stock_simulado: !(Number(row.stock) > 0),
+        },
+      }
+    })
+
+    for (let start = 0; start < prepared.length; start += 25) {
+      const batch = prepared.slice(start, start + 25)
+      const valuesSql = batch
+        .map(
+          (row) => `(${lit(row.id)}, ${lit(store.organization_id)}, ${lit(store.company_id)},
+           ${lit(store.id)}, ${lit(row.categoryId)}, ${lit(brandId)}, ${lit(row.sku)},
+           ${lit(row.slug)}, ${lit(row.name)}, ${lit(row.description)}, ${lit(row.price)},
+           ${lit(store.currency)}, ${lit(row.stock)}, 'published'::product_status, now(),
+           ${lit(JSON.stringify(row.custom))}::jsonb)`,
+        )
+        .join(',\n')
+
+      await sql(
+        `insert into public.products
+           (id, organization_id, company_id, store_id, category_id, brand_id, sku, slug, name,
+            description, price, currency, stock, status, published_at, custom_fields)
+         values ${valuesSql}
+         on conflict do nothing`,
+        cfg,
+      )
+      creados += batch.length
+      console.log(`  productos ${Math.min(start + 25, prepared.length)}/${prepared.length}`)
+    }
+
+    if (noImages) continue
+
+    /**
+     * Los ids REALES, releidos de la base.
+     *
+     * El insert lleva `on conflict do nothing`, asi que un producto que choque
+     * —mismo SKU o mismo slug que uno ya existente— no entra, y su id generado
+     * aqui no existe en ninguna parte. Colgarle una foto de ese id reventaba
+     * con violacion de clave ajena y se llevaba por delante el lote entero.
+     */
+    const landed = await sql(
+      `select id, sku from public.products
+        where store_id = ${lit(store.id)}
+          and sku in (${prepared.map((row) => lit(row.sku)).join(', ')})`,
+      cfg,
+    )
+    const idOf = new Map(landed.map((row) => [row.sku, row.id]))
+    console.log(`  en base: ${idOf.size}/${prepared.length}`)
+
+    // ---- Fotos del CDN, la grande primero -------------------------------
+    const imageRows = []
+    for (const row of prepared) {
+      const productId = idOf.get(row.sku)
+      if (!productId) continue
+      let position = 0
+      for (const size of ['l', 's']) {
+        const photo = await fetchPhoto(lineCode, row.code, size, cfg)
+        if (!photo) continue
+        const path = `${store.organization_id}/${store.id}/${productId}/${randomUUID()}.jpg`
+        try {
+          await upload(path, photo.bytes, photo.mime, cfg)
+        } catch {
+          continue
+        }
+        imageRows.push(
+          `(${lit(store.organization_id)}, ${lit(store.company_id)}, ${lit(store.id)},
+            ${lit(productId)}, ${lit(path)}, ${lit(row.name)}, ${lit(position)}, false)`,
+        )
+        position += 1
+        fotos += 1
+      }
+      if (imageRows.length >= 60) {
+        await sql(
+          `insert into public.product_images
+             (organization_id, company_id, store_id, product_id, storage_path, alt, position, is_primary)
+           values ${imageRows.join(',\n')}`,
+          cfg,
+        )
+        imageRows.length = 0
+        console.log(`  fotos ${fotos}`)
+      }
+      await wait(60)
+    }
+    if (imageRows.length > 0) {
+      await sql(
+        `insert into public.product_images
+           (organization_id, company_id, store_id, product_id, storage_path, alt, position, is_primary)
+         values ${imageRows.join(',\n')}`,
+        cfg,
+      )
+      console.log(`  fotos ${fotos}`)
+    }
   }
 
-  console.log(
-    cfg.imagesBase
-      ? '\nFotos: pendiente de `UrlBaseImages`; con el valor real se resuelven por codigo de producto.'
-      : '\nSin QS_IMAGES_BASE no se importan fotos: el modelo de producto no trae URL, se compone con la base de su configuracion.',
+  // ---- Existencias en los ALMACENES, que es de donde lee la vitrina ------
+  const [inv] = await sql(
+    `with nuevas as (
+       insert into public.inventory_levels
+         (organization_id, company_id, warehouse_id, store_id, product_id,
+          on_hand_qty, reserved_qty, safety_stock, reorder_point)
+       select p.organization_id, p.company_id, w.id, p.store_id, p.id,
+              case when w.code = 'ALM-LIM' then ceil(p.stock * 0.7) else floor(p.stock * 0.3) end,
+              0, 0, 12
+         from public.products p
+         join public.warehouses w
+           on w.organization_id = p.organization_id and w.company_id = p.company_id
+          and w.is_active and w.code in ('ALM-LIM', 'TDA-MIR')
+        where p.store_id = ${lit(store.id)} and p.sku like ${lit(`${PREFIX}%`)}
+          and not exists (
+            select 1 from public.inventory_levels il
+             where il.product_id = p.id and il.warehouse_id = w.id and il.variant_id is null
+          )
+       returning 1
+     ) select count(*)::int as n from nuevas`,
+    cfg,
   )
+
+  console.log(`\nListo: ${creados} productos, ${fotos} fotos, ${inv.n} filas de inventario.`)
 }
 
 main().catch((error) => {
