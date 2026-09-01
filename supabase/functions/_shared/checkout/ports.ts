@@ -39,6 +39,14 @@ export interface CheckoutContext {
   readonly channelCode: string
   readonly channelKind: string
   readonly requiresAuth: boolean
+  /**
+   * La tienda solo vende a quien ha iniciado sesion
+   * (`store_settings.checkout_requires_account`).
+   *
+   * Distinta de `requiresAuth`, que es del CANAL: aquella dice que ese canal es
+   * cerrado; esta, que este comercio no vende a desconocidos por ninguno.
+   */
+  readonly requiresAccount: boolean
   readonly taxInclusive: boolean
 }
 
@@ -53,6 +61,21 @@ export interface CheckoutContext {
  */
 export interface AccountContext {
   readonly hasSession: boolean
+  /**
+   * El usuario de la sesion VERIFICADA, o `null`.
+   *
+   * `hasSession` sale de leer el `sub` del token SIN comprobar la firma, asi
+   * que sirve para decidir a quien preguntar y no para autorizar: cualquiera
+   * puede escribir un JWT con un `sub` dentro. Esto lo responde la base con ese
+   * mismo token, y PostgREST comprueba la firma antes. Lo que exige cuenta mira
+   * este campo, nunca el otro.
+   *
+   * Opcional porque solo se pregunta cuando la tienda exige cuenta: en una
+   * tienda abierta seria un viaje mas por compra para responder algo que nadie
+   * usa. Ausente y `null` significan lo mismo aqui — «no se ha verificado
+   * ninguna» — y por eso ningun sitio lo lee para autorizar.
+   */
+  readonly userId?: string | null
   readonly accountId: string | null
   readonly role: string | null
   /** Tope de autorización de la persona, como texto decimal. `null` = sin tope. */
@@ -426,6 +449,8 @@ export interface CheckoutPorts {
   // Las once etapas, en el orden de `CHECKOUT_STAGES`.
   resolveContext(storeSlug: string): Promise<CheckoutContext>
   resolveAccount(): Promise<AccountContext>
+  /** Quien compra, segun la base y con el token del llamante. */
+  verifyBuyer(): Promise<string | null>
   resolvePrices(storeSlug: string, items: readonly OrderItemInput[]): Promise<Quote>
   /**
    * Solo tiene sentido con un carrito de servidor detras: sin snapshot no hay

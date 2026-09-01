@@ -252,7 +252,30 @@ export async function runCheckout(
           message: 'Ese canal de venta exige iniciar sesion',
         })
       }
-      return resolved
+
+      /**
+       * P18 · La tienda que solo vende a quien ha entrado.
+       *
+       * Se comprueba contra la identidad VERIFICADA, no contra `hasSession`:
+       * ese booleano sale de leer el `sub` del token sin comprobar la firma, y
+       * escribir un JWT con un `sub` dentro lo hace cualquiera. Sostener con él
+       * una regla de acceso sería dejar la puerta con un cartel en vez de una
+       * cerradura.
+       *
+       * La vitrina ya lo impide antes de enseñar el formulario. Esto es lo que
+       * lo hace cierto también para quien no pasa por la vitrina.
+       */
+      if (!context.requiresAccount) return resolved
+
+      const userId = await ports.verifyBuyer()
+      if (!userId) {
+        throw new CheckoutStageError({
+          stage: 'validate_account',
+          code: 'COMPRA_EXIGE_SESION',
+          message: 'Esta tienda exige iniciar sesion para comprar',
+        })
+      }
+      return { ...resolved, userId }
     })
 
     // --- 3 · Precio --------------------------------------------------------

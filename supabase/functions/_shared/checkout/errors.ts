@@ -64,6 +64,10 @@ const STAGE_CODE_STATUS: Record<string, ErrorStatus> = {
   CANAL_NO_DISPONIBLE: 409,
   CANAL_NO_PUBLICO: 403,
   CANAL_EXIGE_SESION: 401,
+  // La tienda no vende a quien no ha entrado. 401 y no 403: falta la sesion,
+  // no el permiso — es exactamente el caso en el que el cliente debe mandar a
+  // iniciar sesion y reintentar.
+  COMPRA_EXIGE_SESION: 401,
   // --- Cliente y cuenta ---
   CUENTA_NO_VINCULADA: 403,
   LIMITE_DE_AUTORIZACION: 403,

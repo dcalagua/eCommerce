@@ -234,6 +234,8 @@ export function mapCheckoutCode(code: string): MessageKey {
     case 'CANAL_EXIGE_SESION':
     case 'CANAL_NO_PUBLICO':
       return 'store.checkout.error.channelAuth'
+    case 'COMPRA_EXIGE_SESION':
+      return 'store.checkout.error.needsAccount'
     case 'LIMITE_DE_AUTORIZACION':
       return 'store.checkout.error.spendingLimit'
     case 'PAGO_RECHAZADO':

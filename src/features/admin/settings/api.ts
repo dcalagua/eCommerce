@@ -65,6 +65,7 @@ const SETTINGS_SELECT = [
   'logo_url',
   'banner_url',
   'white_label',
+  'checkout_requires_account',
   'default_locale',
   'support_email',
   'hero_title',
@@ -160,6 +161,8 @@ export async function saveStoreSettings(input: SaveSettingsInput): Promise<void>
     ui_radius: orNull(values.ui_radius),
     ui_density: orNull(values.ui_density),
     business_display_name: orNull(values.business_display_name),
+    // P18 · Regla de negocio del comercio, no addon: se envía siempre.
+    checkout_requires_account: values.checkout_requires_account,
     // PREMIUM. Igual que `white_label` desde P02: sin la capacidad el campo NO
     // se envía, en vez de enviarse vacío. Guardar el teléfono de contacto no
     // puede apagar de paso una tipografía que el tenant tenía. Si alguien lo

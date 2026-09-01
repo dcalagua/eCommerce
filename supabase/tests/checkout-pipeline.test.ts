@@ -698,10 +698,15 @@ describe('contexto y autorizacion', () => {
     expect(context.currency).toBe('PEN')
     expect(context.channel).toBe('b2c')
     expect(context.requires_auth).toBe(false)
+    // P18 · La regla de la TIENDA, distinta de la del canal. Apagada por
+    // defecto: encenderla cambia quien puede comprar, y eso no se le hace a una
+    // tienda ya en produccion por una migracion.
+    expect(context.requires_account).toBe(false)
     expect(Object.keys(context).sort()).toEqual([
       'channel',
       'channel_kind',
       'currency',
+      'requires_account',
       'requires_auth',
       'store_name',
       'store_slug',

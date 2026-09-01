@@ -84,6 +84,15 @@ export const publicStoreSchema = z.object({
   ui_radius: z.enum(BRAND_RADII).nullable().catch(null).default(null),
   ui_density: z.enum(DENSITIES).nullable().catch(null).default(null),
   business_display_name: z.string().nullable().default(null),
+  /**
+   * P18 · La tienda solo vende a quien ha iniciado sesión.
+   *
+   * `default(false)` y no `optional`: una respuesta anterior al despliegue de
+   * esta fase se lee como la tienda abierta que era. Y quien decide NO es este
+   * campo — lo impone el pipeline en `validate_account` con la identidad
+   * verificada; esto solo evita enseñar un formulario que se va a rechazar.
+   */
+  checkout_requires_account: z.boolean().nullable().catch(false).default(false),
 })
 export type PublicStore = z.infer<typeof publicStoreSchema>
 

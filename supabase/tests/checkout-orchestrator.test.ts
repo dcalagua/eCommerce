@@ -140,10 +140,18 @@ function ports(
         channelCode: 'b2c',
         channelKind: 'b2c',
         requiresAuth: false,
+        requiresAccount: false,
         taxInclusive: false,
       }),
     resolveAccount: () =>
-      Promise.resolve({ hasSession: false, accountId: null, role: null, spendingLimit: null }),
+      Promise.resolve({
+        hasSession: false,
+        userId: null,
+        accountId: null,
+        role: null,
+        spendingLimit: null,
+      }),
+    verifyBuyer: () => Promise.resolve(null),
     resolvePrices: () => Promise.resolve(QUOTE),
     // Sin cuenta B2B el pipeline no llega a preguntar; el puerto existe igual
     // porque un puerto opcional obliga a cada llamante a acordarse.
@@ -469,6 +477,108 @@ describe('lo que falla, y lo que se deshace', () => {
     expect(error.retryable).toBe(true)
   })
 
+  /**
+   * P18 · La tienda que solo vende a quien ha entrado.
+   *
+   * Lo que se fija aquí es DÓNDE se decide y CON QUÉ. Con `hasSession`, que
+   * sale de leer el `sub` del token sin comprobar la firma, la regla sería un
+   * cartel: escribir un JWT con un `sub` dentro lo hace cualquiera. Por eso el
+   * pipeline pregunta a la base con el token del llamante, y por eso el caso de
+   * abajo —sesión aparente, verificación vacía— tiene que fallar.
+   */
+  it('sin sesión, una tienda que exige cuenta rechaza antes de tocar existencia', async () => {
+    const reserve = vi.fn()
+    const { ports: p } = ports({
+      resolveContext: (storeSlug) =>
+        Promise.resolve({
+          storeSlug,
+          storeName: 'Botica',
+          currency: 'PEN',
+          channelCode: 'b2c',
+          channelKind: 'b2c',
+          requiresAuth: false,
+          requiresAccount: true,
+          taxInclusive: false,
+        }),
+      reserveInventory: reserve as unknown as CheckoutPorts['reserveInventory'],
+    })
+
+    const error = await expectStageFailure(() => runCheckout(p, input()))
+
+    expect(error.code).toBe('COMPRA_EXIGE_SESION')
+    expect(error.stage).toBe('validate_account')
+    // Nada que compensar: se para en la etapa 2, antes de la primera con efecto.
+    expect(reserve).not.toHaveBeenCalled()
+  })
+
+  it('un token que PARECE sesión pero no verifica tampoco compra', async () => {
+    const { ports: p } = ports({
+      resolveContext: (storeSlug) =>
+        Promise.resolve({
+          storeSlug,
+          storeName: 'Botica',
+          currency: 'PEN',
+          channelCode: 'b2c',
+          channelKind: 'b2c',
+          requiresAuth: false,
+          requiresAccount: true,
+          taxInclusive: false,
+        }),
+      // Esto es exactamente lo que ve el orquestador ante un JWT falsificado:
+      // el `sub` está, y la base no reconoce a nadie.
+      resolveAccount: () =>
+        Promise.resolve({
+          hasSession: true,
+          userId: null,
+          accountId: null,
+          role: null,
+          spendingLimit: null,
+        }),
+      verifyBuyer: () => Promise.resolve(null),
+    })
+
+    const error = await expectStageFailure(() => runCheckout(p, input()))
+
+    expect(error.code).toBe('COMPRA_EXIGE_SESION')
+  })
+
+  it('con sesión verificada, la tienda que exige cuenta deja comprar', async () => {
+    const { ports: p } = ports({
+      resolveContext: (storeSlug) =>
+        Promise.resolve({
+          storeSlug,
+          storeName: 'Botica',
+          currency: 'PEN',
+          channelCode: 'b2c',
+          channelKind: 'b2c',
+          requiresAuth: false,
+          requiresAccount: true,
+          taxInclusive: false,
+        }),
+      resolveAccount: () =>
+        Promise.resolve({
+          hasSession: true,
+          userId: null,
+          accountId: null,
+          role: null,
+          spendingLimit: null,
+        }),
+      verifyBuyer: () => Promise.resolve('11111111-1111-4111-8111-111111111111'),
+    })
+
+    const result = await runCheckout(p, input())
+    expect(result.order.orderNumber).toBeTruthy()
+  })
+
+  it('en una tienda abierta NO se pregunta quién compra: es un viaje de más', async () => {
+    const verify = vi.fn(() => Promise.resolve(null))
+    const { ports: p } = ports({ verifyBuyer: verify as CheckoutPorts['verifyBuyer'] })
+
+    await runCheckout(p, input())
+
+    expect(verify).not.toHaveBeenCalled()
+  })
+
   it('un canal que exige sesión se rechaza antes de tocar existencia', async () => {
     const reserve = vi.fn()
     const { ports: p } = ports({
@@ -480,6 +590,7 @@ describe('lo que falla, y lo que se deshace', () => {
           channelCode: 'interno',
           channelKind: 'internal',
           requiresAuth: true,
+          requiresAccount: false,
           taxInclusive: false,
         }),
       reserveInventory: reserve as unknown as CheckoutPorts['reserveInventory'],

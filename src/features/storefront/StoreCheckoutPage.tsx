@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import LockRoundedIcon from '@mui/icons-material/LockRounded'
 import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
 import { Alert, AlertTitle, Box, Button, Card, Chip, Divider, Stack, TextField, Typography } from '@mui/material'
 import { useMutation } from '@tanstack/react-query'
@@ -237,6 +238,46 @@ export function StoreCheckoutPage() {
   useEffect(() => {
     if (errorKey) alertRef.current?.focus()
   }, [errorKey])
+
+  /**
+   * P18 · La tienda que solo vende a quien ha entrado.
+   *
+   * Se para ANTES del formulario, y no al pulsar «Confirmar pedido»: rellenar
+   * doce campos para que al final te digan que hacía falta una cuenta es la
+   * forma más cara de enterarse.
+   *
+   * Esto no es el guard. El guard está en el servidor, en la etapa
+   * `validate_account`, contra la identidad verificada — aquí solo se evita
+   * enseñar un formulario que se va a rechazar. `sessionStatus === 'loading'`
+   * no cuenta como anónimo: enseñar «inicia sesión» a quien ya la tiene, medio
+   * segundo, mientras se hidrata, sería peor que esperar.
+   */
+  if (store.checkout_requires_account && sessionStatus === 'anonymous') {
+    return (
+      <>
+        <PageHeader title={t('store.checkout.title')} />
+        <Card>
+          <EmptyState
+            title={t('store.checkout.signInTitle')}
+            description={t('store.checkout.signInBody')}
+            icon={<LockRoundedIcon fontSize="small" />}
+            action={
+              <Button
+                component={Link}
+                to="/login"
+                // Vuelve AQUÍ al entrar: mandarlo al backoffice después de
+                // pedirle la sesión para comprar sería perderlo.
+                state={{ from: `/s/${storeSlug}/checkout` }}
+                variant="contained"
+              >
+                {t('store.checkout.signIn')}
+              </Button>
+            }
+          />
+        </Card>
+      </>
+    )
+  }
 
   if (cart.lines.length === 0 && !mutation.isPending) {
     return (

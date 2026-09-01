@@ -3,7 +3,12 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Route, Routes } from 'react-router-dom'
 import { renderWithProviders } from '@/test/render'
-import { createFakeSupabase, FunctionsHttpErrorLike, type FakeSupabase } from '@/test/supabaseMock'
+import {
+  createFakeSupabase,
+  FunctionsHttpErrorLike,
+  makeSession,
+  type FakeSupabase,
+} from '@/test/supabaseMock'
 
 /**
  * Flujo completo del comprador: ficha → carrito → checkout → confirmación.
@@ -123,10 +128,17 @@ function carritoServidor(lines: Array<Record<string, unknown>> = []) {
   }
 }
 
-function backend(options: { onCheckout?: (body: Record<string, unknown>) => unknown } = {}) {
+function backend(
+  options: {
+    onCheckout?: (body: Record<string, unknown>) => unknown
+    store?: Record<string, unknown>
+    session?: ReturnType<typeof makeSession> | null
+  } = {},
+) {
   return createFakeSupabase({
+    session: options.session ?? null,
     tables: {
-      public_stores: [store()],
+      public_stores: [store(options.store)],
       public_categories: [],
       public_products: [
         producto(),
@@ -145,7 +157,11 @@ function backend(options: { onCheckout?: (body: Record<string, unknown>) => unkn
   })
 }
 
-function renderStorefront(fake: FakeSupabase, route: string) {
+function renderStorefront(
+  fake: FakeSupabase,
+  route: string,
+  session: ReturnType<typeof makeSession> | null = null,
+) {
   holder.client = fake
   return renderWithProviders(
     <Routes>
@@ -157,7 +173,7 @@ function renderStorefront(fake: FakeSupabase, route: string) {
         <Route path="order/:orderNumber" element={<StoreOrderPage />} />
       </Route>
     </Routes>,
-    { route },
+    { route, session },
   )
 }
 
@@ -327,6 +343,62 @@ describe('de la ficha al carrito', () => {
       const guardado = localStorage.getItem(`ebim.ecommerce.cart.v1:${STORE}`)
       expect(guardado).toContain('"quantity":2')
     })
+  })
+
+  /**
+   * P18 · La tienda que solo vende a quien ha entrado.
+   *
+   * Se para ANTES del formulario. Rellenar doce campos para que al final te
+   * digan que hacía falta una cuenta es la forma más cara de enterarse — y el
+   * carrito tiene que seguir intacto, porque perderlo es la otra forma de que
+   * el comprador no vuelva.
+   */
+  it('sin sesión, la tienda que exige cuenta manda a iniciar sesión en vez del formulario', async () => {
+    sembrarCarrito([LINEA_SILLA])
+    renderStorefront(
+      backend({ store: { checkout_requires_account: true } }),
+      '/s/casa-nordica/checkout',
+    )
+
+    expect(await screen.findByText('Inicia sesión para comprar')).toBeInTheDocument()
+    // Y el botón vuelve AQUÍ: mandarlo al backoffice tras pedirle la sesión
+    // para comprar sería perderlo.
+    expect(screen.getByRole('link', { name: 'Iniciar sesión' })).toHaveAttribute('href', '/login')
+    expect(screen.queryByRole('button', { name: /Confirmar pedido/ })).not.toBeInTheDocument()
+  })
+
+  it('con sesión, la misma tienda enseña el formulario de siempre', async () => {
+    // Con sesión manda el carrito del SERVIDOR, no el del navegador: por eso la
+    // línea se siembra ahí y no con `sembrarCarrito`.
+    const fake = backend({
+      store: { checkout_requires_account: true },
+      session: makeSession(),
+    })
+    fake.state.rpc.cart_open = () =>
+      carritoServidor([
+        {
+          product_id: P_SILLA,
+          variant_id: null,
+          uom_code: null,
+          quantity: 2,
+          slug: 'silla-roble',
+          name: 'Silla de roble',
+          unit_price: '100.00',
+          unit_price_snapshot: '100.00',
+        },
+      ])
+    renderStorefront(fake, '/s/casa-nordica/checkout', makeSession())
+
+    expect(await screen.findByRole('button', { name: /Confirmar pedido/ })).toBeInTheDocument()
+  })
+
+  it('una tienda abierta sigue vendiendo a quien no ha entrado', async () => {
+    sembrarCarrito([LINEA_SILLA])
+    renderStorefront(backend(), '/s/casa-nordica/checkout')
+
+    // La regla es del comercio y viene apagada: encenderla por defecto habría
+    // cortado la venta de toda tienda ya en producción.
+    expect(await screen.findByRole('button', { name: /Confirmar pedido/ })).toBeInTheDocument()
   })
 
   it('el carrito de otra tienda no se ve en esta', async () => {

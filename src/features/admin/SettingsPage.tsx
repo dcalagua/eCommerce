@@ -1,4 +1,5 @@
 import ContactMailRoundedIcon from '@mui/icons-material/ContactMailRounded'
+import LockRoundedIcon from '@mui/icons-material/LockRounded'
 import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded'
 import DensityMediumRoundedIcon from '@mui/icons-material/DensityMediumRounded'
 import LaunchRoundedIcon from '@mui/icons-material/LaunchRounded'
@@ -24,6 +25,7 @@ import {
   TextField,
   ToggleButton,
   ToggleButtonGroup,
+  Typography,
 } from '@mui/material'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, type ReactNode } from 'react'
@@ -399,6 +401,39 @@ export function SettingsPage() {
                           />
                         </Grid>
                       </Grid>
+                    </SectionCard>
+
+                    {/* P18 · Quién puede comprar.
+                        Va en General y no en Marca porque no es apariencia: es
+                        una regla de negocio del comercio, del mismo orden que
+                        el impuesto. Y va con su explicación al lado porque
+                        encenderla cambia quién puede pagar — no es la clase de
+                        interruptor que se descubre por el nombre. */}
+                    <SectionCard
+                      icon={<LockRoundedIcon />}
+                      title={t('settings.section.checkout')}
+                      subtitle={t('settings.section.checkoutHelp')}
+                      padded
+                    >
+                      <Controller
+                        control={form.control}
+                        name="checkout_requires_account"
+                        render={({ field }) => (
+                          <FormControlLabel
+                            control={
+                              <Switch
+                                checked={field.value}
+                                disabled={busy}
+                                onChange={(event) => field.onChange(event.target.checked)}
+                              />
+                            }
+                            label={t('settings.checkoutRequiresAccount')}
+                          />
+                        )}
+                      />
+                      <Typography sx={{ color: 'var(--muted)', fontSize: 13, mt: 0.5 }}>
+                        {t('settings.checkoutRequiresAccountHelp')}
+                      </Typography>
                     </SectionCard>
                   </Stack>
                 )}

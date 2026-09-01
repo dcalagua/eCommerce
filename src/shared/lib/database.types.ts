@@ -794,6 +794,7 @@ export type Database = {
           code: string
           company_id: string
           created_at: string
+          credit_limit: number | null
           customer_id: string
           customer_kind: Database["public"]["Enums"]["customer_kind"]
           id: string
@@ -801,6 +802,7 @@ export type Database = {
           name: string
           notes: string | null
           organization_id: string
+          payment_terms_days: number
           purchase_order_required: boolean
           requires_approval: boolean
           updated_at: string
@@ -810,6 +812,7 @@ export type Database = {
           code: string
           company_id: string
           created_at?: string
+          credit_limit?: number | null
           customer_id: string
           customer_kind?: Database["public"]["Enums"]["customer_kind"]
           id?: string
@@ -817,6 +820,7 @@ export type Database = {
           name: string
           notes?: string | null
           organization_id: string
+          payment_terms_days?: number
           purchase_order_required?: boolean
           requires_approval?: boolean
           updated_at?: string
@@ -826,6 +830,7 @@ export type Database = {
           code?: string
           company_id?: string
           created_at?: string
+          credit_limit?: number | null
           customer_id?: string
           customer_kind?: Database["public"]["Enums"]["customer_kind"]
           id?: string
@@ -833,6 +838,7 @@ export type Database = {
           name?: string
           notes?: string | null
           organization_id?: string
+          payment_terms_days?: number
           purchase_order_required?: boolean
           requires_approval?: boolean
           updated_at?: string
@@ -1140,13 +1146,6 @@ export type Database = {
             referencedColumns: ["id", "store_id"]
           },
           {
-            foreignKeyName: "categories_parent_fk"
-            columns: ["parent_id", "store_id"]
-            isOneToOne: false
-            referencedRelation: "public_categories"
-            referencedColumns: ["category_id", "store_id"]
-          },
-          {
             foreignKeyName: "categories_store_fk"
             columns: ["store_id", "organization_id", "company_id"]
             isOneToOne: false
@@ -1347,8 +1346,11 @@ export type Database = {
           category_id: string | null
           company_id: string
           created_at: string
+          href: string | null
           id: string
           item_kind: Database["public"]["Enums"]["content_item_kind"]
+          media_alt: string | null
+          media_url: string | null
           organization_id: string
           position: number
           product_id: string | null
@@ -1361,8 +1363,11 @@ export type Database = {
           category_id?: string | null
           company_id: string
           created_at?: string
+          href?: string | null
           id?: string
           item_kind: Database["public"]["Enums"]["content_item_kind"]
+          media_alt?: string | null
+          media_url?: string | null
           organization_id: string
           position?: number
           product_id?: string | null
@@ -1375,8 +1380,11 @@ export type Database = {
           category_id?: string | null
           company_id?: string
           created_at?: string
+          href?: string | null
           id?: string
           item_kind?: Database["public"]["Enums"]["content_item_kind"]
+          media_alt?: string | null
+          media_url?: string | null
           organization_id?: string
           position?: number
           product_id?: string | null
@@ -1397,13 +1405,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "categories"
             referencedColumns: ["id", "store_id"]
-          },
-          {
-            foreignKeyName: "content_block_items_category_fk"
-            columns: ["category_id", "store_id"]
-            isOneToOne: false
-            referencedRelation: "public_categories"
-            referencedColumns: ["category_id", "store_id"]
           },
           {
             foreignKeyName: "content_block_items_product_fk"
@@ -1531,13 +1532,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "categories"
             referencedColumns: ["id", "store_id"]
-          },
-          {
-            foreignKeyName: "content_blocks_category_fk"
-            columns: ["category_id", "store_id"]
-            isOneToOne: false
-            referencedRelation: "public_categories"
-            referencedColumns: ["category_id", "store_id"]
           },
           {
             foreignKeyName: "content_blocks_channel_fk"
@@ -5086,6 +5080,58 @@ export type Database = {
         }
         Relationships: []
       }
+      product_favorites: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          organization_id: string
+          product_id: string
+          store_id: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          product_id: string
+          store_id: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          product_id?: string
+          store_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_favorites_product_fk"
+            columns: ["product_id", "store_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id", "store_id"]
+          },
+          {
+            foreignKeyName: "product_favorites_product_fk"
+            columns: ["product_id", "store_id"]
+            isOneToOne: false
+            referencedRelation: "public_products"
+            referencedColumns: ["product_id", "store_id"]
+          },
+          {
+            foreignKeyName: "product_favorites_store_fk"
+            columns: ["store_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
       product_images: {
         Row: {
           alt: string | null
@@ -5508,13 +5554,6 @@ export type Database = {
             referencedColumns: ["id", "store_id"]
           },
           {
-            foreignKeyName: "products_category_fk"
-            columns: ["category_id", "store_id"]
-            isOneToOne: false
-            referencedRelation: "public_categories"
-            referencedColumns: ["category_id", "store_id"]
-          },
-          {
             foreignKeyName: "products_currency_fk"
             columns: ["currency"]
             isOneToOne: false
@@ -5793,6 +5832,7 @@ export type Database = {
           company_id: string
           created_at: string
           id: string
+          include_descendants: boolean
           is_exclusion: boolean
           organization_id: string
           product_id: string | null
@@ -5810,6 +5850,7 @@ export type Database = {
           company_id: string
           created_at?: string
           id?: string
+          include_descendants?: boolean
           is_exclusion?: boolean
           organization_id: string
           product_id?: string | null
@@ -5827,6 +5868,7 @@ export type Database = {
           company_id?: string
           created_at?: string
           id?: string
+          include_descendants?: boolean
           is_exclusion?: boolean
           organization_id?: string
           product_id?: string | null
@@ -5852,13 +5894,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "categories"
             referencedColumns: ["id", "store_id"]
-          },
-          {
-            foreignKeyName: "promotion_scopes_category_fk"
-            columns: ["category_id", "store_id"]
-            isOneToOne: false
-            referencedRelation: "public_categories"
-            referencedColumns: ["category_id", "store_id"]
           },
           {
             foreignKeyName: "promotion_scopes_product_fk"
@@ -8428,38 +8463,7 @@ export type Database = {
           slug: string | null
           store_id: string | null
         }
-        Insert: {
-          category_id?: string | null
-          name?: string | null
-          parent_id?: string | null
-          position?: number | null
-          slug?: string | null
-          store_id?: string | null
-        }
-        Update: {
-          category_id?: string | null
-          name?: string | null
-          parent_id?: string | null
-          position?: number | null
-          slug?: string | null
-          store_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "categories_parent_fk"
-            columns: ["parent_id", "store_id"]
-            isOneToOne: false
-            referencedRelation: "categories"
-            referencedColumns: ["id", "store_id"]
-          },
-          {
-            foreignKeyName: "categories_parent_fk"
-            columns: ["parent_id", "store_id"]
-            isOneToOne: false
-            referencedRelation: "public_categories"
-            referencedColumns: ["category_id", "store_id"]
-          },
-        ]
+        Relationships: []
       }
       public_delivery_methods: {
         Row: {
@@ -8645,13 +8649,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "categories"
             referencedColumns: ["id", "store_id"]
-          },
-          {
-            foreignKeyName: "products_category_fk"
-            columns: ["category_id", "store_id"]
-            isOneToOne: false
-            referencedRelation: "public_categories"
-            referencedColumns: ["category_id", "store_id"]
           },
           {
             foreignKeyName: "products_currency_fk"
@@ -9366,10 +9363,19 @@ export type Database = {
         Args: { p_items: Json; p_store_id: string }
         Returns: Json
       }
+      my_account_statement: { Args: never; Returns: Json }
       my_business_accounts: { Args: never; Returns: Json }
+      my_business_order_detail: { Args: { p_order_id: string }; Returns: Json }
       my_business_orders: {
         Args: { p_limit?: number; p_only_pending?: boolean }
         Returns: Json
+      }
+      my_coupons: { Args: { p_store_id: string }; Returns: Json }
+      my_product_favorites: {
+        Args: { p_store_id: string }
+        Returns: {
+          product_id: string
+        }[]
       }
       ops_health: { Args: { p_store_id?: string }; Returns: Json }
       ops_record_event: {
@@ -9716,6 +9722,10 @@ export type Database = {
         }
         Returns: Json
       }
+      store_promotions_for_slug: {
+        Args: { p_limit?: number; p_store_slug: string }
+        Returns: Json
+      }
       sync_inventory_level: {
         Args: {
           p_external_ref?: string
@@ -9737,6 +9747,10 @@ export type Database = {
           p_source: Database["public"]["Enums"]["entitlement_source"]
         }
         Returns: Json
+      }
+      toggle_product_favorite: {
+        Args: { p_product_id: string }
+        Returns: boolean
       }
       trace_by_correlation: {
         Args: { p_correlation_id: string }
@@ -9800,7 +9814,8 @@ export type Database = {
         | "category_collection"
         | "rich_text"
         | "campaign"
-      content_item_kind: "product" | "variant" | "category"
+        | "slider"
+      content_item_kind: "product" | "variant" | "category" | "media"
       content_page_kind: "home" | "landing" | "legal"
       content_status: "draft" | "published" | "archived"
       customer_kind: "person" | "company"
@@ -10176,8 +10191,9 @@ export const Constants = {
         "category_collection",
         "rich_text",
         "campaign",
+        "slider",
       ],
-      content_item_kind: ["product", "variant", "category"],
+      content_item_kind: ["product", "variant", "category", "media"],
       content_page_kind: ["home", "landing", "legal"],
       content_status: ["draft", "published", "archived"],
       customer_kind: ["person", "company"],

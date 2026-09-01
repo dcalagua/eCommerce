@@ -130,12 +130,12 @@ La cifra de existencias nunca sale: `anon` lee `products.in_stock` —columna ge
 
 ### 1.6 La superficie anónima es una lista cerrada — PASS *(nuevo en P16)*
 
-`anon` puede ejecutar exactamente **18** funciones de `public`, cada una clasificada y justificada
-en el propio test. Una decimonovena pone la suite roja.
+`anon` puede ejecutar exactamente **20** funciones de `public`, cada una clasificada y justificada
+en el propio test. Una vigesimoprimera pone la suite roja.
 
 | Clase | Cuántas | Qué las protege |
 |---|---|---|
-| `publicado` | 8 | solo leen lo que la tienda ya publica; la autoridad es la RLS |
+| `publicado` | 10 | solo leen lo que la tienda ya publica; la autoridad es la RLS |
 | `secreto` | 7 | exigen un token de 256 bits (pedido, carrito, devolución) o un código de 96 (tarjeta regalo) |
 | `techo` | 2 | escriben o revelan, y llevan límite de tasa desde P16 (§3.6) |
 | `recogido` | 1 | escribe sin poder llevar techo —sería negar la venta— y por eso lo que escribe se recoge (§3.7) |
@@ -148,6 +148,14 @@ en el propio test. Una decimonovena pone la suite roja.
 > mitad amable de su contrato. La cuarta clase existe para no volver a
 > redondear eso, y el test exige que lo clasificado así tenga de verdad quién lo
 > recoja.
+
+> **Añadida en P18.** `current_buyer` — devuelve `ebim.user_id()` y nada más.
+> Con la clave anónima responde `null`, así que no enseña un dato de nadie: solo
+> le dice a quien pregunta si la base **le** reconoce a él. Es `security invoker`
+> a propósito —definer aquí sería una función que responde por otro— y existe
+> porque el orquestador del checkout no puede verificar por su cuenta la firma
+> del token que le llega: leer el `sub` de un JWT no prueba nada, y una tienda
+> que exige cuenta para comprar necesita una respuesta que no se pueda falsificar.
 
 Además: ninguna función de `ebim` **alcanzable** por `anon` es volátil —es decir, ninguna escribe—.
 Las funciones de disparador quedan fuera del recuento y el test **demuestra por qué**: Postgres se

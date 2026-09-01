@@ -41,7 +41,16 @@ export const ALLOWED_ASSET_TYPES: Record<string, string> = {
   'image/avif': 'avif',
 }
 
-export type AssetKind = 'logo' | 'banner' | 'favicon'
+/**
+ * Qué es el objeto que se sube.
+ *
+ * `content` (P18) es la imagen de un BLOQUE del CMS: misma validación, mismo
+ * bucket y misma frontera de tenant que el branding, pero en su propia carpeta
+ * —`content/` en vez de `branding/`— porque su ciclo de vida es otro: el logo
+ * de una tienda es uno y dura; las imágenes de campaña se suben, se cambian y
+ * se quedan atrás cada temporada.
+ */
+export type AssetKind = 'logo' | 'banner' | 'favicon' | 'content'
 
 export const storeSettingsSchema = z.object({
   store_id: z.string().uuid(),
@@ -57,6 +66,8 @@ export const storeSettingsSchema = z.object({
   hero_subtitle: z.string().nullable().default(null),
   contact_phone: z.string().nullable().default(null),
   contact_address: z.string().nullable().default(null),
+  /** P18 · La tienda solo vende a quien ha iniciado sesión. */
+  checkout_requires_account: z.boolean().nullable().default(false),
   /**
    * White-label por tokens (P11-SaaS). `catch(null)` en los tres de lista
    * cerrada: un valor que la app no conoce cae al de suite en vez de dejar la
@@ -144,6 +155,14 @@ export const storeFormSchema = z.object({
     .max(320, 'settings.error.email')
     .refine((value) => value === '' || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value), 'settings.error.email'),
   favicon_url: z.string().nullable(),
+  /**
+   * P18 · Exigir cuenta para comprar.
+   *
+   * No es premium ni depende de ningún addon: es una regla de negocio del
+   * comercio, como el impuesto. Quien la IMPONE es el pipeline del checkout con
+   * la sesión verificada; esto solo la declara.
+   */
+  checkout_requires_account: z.boolean(),
 })
 export type StoreFormValues = z.infer<typeof storeFormSchema>
 
@@ -166,6 +185,7 @@ export function toForm(name: string, settings: StoreSettings | null): StoreFormV
     email_from_name: settings?.email_from_name ?? '',
     email_reply_to: settings?.email_reply_to ?? '',
     favicon_url: settings?.favicon_url ?? null,
+    checkout_requires_account: settings?.checkout_requires_account ?? false,
   }
 }
 
@@ -209,5 +229,8 @@ export function buildAssetPath(input: {
 }): string {
   const extension = ALLOWED_ASSET_TYPES[input.mimeType]
   if (!extension) throw new Error('MIME_NO_ADMITIDO')
-  return `${input.organizationId}/${input.storeId}/branding/${input.kind}-${crypto.randomUUID()}.${extension}`
+  // `branding/` para lo que define la tienda; `content/` para lo que ilustra
+  // una campaña. Los dos primeros segmentos —los que autorizan— no cambian.
+  const carpeta = input.kind === 'content' ? 'content' : 'branding'
+  return `${input.organizationId}/${input.storeId}/${carpeta}/${input.kind}-${crypto.randomUUID()}.${extension}`
 }

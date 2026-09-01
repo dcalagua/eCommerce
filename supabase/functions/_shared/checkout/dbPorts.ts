@@ -163,13 +163,38 @@ export function createDbPorts(options: DbPortOptions): CheckoutPorts {
         channelCode: text(raw, 'channel'),
         channelKind: text(raw, 'channel_kind'),
         requiresAuth: raw.requires_auth === true,
+        requiresAccount: raw.requires_account === true,
         taxInclusive: raw.tax_inclusive === true,
+      }
+    },
+
+    /**
+     * Quien compra, preguntandoselo a la BASE con el token del llamante.
+     *
+     * `hasSession` solo mira el `sub` del token sin comprobar la firma —lo dice
+     * su propio comentario— y por eso no puede sostener una regla de acceso:
+     * escribir un JWT con un `sub` dentro lo hace cualquiera. Aqui la pregunta
+     * pasa por PostgREST, que verifica la firma antes de ejecutar nada; un
+     * token falso ni llega a la funcion.
+     *
+     * Un fallo se trata como «no hay sesion» y no se traga: la etapa que exige
+     * cuenta prefiere rechazar una compra que dejar pasar una sin identificar.
+     */
+    async verifyBuyer(): Promise<string | null> {
+      if (!hasSession) return null
+      try {
+        const raw = record(await caller('current_buyer', {}))
+        return nullableText(raw, 'user_id')
+      } catch (error) {
+        console.error('[checkout] no se pudo verificar la sesion del comprador', error)
+        return null
       }
     },
 
     async resolveAccount(): Promise<AccountContext> {
       const empty: AccountContext = {
         hasSession,
+        userId: null,
         accountId: null,
         role: null,
         spendingLimit: null,
@@ -193,6 +218,7 @@ export function createDbPorts(options: DbPortOptions): CheckoutPorts {
 
       return {
         hasSession,
+        userId: null,
         accountId: text(first, 'account_id'),
         role: nullableText(first, 'role'),
         spendingLimit: nullableText(first, 'spending_limit'),
