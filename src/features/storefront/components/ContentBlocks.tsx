@@ -1,3 +1,4 @@
+import { SliderBlock } from './SliderBlock'
 import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
 import { Box, Button, Card, Chip, Stack, Typography } from '@mui/material'
 import { Link } from 'react-router-dom'
@@ -58,22 +59,102 @@ export function ContentBlocks({
 
   return (
     <Stack sx={{ gap: { xs: 2, md: 3 } }}>
-      {groupCampaigns(blocks).map((group) =>
-        group.length > 1 ? (
-          <CampaignWall key={group[0].id} blocks={group} assets={assets} currency={currency} />
-        ) : (
-          <ContentBlockView
-            key={group[0].id}
-            block={group[0]}
-            storeSlug={storeSlug}
-            assets={assets}
-            images={images}
-            currency={currency}
-            heading={group[0].id === leadHeroId ? 'h1' : 'h2'}
-          />
-        ),
-      )}
+      {groupCampaigns(blocks).map((group, orden) => (
+        <Seccion key={group[0].id} block={group[0]} orden={orden}>
+          {group.length > 1 ? (
+            <CampaignWall blocks={group} assets={assets} currency={currency} />
+          ) : (
+            <ContentBlockView
+              block={group[0]}
+              storeSlug={storeSlug}
+              assets={assets}
+              images={images}
+              currency={currency}
+              heading={group[0].id === leadHeroId ? 'h1' : 'h2'}
+            />
+          )}
+        </Seccion>
+      ))}
     </Stack>
+  )
+}
+
+/**
+ * El fondo de una seccion.
+ *
+ * Una portada larga con todo sobre el mismo blanco se lee como una lista sin
+ * fin: no hay forma de ver de un vistazo donde acaba una cosa y empieza otra.
+ * Un tinte muy suave detras de cada seccion resuelve eso sin meter una linea
+ * divisoria en cada hueco.
+ *
+ * ## De donde salen los colores
+ *
+ * De los tokens del TENANT (`--accent` y `--accent2`), rebajados al 6 % con
+ * `color-mix`. No hay ni un color escrito a mano: la regla del repositorio es
+ * que el acento es 100 % del comercio, asi que una paleta pastel fija —rosa,
+ * azul, verde— seria meterle a cada tienda tres colores que no eligio. Al 6 %
+ * el tinte separa y no compite: el texto sigue sobre un fondo practicamente
+ * blanco y el contraste AA no se toca.
+ *
+ * El primero va sin tinte a proposito. Con todas las secciones tenidas, la
+ * alternancia deja de leerse como ritmo y pasa a leerse como franjas.
+ *
+ * El comercio puede fijarlo por bloque con `settings.background` —clave que ya
+ * estaba en el vocabulario cerrado del CMS, sin migracion— cuando el orden
+ * automatico no le sirva.
+ */
+const TINTES = {
+  none: 'transparent',
+  accent: 'color-mix(in srgb, var(--accent) 6%, transparent)',
+  accent2: 'color-mix(in srgb, var(--accent2) 6%, transparent)',
+  neutral: 'var(--neutral-soft)',
+} as const
+
+function tinteDe(block: ContentBlock, orden: number): string {
+  const declarado = block.settings.background
+  if (typeof declarado === 'string' && declarado in TINTES) {
+    return TINTES[declarado as keyof typeof TINTES]
+  }
+  // El hero y el carrusel de imagenes traen su propio fondo —un degradado, una
+  // foto a sangre—: tenirlos solo pondria un marco de color alrededor.
+  if (block.type === 'hero' || block.type === 'banner' || block.type === 'slider') {
+    return TINTES.none
+  }
+  return [TINTES.none, TINTES.accent, TINTES.accent2][orden % 3] ?? TINTES.none
+}
+
+function Seccion({
+  block,
+  orden,
+  children,
+}: {
+  block: ContentBlock
+  orden: number
+  children: React.ReactNode
+}) {
+  const tinte = tinteDe(block, orden)
+  if (tinte === TINTES.none) return <>{children}</>
+
+  return (
+    <Box
+      sx={{
+        bgcolor: tinte,
+        borderRadius: 'var(--sf-radius)',
+        // El tinte necesita aire: pegado al contenido parece un fallo de
+        // pintado en vez de una seccion.
+        p: { xs: 1.5, md: 2.5 },
+        // Y se sale un poco del ancho del contenido para que el bloque de
+        // dentro siga alineado con el resto de la portada.
+        mx: { xs: -1.5, md: -2.5 },
+        // Un bloque puede no pintar NADA —una coleccion sin productos, un
+        // texto sin cuerpo— y entonces esto quedaba como una banda de color
+        // vacia en medio de la portada, que parece un fallo de carga. Sin
+        // hijos, la seccion no existe.
+        '&:empty': { display: 'none' },
+      }}
+    >
+      {children}
+    </Box>
   )
 }
 
@@ -172,6 +253,8 @@ function ContentBlockView({
       return <HeroBlock block={block} assets={assets} heading={heading} />
     case 'banner':
       return <BannerBlock block={block} assets={assets} />
+    case 'slider':
+      return <SliderBlock block={block} assets={assets} />
     case 'campaign':
       return <CampaignBlock block={block} assets={assets} currency={currency} />
     case 'rich_text':
@@ -787,8 +870,12 @@ function ProductCollectionBlock({
   storeSlug: string
   images: Record<string, string>
 }) {
+  // Una coleccion de productos solo pinta productos y variantes. La base ya lo
+  // impide (`content_block_items_kind_matches_block`), pero el tipo tiene que
+  // decirlo igual: aqui llega la union entera de items del CMS.
   const items = block.items.filter(
-    (item): item is Exclude<ContentCollectionItem, { kind: 'category' }> => item.kind !== 'category',
+    (item): item is Exclude<ContentCollectionItem, { kind: 'category' } | { kind: 'media' }> =>
+      item.kind !== 'category' && item.kind !== 'media',
   )
   if (items.length === 0) return null
 
@@ -915,7 +1002,7 @@ function CollectionCard({
   showPrice,
   snap,
 }: {
-  item: Exclude<ContentCollectionItem, { kind: 'category' }>
+  item: Exclude<ContentCollectionItem, { kind: 'category' } | { kind: 'media' }>
   storeSlug: string
   images: Record<string, string>
   showPrice: boolean
