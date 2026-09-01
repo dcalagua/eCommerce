@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from 'react'
+import { fetchStorePromotions, promotionsKey, type StorePromotion } from './promotions'
 import {
   keepPreviousData,
   useInfiniteQuery,
@@ -218,6 +219,23 @@ export function useStoreContent(
   return useQuery({
     queryKey: contentKey(storeSlug ?? '', pageSlug),
     queryFn: () => fetchStoreContent({ storeSlug: storeSlug as string, pageSlug }),
+    enabled: Boolean(storeSlug),
+    staleTime: BRAND_STALE,
+    retry: false,
+  })
+}
+
+/**
+ * Campañas vigentes de la tienda.
+ *
+ * `retry: false` y la tolerancia de `fetchStorePromotions` van juntas: si la
+ * función de base todavía no está desplegada, esto devuelve lista vacía y la
+ * portada se pinta igual, sin carrusel y sin error.
+ */
+export function useStorePromotions(storeSlug: string | undefined): UseQueryResult<StorePromotion[]> {
+  return useQuery({
+    queryKey: promotionsKey(storeSlug ?? ''),
+    queryFn: () => fetchStorePromotions(storeSlug as string),
     enabled: Boolean(storeSlug),
     staleTime: BRAND_STALE,
     retry: false,

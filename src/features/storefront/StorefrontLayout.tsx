@@ -1,5 +1,5 @@
-import FavoriteBorderRoundedIcon from '@mui/icons-material/FavoriteBorderRounded'
-import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded'
+import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded'
+import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
 import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
 import {
   Badge,
@@ -157,6 +157,20 @@ export function StorefrontLayout() {
             </ErrorBoundary>
           </Container>
 
+          {/* Las páginas del comercio —quiénes somos, envíos, términos— NO van
+              en la cabecera: sus tres trabajos son buscar, entrar a lo tuyo y
+              ver el carrito, y ninguno de esos enlaces vende. Pero tampoco
+              pueden desaparecer: «Términos y condiciones» es donde una tienda
+              cumple, y una que no deja llegar a sus condiciones de venta no
+              está incompleta, está incumpliendo.
+              Aquí van, en una línea al pie del contenido, dentro del mismo
+              contenedor que el catálogo: sin banda de fondo propia y sin ancho
+              propio, que es lo que arrastraba la página en horizontal. */}
+          <StorePagesFooter
+            storeSlug={storeSlug as string}
+            storeName={store.business_display_name ?? store.name}
+          />
+
           <CartDrawer storeSlug={storeSlug as string} />
         </Box>
       </CartProvider>
@@ -260,16 +274,6 @@ function StoreHeader({ store, storeSlug }: { store: PublicStore; storeSlug: stri
           <AccountButton storeSlug={storeSlug} />
           <CartButton />
         </Toolbar>
-
-        {/* Las páginas del comercio vuelven a la cabecera al quitarse el pie.
-            No es un cambio de criterio: eran el ÚNICO camino a «Términos y
-            condiciones» y a «Envíos y devoluciones», y una tienda que no deja
-            llegar a sus condiciones de venta no está incompleta, está
-            incumpliendo. Van en su propia fila bajo la barra para no volver a
-            apretar el logo, el buscador y el carrito en una sola. */}
-        <Box sx={{ px: { xs: 2, md: 3 }, pb: 1 }}>
-          <StorePagesNav storeSlug={storeSlug} />
-        </Box>
       </Container>
     </Box>
   )
@@ -298,10 +302,38 @@ function StoreHeader({ store, storeSlug }: { store: PublicStore; storeSlug: stri
  * Sigue siendo un `<nav>` con nombre: quien navega por regiones con un lector
  * de pantalla las encuentra por ahi, este arriba o abajo.
  */
-function StorePagesNav({ storeSlug }: { storeSlug: string }) {
-  const { t } = useI18n()
+function StorePagesFooter({ storeSlug, storeName }: { storeSlug: string; storeName: string }) {
   const { data } = useStoreNavigation(storeSlug)
-  if (!data || data.length === 0) return null
+
+  return (
+    <Container maxWidth="lg" component="footer" sx={{ pb: 3, pt: 1 }}>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        sx={{
+          gap: { xs: 1, sm: 3 },
+          alignItems: { xs: 'flex-start', sm: 'center' },
+          flexWrap: 'wrap',
+          pt: 2,
+          borderTop: '1px solid var(--sf-line)',
+        }}
+      >
+        <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+          {`© ${new Date().getFullYear()} ${storeName}`}
+        </Typography>
+        {data && data.length > 0 ? <StorePagesNav storeSlug={storeSlug} pages={data} /> : null}
+      </Stack>
+    </Container>
+  )
+}
+
+function StorePagesNav({
+  storeSlug,
+  pages,
+}: {
+  storeSlug: string
+  pages: readonly { slug: string; title: string }[]
+}) {
+  const { t } = useI18n()
 
   return (
     <Stack
@@ -310,7 +342,7 @@ function StorePagesNav({ storeSlug }: { storeSlug: string }) {
       aria-label={t('store.footer.pages')}
       sx={{ gap: { xs: 1.5, sm: 3 }, flexWrap: 'wrap' }}
     >
-      {data.slice(0, 6).map((item) => (
+      {pages.slice(0, 6).map((item) => (
         <MuiLink
           key={item.slug}
           component={Link}
@@ -351,6 +383,99 @@ function StorePagesNav({ storeSlug }: { storeSlug: string }) {
  * Sin nada guardado no se pinta: un contador a cero es un boton que solo
  * ensena que no has hecho nada.
  */
+/**
+ * Las tres acciones de la cabecera, con una sola anatomía.
+ *
+ * Antes eran tres `Button` sueltos con el icono de contorno por defecto de MUI:
+ * a 24 px y con trazo de 1,5 px, un glifo hueco al lado de un nombre de tienda
+ * en negrita se lee como un vector pegado, no como un control. Y los tres iban
+ * en verde, así que ninguno destacaba — tres acentos son ninguno.
+ *
+ * Lo que hace esta pieza:
+ *
+ *  · **Iconos RELLENOS** y a 21 px, que es el peso que aguanta al lado de un
+ *    texto de 700. El contorno se reserva para lo que no está activo.
+ *  · **Píldora con superficie al pasar por encima**: el botón deja de ser
+ *    texto flotando y pasa a tener canto, que es lo que dice «esto se pulsa».
+ *  · **Un solo acento, el carrito.** Es la acción que cierra la venta; el resto
+ *    va en tinta. Favoritos y cuenta se distinguen por su icono, no por color.
+ *  · **La cifra, encima del icono y no delante.** Pegada a la esquina con un
+ *    anillo del color de la barra, que es lo que la separa del glifo sin
+ *    dibujarle una caja.
+ *
+ * El nombre accesible SIEMPRE incluye la cifra: quien no ve la píldora necesita
+ * oír «Carrito, 3», no «Carrito».
+ */
+function HeaderAction({
+  icon,
+  label,
+  badge = 0,
+  tone = 'neutral',
+  to,
+  onClick,
+}: {
+  icon: ReactNode
+  label: string
+  badge?: number
+  tone?: 'neutral' | 'accent'
+  /** Enlace o botón: uno de los dos, nunca los dos. */
+  to?: string
+  onClick?: () => void
+}) {
+  const accent = tone === 'accent'
+
+  return (
+    <Button
+      {...(to ? { component: Link, to } : { onClick })}
+      aria-label={badge > 0 ? `${label} (${badge})` : label}
+      sx={{
+        flexShrink: 0,
+        minWidth: 0,
+        gap: 0.75,
+        px: { xs: 1, sm: 1.5 },
+        py: 0.75,
+        borderRadius: 'var(--sf-pill)',
+        fontWeight: 700,
+        fontSize: T.body,
+        color: accent ? 'var(--accent-deep)' : 'var(--text)',
+        bgcolor: accent ? 'var(--accent-soft)' : 'transparent',
+        '&:hover': {
+          bgcolor: accent
+            ? 'color-mix(in srgb, var(--accent) 20%, transparent)'
+            : 'var(--sf-media-bg)',
+        },
+        '& .MuiSvgIcon-root': { fontSize: 21 },
+      }}
+    >
+      <Badge
+        badgeContent={badge}
+        aria-hidden
+        overlap="circular"
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        sx={{
+          '& .MuiBadge-badge': {
+            height: 16,
+            minWidth: 16,
+            padding: '0 4px',
+            fontSize: 10,
+            fontWeight: 800,
+            bgcolor: 'var(--accent)',
+            color: '#fff',
+            // El anillo del color de la barra: separa la cifra del glifo sin
+            // dibujarle una caja alrededor.
+            border: '2px solid var(--card)',
+          },
+        }}
+      >
+        {icon}
+      </Badge>
+      <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+        {label}
+      </Box>
+    </Button>
+  )
+}
+
 function FavoritesButton({ storeSlug, storeId }: { storeSlug: string; storeId: string }) {
   const { t } = useI18n()
   // La tienda llega por prop y no por `useStorefront`: ese hook lee el contexto
@@ -360,21 +485,14 @@ function FavoritesButton({ storeSlug, storeId }: { storeSlug: string; storeId: s
   if (favorites.ids.size === 0) return null
 
   return (
-    <Button
-      component={Link}
+    <HeaderAction
       to={`/s/${storeSlug}/favoritos`}
-      startIcon={
-        <Badge badgeContent={favorites.ids.size} color="primary" aria-hidden>
-          <FavoriteBorderRoundedIcon />
-        </Badge>
-      }
-      aria-label={`${t('store.favorites.nav')} (${favorites.ids.size})`}
-      sx={{ flexShrink: 0 }}
-    >
-      <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-        {t('store.favorites.nav')}
-      </Box>
-    </Button>
+      // Relleno y no de contorno: el boton solo existe cuando hay algo
+      // guardado, asi que el corazon lleno DICE algo — «tienes esto».
+      icon={<FavoriteRoundedIcon />}
+      label={t('store.favorites.nav')}
+      badge={favorites.ids.size}
+    />
   )
 }
 
@@ -384,16 +502,11 @@ function AccountButton({ storeSlug }: { storeSlug: string }) {
   if (status !== 'authenticated') return null
 
   return (
-    <Button
-      component={Link}
+    <HeaderAction
       to={`/s/${storeSlug}/account`}
-      startIcon={<PersonOutlineRoundedIcon />}
-      sx={{ flexShrink: 0 }}
-    >
-      <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-        {t('account.title')}
-      </Box>
-    </Button>
+      icon={<PersonRoundedIcon />}
+      label={t('account.title')}
+    />
   )
 }
 
@@ -401,26 +514,22 @@ function AccountButton({ storeSlug }: { storeSlug: string }) {
  * Botón del carrito. Abre el panel lateral en vez de navegar: el comprador ve
  * lo que lleva sin abandonar la ficha que estaba mirando. La página `/cart`
  * sigue estando a un clic desde el propio panel.
+ *
+ * Es el único con acento: de las tres acciones de la barra, es la que cierra la
+ * venta.
  */
 function CartButton() {
   const { t } = useI18n()
   const { count, openCart } = useCart()
 
   return (
-    <Button
+    <HeaderAction
       onClick={openCart}
-      startIcon={
-        <Badge badgeContent={count} color="primary" aria-hidden>
-          <ShoppingCartRoundedIcon />
-        </Badge>
-      }
-      aria-label={`${t('store.cart.title')} (${count})`}
-      sx={{ flexShrink: 0 }}
-    >
-      <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-        {t('store.cart.title')}
-      </Box>
-    </Button>
+      icon={<ShoppingCartRoundedIcon />}
+      label={t('store.cart.title')}
+      badge={count}
+      tone="accent"
+    />
   )
 }
 

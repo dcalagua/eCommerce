@@ -121,7 +121,9 @@ function heroBlock() {
   }
 }
 
-function backend(options: { content?: unknown; navigation?: unknown[] } = {}): FakeSupabase {
+function backend(
+  options: { content?: unknown; navigation?: unknown[]; promotions?: unknown[] } = {},
+): FakeSupabase {
   return createFakeSupabase({
     tables: {
       public_stores: [store()],
@@ -133,6 +135,7 @@ function backend(options: { content?: unknown; navigation?: unknown[] } = {}): F
       catalog_search_for_slug: () => EMPTY_SEARCH,
       catalog_suggest_for_slug: () => [],
       store_navigation_for_slug: () => options.navigation ?? [],
+      store_promotions_for_slug: () => ({ store_id: STORE, promotions: options.promotions ?? [] }),
       store_page_for_slug: () =>
         options.content ?? {
           cms: false,
@@ -318,37 +321,34 @@ describe('con contenido publicado', () => {
     // propia consulta: dar por hecho que ya está cuando aparece la región era
     // una carrera que se ganaba por casualidad, y cualquier cambio en el orden
     // de montado la perdía.
-    const header = await screen.findByRole('banner')
+    const footer = await screen.findByRole('contentinfo')
     expect(
-      await within(header).findByRole('link', { name: 'Envíos y devoluciones' }),
+      await within(footer).findByRole('link', { name: 'Envíos y devoluciones' }),
     ).toHaveAttribute('href', '/s/casa-verde/p/envios')
 
-    // Estaban en el pie hasta que se pidió quitarlo. Vuelven a la cabecera
-    // porque eran el ÚNICO camino a «Términos y condiciones»: una tienda que no
-    // deja llegar a sus condiciones de venta no está incompleta, incumple.
-    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument()
+    // Y NO en la cabecera: sus tres trabajos son buscar, entrar a lo tuyo y ver
+    // el carrito. Cada enlace de más compite con esos tres y ninguno vende.
+    const header = screen.getByRole('banner')
+    expect(
+      within(header).queryByRole('link', { name: 'Envíos y devoluciones' }),
+    ).not.toBeInTheDocument()
   })
 })
 
 describe('white-label: la marca del tenant, no la de casa', () => {
-  it('la vitrina ya no pinta el nombre comercial: se fue con el pie', async () => {
+  it('el pie firma con el nombre comercial cuando el tenant lo declara', async () => {
     /**
-     * Esto NO es una mejora, es la constancia de una pérdida.
+     * En un «©» lo que vale es la razón social, no el rótulo.
      *
-     * `business_display_name` solo se enseñaba en el pie («© Casa Verde
-     * S.A.C.»), y al quitarse el pie por encargo del operador dejó de verse en
-     * ninguna parte de la tienda. El dato sigue en `store_settings` y sigue
-     * viajando en `public_stores`: lo que falta es dónde pintarlo.
-     *
-     * El test se queda —invertido— para que la ausencia sea deliberada y no un
-     * hueco silencioso: si alguien vuelve a necesitar el nombre comercial,
-     * tendrá que decidir dónde va, y este test se lo recordará al ponerse rojo.
+     * El pie volvió porque las páginas legales necesitaban un sitio que no
+     * fuera la cabecera, y al volver recupera el dato que se había quedado sin
+     * dónde pintarse: `business_display_name`. Cuando el tenant no lo declara,
+     * firma con el nombre de la tienda — nunca con el de casa.
      */
     renderStorefront(backend(), '/s/casa-verde')
-    await screen.findByRole('banner')
 
-    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument()
-    expect(screen.queryByText('© Casa Verde S.A.C.')).not.toBeInTheDocument()
+    const footer = await screen.findByRole('contentinfo')
+    expect(within(footer).getByText(/Casa Verde S\.A\.C\./)).toBeInTheDocument()
   })
 
   it('la densidad de la tienda se aplica a quien llega sin preferencia', async () => {
@@ -484,5 +484,48 @@ describe('el mural de campañas', () => {
     renderStorefront(backend({ content: content(bloques) }), '/s/casa-verde')
 
     expect(await screen.findByText('Quedan 4 días')).toBeInTheDocument()
+  })
+})
+
+/**
+ * Las ofertas vigentes en la portada, sin que nadie escriba un cartel.
+ *
+ * Es la mitad que faltaba: el bloque de campaña lo compone el comercio, esto lo
+ * lee del motor de promociones. Con siete campañas activas y un bloque escrito,
+ * seis descontaban en el carrito sin haberse anunciado en ninguna parte.
+ */
+describe('las ofertas vigentes salen solas en la portada', () => {
+  it('la portada anuncia la campaña que está descontando ahora', async () => {
+    renderStorefront(
+      backend({
+        promotions: [
+          {
+            id: 'dddd1111-1111-4111-8111-111111111111',
+            name: 'Semana dermocosmetica',
+            description: '20 % en cuidado de la piel.',
+            kind: 'percentage',
+            percent_off: 20,
+            ends_at: new Date(Date.now() + 20 * 86_400_000).toISOString(),
+            category_slug: 'piel',
+          },
+        ],
+      }),
+      '/s/casa-verde',
+    )
+
+    const ofertas = await screen.findByRole('region', { name: 'Ofertas vigentes' })
+    expect(within(ofertas).getByRole('heading', { name: 'Semana dermocosmetica' })).toBeInTheDocument()
+    expect(within(ofertas).getByText('-20 %')).toBeInTheDocument()
+    expect(within(ofertas).getByRole('link', { name: 'Ver los productos' })).toHaveAttribute(
+      'href',
+      '/s/casa-verde?c=piel',
+    )
+  })
+
+  it('sin campañas vigentes no hay sección: un carrusel vacío es ruido', async () => {
+    renderStorefront(backend(), '/s/casa-verde')
+    await screen.findByRole('banner')
+
+    expect(screen.queryByRole('region', { name: 'Ofertas vigentes' })).not.toBeInTheDocument()
   })
 })

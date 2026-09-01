@@ -336,23 +336,23 @@ describe('resolución del tenant por slug', () => {
     )
   })
 
-  it('el contacto del tenant ya no se pinta: se fue con el pie', async () => {
+  it('el contacto del tenant sigue sin pintarse, aunque el pie haya vuelto', async () => {
     /**
      * Constancia de una pérdida, no de una mejora.
      *
-     * El correo, el teléfono y la dirección solo vivían en el pie, y al quitarse
-     * el pie por encargo del operador dejaron de verse. Siguen en
-     * `store_settings` y siguen llegando en `public_stores`: un bloque de
-     * contenido del CMS puede pintarlos donde el comercio quiera, pero eso hay
-     * que hacerlo, no ocurre solo.
+     * El correo, el teléfono y la dirección solo vivían en el pie ANTIGUO, que
+     * era un bloque entero con contacto y lockup. El pie que volvió es una
+     * línea: la firma del comercio y sus páginas legales, que es lo que no
+     * podía vivir en la cabecera.
      *
-     * El test se queda invertido para que la ausencia sea deliberada: si el
-     * contacto vuelve, este se pone rojo y obliga a decidir dónde va.
+     * El contacto sigue en `store_settings` y sigue llegando en
+     * `public_stores`: un bloque de contenido del CMS puede pintarlo donde el
+     * comercio quiera, pero eso hay que hacerlo, no ocurre solo. El test se
+     * queda invertido para que la ausencia sea deliberada.
      */
     renderStorefront(backend(), '/s/casa-nordica')
     await screen.findByRole('banner')
 
-    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument()
     expect(screen.queryByText('hola@casanordica.demo')).not.toBeInTheDocument()
     expect(screen.queryByText('+51 999 111 222')).not.toBeInTheDocument()
   })

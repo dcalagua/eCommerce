@@ -9,7 +9,9 @@ import { CONTENT_ANCHOR } from '@/shared/ui/SkipToContentLink'
 import { EmptyState, ErrorState } from '@/shared/ui/states'
 import { T } from '@/theme/tokens'
 import { BackToTop } from './components/BackToTop'
+import { BrandRow } from './components/BrandRow'
 import { CategoryBar } from './components/CategoryBar'
+import { PromoCarousel } from './components/PromoCarousel'
 import { ContentBlocks } from './components/ContentBlocks'
 import { ProductGrid, ProductGridSkeleton } from './components/ProductGrid'
 import { ProductQuickView } from './components/ProductQuickView'
@@ -25,6 +27,7 @@ import {
   useSignedThumbnails,
   useStoreContent,
   useStorefront,
+  useStorePromotions,
 } from './hooks'
 import { hitToPublicProduct } from './search'
 import { homeMeta } from './seo'
@@ -96,6 +99,7 @@ export function StoreHomePage() {
   const content = useStoreContent(storeSlug)
   const { assets, images } = useContentAssets(content.data)
   const categories = usePublicCategories(store.store_id)
+  const promotions = useStorePromotions(storeSlug)
 
   const query: SearchQuery = useMemo(
     () => ({
@@ -220,6 +224,17 @@ export function StoreHomePage() {
         leadingHeading={hasCmsHero}
       />
 
+{/* Las ofertas vigentes, ANTES del catálogo y pasando solas.
+          Salen del motor de promociones, no de un cartel escrito a mano: si
+          está descontando, se anuncia; si caduca, desaparece sola. */}
+      {(promotions.data ?? []).length > 0 && (
+        <PromoCarousel
+          promotions={promotions.data ?? []}
+          storeSlug={storeSlug}
+          currency={store.currency}
+        />
+      )}
+
       {/* Las categorías siguen aquí, en horizontal, ADEMÁS de en el panel: son
           el atajo de quien llega sin saber qué busca, y en el móvil el panel
           queda debajo del catálogo. */}
@@ -228,6 +243,14 @@ export function StoreHomePage() {
         selected={categorySlug}
         onSelect={(slug) => update('c', slug)}
       />
+
+      {/* Las marcas, al lado de las categorías: en una botica se compra por
+          marca tanto como por familia. Solo en la portada sin filtrar — con un
+          filtro puesto, la faceta se queda en la marca elegida y la fila
+          dejaría de ser una puerta para ser un espejo. */}
+      {filtered ? null : (
+        <BrandRow brands={brandOptions} selected={brand} onSelect={(code) => update('b', code)} />
+      )}
 
       <Stack direction={{ xs: 'column', md: 'row' }} sx={{ gap: { xs: 2, md: 3 }, alignItems: 'flex-start' }}>
         <Box sx={{ width: { xs: '100%', md: 280 }, flexShrink: 0 }}>

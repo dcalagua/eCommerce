@@ -1193,3 +1193,150 @@ describe('lo que el modelo hace imposible', () => {
     expect(message).toMatch(/promotions_code_unique|duplicate key/i)
   })
 })
+
+
+/**
+ * La puerta PUBLICA de las promociones.
+ *
+ * Existe porque la vitrina solo sabia de una campana si alguien le escribia un
+ * bloque de contenido a mano: con siete campanas activas y un bloque publicado,
+ * seis descontaban en el carrito sin haberse anunciado en ningun sitio.
+ *
+ * Lo que se fija aqui es la linea de lo que puede ver un desconocido: la FORMA
+ * del descuento si; el codigo del cupon y el cupo de usos, jamas. Y las
+ * campanas que exigen cupon no salen — anunciar un descuento que no se aplica
+ * solo se paga en el carrito.
+ */
+describe('las promociones que ve un comprador anonimo', () => {
+  async function promoPublica(input: {
+    code: string
+    name: string
+    kind?: string
+    percent?: number | null
+    coupon?: boolean
+    status?: string
+    from?: string
+    to?: string | null
+  }): Promise<string> {
+    const rows = await svc(
+      `insert into public.promotions
+         (organization_id, company_id, store_id, code, name, kind, status,
+          value_percent, requires_coupon, valid_from, valid_to)
+       values ($1, $2, $3, $4, $5, $6::public.promotion_kind, $7::public.promotion_status,
+               $8, $9, coalesce($10::timestamptz, now() - interval '1 day'), $11::timestamptz)
+       returning id`,
+      [
+        TENANT_A.organizationId, TENANT_A.companyId, storeA, input.code, input.name,
+        input.kind ?? 'percentage', input.status ?? 'active',
+        input.percent === undefined ? 20 : input.percent,
+        input.coupon ?? false, input.from ?? null,
+        input.to === undefined ? new Date(Date.now() + 30 * 86_400_000).toISOString() : input.to,
+      ],
+    )
+    return String(rows[0]?.id)
+  }
+
+  async function publicas(slug = STORE_A_SLUG): Promise<Record<string, unknown>[]> {
+    const rows = await asRole(db, 'anon', null, () =>
+      sql(`select public.store_promotions_for_slug($1) as r`, [slug]),
+    )
+    const payload = rows[0]?.r as { promotions?: Record<string, unknown>[] }
+    return payload?.promotions ?? []
+  }
+
+  it('salen las vigentes con la forma de su descuento, y en orden de prioridad', async () => {
+    const alta = await promoPublica({ code: 'pub-alta', name: 'La que manda', percent: 25 })
+    await svc(`update public.promotions set priority = 90 where id = $1`, [alta])
+    await promoPublica({ code: 'pub-baja', name: 'La otra', percent: 5 })
+
+    // El fichero tiene sus propias campanas sembradas: se mira el ORDEN
+    // relativo de estas dos, no la lista entera.
+    const lista = await publicas()
+    const mias = lista.filter((p) => String(p.name).startsWith('La '))
+    expect(mias.map((p) => p.name)).toEqual(['La que manda', 'La otra'])
+    expect(Number(mias[0]?.percent_off)).toBe(25)
+    expect(mias[0]?.kind).toBe('percentage')
+    expect(mias[0]?.ends_at).toBeTruthy()
+
+    await svc(`delete from public.promotions where code like 'pub-%'`)
+  })
+
+  it('la que EXIGE cupon no se anuncia, y su codigo no aparece por ningun lado', async () => {
+    const secreta = await promoPublica({
+      code: 'pub-cupon',
+      name: 'Solo para invitados',
+      coupon: true,
+    })
+    await svc(
+      `insert into public.coupons (organization_id, company_id, store_id, promotion_id, code, is_active)
+       values ($1, $2, $3, $4, 'VIP30', true)`,
+      [TENANT_A.organizationId, TENANT_A.companyId, storeA, secreta],
+    )
+    await promoPublica({ code: 'pub-libre', name: 'Para todos' })
+
+    const rows = await asRole(db, 'anon', null, () =>
+      sql(`select public.store_promotions_for_slug($1) as r`, [STORE_A_SLUG]),
+    )
+    const payload = JSON.stringify(rows[0]?.r)
+    expect(payload).toContain('Para todos')
+    expect(payload).not.toContain('Solo para invitados')
+    expect(payload).not.toContain('VIP30')
+    // Ni el cupo de usos: cuanto le queda a una campana es del comercio.
+    expect(payload).not.toContain('usage_limit')
+
+    await svc(`delete from public.coupons where promotion_id = $1`, [secreta])
+    await svc(`delete from public.promotions where code like 'pub-%'`)
+  })
+
+  it('el borrador, la caducada y la que aun no empieza se quedan fuera', async () => {
+    await promoPublica({ code: 'pub-draft', name: 'En borrador', status: 'draft' })
+    await promoPublica({
+      code: 'pub-vieja',
+      name: 'Caducada',
+      from: new Date(Date.now() - 60 * 86_400_000).toISOString(),
+      to: new Date(Date.now() - 86_400_000).toISOString(),
+    })
+    await promoPublica({
+      code: 'pub-futura',
+      name: 'Empieza manana',
+      from: new Date(Date.now() + 86_400_000).toISOString(),
+    })
+    await promoPublica({ code: 'pub-hoy', name: 'Descontando ahora' })
+
+    const nombres = (await publicas()).map((p) => p.name)
+    expect(nombres).toContain('Descontando ahora')
+    expect(nombres).not.toContain('En borrador')
+    expect(nombres).not.toContain('Caducada')
+    expect(nombres).not.toContain('Empieza manana')
+
+    await svc(`delete from public.promotions where code like 'pub-%'`)
+  })
+
+  it('la vitrina de A no sirve las campanas de B', async () => {
+    await promoPublica({ code: 'pub-de-a', name: 'Campana de A' })
+    await svc(
+      `insert into public.promotions
+         (organization_id, company_id, store_id, code, name, kind, status, value_percent)
+       values ($1, $2, $3, 'pub-de-b', 'Campana de B', 'percentage', 'active', 10)`,
+      [TENANT_B.organizationId, TENANT_B.companyId, storeB],
+    )
+
+    const deA = (await publicas(STORE_A_SLUG)).map((p) => p.name)
+    const deB = (await publicas(STORE_B_SLUG)).map((p) => p.name)
+    expect(deA).toContain('Campana de A')
+    expect(deA).not.toContain('Campana de B')
+    expect(deB).toContain('Campana de B')
+    expect(deB).not.toContain('Campana de A')
+
+    await svc(`delete from public.promotions where code like 'pub-de-%'`)
+  })
+
+  it('una tienda que no existe responde TIENDA_NO_DISPONIBLE, no una lista vacia', async () => {
+    const message = await expectFailure(() =>
+      asRole(db, 'anon', null, () =>
+        sql(`select public.store_promotions_for_slug($1) as r`, ['no-existe']),
+      ),
+    )
+    expect(message).toContain('TIENDA_NO_DISPONIBLE')
+  })
+})

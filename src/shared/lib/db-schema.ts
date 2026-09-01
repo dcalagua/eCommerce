@@ -387,6 +387,9 @@ export const GIFT_CARD_CANCEL_RPC = 'gift_card_cancel'
 // (`ebim.resolve_content`, `ebim.search_catalog`) está aquí: no son públicas.
 export const STORE_PAGE_PUBLIC_RPC = 'store_page_for_slug'
 export const STORE_NAVIGATION_PUBLIC_RPC = 'store_navigation_for_slug'
+// Campañas vigentes SIN cupón. Nunca devuelve códigos ni cupos: lo que anuncia
+// la portada tiene que aplicarse solo.
+export const STORE_PROMOTIONS_PUBLIC_RPC = 'store_promotions_for_slug'
 export const CATALOG_SEARCH_PUBLIC_RPC = 'catalog_search_for_slug'
 export const CATALOG_SUGGEST_PUBLIC_RPC = 'catalog_suggest_for_slug'
 export const CONTENT_PREVIEW_RPC = 'content_preview'

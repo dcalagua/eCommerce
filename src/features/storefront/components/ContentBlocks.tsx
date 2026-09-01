@@ -2,12 +2,12 @@ import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
 import { Box, Button, Card, Chip, Stack, Typography } from '@mui/material'
 import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
-import type { Locale, MessageKey } from '@/shared/i18n/messages'
 import { formatMoney } from '@/shared/lib/format'
 import { isInternalPath, isSafeHref } from '@/domain/href'
 import { RichText } from '@/shared/ui/RichText'
 import { T } from '@/theme/tokens'
-import type { CampaignOffer, ContentBlock, ContentCollectionItem } from '../content'
+import type { ContentBlock, ContentCollectionItem } from '../content'
+import { moneyCorto, offerBadge, vigenciaTexto } from '../offer'
 import { ProductMedia } from './ProductMedia'
 import { ScrollRow } from './ScrollRow'
 
@@ -432,68 +432,6 @@ function BannerBlock({ block, assets }: { block: ContentBlock; assets: Record<st
 }
 
 /**
- * Qué descuenta la campaña, en cuatro caracteres.
- *
- * Es el dato por el que alguien se para: «-20 %» se lee de lejos, «Semana
- * dermocosmética» no dice cuánto. Sale de la FORMA del descuento que resuelve
- * el servidor — nunca del cupón, que sigue sin viajar.
- */
-function offerBadge(
-  campaign: CampaignOffer | null,
-  t: (key: MessageKey) => string,
-  locale: Locale,
-  currency?: string,
-): string | null {
-  if (!campaign) return null
-  switch (campaign.kind) {
-    case 'percentage':
-      // Sin ceros de relleno: la base guarda 15.0000 y el cartel dice 15.
-      return campaign.percentOff ? `-${Number(campaign.percentOff)} %` : null
-    case 'fixed_amount':
-      if (!campaign.amountOff) return null
-      return currency
-        ? `-${moneyCorto(campaign.amountOff, currency, locale)}`
-        : t('store.content.offer.save')
-    case 'x_for_y': {
-      const buy = Number(campaign.buyQuantity ?? 0)
-      const free = Number(campaign.freeQuantity ?? 0)
-      // «3x2» solo significa algo si se paga menos de lo que se lleva.
-      return buy > free && free > 0 ? `${buy}x${buy - free}` : null
-    }
-    case 'volume_tier':
-      return t('store.content.offer.tiers')
-    case 'bundle':
-      return t('store.content.offer.bundle')
-    default:
-      return null
-  }
-}
-
-/**
- * El importe de un cartel: «S/ 20», no «S/ 20.00».
- *
- * Los céntimos de un precio son obligatorios; los de un descuento redondo son
- * ruido, y encima alargan el medallón hasta comerse el título.
- */
-function moneyCorto(amount: number, currency: string, locale: Locale): string {
-  if (!Number.isInteger(amount)) return formatMoney(amount, currency, locale)
-  try {
-    return new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'es-PE', {
-      style: 'currency',
-      currency,
-      maximumFractionDigits: 0,
-    }).format(amount)
-  } catch {
-    return formatMoney(amount, currency, locale)
-  }
-}
-
-/** Días que le quedan a la campaña, redondeados hacia arriba. */
-function daysLeft(endsAt: string, now: number = Date.now()): number {
-  return Math.ceil((new Date(endsAt).getTime() - now) / 86_400_000)
-}
-
-/**
  * El medallón del descuento.
  *
  * Sustituye al panel de color que ocupaba media tarjeta para escribir dentro
@@ -580,34 +518,11 @@ function CampaignBlock({
   const { t, locale } = useI18n()
   const url = mediaUrl(block.mediaUrl, assets)
   const badge = offerBadge(block.campaign, t, locale, currency)
-  const restante = block.campaignLive && block.campaignEndsAt ? daysLeft(block.campaignEndsAt) : null
-  // Una semana es donde «me lo pienso» pasa a «se me acaba». Antes de eso la
-  // cuenta atrás es ruido; a partir de ahí es la información útil.
-  const acaba = restante !== null && restante >= 0 && restante <= 7
-
-  const fecha = block.campaignEndsAt
-    ? new Date(block.campaignEndsAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'es-PE', {
-        day: 'numeric',
-        month: 'long',
-      })
-    : null
-
-  /**
-   * Hasta cuándo, en UNA línea.
-   *
-   * «Activa» + «Hasta el 30 set. 2026» eran dos frases para un solo dato. El
-   * año sobra en una campaña que dura semanas, y la urgencia solo se nombra
-   * cuando existe.
-   */
-  const vigencia = !block.campaignLive
-    ? null
-    : acaba
-      ? (restante ?? 0) <= 1
-        ? t('store.content.offer.lastDay')
-        : t('store.content.offer.daysLeft').replace('{days}', String(restante))
-      : fecha
-        ? `${t('store.content.campaignEnds')} ${fecha}`
-        : t('store.content.campaignLive')
+  // Hasta cuándo, en UNA línea. «Activa» + «Hasta el 30 set. 2026» eran dos
+  // frases para un solo dato: el año sobra en una campaña que dura semanas, y
+  // la urgencia solo se nombra cuando existe.
+  const vigencia = block.campaignLive ? vigenciaTexto(block.campaignEndsAt, t, locale) : null
+  const acaba = vigencia?.urgente ?? false
 
   const foto = url ? (
     <Box
@@ -681,7 +596,7 @@ function CampaignBlock({
                 : {}),
             }}
           >
-            {vigencia}
+            {vigencia.texto}
           </Typography>
         ) : null}
 

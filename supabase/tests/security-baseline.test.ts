@@ -144,6 +144,10 @@ const ANON_SURFACE: Record<
   returns_by_token: { clase: 'secreto', porque: 'token de pedido de 256 bits' },
   store_navigation_for_slug: { clase: 'publicado', porque: 'el menú de la tienda, ya publicado' },
   store_page_for_slug: { clase: 'publicado', porque: 'la página del CMS, ya publicada' },
+  store_promotions_for_slug: {
+    clase: 'publicado',
+    porque: 'campañas vigentes SIN cupón: la forma del descuento, nunca el código ni el cupo',
+  },
   track_events_for_slug: { clase: 'techo', porque: 'ESCRIBE analítica: techo por tienda (P16)' },
 }
 
@@ -165,10 +169,10 @@ describe('la superficie anónima es una lista cerrada', () => {
    * publica esta tabla; sin este test, el documento y el código se separan en la
    * primera función nueva y nadie se entera hasta la siguiente auditoría.
    */
-  it('el reparto por clase es 8 publicado · 7 secreto · 2 techo · 1 recogido', () => {
+  it('el reparto por clase es 9 publicado · 7 secreto · 2 techo · 1 recogido', () => {
     const cuenta = { publicado: 0, secreto: 0, techo: 0, recogido: 0 }
     for (const entry of Object.values(ANON_SURFACE)) cuenta[entry.clase] += 1
-    expect(cuenta).toEqual({ publicado: 8, secreto: 7, techo: 2, recogido: 1 })
+    expect(cuenta).toEqual({ publicado: 9, secreto: 7, techo: 2, recogido: 1 })
   })
 
   /**
