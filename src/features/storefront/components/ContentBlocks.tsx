@@ -1,3 +1,4 @@
+import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
 import { Box, Button, Card, Chip, Stack, Typography } from '@mui/material'
 import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
@@ -205,7 +206,23 @@ function ContentBlockView({
 const HERO_SCRIM =
   'linear-gradient(180deg, rgba(6,20,16,0.25) 0%, rgba(6,20,16,0.55) 60%, rgba(6,20,16,0.72) 100%)'
 
-function BlockCta({ block, contrast = false }: { block: ContentBlock; contrast?: boolean }) {
+function BlockCta({
+  block,
+  contrast = false,
+  quiet = false,
+}: {
+  block: ContentBlock
+  contrast?: boolean
+  /**
+   * El botón sin relleno, para cuando hay varios a la vez.
+   *
+   * Tres píldoras oscuras en fila pesan más que las tres ofertas que vienen a
+   * anunciar: lo primero que ve el ojo acaba siendo el botón, y el botón es lo
+   * último que hace falta leer. En texto con flecha sigue siendo el mismo
+   * enlace, con la misma área de pulsación, y deja el peso al descuento.
+   */
+  quiet?: boolean
+}) {
   if (!block.ctaHref || !block.ctaLabel || !isSafeHref(block.ctaHref)) return null
 
   const internal = isInternalPath(block.ctaHref)
@@ -214,9 +231,15 @@ function BlockCta({ block, contrast = false }: { block: ContentBlock; contrast?:
     fontWeight: 700,
     textTransform: 'none' as const,
     borderRadius: 'var(--sf-pill)',
-    px: 2.5,
-    py: 1,
+    px: quiet ? 0 : 2.5,
+    py: quiet ? 0.5 : 1,
     boxShadow: 'none',
+    ...(quiet
+      ? {
+          color: 'var(--accent-deep)',
+          '&:hover': { bgcolor: 'transparent', textDecoration: 'underline' },
+        }
+      : {}),
     ...(contrast
       ? {
           bgcolor: '#FFFFFF',
@@ -225,10 +248,12 @@ function BlockCta({ block, contrast = false }: { block: ContentBlock; contrast?:
         }
       : { '&:hover': { boxShadow: 'none' } }),
   }
+  const variant = quiet ? 'text' : 'contained'
+  const contenido = quiet ? `${block.ctaLabel} \u2192` : block.ctaLabel
 
   return internal ? (
-    <Button component={Link} to={block.ctaHref} variant="contained" sx={sx}>
-      {block.ctaLabel}
+    <Button component={Link} to={block.ctaHref} variant={variant} sx={sx}>
+      {contenido}
     </Button>
   ) : (
     <Button
@@ -236,10 +261,10 @@ function BlockCta({ block, contrast = false }: { block: ContentBlock; contrast?:
       href={block.ctaHref}
       target="_blank"
       rel="noopener noreferrer"
-      variant="contained"
+      variant={variant}
       sx={sx}
     >
-      {block.ctaLabel}
+      {contenido}
     </Button>
   )
 }
@@ -427,7 +452,7 @@ function offerBadge(
     case 'fixed_amount':
       if (!campaign.amountOff) return null
       return currency
-        ? `-${formatMoney(campaign.amountOff, currency, locale)}`
+        ? `-${moneyCorto(campaign.amountOff, currency, locale)}`
         : t('store.content.offer.save')
     case 'x_for_y': {
       const buy = Number(campaign.buyQuantity ?? 0)
@@ -444,9 +469,78 @@ function offerBadge(
   }
 }
 
+/**
+ * El importe de un cartel: «S/ 20», no «S/ 20.00».
+ *
+ * Los céntimos de un precio son obligatorios; los de un descuento redondo son
+ * ruido, y encima alargan el medallón hasta comerse el título.
+ */
+function moneyCorto(amount: number, currency: string, locale: Locale): string {
+  if (!Number.isInteger(amount)) return formatMoney(amount, currency, locale)
+  try {
+    return new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'es-PE', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 0,
+    }).format(amount)
+  } catch {
+    return formatMoney(amount, currency, locale)
+  }
+}
+
 /** Días que le quedan a la campaña, redondeados hacia arriba. */
 function daysLeft(endsAt: string, now: number = Date.now()): number {
   return Math.ceil((new Date(endsAt).getTime() - now) / 86_400_000)
+}
+
+/**
+ * El medallón del descuento.
+ *
+ * Sustituye al panel de color que ocupaba media tarjeta para escribir dentro
+ * «Promoción vigente» — lo mismo que ya decía el rótulo de al lado, en grande y
+ * ocupando el sitio de la información. Un cartel que se repite a sí mismo no
+ * informa: gasta espacio.
+ *
+ * Ahora ese hueco vale algo: cuando la campaña sabe cuánto descuenta lo enseña
+ * («-20 %», «3x2»); cuando no —porque nadie ha declarado la forma del descuento
+ * todavía— cae a la etiqueta de oferta, que ocupa 56 píxeles y no una columna.
+ */
+function OfferMedallion({ badge, dense }: { badge: string | null; dense: boolean }) {
+  const lado = dense ? 52 : 64
+
+  return (
+    <Box
+      aria-hidden
+      sx={{
+        width: badge ? 'auto' : lado,
+        minWidth: lado,
+        height: lado,
+        px: badge ? 1.5 : 0,
+        flexShrink: 0,
+        display: 'grid',
+        placeItems: 'center',
+        borderRadius: 'var(--sf-radius-sm)',
+        bgcolor: 'color-mix(in srgb, var(--accent) 16%, var(--card))',
+        border: '1px solid color-mix(in srgb, var(--accent) 32%, transparent)',
+        color: 'var(--accent-deep)',
+      }}
+    >
+      {badge ? (
+        <Typography
+          sx={{
+            fontSize: dense ? 20 : 24,
+            fontWeight: 900,
+            letterSpacing: '-0.03em',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {badge}
+        </Typography>
+      ) : (
+        <LocalOfferRoundedIcon sx={{ fontSize: dense ? 24 : 28 }} />
+      )}
+    </Box>
+  )
 }
 
 /**
@@ -458,8 +552,19 @@ function daysLeft(endsAt: string, now: number = Date.now()): number {
  * regalar el folleto de las campañas secretas (misma decisión que P10 tomó al
  * no reportar las campañas que exigen cupón y no lo traen).
  *
- * `dense` es la misma campaña dentro de un mural de varias: la foto pasa
- * arriba y el texto se estrecha. No es otro componente porque no es otra cosa.
+ * La tarjeta dice tres cosas y en este orden: **cuánto** (el medallón), **de
+ * qué** (el título y su frase) y **hasta cuándo** (la línea de estado). Antes
+ * decía cuatro veces que era una promoción vigente —el rótulo, el chip, un
+ * panel de color con la palabra escrita en grande y la fecha— y ninguna vez
+ * cuánto descontaba.
+ *
+ * Dos formas para dos sitios, y la diferencia no es decorativa:
+ *
+ *  · **sola**, a lo ancho de la portada: en fila —descuento, texto, botón— para
+ *    que el ancho se use en vez de dejar medio cartel en blanco;
+ *  · **`dense`**, dentro de un mural de varias: en columna y con el enlace
+ *    abajo del todo, para que tres tarjetas terminen a la misma altura y se
+ *    puedan comparar de un vistazo.
  */
 function CampaignBlock({
   block,
@@ -480,7 +585,31 @@ function CampaignBlock({
   // cuenta atrás es ruido; a partir de ahí es la información útil.
   const acaba = restante !== null && restante >= 0 && restante <= 7
 
-  const media = url ? (
+  const fecha = block.campaignEndsAt
+    ? new Date(block.campaignEndsAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'es-PE', {
+        day: 'numeric',
+        month: 'long',
+      })
+    : null
+
+  /**
+   * Hasta cuándo, en UNA línea.
+   *
+   * «Activa» + «Hasta el 30 set. 2026» eran dos frases para un solo dato. El
+   * año sobra en una campaña que dura semanas, y la urgencia solo se nombra
+   * cuando existe.
+   */
+  const vigencia = !block.campaignLive
+    ? null
+    : acaba
+      ? (restante ?? 0) <= 1
+        ? t('store.content.offer.lastDay')
+        : t('store.content.offer.daysLeft').replace('{days}', String(restante))
+      : fecha
+        ? `${t('store.content.campaignEnds')} ${fecha}`
+        : t('store.content.campaignLive')
+
+  const foto = url ? (
     <Box
       component="img"
       src={url}
@@ -488,44 +617,111 @@ function CampaignBlock({
       aria-hidden={block.mediaAlt ? undefined : true}
       loading="lazy"
       decoding="async"
-      // Proporción declarada: sin ella el bloque entero salta cuando la foto
-      // llega, y en móvil la imagen va encima del texto.
+      // Proporción declarada: sin ella la tarjeta salta cuando la foto llega.
       sx={{
-        width: dense ? '100%' : { xs: '100%', sm: 220 },
-        height: dense ? 148 : { xs: 180, sm: 'auto' },
-        maxHeight: dense ? 148 : 220,
+        width: dense ? '100%' : { xs: '100%', sm: 260 },
+        height: dense ? 150 : { xs: 170, sm: 'auto' },
+        minHeight: dense ? 150 : 168,
         objectFit: 'cover',
         flexShrink: 0,
+        bgcolor: 'var(--sf-media-bg)',
       }}
     />
-  ) : (
-    // Sin foto la campaña no se queda coja: el descuento ES la imagen.
-    <Box
-      aria-hidden
-      sx={{
-        width: dense ? '100%' : { xs: '100%', sm: 220 },
-        height: dense ? 148 : { xs: 120, sm: 'auto' },
-        minHeight: dense ? 148 : 140,
-        flexShrink: 0,
-        display: 'grid',
-        placeItems: 'center',
-        background:
-          'linear-gradient(135deg, var(--accent-deep) 0%, color-mix(in srgb, var(--accent) 70%, #000) 100%)',
-      }}
-    >
+  ) : null
+
+  const textos = (
+    <Stack sx={{ gap: 0.75, flex: 1, minWidth: 0, height: '100%' }}>
       <Typography
+        component="h2"
         sx={{
-          fontSize: dense ? 34 : 40,
-          fontWeight: 900,
-          letterSpacing: '-0.03em',
-          color: '#FFFFFF',
-          textAlign: 'center',
-          px: 2,
+          fontSize: dense ? { xs: 18, md: 19 } : { xs: 21, md: 24 },
+          fontWeight: 800,
+          letterSpacing: '-0.02em',
+          lineHeight: 1.2,
         }}
       >
-        {badge ?? t('store.content.campaignEyebrow')}
+        {block.title}
       </Typography>
-    </Box>
+
+      {block.subtitle ? (
+        <Typography
+          sx={{
+            fontSize: T.body,
+            color: 'var(--muted)',
+            maxWidth: '58ch',
+            // En el mural las tarjetas van a la par: dos líneas cada una, y la
+            // que se pase se corta en vez de estirar su columna.
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}
+        >
+          {block.subtitle}
+        </Typography>
+      ) : null}
+
+      {/* Estado en una sola línea: hasta cuándo, el mínimo si lo hay, y el
+          aviso de cupón. Tres datos distintos, no tres formas de decir que la
+          promoción existe. */}
+      <Stack direction="row" sx={{ gap: 0.75, alignItems: 'center', flexWrap: 'wrap', pt: 0.25 }}>
+        {vigencia ? (
+          <Typography
+            sx={{
+              fontSize: T.label,
+              fontWeight: 800,
+              color: acaba ? 'var(--accent-deep)' : 'var(--muted)',
+              ...(acaba
+                ? {
+                    px: 1,
+                    py: 0.25,
+                    borderRadius: 'var(--sf-pill)',
+                    bgcolor: 'color-mix(in srgb, var(--accent) 14%, transparent)',
+                  }
+                : {}),
+            }}
+          >
+            {vigencia}
+          </Typography>
+        ) : null}
+
+        {block.campaign?.minSubtotal && currency ? (
+          <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+            {t('store.content.offer.minSubtotal').replace(
+              '{amount}',
+              moneyCorto(block.campaign.minSubtotal, currency, locale),
+            )}
+          </Typography>
+        ) : null}
+
+        {/* Que hace falta un código se dice; cuál es, no. Prometer un descuento
+            que no se aplica solo decepciona en el carrito. */}
+        {block.campaign?.needsCoupon ? (
+          <Typography
+            sx={{
+              fontSize: T.label,
+              fontWeight: 700,
+              color: 'var(--text)',
+              px: 1,
+              py: 0.25,
+              borderRadius: 'var(--sf-pill)',
+              border: '1px solid var(--sf-line-strong)',
+            }}
+          >
+            {t('store.content.offer.needsCoupon')}
+          </Typography>
+        ) : null}
+      </Stack>
+
+      {/* En el mural el enlace va al fondo de la tarjeta: así las tres filas de
+          enlaces quedan a la misma altura aunque una campaña traiga una línea
+          más que otra. */}
+      {dense ? (
+        <Box sx={{ mt: 'auto', pt: 0.75 }}>
+          <BlockCta block={block} quiet />
+        </Box>
+      ) : null}
+    </Stack>
   )
 
   return (
@@ -537,13 +733,19 @@ function CampaignBlock({
         position: 'relative',
         overflow: 'hidden',
         height: dense ? '100%' : undefined,
+        display: 'flex',
+        flexDirection: 'column',
         borderRadius: 'var(--sf-radius)',
-        border: '1px solid color-mix(in srgb, var(--accent) 35%, transparent)',
+        border: '1px solid var(--sf-line)',
         boxShadow: 'var(--sf-shadow)',
-        bgcolor: 'color-mix(in srgb, var(--accent) 8%, var(--card))',
-        transition: 'transform .18s ease, box-shadow .18s ease',
+        bgcolor: 'var(--card)',
+        transition: 'transform .18s ease, box-shadow .18s ease, border-color .18s ease',
         '@media (hover: hover)': {
-          '&:hover': { transform: 'translateY(-2px)', boxShadow: 'var(--sf-shadow-hover)' },
+          '&:hover': {
+            transform: 'translateY(-2px)',
+            boxShadow: 'var(--sf-shadow-hover)',
+            borderColor: 'color-mix(in srgb, var(--accent) 45%, transparent)',
+          },
         },
         '@media (prefers-reduced-motion: reduce)': {
           transition: 'none',
@@ -551,141 +753,65 @@ function CampaignBlock({
         },
       }}
     >
-      {/* El sello del descuento va SOBRE la foto: es lo primero que se mira, y
-          cuando no hay foto ya lo lleva el panel de acento. */}
-      {badge && url ? (
-        <Chip
-          label={badge}
-          sx={{
-            position: 'absolute',
-            top: 12,
-            left: 12,
-            zIndex: 1,
-            height: 30,
-            fontSize: 15,
-            fontWeight: 900,
-            letterSpacing: '-0.01em',
-            bgcolor: 'var(--accent-deep)',
-            color: '#FFFFFF',
-          }}
-        />
-      ) : null}
+      {/* Filo de acento: dice «esto es una oferta» sin gastar una columna ni
+          repetir la palabra. Es el único adorno de la tarjeta. */}
+      <Box
+        aria-hidden
+        sx={{
+          height: 4,
+          flexShrink: 0,
+          background:
+            'linear-gradient(90deg, var(--accent-deep) 0%, color-mix(in srgb, var(--accent) 55%, transparent) 100%)',
+        }}
+      />
 
       <Stack
         direction={dense ? 'column' : { xs: 'column', sm: 'row' }}
-        sx={{ alignItems: 'stretch', height: '100%' }}
+        sx={{ flex: 1, alignItems: 'stretch' }}
       >
-        {media}
+        {foto}
+
         <Stack
+          direction="row"
           sx={{
-            gap: 1,
-            p: dense ? 2.25 : { xs: 2.5, md: 3.5 },
+            gap: dense ? 1.75 : 2.5,
+            p: dense ? 2 : { xs: 2.25, md: 3 },
             flex: 1,
-            justifyContent: 'center',
+            minWidth: 0,
+            alignItems: dense ? 'flex-start' : 'center',
           }}
         >
-          <Stack direction="row" sx={{ gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-            {/* Rótulo de sección: dice QUE es esto antes de decir cómo se
-                llama. Sin él, «Semana dermocosmética» podía leerse como una
-                categoría más del catálogo. */}
-            <Typography
-              sx={{
-                fontSize: T.label,
-                fontWeight: 800,
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-                color: 'var(--accent-deep)',
-              }}
-            >
-              {t('store.content.campaignEyebrow')}
-            </Typography>
-            {block.campaignLive ? (
-              <Chip
-                size="small"
-                label={t('store.content.campaignLive')}
-                sx={{ bgcolor: 'var(--accent)', color: '#FFFFFF', fontWeight: 800 }}
-              />
-            ) : null}
-            {/* Que hace falta un código se dice; cuál es, no. Prometer un
-                descuento que no se aplica solo decepciona en el carrito. */}
-            {block.campaign?.needsCoupon ? (
-              <Chip
-                size="small"
-                variant="outlined"
-                label={t('store.content.offer.needsCoupon')}
-                sx={{ fontWeight: 700, borderColor: 'var(--sf-line-strong)' }}
-              />
-            ) : null}
-          </Stack>
+          {/* Con foto, el medallón se cuela sobre ella —el descuento no pierde
+              el primer sitio por tener una imagen bonita—; sin foto, ocupa el
+              hueco que antes gastaba el panel de color. */}
+          {foto ? null : <OfferMedallion badge={badge} dense={dense} />}
 
-          <Typography
-            component="h2"
-            sx={{
-              fontSize: dense ? { xs: 19, md: 20 } : { xs: 22, md: 28 },
-              fontWeight: 800,
-              letterSpacing: '-0.02em',
-              lineHeight: 1.2,
-            }}
-          >
-            {block.title}
-          </Typography>
+          {textos}
 
-          {block.subtitle ? (
-            <Typography
-              sx={{
-                fontSize: dense ? T.body : T.bodyStrong,
-                color: dense ? 'var(--muted)' : 'var(--text)',
-                maxWidth: '62ch',
-                // En el mural las tarjetas van a la par: dos líneas cada una, y
-                // la que se pase se corta en vez de estirar su columna.
-                ...(dense
-                  ? {
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                    }
-                  : {}),
-              }}
-            >
-              {block.subtitle}
-            </Typography>
-          ) : null}
+          {/* Sola y a lo ancho, el botón va a la derecha y en el centro: la
+              tarjeta se lee de izquierda a derecha —cuánto, qué, y qué hago—
+              en vez de dejar la mitad derecha en blanco. */}
+          {dense ? null : (
+            <Box sx={{ flexShrink: 0, display: { xs: 'none', sm: 'block' } }}>
+              <BlockCta block={block} />
+            </Box>
+          )}
+        </Stack>
 
-          {/* Lo que hay que gastar para que entre. «20 de descuento» sin el
-              mínimo es publicidad que decepciona en el carrito. */}
-          {block.campaign?.minSubtotal && currency ? (
-            <Typography sx={{ fontSize: T.label, color: 'var(--muted)', fontWeight: 700 }}>
-              {t('store.content.offer.minSubtotal').replace(
-                '{amount}',
-                formatMoney(block.campaign.minSubtotal, currency, locale),
-              )}
-            </Typography>
-          ) : null}
-
-          {block.campaignLive && block.campaignEndsAt ? (
-            <Typography
-              sx={{ fontSize: T.label, fontWeight: 700, color: 'var(--accent-deep)' }}
-            >
-              {acaba
-                ? (restante ?? 0) <= 1
-                  ? t('store.content.offer.lastDay')
-                  : t('store.content.offer.daysLeft').replace('{days}', String(restante))
-                : `${t('store.content.campaignEnds')} ${new Date(
-                    block.campaignEndsAt,
-                  ).toLocaleDateString(locale === 'en' ? 'en-US' : 'es-PE', {
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric',
-                  })}`}
-            </Typography>
-          ) : null}
-
-          <Box sx={{ mt: 'auto', pt: 0.5 }}>
+        {/* En móvil el botón vuelve abajo, a lo ancho de la tarjeta: a la
+            derecha no cabe sin estrangular el texto. */}
+        {dense ? null : (
+          <Box sx={{ display: { xs: 'block', sm: 'none' }, px: 2.25, pb: 2.25 }}>
             <BlockCta block={block} />
           </Box>
-        </Stack>
+        )}
       </Stack>
+
+      {foto ? (
+        <Box sx={{ position: 'absolute', top: dense ? 18 : 22, left: dense ? 16 : 20 }}>
+          <OfferMedallion badge={badge} dense={dense} />
+        </Box>
+      ) : null}
     </Card>
   )
 }
