@@ -93,6 +93,7 @@ export type ContentCollectionItem = z.infer<typeof collectionItemSchema>
  */
 const campaignSchema = z
   .object({
+    id: z.string().uuid().nullable().default(null),
     live: z.boolean().nullable().default(false),
     ends_at: z.string().nullable().default(null),
     kind: z.string().nullable().default(null),
@@ -131,6 +132,8 @@ const rawBlockSchema = z.object({
 
 /** Que descuenta una campana, en el vocabulario de la vitrina. */
 export interface CampaignOffer {
+  /** Qué campaña es. La portada la usa para no anunciarla dos veces. */
+  readonly id: string | null
   readonly kind: string | null
   readonly percentOff: number | null
   readonly amountOff: number | null
@@ -256,6 +259,7 @@ export function toStoreContent(raw: unknown): StoreContent {
         campaignEndsAt: block.campaign?.ends_at ?? null,
         campaign: block.campaign
           ? {
+              id: block.campaign.id,
               kind: block.campaign.kind,
               percentOff: block.campaign.percent_off,
               amountOff: block.campaign.amount_off,

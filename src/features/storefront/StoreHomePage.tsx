@@ -183,6 +183,23 @@ export function StoreHomePage() {
   const blocks = content.data?.cms ? (content.data.blocks ?? []) : []
   const hasCmsHero = blocks.some((block) => block.type === 'hero')
   const cmsTraeProductos = blocks.some((block) => block.items.length > 0)
+
+  /**
+   * El carrusel no repite lo que el comercio ya puso a mano.
+   *
+   * Una campaña puede salir por dos caminos: el bloque que el comercio escribió
+   * para ella y la lista automática de campañas vigentes. Las dos a la vez, una
+   * encima de otra, se leen como un fallo de la tienda — la misma oferta
+   * anunciada dos veces.
+   *
+   * Gana el bloque escrito: lleva la foto, el texto y el botón que el comercio
+   * eligió. El carrusel se queda con las que nadie ha anunciado, que son
+   * justamente las que sin él no se verían en ninguna parte.
+   */
+  const anunciadas = new Set(
+    blocks.map((block) => block.campaign?.id).filter((id): id is string => Boolean(id)),
+  )
+  const promosVigentes = (promotions.data ?? []).filter((promo) => !anunciadas.has(promo.id))
   const first = pages[0]
   const total = first?.total ?? 0
   const brandFacets = first?.facets.brands ?? []
@@ -375,9 +392,9 @@ export function StoreHomePage() {
 {/* Las ofertas vigentes, ANTES del catálogo y pasando solas.
           Salen del motor de promociones, no de un cartel escrito a mano: si
           está descontando, se anuncia; si caduca, desaparece sola. */}
-      {(promotions.data ?? []).length > 0 && (
+      {promosVigentes.length > 0 && (
         <PromoCarousel
-          promotions={promotions.data ?? []}
+          promotions={promosVigentes}
           storeSlug={storeSlug}
           currency={store.currency}
         />
