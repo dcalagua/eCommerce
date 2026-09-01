@@ -102,8 +102,13 @@ const EMPTY: TenantSelection = {
  *  3. sociedad activa = la del claim si el usuario tiene rol ahí; si no, la
  *     única que tenga; si tiene varias, la primera de forma estable. Nunca se
  *     lee de localStorage ni de la URL.
- *  4. tienda activa = la elegida en el selector si sigue siendo suya, o la
- *     única, o la primera. Selección automática cuando solo hay una.
+ *  4. tienda activa = la elegida en el selector si sigue siendo suya; si no,
+ *     la que este navegador recuerde para esa sociedad; si no, la primera.
+ *     Selección automática cuando solo hay una.
+ *
+ * La preferencia guardada NO manda: se busca en las tiendas que devolvió la
+ * RLS, y si no está —archivada, de otra sociedad, o escrita a mano en
+ * `localStorage`— se cae a la primera. El navegador propone, la RLS dispone.
  */
 export function resolveTenantSelection(input: {
   claims: TenantContext | null
@@ -112,8 +117,18 @@ export function resolveTenantSelection(input: {
   isError: boolean
   companyOverride?: string | null
   storeOverride?: string | null
+  /** Tienda recordada por sociedad. Preferencia de pantalla, no autorización. */
+  storePreferences?: Readonly<Record<string, string>>
 }): TenantSelection {
-  const { claims, workspace, isLoading, isError, companyOverride, storeOverride } = input
+  const {
+    claims,
+    workspace,
+    isLoading,
+    isError,
+    companyOverride,
+    storeOverride,
+    storePreferences,
+  } = input
 
   if (!claims) return { ...EMPTY, status: 'unauthorized' }
   if (isError) return { ...EMPTY, status: 'error' }
@@ -153,8 +168,15 @@ export function resolveTenantSelection(input: {
     )
     .sort((a, b) => a.name.localeCompare(b.name))
 
+  // Lo elegido en esta sesión manda sobre lo recordado; lo recordado, sobre el
+  // orden alfabético. Los tres pasan por la misma comprobación: estar en la
+  // lista que devolvió el servidor para esta sociedad.
+  const recordada = storePreferences?.[activeCompanyId]
   const activeStore =
-    stores.find((s) => s.id === storeOverride) ?? stores[0] ?? null
+    stores.find((s) => s.id === storeOverride) ??
+    stores.find((s) => s.id === recordada) ??
+    stores[0] ??
+    null
 
   return {
     status: 'ready',

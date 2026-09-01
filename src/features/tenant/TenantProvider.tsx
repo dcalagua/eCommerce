@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { emailFromSession, tenantFromSession } from '@/features/auth/session'
 import { useSessionContext } from '@/features/auth/session-context'
 import { can as roleCan, type Permission } from '@/shared/lib/roles'
+import { readStorePreferences, writeStorePreference } from './store-preference'
 import { TenantCtx, type TenantContextValue } from './tenant-context'
 import type { Workspace } from './types'
 import { fetchWorkspace, resolveTenantSelection, workspaceKey } from './workspace'
@@ -24,6 +25,16 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const [companyOverride, setCompanyOverride] = useState<string | null>(null)
   const [storeOverride, setStoreOverride] = useState<string | null>(null)
 
+  /**
+   * La tienda que este navegador recuerda, por sociedad.
+   *
+   * Se lee UNA vez: `localStorage` no cambia solo, y releerlo en cada render
+   * haría que el estado del backoffice dependiera de un efecto secundario. No
+   * autoriza nada — `resolveTenantSelection` la busca en las tiendas que
+   * devolvió la RLS y la descarta si no está.
+   */
+  const [storePreferences] = useState(readStorePreferences)
+
   const query = useQuery<Workspace>({
     queryKey: workspaceKey(claims?.organization_id ?? ''),
     queryFn: () => fetchWorkspace(userId),
@@ -41,8 +52,18 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         isError: query.isError,
         companyOverride,
         storeOverride,
+        storePreferences,
       }),
-    [claims, query.data, query.isPending, query.isError, companyOverride, storeOverride, userId],
+    [
+      claims,
+      query.data,
+      query.isPending,
+      query.isError,
+      companyOverride,
+      storeOverride,
+      storePreferences,
+      userId,
+    ],
   )
 
   const setActiveCompany = useCallback((companyId: string) => {
@@ -53,17 +74,33 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     setStoreOverride(null)
   }, [])
 
+  /**
+   * Cambiar de tienda se recuerda; cambiar de sociedad, no.
+   *
+   * Es la diferencia entre una preferencia de pantalla y la jerarquía del
+   * token: quien trabaja siempre en la misma tienda no puede tener que
+   * elegirla otra vez en cada recarga, y quien cambia de sociedad tiene que
+   * volver a pasar por lo que diga el hub.
+   */
+  const selectStore = useCallback(
+    (storeId: string) => {
+      setStoreOverride(storeId)
+      writeStorePreference(selection.activeCompanyId, storeId)
+    },
+    [selection.activeCompanyId],
+  )
+
   const value = useMemo<TenantContextValue>(
     () => ({
       ...selection,
       email,
       error: query.error instanceof Error ? query.error : null,
       setActiveCompany,
-      setActiveStore: setStoreOverride,
+      setActiveStore: selectStore,
       can: (permission: Permission) => roleCan(selection.role, permission),
       refetch: () => void query.refetch(),
     }),
-    [selection, email, query, setActiveCompany],
+    [selection, email, query, setActiveCompany, selectStore],
   )
 
   return <TenantCtx.Provider value={value}>{children}</TenantCtx.Provider>

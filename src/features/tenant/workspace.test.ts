@@ -164,3 +164,60 @@ describe('resolveTenantSelection', () => {
     expect(state.activeStore).toBeNull()
   })
 })
+
+
+/**
+ * La tienda que este navegador recuerda.
+ *
+ * Sin esto, cada recarga devolvia el backoffice a la primera tienda por orden
+ * alfabetico: quien trabaja siempre en la misma tenia que volver a elegirla en
+ * cada F5.
+ *
+ * Lo que se fija aqui es que la preferencia RECUERDA pero no AUTORIZA. El id
+ * guardado se busca en las tiendas que devolvio la RLS para la sociedad activa;
+ * si no esta —archivada, de otra sociedad, o escrita a mano en localStorage— se
+ * cae a la primera, sin error y sin ensenar nada de nadie.
+ */
+describe('la tienda recordada por el navegador', () => {
+  const dosTiendas = () =>
+    workspace({ stores: [store(), store({ id: STORE_B, name: 'Otra tienda' })] })
+
+  it('empieza por la tienda recordada en vez de por la primera de la lista', () => {
+    const state = resolve({
+      workspace: dosTiendas(),
+      storePreferences: { [COMPANY_A]: STORE_B },
+    })
+
+    expect(state.activeStore?.id).toBe(STORE_B)
+  })
+
+  it('lo elegido en esta sesion manda sobre lo recordado', () => {
+    const state = resolve({
+      workspace: dosTiendas(),
+      storeOverride: STORE_A,
+      storePreferences: { [COMPANY_A]: STORE_B },
+    })
+
+    expect(state.activeStore?.id).toBe(STORE_A)
+  })
+
+  it('una tienda recordada que ya no es suya se descarta: vuelve la primera', () => {
+    const state = resolve({
+      workspace: dosTiendas(),
+      // Archivada, de otra sociedad o escrita a mano: da igual cual de las
+      // tres, porque no esta en la lista que devolvio el servidor.
+      storePreferences: { [COMPANY_A]: '11111111-2222-4333-8444-555555555555' },
+    })
+
+    expect(state.activeStore?.id).toBe(STORE_A)
+  })
+
+  it('la preferencia de OTRA sociedad no se aplica a esta', () => {
+    const state = resolve({
+      workspace: dosTiendas(),
+      storePreferences: { [COMPANY_B]: STORE_B },
+    })
+
+    expect(state.activeStore?.id).toBe(STORE_A)
+  })
+})
