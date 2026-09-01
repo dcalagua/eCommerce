@@ -93,14 +93,19 @@ describe('rutas base', () => {
       '/app/promotions',
       '/app/settings',
     ])
-    // P06 anade la confirmacion, P05-SaaS el area de cuenta del comprador B2B y
-    // P11-SaaS la pagina administrable: catalogo, ficha, carrito, checkout,
-    // pedido, cuenta y `/p/:pageSlug`.
+    // P06 anade la confirmacion, P05-SaaS el area de cuenta del comprador B2B,
+    // P11-SaaS la pagina administrable y los favoritos su lista: catalogo,
+    // ficha, favoritos, carrito, checkout, pedido, cuenta y `/p/:pageSlug`.
+    //
+    // La lista de favoritos NO cuelga de `/account` a proposito: guardar no
+    // exige sesion —sin ella los favoritos viven en el navegador— y meterla en
+    // el area de cuenta la dejaria fuera del alcance de quien no ha entrado.
     expect(paths(storefront?.children ?? [], '/s/:storeSlug').sort()).toEqual([
       '/s/:storeSlug',
       '/s/:storeSlug/account',
       '/s/:storeSlug/cart',
       '/s/:storeSlug/checkout',
+      '/s/:storeSlug/favoritos',
       '/s/:storeSlug/order/:orderNumber',
       '/s/:storeSlug/p/:pageSlug',
       '/s/:storeSlug/product/:productSlug',

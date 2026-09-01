@@ -1,4 +1,4 @@
-import { tryGetStorefrontClient } from '@/shared/lib/supabase'
+import { tryGetSupabaseClient } from '@/shared/lib/supabase'
 
 /**
  * Favoritos del comprador: los del servidor y los del navegador.
@@ -17,6 +17,19 @@ import { tryGetStorefrontClient } from '@/shared/lib/supabase'
  * las pierde justo cuando por fin podían ser suyas de verdad, que es el momento
  * exacto en el que menos se entiende.
  *
+ * ## Con qué cliente se llama, y por qué NO es el de la vitrina
+ *
+ * El catálogo se lee con el cliente ANÓNIMO —las policies públicas son `to
+ * anon`— pero un favorito es de una PERSONA: `toggle_product_favorite` deriva
+ * quién es de `ebim.user_id()`, o sea del `sub` del JWT. El cliente de la
+ * vitrina se crea con `persistSession: false` y no lleva sesión NUNCA, así que
+ * llamar desde él dejaba a la función sin usuario y levantando
+ * `SESION_REQUERIDA` — el corazón se encendía, la llamada fallaba y la vuelta
+ * atrás lo apagaba. Desde fuera: «no hace nada».
+ *
+ * Es la misma distinción que ya hacía el checkout al resolver la cuenta B2B:
+ * datos públicos con el cliente público, identidad con el que la lleva.
+ *
  * ## Por qué RPC y no una tabla abierta
  *
  * El comprador no es miembro del tenant: su JWT no trae `org_id` ni
@@ -31,8 +44,13 @@ const STORAGE_PREFIX = 'ebim.favorites.'
 export const TOGGLE_FAVORITE_RPC = 'toggle_product_favorite'
 export const MY_FAVORITES_RPC = 'my_product_favorites'
 
+/**
+ * El cliente CON sesión. Estas dos funciones solo se llaman con sesión abierta
+ * (`useFavorites` guarda en `localStorage` mientras no la hay), así que un
+ * `null` aquí es «no hay backend configurado», no «no hay usuario».
+ */
 function client() {
-  return tryGetStorefrontClient()
+  return tryGetSupabaseClient()
 }
 
 /** Los favoritos de ESTA tienda en este navegador. Sin sesión, son todos. */

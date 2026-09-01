@@ -89,6 +89,11 @@ const StoreHomePage = lazyPage(() =>
 const StoreProductPage = lazyPage(() =>
   import('@/features/storefront/StoreProductPage').then((m) => ({ default: m.StoreProductPage })),
 )
+const StoreFavoritesPage = lazyPage(() =>
+  import('@/features/storefront/StoreFavoritesPage').then((m) => ({
+    default: m.StoreFavoritesPage,
+  })),
+)
 const StoreCartPage = lazyPage(() =>
   import('@/features/storefront/StoreCartPage').then((m) => ({ default: m.StoreCartPage })),
 )
@@ -218,6 +223,7 @@ export const routes: RouteObject[] = [
       // sin `content.cms` devuelve «no hay página» — no «no contratado», que
       // sería contarle al comprador el plan de la tienda.
       { path: 'p/:pageSlug', element: withSuspense(<StoreContentPage />) },
+      { path: 'favoritos', element: withSuspense(<StoreFavoritesPage />) },
       { path: 'cart', element: withSuspense(<StoreCartPage />) },
       { path: 'checkout', element: withSuspense(<StoreCheckoutPage />) },
       // Área de cuenta del comprador B2B. NO cuelga del guard del backoffice:

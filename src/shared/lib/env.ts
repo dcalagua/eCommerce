@@ -14,6 +14,17 @@ export const EBIM_HUB_URL = readEnv('VITE_EBIM_HUB_URL')
 export const EBIM_APP_SLUG = readEnv('VITE_EBIM_APP_SLUG') || 'ecommerce'
 export const APP_NAME = readEnv('VITE_APP_NAME') || 'eCommerce'
 /**
+ * Vitrina a la que apunta la portada del dominio raiz, si el despliegue tiene
+ * una sola tienda que ensenar.
+ *
+ * Vacio es el caso NORMAL de un SaaS multitenant: cada tienda vive en su slug y
+ * la raiz no tiene por que elegir una. Cuando esta vacio, la portada lo resuelve
+ * sola: si el proyecto tiene EXACTAMENTE una tienda activa, enlaza a esa. Con
+ * varias no adivina y tampoco las lista — la lista de tiendas activas es la
+ * lista de clientes.
+ */
+export const STOREFRONT_SLUG = readEnv('VITE_STOREFRONT_SLUG')
+/**
  * Versión del build. La inyecta el despliegue; en local es `dev`.
  *
  * Existe para el área de diagnóstico (P02-SaaS): la primera pregunta de
