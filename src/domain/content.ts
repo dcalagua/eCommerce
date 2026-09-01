@@ -245,6 +245,12 @@ export const CONTENT_BLOCK_TYPES = [
   'category_collection',
   'rich_text',
   'campaign',
+  /**
+   * P18 · Carrusel de IMAGENES. Distinto de `carousel`, que desde P11 es un
+   * carrusel de productos: un tipo que significa dos cosas segun lo que le
+   * falte acaba enseñando lo que no es.
+   */
+  'slider',
 ] as const
 export type ContentBlockType = (typeof CONTENT_BLOCK_TYPES)[number]
 
@@ -257,7 +263,7 @@ export const CONTENT_STATUSES = ['draft', 'published', 'archived'] as const
 export type ContentStatus = (typeof CONTENT_STATUSES)[number]
 
 /** Réplica del enum `public.content_item_kind`. */
-export const CONTENT_ITEM_KINDS = ['product', 'variant', 'category'] as const
+export const CONTENT_ITEM_KINDS = ['product', 'variant', 'category', 'media'] as const
 export type ContentItemKind = (typeof CONTENT_ITEM_KINDS)[number]
 
 /**
@@ -281,6 +287,13 @@ export const CONTENT_SETTING_KEYS = [
   'background',
   'compact',
   'reverse',
+  /**
+   * P18 · Una colección por categoría incluye las subcategorías.
+   *
+   * Apagada por defecto, igual que en las campañas: un bloque publicado no
+   * puede cambiar de contenido porque alguien añada una subcategoría mañana.
+   */
+  'descendants',
 ] as const
 export type ContentSettingKey = (typeof CONTENT_SETTING_KEYS)[number]
 
@@ -323,7 +336,147 @@ export function blockShapeIsComplete(input: {
   }
 }
 
+/**
+ * Qué campos usa cada tipo de bloque, y cuáles exige.
+ *
+ * ## Por qué existe
+ *
+ * El formulario enseñaba los DIECISÉIS campos para los ocho tipos, y la base
+ * rechazaba después las combinaciones imposibles: `content_blocks_body_only_text`
+ * solo admite contenido en texto, hero y banner, `content_blocks_promotion_only_campaign`
+ * solo deja la campaña en el bloque de campaña, `content_blocks_category_only_collection`
+ * solo la categoría en las colecciones. Escribir en un campo que el tipo elegido
+ * no admite terminaba en un error de CHECK traducido a «faltan datos
+ * obligatorios» — que además dice lo contrario de lo que pasaba: sobraban.
+ *
+ * Esta tabla es la ÚNICA fuente: de ella salen los campos que se pintan, el
+ * asterisco de los obligatorios y las reglas que se comprueban antes de guardar.
+ * Que el formulario y la base discrepen deja de ser posible por construcción, y
+ * hay un test que la contrasta contra los CHECK de Postgres.
+ *
+ * `unused` no es «opcional pero raro»: es «la base lo rechaza o la vitrina no lo
+ * pinta». Un campo así no se enseña, y al cambiar de tipo se vacía — si no,
+ * pasar un hero con contenido a carrusel guardaría un cuerpo que nadie ve y que
+ * el CHECK ni siquiera admite.
+ */
+export type BlockFieldUse = 'required' | 'optional' | 'unused'
+
+export interface BlockFieldRules {
+  readonly title: BlockFieldUse
+  readonly subtitle: BlockFieldUse
+  readonly body: BlockFieldUse
+  readonly media: BlockFieldUse
+  readonly cta: BlockFieldUse
+  readonly promotion: BlockFieldUse
+  readonly category: BlockFieldUse
+  readonly columns: BlockFieldUse
+  readonly itemLimit: BlockFieldUse
+  /**
+   * Hero y banner piden título O imagen, no los dos: un banner que es solo una
+   * ilustración es legítimo, y uno que es solo un titular también. Como no es
+   * una exigencia de un campo suelto, viaja aparte y el formulario la explica
+   * en una línea en vez de poner un asterisco que mentiría en ambos.
+   */
+  readonly titleOrMedia: boolean
+}
+
+const COLECCION: BlockFieldRules = {
+  title: 'optional',
+  subtitle: 'optional',
+  body: 'unused',
+  media: 'unused',
+  cta: 'optional',
+  promotion: 'unused',
+  category: 'optional',
+  columns: 'optional',
+  itemLimit: 'optional',
+  titleOrMedia: false,
+}
+
+const CARTEL: BlockFieldRules = {
+  title: 'optional',
+  subtitle: 'optional',
+  body: 'optional',
+  media: 'optional',
+  cta: 'optional',
+  promotion: 'unused',
+  category: 'unused',
+  columns: 'unused',
+  itemLimit: 'unused',
+  titleOrMedia: true,
+}
+
+const RULES: Record<ContentBlockType, BlockFieldRules> = {
+  hero: CARTEL,
+  banner: CARTEL,
+  rich_text: {
+    ...CARTEL,
+    body: 'required',
+    media: 'unused',
+    titleOrMedia: false,
+  },
+  campaign: {
+    ...CARTEL,
+    title: 'required',
+    body: 'unused',
+    promotion: 'optional',
+    titleOrMedia: false,
+  },
+  product_collection: COLECCION,
+  carousel: COLECCION,
+  category_collection: COLECCION,
+  /**
+   * El carrusel de imágenes no tiene contenido propio: sus diapositivas SON el
+   * bloque, y se cargan en su propio panel. El título solo se usa como nombre
+   * accesible de la región, así que ni siquiera es obligatorio.
+   */
+  slider: {
+    title: 'optional',
+    subtitle: 'unused',
+    body: 'unused',
+    media: 'unused',
+    cta: 'unused',
+    promotion: 'unused',
+    category: 'unused',
+    columns: 'unused',
+    itemLimit: 'optional',
+    titleOrMedia: false,
+  },
+}
+
+/**
+ * Cómo se enseñan las imágenes de un bloque de imágenes.
+ *
+ * `carousel` pasa una a una; `grid` las pone todas a la vez en un mosaico. Es la
+ * MISMA lista de diapositivas: cambia la disposición, no el contenido, así que
+ * pasar de una a otra no obliga a volver a subir nada. Viaja en `settings.layout`,
+ * que ya está en el vocabulario cerrado — no hace falta migración ni un tipo de
+ * bloque nuevo, que habría duplicado la pantalla de carga de imágenes.
+ */
+export const MEDIA_LAYOUTS = ['carousel', 'grid'] as const
+export type MediaLayout = (typeof MEDIA_LAYOUTS)[number]
+
+export function mediaLayoutOf(settings: Record<string, unknown>): MediaLayout {
+  return settings.layout === 'grid' ? 'grid' : 'carousel'
+}
+
+export function blockFieldRules(type: ContentBlockType): BlockFieldRules {
+  return RULES[type]
+}
+
 /** Los tipos que muestran una lista de items. */
 export function blockAcceptsItems(type: ContentBlockType): boolean {
-  return type === 'product_collection' || type === 'category_collection' || type === 'carousel'
+  return (
+    type === 'product_collection' ||
+    type === 'category_collection' ||
+    type === 'carousel' ||
+    // El carrusel de imagenes NO tiene otra forma de contenido: sus items son
+    // el bloque entero.
+    type === 'slider'
+  )
+}
+
+/** Los que llevan IMAGENES como items, en vez de filas del catalogo. */
+export function blockUsesMediaItems(type: ContentBlockType): boolean {
+  return type === 'slider'
 }

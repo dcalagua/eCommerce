@@ -14,6 +14,7 @@ import {
   Button,
   Card,
   Divider,
+  FormControlLabel,
   MenuItem,
   Skeleton,
   Stack,
@@ -26,14 +27,23 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useMemo, useState, Suspense } from 'react'
+import { useEffect, useMemo, useState, Suspense } from 'react'
 import { lazyPage } from '@/app/lazyPage'
-import { CONTENT_BLOCK_TYPES, blockAcceptsItems } from '@/domain/content'
+import {
+  CONTENT_BLOCK_TYPES,
+  blockAcceptsItems,
+  blockFieldRules,
+  MEDIA_LAYOUTS,
+  blockUsesMediaItems,
+  mediaLayoutOf,
+} from '@/domain/content'
 import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { useDebouncedValue } from '@/shared/lib/useDebouncedValue'
 import { FormDrawer } from '@/shared/ui/FormDrawer'
+import { StoreAssetField } from '@/features/admin/settings/StoreAssetField'
+import { useAssetUrls } from '@/features/admin/settings/useStoreSettings'
 /**
  * El editor se carga cuando se abre el panel, no con la pantalla.
  *
@@ -62,12 +72,23 @@ import {
 } from './hooks'
 import {
   blockFormSchema,
+  clearUnusedBlockFields,
   validateBlockForm,
   type BlockFormValues,
   type ContentBlockRow,
 } from './types'
 import { parseRichText } from '@/domain/content'
-import { useRemoveBlockItem } from './hooks'
+import { isSafeHref } from '@/domain/href'
+import { useMoveBlockItem, useRemoveBlockItem } from './hooks'
+
+/**
+ * La etiqueta se sube siempre.
+ *
+ * Estos campos se rellenan desde el estado, y MUI decide si la etiqueta flota
+ * mirando el DOM al montar: sin forzarlo, un valor que llega después queda
+ * escrito DEBAJO de su propia etiqueta.
+ */
+const SHRINK = { inputLabel: { shrink: true } } as const
 
 function emptyForm(): BlockFormValues {
   return {
@@ -89,6 +110,8 @@ function emptyForm(): BlockFormValues {
     channel_id: null,
     segment_id: null,
     columns: 4,
+    descendants: false,
+    layout: 'carousel',
   }
 }
 
@@ -113,6 +136,8 @@ function toForm(row: ContentBlockRow): BlockFormValues {
     channel_id: row.channel_id,
     segment_id: row.segment_id,
     columns: typeof settings.columns === 'number' ? settings.columns : 4,
+    descendants: settings.descendants === true,
+    layout: mediaLayoutOf(settings),
   }
 }
 
@@ -143,6 +168,11 @@ export function BlocksSection({ pageId }: { pageId: string | null }) {
   const [itemsFor, setItemsFor] = useState<ContentBlockRow | null>(null)
 
   const blocks = useBlocks(pageId)
+  const organizationId = tenant?.organization_id ?? null
+  const storeId = activeStore?.id ?? null
+  // Vista previa de la imagen del bloque: el bucket es privado, asi que la
+  // ruta guardada no se puede pintar sin firmar.
+  const mediaUrls = useAssetUrls([form.media_url])
 
   const scope = useMemo(
     () =>
@@ -172,6 +202,49 @@ export function BlocksSection({ pageId }: { pageId: string | null }) {
   const firstIssue = parsed.success
     ? (issues[0]?.key ?? null)
     : (parsed.error.issues[0]?.message ?? 'content.error.generic')
+  /**
+   * Que campos pinta el tipo elegido, y cual de ellos exige.
+   *
+   * Sale de la MISMA tabla que valida antes de guardar, asi que un campo que se
+   * ve es un campo que la base admite. Ensenar los dieciseis para los ocho
+   * tipos era lo que dejaba escribir el contenido de un carrusel de imagenes
+   * —que la base rechaza— y recibir un aviso que decia lo contrario.
+   */
+  const rules = blockFieldRules(form.block_type)
+  const issueOf = (field: keyof BlockFormValues): string | null =>
+    issues.find((issue) => issue.field === field)?.key ?? null
+  /**
+   * El resumen del pie solo aparece si el aviso no tiene DONDE ponerse.
+   *
+   * Los campos de abajo ya lo enseñan pegados a su etiqueta; repetirlo al final
+   * daba el mismo mensaje dos veces en la misma pantalla. Queda para los avisos
+   * de un campo que este tipo no pinta —la red de seguridad de «este dato
+   * sobra»— y para los que vienen del esquema, que no señalan campo.
+   */
+  const inlineFields = new Set<keyof BlockFormValues>([
+    'title',
+    'publish_to',
+    ...(rules.body !== 'unused' ? (['body'] as const) : []),
+    ...(rules.cta !== 'unused' ? (['cta_href'] as const) : []),
+  ])
+  const showSummary =
+    firstIssue !== null && (!parsed.success || !inlineFields.has(issues[0]!.field))
+
+  /**
+   * Sube o baja UN sitio, intercambiando con la vecina.
+   *
+   * Dos updates y no uno: `position` no es única en la tabla, así que el
+   * intercambio no necesita un valor libre de por medio. Y se intercambia en vez
+   * de sumar uno porque las posiciones vienen espaciadas —5, 10, 15…—: sumar uno
+   * dejaba el bloque donde estaba y obligaba a repetir el clic cinco veces.
+   */
+  async function intercambiar(indice: number, delta: number) {
+    const uno = list[indice]
+    const otro = list[indice + delta]
+    if (!uno || !otro) return
+    await move.mutateAsync({ id: uno.id, position: otro.position })
+    await move.mutateAsync({ id: otro.id, position: uno.position })
+  }
 
   function openCreate() {
     setForm({ ...emptyForm(), position: list.length })
@@ -268,9 +341,22 @@ export function BlocksSection({ pageId }: { pageId: string | null }) {
               </TableRow>
             </TableHead>
             <TableBody>
-              {pager.rows.map((row, index) => (
+              {pager.rows.map((row) => {
+                const enLista = list.findIndex((item) => item.id === row.id)
+                return (
                 <TableRow key={row.id} hover>
-                  <TableCell align="right">{row.position}</TableCell>
+                  <TableCell align="right">
+                    <PositionField
+                      value={row.position}
+                      busy={move.isPending}
+                      label={`${t('content.blocks.position')} ${row.title ?? row.block_type}`}
+                      taken={list
+                        .filter((item) => item.id !== row.id)
+                        .map((item) => item.position)}
+                      onCommit={(position) => void move.mutateAsync({ id: row.id, position })}
+                      onRejected={() => notify(t('content.blocks.positionTaken'), 'error')}
+                    />
+                  </TableCell>
                   <TableCell>{t(`content.block.${row.block_type}` as MessageKey)}</TableCell>
                   <TableCell>{row.title ?? '—'}</TableCell>
                   <TableCell>
@@ -287,25 +373,23 @@ export function BlocksSection({ pageId }: { pageId: string | null }) {
                           icon: <ArrowUpwardRoundedIcon fontSize="small" />,
                           label: `${t('content.blocks.up')} ${row.title ?? row.block_type}`,
                           tone: 'neutral',
-                          disabled: index === 0 || move.isPending,
-                          onClick: () =>
-                            void move.mutateAsync({ id: row.id, position: Math.max(row.position - 1, 0) })
-                          ,
+                          disabled: enLista === 0 || move.isPending,
+                          onClick: () => void intercambiar(enLista, -1),
                         },
                         {
                           id: '1',
                           icon: <ArrowDownwardRoundedIcon fontSize="small" />,
                           label: `${t('content.blocks.down')} ${row.title ?? row.block_type}`,
                           tone: 'neutral',
-                          disabled: index === list.length - 1 || move.isPending,
-                          onClick: () =>
-                            void move.mutateAsync({ id: row.id, position: row.position + 1 })
-                          ,
+                          disabled: enLista === list.length - 1 || move.isPending,
+                          onClick: () => void intercambiar(enLista, 1),
                         },
                         {
                           id: '2',
                           icon: <FormatListBulletedRoundedIcon fontSize="small" />,
-                          label: t('content.items.manage'),
+                          label: blockUsesMediaItems(row.block_type)
+                            ? t('content.slides.manage')
+                            : t('content.items.manage'),
                           tone: 'accent',
                           disabled: !(blockAcceptsItems(row.block_type)),
                           onClick: () => setItemsFor(row),
@@ -328,7 +412,8 @@ export function BlocksSection({ pageId }: { pageId: string | null }) {
                     />
                   </TableCell>
                 </TableRow>
-              ))}
+                )
+              })}
             </TableBody>
           </Table>
         )}
@@ -372,8 +457,17 @@ export function BlocksSection({ pageId }: { pageId: string | null }) {
             label={t('content.blocks.type')}
             value={form.block_type}
             onChange={(event) =>
-              setForm({ ...form, block_type: event.target.value as BlockFormValues['block_type'] })
+              // Al cambiar de tipo se vacía lo que el nuevo no admite. Sin esto,
+              // el contenido de un hero sobreviviría escondido a un cambio a
+              // carrusel y la base rechazaría el guardado sin nada que señalar.
+              setForm(
+                clearUnusedBlockFields({
+                  ...form,
+                  block_type: event.target.value as BlockFormValues['block_type'],
+                }),
+              )
             }
+            helperText={t('content.blocks.requiredHint')}
           >
             {CONTENT_BLOCK_TYPES.map((type) => (
               <MenuItem key={type} value={type}>
@@ -381,22 +475,69 @@ export function BlocksSection({ pageId }: { pageId: string | null }) {
               </MenuItem>
             ))}
           </TextField>
+
+          {blockUsesMediaItems(form.block_type) && (
+            <>
+              <Typography sx={{ color: 'var(--muted)', fontSize: 13 }}>
+                {t('content.blocks.slidesHint')}
+              </Typography>
+              {/* Carrusel o mosaico: la MISMA lista de imágenes con otra
+                  disposición. Cambiarla no obliga a volver a subir nada, por eso
+                  es un ajuste del bloque y no otro tipo de bloque. */}
+              <TextField
+                select
+                label={t('content.blocks.layout')}
+                value={form.layout}
+                helperText={t('content.blocks.layoutHelp')}
+                onChange={(event) =>
+                  setForm({ ...form, layout: event.target.value as BlockFormValues['layout'] })
+                }
+              >
+                {MEDIA_LAYOUTS.map((layout) => (
+                  <MenuItem key={layout} value={layout}>
+                    {t(`content.blocks.layout.${layout}` as MessageKey)}
+                  </MenuItem>
+                ))}
+              </TextField>
+              {form.layout === 'grid' && (
+                <TextField
+                  type="number"
+                  label={t('content.blocks.columns')}
+                  helperText={t('content.blocks.columnsHelp')}
+                  value={form.columns}
+                  onChange={(event) => setForm({ ...form, columns: Number(event.target.value) })}
+                />
+              )}
+            </>
+          )}
+
           <TextField
             label={t('content.blocks.title')}
+            required={rules.title === 'required'}
             value={form.title}
+            error={Boolean(issueOf('title'))}
+            helperText={
+              issueOf('title')
+                ? t(issueOf('title') as MessageKey)
+                : rules.titleOrMedia
+                  ? t('content.blocks.titleOrMediaHint')
+                  : undefined
+            }
             onChange={(event) => setForm({ ...form, title: event.target.value })}
           />
-          <TextField
-            label={t('content.blocks.subtitle')}
-            value={form.subtitle}
-            onChange={(event) => setForm({ ...form, subtitle: event.target.value })}
-          />
+          {rules.subtitle !== 'unused' && (
+            <TextField
+              label={t('content.blocks.subtitle')}
+              value={form.subtitle}
+              onChange={(event) => setForm({ ...form, subtitle: event.target.value })}
+            />
+          )}
           {/* El bloque APUNTA a la campaña; la campaña no sabe que existe el
               bloque. Se enseña su estado efectivo al lado del nombre porque
               anunciar una campaña caducada es un error caro y silencioso, y el
               desplegable es donde se ve. Lo que NUNCA sale a la vitrina es el
               código del cupón: eso sería regalar el folleto. */}
-          {form.block_type === 'campaign' && (
+          {rules.promotion !== 'unused' && (
             <TextField
               select
               label={t('content.blocks.promotion')}
@@ -416,44 +557,98 @@ export function BlocksSection({ pageId }: { pageId: string | null }) {
               ))}
             </TextField>
           )}
-          <Suspense fallback={<Skeleton variant="rounded" height={260} />}>
-            <RichTextEditor
-              label={t('content.blocks.body')}
-              value={form.body}
-              onChange={(next) => setForm({ ...form, body: next })}
-              helperText={t('content.blocks.bodyHelp')}
-              disabled={save.isPending}
+          {rules.body !== 'unused' && (
+            <Suspense fallback={<Skeleton variant="rounded" height={260} />}>
+              <RichTextEditor
+                label={`${t('content.blocks.body')}${rules.body === 'required' ? ' *' : ''}`}
+                value={form.body}
+                onChange={(next) => setForm({ ...form, body: next })}
+                helperText={
+                  issueOf('body') ? t(issueOf('body') as MessageKey) : t('content.blocks.bodyHelp')
+                }
+                disabled={save.isPending}
+              />
+            </Suspense>
+          )}
+          {rules.cta !== 'unused' && (
+            <>
+              <TextField
+                label={t('content.blocks.ctaLabel')}
+                value={form.cta_label}
+                onChange={(event) => setForm({ ...form, cta_label: event.target.value })}
+              />
+              <TextField
+                label={t('content.blocks.ctaHref')}
+                value={form.cta_href}
+                error={Boolean(issueOf('cta_href'))}
+                onChange={(event) => setForm({ ...form, cta_href: event.target.value })}
+                helperText={
+                  issueOf('cta_href')
+                    ? t(issueOf('cta_href') as MessageKey)
+                    : t('content.blocks.ctaHrefHelp')
+                }
+              />
+            </>
+          )}
+          {/* P18 · La imagen del bloque.
+              El circuito estaba entero —`media_url` en la fila, la vitrina la
+              firma y el hero, el banner y la campaña la pintan— y faltaba la
+              única pieza que lo hacía usable: por dónde se sube. Sin esto, el
+              campo de texto alternativo describía una imagen que no había forma
+              de poner. */}
+          {rules.media !== 'unused' && (
+            <>
+              <StoreAssetField
+                kind="content"
+                ratio="16 / 6"
+                label={t('content.blocks.media')}
+                help={t('content.blocks.mediaHelp')}
+                value={form.media_url}
+                previewUrl={form.media_url ? (mediaUrls[form.media_url] ?? null) : null}
+                disabled={save.isPending}
+                organizationId={organizationId ?? ''}
+                storeId={storeId ?? ''}
+                onChange={(next) => setForm({ ...form, media_url: next })}
+              />
+
+              <TextField
+                label={t('content.blocks.mediaAlt')}
+                value={form.media_alt}
+                onChange={(event) => setForm({ ...form, media_alt: event.target.value })}
+                helperText={t('content.blocks.mediaAltHelp')}
+              />
+            </>
+          )}
+          {/* P18 · Solo dice algo en una coleccion por categoria: en un hero o
+              en un texto no hay categoria de la que colgar nada. */}
+          {rules.category !== 'unused' && form.category_id !== null && (
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={form.descendants}
+                  onChange={(event) => setForm({ ...form, descendants: event.target.checked })}
+                />
+              }
+              label={t('content.blocks.descendants')}
             />
-          </Suspense>
-          <TextField
-            label={t('content.blocks.ctaLabel')}
-            value={form.cta_label}
-            onChange={(event) => setForm({ ...form, cta_label: event.target.value })}
-          />
-          <TextField
-            label={t('content.blocks.ctaHref')}
-            value={form.cta_href}
-            onChange={(event) => setForm({ ...form, cta_href: event.target.value })}
-            helperText={t('content.blocks.ctaHrefHelp')}
-          />
-          <TextField
-            label={t('content.blocks.mediaAlt')}
-            value={form.media_alt}
-            onChange={(event) => setForm({ ...form, media_alt: event.target.value })}
-            helperText={t('content.blocks.mediaAltHelp')}
-          />
-          <TextField
-            type="number"
-            label={t('content.blocks.columns')}
-            value={form.columns}
-            onChange={(event) => setForm({ ...form, columns: Number(event.target.value) })}
-          />
-          <TextField
-            type="number"
-            label={t('content.blocks.itemLimit')}
-            value={form.item_limit}
-            onChange={(event) => setForm({ ...form, item_limit: Number(event.target.value) })}
-          />
+          )}
+
+          {rules.columns !== 'unused' && (
+            <TextField
+              type="number"
+              label={t('content.blocks.columns')}
+              value={form.columns}
+              onChange={(event) => setForm({ ...form, columns: Number(event.target.value) })}
+            />
+          )}
+          {rules.itemLimit !== 'unused' && (
+            <TextField
+              type="number"
+              label={t('content.blocks.itemLimit')}
+              value={form.item_limit}
+              onChange={(event) => setForm({ ...form, item_limit: Number(event.target.value) })}
+            />
+          )}
           <TextField
             type="datetime-local"
             label={t('content.pages.from')}
@@ -465,6 +660,8 @@ export function BlocksSection({ pageId }: { pageId: string | null }) {
             type="datetime-local"
             label={t('content.pages.to')}
             value={form.publish_to}
+            error={Boolean(issueOf('publish_to'))}
+            helperText={issueOf('publish_to') ? t(issueOf('publish_to') as MessageKey) : undefined}
             onChange={(event) => setForm({ ...form, publish_to: event.target.value })}
             InputLabelProps={{ shrink: true }}
           />
@@ -476,7 +673,7 @@ export function BlocksSection({ pageId }: { pageId: string | null }) {
             />
             <Typography sx={{ fontWeight: 700 }}>{t('content.blocks.active')}</Typography>
           </Stack>
-          {firstIssue && (
+          {showSummary && (
             <Typography sx={{ color: 'var(--red)', fontWeight: 700, fontSize: 12 }}>
               {t(firstIssue as MessageKey)}
             </Typography>
@@ -490,6 +687,87 @@ export function BlocksSection({ pageId }: { pageId: string | null }) {
 }
 
 /**
+ * La posición, escrita a mano.
+ *
+ * Las flechas sirven para mover un sitio; para llevar el último bloque al
+ * principio de una portada larga, no. Aquí se escribe el número y se guarda al
+ * salir del campo o con Intro.
+ *
+ * ## Lo que valida, y por qué antes de enviar
+ *
+ * **Que no se repita.** La base admite dos bloques con el mismo número —no hay
+ * índice único— y entonces el orden entre ellos deja de estar definido: la
+ * portada se pinta hoy de una forma y mañana de otra sin que nadie haya tocado
+ * nada. Es justo la clase de fallo que no se reproduce cuando se denuncia.
+ *
+ * **Que esté entre 0 y 999**, que es el rango del CHECK
+ * `content_blocks_position_range`. Decirlo aquí convierte un 400 genérico en un
+ * campo en rojo.
+ *
+ * Si el número no vale, el campo VUELVE al que tenía. Dejar escrito un valor que
+ * no se ha guardado es la forma más rápida de que alguien cierre la pantalla
+ * convencido de haber ordenado la portada.
+ */
+function PositionField({
+  value,
+  taken,
+  busy,
+  label,
+  onCommit,
+  onRejected,
+}: {
+  value: number
+  /** Las posiciones de los DEMÁS bloques de la página. */
+  taken: number[]
+  busy: boolean
+  label: string
+  onCommit: (position: number) => void
+  onRejected: () => void
+}) {
+  const [draft, setDraft] = useState(String(value))
+
+  // El valor de fuera manda cuando cambia: tras guardar, tras deshacer, y
+  // cuando el intercambio de la fila vecina mueve esta.
+  useEffect(() => setDraft(String(value)), [value])
+
+  function commit() {
+    const next = Number(draft)
+    if (draft.trim() === '' || !Number.isInteger(next) || next < 0 || next > 999) {
+      setDraft(String(value))
+      return
+    }
+    if (next === value) return
+    if (taken.includes(next)) {
+      setDraft(String(value))
+      onRejected()
+      return
+    }
+    onCommit(next)
+  }
+
+  return (
+    <TextField
+      type="number"
+      size="small"
+      value={draft}
+      disabled={busy}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.currentTarget.blur()
+        // Escape deshace: es lo que espera quien se ha equivocado escribiendo.
+        if (event.key === 'Escape') {
+          setDraft(String(value))
+          event.currentTarget.blur()
+        }
+      }}
+      slotProps={{ htmlInput: { 'aria-label': label, min: 0, max: 999, style: { textAlign: 'right' } } }}
+      sx={{ width: 76 }}
+    />
+  )
+}
+
+/**
  * Los productos de una colección: se buscan y se añaden.
  *
  * El buscador es el `SearchPort` del backoffice, así que encuentra también lo
@@ -499,6 +777,22 @@ export function BlocksSection({ pageId }: { pageId: string | null }) {
  * `public_products`.
  */
 function CollectionDrawer({
+  block,
+  onClose,
+}: {
+  block: ContentBlockRow | null
+  onClose: () => void
+}) {
+  // Un carrusel de imagenes no se llena del catalogo: sus items SON imagenes.
+  // Se reparte aqui y no dentro con condicionales porque son dos paneles
+  // distintos de arriba abajo — buscador y resultados contra subida y alt.
+  if (block && blockUsesMediaItems(block.block_type)) {
+    return <SlidesDrawer block={block} onClose={onClose} />
+  }
+  return <ProductItemsDrawer block={block} onClose={onClose} />
+}
+
+function ProductItemsDrawer({
   block,
   onClose,
 }: {
@@ -625,6 +919,230 @@ function CollectionDrawer({
         )}
         {results.data && results.data.mode === 'empty' && search.trim().length >= 2 && (
           <Typography sx={{ color: 'var(--muted)' }}>{t('content.items.noResults')}</Typography>
+        )}
+      </Stack>
+    </FormDrawer>
+  )
+}
+
+/**
+ * Las diapositivas del carrusel de imágenes.
+ *
+ * Cada una es un item `media` del bloque: la ruta de la imagen en el bucket
+ * privado de la tienda, su texto alternativo y, si acaso, a dónde lleva.
+ *
+ * ## Decisiones que este panel toma por quien lo usa
+ *
+ * **El alt es obligatorio.** La base lo exige (`content_block_items_media_shape`)
+ * y aquí se pide antes de dejar añadir, para que el aviso salga escribiendo y no
+ * al guardar. Un carrusel sin alt es un banner mudo para quien navega con lector
+ * de pantalla, y suele ser justo el que anuncia la oferta.
+ *
+ * **El enlace se valida con la MISMA función que la vitrina** (`isSafeHref`).
+ * Si aquí colara un `javascript:`, el CHECK de la base lo rechazaría con un
+ * error genérico; comprobarlo antes convierte eso en una frase que se entiende.
+ *
+ * **El orden se edita.** En un carrusel la primera imagen es la que ve casi todo
+ * el mundo, así que subir y bajar tiene que estar a mano: sin eso, la única
+ * forma de recolocar sería borrar y volver a subir.
+ */
+function SlidesDrawer({ block, onClose }: { block: ContentBlockRow; onClose: () => void }) {
+  const { t } = useI18n()
+  const { notify } = useFeedback()
+  const { activeStore, tenant, activeCompanyId } = useTenant()
+
+  const items = useBlockItems(block.id)
+  const slides = useMemo(() => items.data ?? [], [items.data])
+
+  const scope = useMemo(
+    () =>
+      tenant && activeCompanyId && activeStore
+        ? {
+            organizationId: tenant.organization_id,
+            companyId: activeCompanyId,
+            storeId: activeStore.id,
+          }
+        : null,
+    [tenant, activeCompanyId, activeStore],
+  )
+
+  const add = useAddBlockItem(scope)
+  const drop = useRemoveBlockItem()
+  const move = useMoveBlockItem()
+
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null)
+  const [alt, setAlt] = useState('')
+  const [href, setHref] = useState('')
+
+  // Una sola petición de firmas para las que ya están y la que se está
+  // preparando: son URLs de un bucket privado y caducan, así que pedirlas por
+  // separado sería multiplicar viajes por diapositiva.
+  const paths = useMemo(
+    () => [...slides.map((slide) => slide.media_url), mediaUrl].filter((p): p is string => !!p),
+    [slides, mediaUrl],
+  )
+  const urls = useAssetUrls(paths)
+
+  const hrefLimpio = href.trim()
+  const hrefValido = hrefLimpio === '' || isSafeHref(hrefLimpio)
+  const puedeAnadir = mediaUrl !== null && alt.trim().length > 0 && hrefValido
+
+  async function anadir() {
+    if (!puedeAnadir) return
+    try {
+      await add.mutateAsync({
+        blockId: block.id,
+        blockType: block.block_type,
+        itemKind: 'media',
+        mediaUrl,
+        mediaAlt: alt.trim(),
+        href: hrefLimpio === '' ? null : hrefLimpio,
+        position: slides.length,
+      })
+      setMediaUrl(null)
+      setAlt('')
+      setHref('')
+      notify(t('content.slides.added'), 'success')
+    } catch (error) {
+      const key: MessageKey = error instanceof ContentError ? error.key : 'content.error.generic'
+      notify(t(key), 'error')
+    }
+  }
+
+  async function intercambiar(index: number, delta: number) {
+    const uno = slides[index]
+    const otro = slides[index + delta]
+    if (!uno || !otro) return
+    // Dos updates y no uno: `position` no es única, así que el intercambio no
+    // necesita un valor libre de por medio.
+    await move.mutateAsync({ id: uno.id, position: otro.position })
+    await move.mutateAsync({ id: otro.id, position: uno.position })
+  }
+
+  return (
+    <FormDrawer
+      open
+      title={t('content.slides.title')}
+      subtitle={block.title ?? undefined}
+      onClose={onClose}
+      width={620}
+      actions={<Button onClick={onClose}>{t('common.close')}</Button>}
+    >
+      <Stack spacing={2}>
+        <Typography sx={{ color: 'var(--muted)' }}>{t('content.slides.help')}</Typography>
+
+        <Box>
+          <Typography sx={{ fontWeight: 800, mb: 1 }}>{t('content.slides.current')}</Typography>
+          {slides.length === 0 ? (
+            <Typography sx={{ color: 'var(--muted)' }}>{t('content.slides.empty')}</Typography>
+          ) : (
+            <Stack spacing={1}>
+              {slides.map((slide, index) => (
+                <Card
+                  key={slide.id}
+                  variant="outlined"
+                  sx={{ p: 1, display: 'flex', gap: 1.5, alignItems: 'center' }}
+                >
+                  <Box
+                    component="img"
+                    src={(slide.media_url ? urls[slide.media_url] : undefined) || undefined}
+                    alt=""
+                    sx={{
+                      width: 96,
+                      height: 40,
+                      objectFit: 'cover',
+                      borderRadius: 1,
+                      bgcolor: 'var(--surface-2)',
+                      flexShrink: 0,
+                    }}
+                  />
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography noWrap sx={{ fontWeight: 700, fontSize: 13 }}>
+                      {slide.media_alt}
+                    </Typography>
+                    <Typography noWrap sx={{ fontSize: 11, color: 'var(--muted)' }}>
+                      {slide.href ?? ''}
+                    </Typography>
+                  </Box>
+                  <RowActions
+                    actions={[
+                      {
+                        id: 'up',
+                        icon: <ArrowUpwardRoundedIcon fontSize="small" />,
+                        label: `${t('content.blocks.up')} ${slide.media_alt ?? ''}`,
+                        tone: 'neutral',
+                        disabled: index === 0 || move.isPending,
+                        onClick: () => void intercambiar(index, -1),
+                      },
+                      {
+                        id: 'down',
+                        icon: <ArrowDownwardRoundedIcon fontSize="small" />,
+                        label: `${t('content.blocks.down')} ${slide.media_alt ?? ''}`,
+                        tone: 'neutral',
+                        disabled: index === slides.length - 1 || move.isPending,
+                        onClick: () => void intercambiar(index, 1),
+                      },
+                      {
+                        id: 'del',
+                        icon: <DeleteRoundedIcon fontSize="small" />,
+                        label: t('common.delete'),
+                        tone: 'danger',
+                        onClick: () => void drop.mutateAsync(slide.id),
+                      },
+                    ]}
+                  />
+                </Card>
+              ))}
+            </Stack>
+          )}
+        </Box>
+
+        <Divider />
+
+        {scope && (
+          <StoreAssetField
+            kind="content"
+            label={t('content.slides.image')}
+            help={t('content.slides.imageHelp')}
+            value={mediaUrl}
+            previewUrl={(mediaUrl ? urls[mediaUrl] : null) || null}
+            disabled={add.isPending}
+            organizationId={scope.organizationId}
+            storeId={scope.storeId}
+            onChange={setMediaUrl}
+            ratio="16 / 6"
+          />
+        )}
+
+        <TextField
+          label={t('content.slides.alt')}
+          helperText={t('content.slides.altHelp')}
+          value={alt}
+          onChange={(event) => setAlt(event.target.value)}
+          slotProps={SHRINK}
+          fullWidth
+        />
+        <TextField
+          label={t('content.slides.href')}
+          helperText={hrefValido ? t('content.slides.hrefHelp') : t('content.slides.badHref')}
+          error={!hrefValido}
+          value={href}
+          onChange={(event) => setHref(event.target.value)}
+          slotProps={SHRINK}
+          fullWidth
+        />
+
+        <Button
+          variant="contained"
+          disabled={!puedeAnadir || add.isPending}
+          onClick={() => void anadir()}
+        >
+          {t('content.slides.add')}
+        </Button>
+        {!puedeAnadir && hrefValido && (
+          <Typography sx={{ fontSize: 12, color: 'var(--muted)' }}>
+            {t('content.slides.needImage')}
+          </Typography>
         )}
       </Stack>
     </FormDrawer>

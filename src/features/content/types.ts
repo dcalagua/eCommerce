@@ -3,7 +3,8 @@ import {
   CONTENT_BLOCK_TYPES,
   CONTENT_PAGE_KINDS,
   CONTENT_STATUSES,
-  blockShapeIsComplete,
+  MEDIA_LAYOUTS,
+  blockFieldRules,
   isSafeHref,
   looksLikeMarkup,
   richTextSchema,
@@ -104,10 +105,14 @@ export type ContentBlockRow = z.infer<typeof contentBlockSchema>
 export const contentBlockItemSchema = z.object({
   id: z.string().uuid(),
   block_id: z.string().uuid(),
-  item_kind: z.enum(['product', 'variant', 'category']),
+  item_kind: z.enum(['product', 'variant', 'category', 'media']),
   product_id: z.string().uuid().nullable().default(null),
   variant_id: z.string().uuid().nullable().default(null),
   category_id: z.string().uuid().nullable().default(null),
+  /** P18 · La diapositiva: ruta en el bucket privado, su alt y su destino. */
+  media_url: z.string().nullable().default(null),
+  media_alt: z.string().nullable().default(null),
+  href: z.string().nullable().default(null),
   position: z.number().int(),
 })
 export type ContentBlockItemRow = z.infer<typeof contentBlockItemSchema>
@@ -182,6 +187,21 @@ export const blockFormSchema = z.object({
   channel_id: z.string().nullable(),
   segment_id: z.string().nullable(),
   columns: z.coerce.number().int().min(2).max(6),
+  /**
+   * P18 · La colección incluye las subcategorías de la categoría elegida.
+   *
+   * Viaja en `settings`, que es vocabulario CERRADO (ver `content.ts` y el
+   * CHECK `ebim.content_settings_are_safe`). Apagada por defecto: un bloque ya
+   * publicado no cambia de contenido porque alguien cuelgue algo mañana.
+   */
+  descendants: z.boolean().default(false),
+  /**
+   * P18 · Carrusel o mosaico, para los bloques de imágenes.
+   *
+   * Va en `settings` como `columns` y `descendants`: es presentación, no
+   * contenido, y la lista de diapositivas es la misma en las dos.
+   */
+  layout: z.enum(MEDIA_LAYOUTS).default('carousel'),
 })
 export type BlockFormValues = z.infer<typeof blockFormSchema>
 
@@ -198,23 +218,45 @@ export type ValidationIssue = { field: keyof BlockFormValues; key: string }
  */
 export function validateBlockForm(values: BlockFormValues): ValidationIssue[] {
   const issues: ValidationIssue[] = []
+  const rules = blockFieldRules(values.block_type)
   // El mismo juez que la base: si esto pasa y el CHECK no, es que las dos
   // mitades se han separado — y hay un test que lo comprueba contra Postgres.
   const parsedBody = values.body === null ? null : richTextSchema.safeParse(values.body)
 
-  if (!blockShapeIsComplete({
-    type: values.block_type,
-    title: values.title || null,
-    mediaUrl: values.media_url,
-    body: parsedBody?.success ? parsedBody.data : null,
-  })) {
-    issues.push({
-      field: values.block_type === 'rich_text' ? 'body' : 'title',
-      key: 'content.error.shape',
-    })
+  // --- Lo que FALTA -------------------------------------------------------
+  if (rules.title === 'required' && !values.title.trim()) {
+    issues.push({ field: 'title', key: 'content.error.titleRequired' })
+  }
+  if (rules.body === 'required' && !parsedBody?.success) {
+    issues.push({ field: 'body', key: 'content.error.bodyRequired' })
+  }
+  // Hero y banner: uno de los dos basta, y por eso el aviso habla de los dos.
+  if (rules.titleOrMedia && !values.title.trim() && !values.media_url) {
+    issues.push({ field: 'title', key: 'content.error.titleOrMedia' })
   }
 
-  if (parsedBody && !parsedBody.success) {
+  // --- Lo que SOBRA -------------------------------------------------------
+  // El fallo que lo destapó: un carrusel de imágenes con texto escrito en
+  // «Contenido». La base lo rechazaba con `content_blocks_body_only_text` y el
+  // aviso decía «faltan datos obligatorios», que es justo lo contrario.
+  if (rules.body === 'unused' && values.body !== null) {
+    issues.push({ field: 'body', key: 'content.error.notForThisType' })
+  }
+  if (rules.media === 'unused' && values.media_url) {
+    issues.push({ field: 'media_url', key: 'content.error.notForThisType' })
+  }
+  if (rules.cta === 'unused' && (values.cta_label || values.cta_href)) {
+    issues.push({ field: 'cta_label', key: 'content.error.notForThisType' })
+  }
+  if (rules.promotion === 'unused' && values.promotion_id) {
+    issues.push({ field: 'promotion_id', key: 'content.error.promotionOnlyCampaign' })
+  }
+  if (rules.category === 'unused' && values.category_id) {
+    issues.push({ field: 'category_id', key: 'content.error.categoryOnlyCollection' })
+  }
+
+  // --- Lo que está MAL ----------------------------------------------------
+  if (parsedBody && !parsedBody.success && rules.body !== 'unused') {
     const message = parsedBody.error.issues[0]?.message ?? ''
     issues.push({
       field: 'body',
@@ -229,20 +271,34 @@ export function validateBlockForm(values: BlockFormValues): ValidationIssue[] {
   if (values.cta_href && !isSafeHref(values.cta_href)) {
     issues.push({ field: 'cta_href', key: 'content.error.href' })
   }
-  if (values.promotion_id && values.block_type !== 'campaign') {
-    issues.push({ field: 'promotion_id', key: 'content.error.promotionOnlyCampaign' })
-  }
-  if (
-    values.category_id &&
-    !['product_collection', 'category_collection', 'carousel'].includes(values.block_type)
-  ) {
-    issues.push({ field: 'category_id', key: 'content.error.categoryOnlyCollection' })
-  }
   if (values.publish_to && values.publish_to <= values.publish_from) {
     issues.push({ field: 'publish_to', key: 'content.error.window' })
   }
 
   return issues
+}
+
+/**
+ * Vacía los campos que el tipo elegido no admite.
+ *
+ * Se llama al cambiar el desplegable de tipo. Sin esto, escribir el contenido de
+ * un hero y pasarlo después a carrusel dejaría un cuerpo escondido —el campo ya
+ * no se pinta— que el CHECK de la base rechaza al guardar, con el formulario sin
+ * nada que señalar.
+ */
+export function clearUnusedBlockFields(values: BlockFormValues): BlockFormValues {
+  const rules = blockFieldRules(values.block_type)
+  return {
+    ...values,
+    subtitle: rules.subtitle === 'unused' ? '' : values.subtitle,
+    body: rules.body === 'unused' ? null : values.body,
+    media_url: rules.media === 'unused' ? null : values.media_url,
+    media_alt: rules.media === 'unused' ? '' : values.media_alt,
+    cta_label: rules.cta === 'unused' ? '' : values.cta_label,
+    cta_href: rules.cta === 'unused' ? '' : values.cta_href,
+    promotion_id: rules.promotion === 'unused' ? null : values.promotion_id,
+    category_id: rules.category === 'unused' ? null : values.category_id,
+  }
 }
 
 /** Un texto vacío se guarda como NULL: los CHECK de longitud no admiten `''`. */

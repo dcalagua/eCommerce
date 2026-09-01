@@ -121,6 +121,26 @@ function heroBlock() {
   }
 }
 
+function sliderBlock() {
+  return {
+    ...heroBlock(),
+    id: 'dddd3333-3333-4333-8333-333333333333',
+    type: 'slider',
+    title: 'Campañas',
+    subtitle: null,
+    cta_label: null,
+    cta_href: null,
+    items: [
+      {
+        kind: 'media',
+        image_path: 'org/store/content/verano.jpg',
+        image_alt: 'Rebajas de verano',
+        href: null,
+      },
+    ],
+  }
+}
+
 function backend(
   options: { content?: unknown; navigation?: unknown[]; promotions?: unknown[] } = {},
 ): FakeSupabase {
@@ -192,6 +212,62 @@ describe('con contenido publicado', () => {
     ).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Hero de ajustes' })).not.toBeInTheDocument()
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
+  })
+
+  /**
+   * El fallo que lo destapó: el comercio apagó el bloque `hero` y la cabecera
+   * seguía ahí — pero era OTRA, la de reserva de `store_settings`, con otro
+   * texto. Apagar un interruptor y que salga algo parecido en su sitio se lee
+   * como que el interruptor no funciona.
+   */
+  it('un carrusel de imágenes también sustituye al hero de `store_settings`', async () => {
+    renderStorefront(backend({ content: content([sliderBlock()]) }), '/s/casa-verde')
+
+    expect(await screen.findByRole('img', { name: 'Rebajas de verano' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Hero de ajustes' })).not.toBeInTheDocument()
+    // Un carrusel son imágenes: no tiene texto que pueda ser el `<h1>`, así que
+    // lo pone la portada con el nombre de la tienda. Sigue habiendo uno y uno solo.
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
+  })
+
+  it('un carrusel SIN imágenes no cuenta como portada: la de reserva se queda', async () => {
+    renderStorefront(
+      backend({ content: content([{ ...sliderBlock(), items: [] }]) }),
+      '/s/casa-verde',
+    )
+
+    // Si no, quitar la reserva por un bloque que no pinta nada dejaría la
+    // portada sin nada arriba.
+    expect(await screen.findByRole('heading', { name: 'Hero de ajustes' })).toBeInTheDocument()
+  })
+
+  /**
+   * Una portada larga con todo sobre el mismo blanco se lee como una lista sin
+   * fin. El tinte separa las secciones — y sale de los tokens del tenant, no de
+   * una paleta pastel escrita a mano: el acento es 100 % del comercio.
+   */
+  it('el tinte de sección sale del acento del TENANT, no de un color escrito a mano', async () => {
+    const texto = {
+      ...heroBlock(),
+      id: 'dddd4444-4444-4444-8444-444444444444',
+      type: 'rich_text',
+      title: 'Quiénes somos',
+      body: [{ type: 'paragraph', text: 'Una botica de barrio.' }],
+      cta_label: null,
+      cta_href: null,
+    }
+    renderStorefront(
+      backend({ content: content([heroBlock(), texto]) }),
+      '/s/casa-verde',
+    )
+
+    await screen.findByText('Una botica de barrio.')
+
+    // Lo que se fija es el ORIGEN del color: `var(--accent)` rebajado, nunca un
+    // rosa o un azul literales. Vive en la hoja que genera Emotion, no en un
+    // atributo `style`, así que se mira ahí.
+    const css = [...document.querySelectorAll('style')].map((tag) => tag.textContent).join('')
+    expect(css).toContain('color-mix(in srgb, var(--accent) 6%, transparent)')
   })
 
   it('el botón del bloque lleva a donde dice el contenido', async () => {

@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '@/test/render'
@@ -48,6 +48,7 @@ const BLOCK_ID = '99999999-9999-4999-8999-999999999902'
 const SYNONYM_ID = '99999999-9999-4999-8999-999999999903'
 const PRODUCT_ID = '99999999-9999-4999-8999-999999999904'
 const PROMO_ID = '99999999-9999-4999-8999-999999999905'
+const BLOCK_2_ID = '99999999-9999-4999-8999-999999999906'
 
 const CMS = ['ecommerce.content.cms']
 
@@ -102,6 +103,23 @@ const BLOCK = {
   settings: { columns: 4 },
 }
 
+/**
+ * Un segundo bloque, y con la posición ESPACIADA a proposito.
+ *
+ * Las posiciones reales van de cinco en cinco (5, 10, 15…) porque asi se puede
+ * intercalar sin renumerar la portada entera. Con dos bloques pegados —0 y 1—
+ * el fallo que se arregla aqui no se veria: era justo el salto lo que obligaba
+ * a pulsar la flecha cinco veces para moverse un sitio.
+ */
+const BLOCK_2 = {
+  ...BLOCK,
+  id: BLOCK_2_ID,
+  block_type: 'rich_text',
+  position: 10,
+  title: 'Quiénes somos',
+  body: [{ type: 'paragraph', text: 'Una botica de barrio.' }],
+}
+
 const SYNONYM = {
   id: SYNONYM_ID,
   store_id: STORE_A,
@@ -144,7 +162,10 @@ function backend(options: { entitlements?: string[]; role?: string } = {}): Fake
         },
       ],
       content_pages: [PAGE],
-      content_blocks: [BLOCK],
+      // Copias: el falso actualiza la fila EN SITIO, así que compartir el
+      // objeto del módulo dejaría que un test arrastrara la posición al
+      // siguiente.
+      content_blocks: [{ ...BLOCK }, { ...BLOCK_2 }],
       content_block_items: [],
       search_synonyms: [SYNONYM],
     },
@@ -340,6 +361,95 @@ describe('los bloques', () => {
 
     expect(await screen.findByText('Rebajas de verano')).toBeInTheDocument()
     expect(screen.getByText('Hero')).toBeInTheDocument()
+  })
+
+  /**
+   * Ordenar la portada.
+   *
+   * Lo que lo destapó: las flechas sumaban y restaban UNO a la posición, y las
+   * posiciones vienen espaciadas de cinco en cinco para poder intercalar sin
+   * renumerar. Resultado: bajar un bloque un sitio pedía cinco clics, y llevar
+   * el último al principio, veinticinco.
+   */
+  async function abrirBloques(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(await screen.findByText('Portada de verano'))
+    await user.click(screen.getByRole('tab', { name: 'Bloques' }))
+    await screen.findByText('Rebajas de verano')
+  }
+
+  function posiciones(fake: FakeSupabase): Record<string, number> {
+    const rows = (fake.state.tables.content_blocks ?? []) as Array<{
+      title: string
+      position: number
+    }>
+    return Object.fromEntries(rows.map((row) => [row.title, row.position]))
+  }
+
+  it('la flecha INTERCAMBIA con la vecina: un clic, un sitio', async () => {
+    const user = userEvent.setup()
+    const fake = backend()
+    renderContent(fake)
+    await abrirBloques(user)
+
+    await user.click(screen.getByRole('button', { name: /Bajar Rebajas de verano/ }))
+
+    // Y no 0 → 1, que con la vecina en 10 dejaba el bloque donde estaba.
+    await waitFor(() =>
+      expect(posiciones(fake)).toEqual({ 'Rebajas de verano': 10, 'Quiénes somos': 0 }),
+    )
+  })
+
+  it('la posición se escribe: el número va directo, sin pasar por las flechas', async () => {
+    const user = userEvent.setup()
+    const fake = backend()
+    renderContent(fake)
+    await abrirBloques(user)
+
+    const campo = screen.getByRole('spinbutton', { name: /Posición de Rebajas de verano/ })
+    await user.clear(campo)
+    await user.type(campo, '99')
+    await user.tab()
+
+    await waitFor(() => expect(posiciones(fake)['Rebajas de verano']).toBe(99))
+  })
+
+  it('un número que ya tiene otro bloque se rechaza, y el campo vuelve al suyo', async () => {
+    const user = userEvent.setup()
+    const fake = backend()
+    renderContent(fake)
+    await abrirBloques(user)
+
+    const campo = screen.getByRole('spinbutton', { name: /Posición de Rebajas de verano/ })
+    await user.clear(campo)
+    await user.type(campo, '10')
+    await user.tab()
+
+    // La base admite dos bloques con el mismo número —no hay índice único— y
+    // entonces el orden entre ellos deja de estar definido: la portada se pinta
+    // hoy de una forma y mañana de otra sin que nadie haya tocado nada.
+    expect(
+      await screen.findByText('Ese número ya lo tiene otro bloque. Elige uno libre.'),
+    ).toBeInTheDocument()
+    expect(posiciones(fake)['Rebajas de verano']).toBe(0)
+    // Y no se queda escrito el número que no se guardó: dejarlo ahí es la forma
+    // más rápida de cerrar la pantalla creyendo haber ordenado la portada.
+    expect(campo).toHaveValue(0)
+  })
+
+  it('un número fuera del rango del CHECK no se envía', async () => {
+    const user = userEvent.setup()
+    const fake = backend()
+    renderContent(fake)
+    await abrirBloques(user)
+
+    const campo = screen.getByRole('spinbutton', { name: /Posición de Rebajas de verano/ })
+    await user.clear(campo)
+    await user.type(campo, '1500')
+    await user.tab()
+
+    // `content_blocks_position_range` es 0..999. Pararlo aquí convierte un 400
+    // genérico en un campo que vuelve solo.
+    expect(posiciones(fake)['Rebajas de verano']).toBe(0)
   })
 
   it('el editor de texto explica la sintaxis y NO admite etiquetas', async () => {

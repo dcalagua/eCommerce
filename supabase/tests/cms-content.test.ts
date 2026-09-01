@@ -408,6 +408,118 @@ describe('colecciones: FK de verdad, no ids dentro de un jsonb', () => {
   })
 })
 
+/**
+ * El carrusel de imagenes (P18).
+ *
+ * Es el unico bloque cuyos items NO son filas del catalogo: cada diapositiva es
+ * una imagen del bucket de la tienda con su texto alternativo y, si acaso, un
+ * destino. Eso obliga a que la base distinga dos formas de item, y lo que se
+ * comprueba aqui es que las distinga de verdad — que no deje colar una imagen
+ * en una coleccion de productos ni un producto en el carrusel, y que el alt no
+ * sea opcional, porque un banner sin alt es la parte muda de la portada.
+ */
+describe('carrusel de imagenes: la diapositiva es el item', () => {
+  async function addSlide(
+    block: string,
+    slide: { path: string; alt: string | null; href?: string | null; position?: number },
+  ): Promise<void> {
+    await svc(
+      `insert into public.content_block_items
+         (organization_id, company_id, store_id, block_id, block_type, item_kind,
+          media_url, media_alt, href, position)
+       values ($1, $2, $3, $4, 'slider', 'media', $5, $6, $7, $8)`,
+      [
+        TENANT_A.organizationId, TENANT_A.companyId, storeA, block,
+        slide.path, slide.alt, slide.href ?? null, slide.position ?? 0,
+      ],
+    )
+  }
+
+  it('las diapositivas salen en la vitrina, en su orden y con su destino', async () => {
+    const page = await createPage({ slug: 'inicio', kind: 'home' })
+    const block = await createBlock({ page, type: 'slider', title: 'Campanas' })
+
+    await addSlide(block, {
+      path: 'org/store/content/verano.jpg', alt: 'Rebajas de verano',
+      href: '/categoria/vitaminas', position: 0,
+    })
+    await addSlide(block, { path: 'org/store/content/envio.jpg', alt: 'Envio gratis', position: 1 })
+
+    const items = (blocks(await publicPage())[0]?.items ?? []) as Json[]
+    expect(items.map((item) => String(item.image_path))).toEqual([
+      'org/store/content/verano.jpg',
+      'org/store/content/envio.jpg',
+    ])
+    expect(items[0]?.kind).toBe('media')
+    expect(items[0]?.image_alt).toBe('Rebajas de verano')
+    expect(items[0]?.href).toBe('/categoria/vitaminas')
+    // Sin destino, el campo viene NULO y no como cadena vacia: la vitrina
+    // decide con eso si la imagen es un enlace o solo una imagen.
+    expect(items[1]?.href).toBeNull()
+
+    await svc(`delete from public.content_pages where id = $1`, [page])
+  })
+
+  it('una diapositiva sin texto alternativo se rechaza', async () => {
+    const page = await createPage({ slug: 'inicio', kind: 'home' })
+    const block = await createBlock({ page, type: 'slider', title: 'Campanas' })
+
+    const message = await expectFailure(() =>
+      addSlide(block, { path: 'org/store/content/muda.jpg', alt: null }),
+    )
+    expect(message).toMatch(/content_block_items_target|violates check/i)
+
+    await svc(`delete from public.content_pages where id = $1`, [page])
+  })
+
+  it('un destino con `javascript:` se rechaza en la base, no solo en el formulario', async () => {
+    const page = await createPage({ slug: 'inicio', kind: 'home' })
+    const block = await createBlock({ page, type: 'slider', title: 'Campanas' })
+
+    const message = await expectFailure(() =>
+      addSlide(block, {
+        path: 'org/store/content/x.jpg', alt: 'X',
+        href: 'javascript:alert(1)',
+      }),
+    )
+    expect(message).toMatch(/media_shape|violates check/i)
+
+    await svc(`delete from public.content_pages where id = $1`, [page])
+  })
+
+  it('un producto no entra en el carrusel de imagenes, ni una imagen en una coleccion', async () => {
+    const page = await createPage({ slug: 'inicio', kind: 'home' })
+    const slider = await createBlock({ page, type: 'slider', title: 'Campanas' })
+    const coleccion = await createBlock({
+      page, type: 'product_collection', title: 'Destacados', position: 1,
+    })
+
+    const conProducto = await expectFailure(() =>
+      svc(
+        `insert into public.content_block_items
+           (organization_id, company_id, store_id, block_id, block_type, item_kind, product_id, position)
+         values ($1, $2, $3, $4, 'slider', 'product', $5, 0)`,
+        [TENANT_A.organizationId, TENANT_A.companyId, storeA, slider, jabon],
+      ),
+    )
+    expect(conProducto).toMatch(/kind_matches_block|violates check/i)
+
+    const conImagen = await expectFailure(() =>
+      svc(
+        `insert into public.content_block_items
+           (organization_id, company_id, store_id, block_id, block_type, item_kind,
+            media_url, media_alt, position)
+         values ($1, $2, $3, $4, 'product_collection', 'media', $5, 'X', 0)`,
+        [TENANT_A.organizationId, TENANT_A.companyId, storeA, coleccion,
+         'org/store/content/x.jpg'],
+      ),
+    )
+    expect(conImagen).toMatch(/kind_matches_block|violates check/i)
+
+    await svc(`delete from public.content_pages where id = $1`, [page])
+  })
+})
+
 describe('el contenido enriquecido NO es HTML, y la base lo demuestra', () => {
   async function insertBody(body: string): Promise<string> {
     const page = await createPage({ slug: 'texto' })

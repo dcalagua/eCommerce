@@ -81,6 +81,20 @@ const collectionItemSchema = z.discriminatedUnion('kind', [
     slug: z.string().min(1),
     name: z.string().min(1),
   }),
+  /**
+   * P18 · Una diapositiva del carrusel de imagenes.
+   *
+   * `image_path` es la RUTA del bucket privado, no una URL: la firma el mismo
+   * mecanismo que ya usan el logo y las fotos de producto. `href` puede faltar
+   * —una diapositiva que solo anuncia no tiene por que llevar a ningun sitio— y
+   * cuando esta, la vitrina lo vuelve a comprobar antes de pintarlo.
+   */
+  z.object({
+    kind: z.literal('media'),
+    image_path: z.string().min(1),
+    image_alt: z.string().default(''),
+    href: z.string().nullable().default(null),
+  }),
 ])
 export type ContentCollectionItem = z.infer<typeof collectionItemSchema>
 
@@ -206,6 +220,12 @@ export function contentAssetPaths(content: StoreContent): string[] {
   const values = [
     content.page?.ogImageUrl ?? null,
     ...content.blocks.map((block) => block.mediaUrl),
+    // P18 · Las diapositivas del carrusel viven en `store-assets`, como el logo
+    // y el banner — NO en `product-images`. Son dos buckets con dos policies
+    // distintas: firmar una ruta contra el que no es devuelve 400.
+    ...content.blocks.flatMap((block) =>
+      block.items.map((item) => (item.kind === 'media' ? item.image_path : null)),
+    ),
   ]
   return values.filter(
     (value): value is string => Boolean(value) && !/^https:\/\//i.test(value as string),
@@ -216,7 +236,9 @@ export function contentAssetPaths(content: StoreContent): string[] {
 export function contentImagePaths(content: StoreContent): string[] {
   return content.blocks.flatMap((block) =>
     block.items
-      .map((item) => ('image_path' in item ? item.image_path : null))
+      // La diapositiva se queda fuera: su imagen es del bucket de branding y la
+      // firma `contentAssetPaths`.
+      .map((item) => (item.kind !== 'media' && 'image_path' in item ? item.image_path : null))
       .filter((path): path is string => Boolean(path)),
   )
 }

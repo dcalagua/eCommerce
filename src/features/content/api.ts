@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { tryGetSupabaseClient } from '@/shared/lib/supabase'
 import { buildTextSearchFilter } from '@/shared/lib/search'
+import { blockUsesMediaItems } from '@/domain/content'
 import { ContentError, contentErrorFromDb } from './errors'
 import {
   CONTENT_BLOCKS_TABLE,
@@ -214,7 +215,13 @@ function blockPatch(values: BlockFormValues) {
     // `settings` es un vocabulario CERRADO (ver `ebim.content_settings_are_safe`).
     // Se construye aquí, clave a clave: pasar un objeto que venga del formulario
     // entero sería la vía por la que entra una clave que nadie revisó.
-    settings: { columns: values.columns },
+    settings: {
+      columns: values.columns,
+      descendants: values.descendants,
+      // Solo donde significa algo: un `layout` en un hero seria una clave que
+      // nadie lee ocupando sitio en un vocabulario de doce.
+      ...(blockUsesMediaItems(values.block_type) ? { layout: values.layout } : {}),
+    },
   }
 }
 
@@ -266,7 +273,9 @@ export async function fetchBlockItems(blockId: string | null): Promise<ContentBl
   if (!blockId) return []
   const { data, error } = await client()
     .from(CONTENT_BLOCK_ITEMS_TABLE)
-    .select('id, block_id, item_kind, product_id, variant_id, category_id, position')
+    .select(
+      'id, block_id, item_kind, product_id, variant_id, category_id, media_url, media_alt, href, position',
+    )
     .eq('block_id', blockId)
     .order('position')
 
@@ -277,10 +286,14 @@ export async function fetchBlockItems(blockId: string | null): Promise<ContentBl
 export interface BlockItemInput {
   blockId: string
   blockType: string
-  itemKind: 'product' | 'variant' | 'category'
+  itemKind: 'product' | 'variant' | 'category' | 'media'
   productId?: string | null
   variantId?: string | null
   categoryId?: string | null
+  /** Solo para `media`: la ruta subida, su texto alternativo y su destino. */
+  mediaUrl?: string | null
+  mediaAlt?: string | null
+  href?: string | null
   position: number
 }
 
@@ -299,8 +312,30 @@ export async function addBlockItem(scope: ContentScope, input: BlockItemInput): 
     product_id: input.productId ?? null,
     variant_id: input.variantId ?? null,
     category_id: input.categoryId ?? null,
+    media_url: input.mediaUrl ?? null,
+    media_alt: input.mediaAlt ?? null,
+    href: input.href ?? null,
     position: input.position,
   })
+  if (error) throw contentErrorFromDb(error)
+}
+
+/**
+ * Cambia el sitio de un item dentro de su bloque.
+ *
+ * `position` no es única en la tabla, así que intercambiar dos items son dos
+ * updates y no hace falta un hueco intermedio. En un carrusel el orden ES el
+ * contenido —la primera imagen es la que casi todo el mundo ve—, de modo que
+ * sin esto la única forma de recolocar sería borrar y volver a subir.
+ */
+export async function setBlockItemPosition(input: {
+  id: string
+  position: number
+}): Promise<void> {
+  const { error } = await client()
+    .from(CONTENT_BLOCK_ITEMS_TABLE)
+    .update({ position: input.position })
+    .eq('id', input.id)
   if (error) throw contentErrorFromDb(error)
 }
 

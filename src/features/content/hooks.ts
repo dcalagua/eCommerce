@@ -16,6 +16,7 @@ import {
   fetchSynonyms,
   moveBlock,
   removeBlockItem,
+  setBlockItemPosition,
   updateBlock,
   updatePage,
   updateSynonym,
@@ -148,6 +149,11 @@ export function useAddBlockItem(scope: ContentScope | null) {
 export function useRemoveBlockItem() {
   const invalidate = useInvalidateContent()
   return useMutation({ mutationFn: removeBlockItem, onSuccess: invalidate })
+}
+
+export function useMoveBlockItem() {
+  const invalidate = useInvalidateContent()
+  return useMutation({ mutationFn: setBlockItemPosition, onSuccess: invalidate })
 }
 
 /**

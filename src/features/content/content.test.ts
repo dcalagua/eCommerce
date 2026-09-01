@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  CONTENT_BLOCK_TYPES,
   blockAcceptsItems,
+  blockFieldRules,
   blockShapeIsComplete,
   isSafeHref,
   isSafeRichText,
@@ -10,6 +12,7 @@ import {
   type RichTextDocument,
 } from '@/domain/content'
 import {
+  clearUnusedBlockFields,
   parseExpansions,
   validateBlockForm,
   type BlockFormValues,
@@ -47,6 +50,8 @@ function form(overrides: Partial<BlockFormValues> = {}): BlockFormValues {
     channel_id: null,
     segment_id: null,
     columns: 4,
+    descendants: false,
+    layout: 'carousel',
     ...overrides,
   }
 }
@@ -247,7 +252,96 @@ describe('forma del bloque: las reglas ENTRE campos', () => {
 
   it('un hero sin nada que enseñar se marca en el título', () => {
     const issues = validateBlockForm(form({ title: '', media_url: null }))
-    expect(issues).toContainEqual({ field: 'title', key: 'content.error.shape' })
+    // Y el aviso nombra las DOS salidas, porque con cualquiera de ellas basta.
+    expect(issues).toContainEqual({ field: 'title', key: 'content.error.titleOrMedia' })
+  })
+
+  /**
+   * El fallo que lo destapó: un carrusel de imágenes con texto escrito en
+   * «Contenido». La base lo rechazaba con `content_blocks_body_only_text` —solo
+   * texto, hero y banner llevan cuerpo— y el aviso que llegaba a la pantalla
+   * decía «faltan datos obligatorios», que es justo lo contrario de lo que
+   * pasaba: sobraban.
+   */
+  it('un campo que el tipo NO admite se marca en ese campo, y dice que sobra', () => {
+    const issues = validateBlockForm(
+      form({ block_type: 'slider', title: 'Campañas', body: [{ type: 'paragraph', text: 'hola' }] }),
+    )
+    expect(issues).toContainEqual({ field: 'body', key: 'content.error.notForThisType' })
+  })
+
+  it('un carrusel de imágenes sin nada más es válido: sus diapositivas van aparte', () => {
+    expect(validateBlockForm(form({ block_type: 'slider', title: 'Campañas' }))).toEqual([])
+  })
+
+  it('el título de una campaña es obligatorio, y se dice en el título', () => {
+    const issues = validateBlockForm(form({ block_type: 'campaign', title: '' }))
+    expect(issues).toContainEqual({ field: 'title', key: 'content.error.titleRequired' })
+  })
+
+  it('un texto sin contenido se marca en el contenido, no en el título', () => {
+    const issues = validateBlockForm(form({ block_type: 'rich_text', title: 'T', body: null }))
+    expect(issues).toContainEqual({ field: 'body', key: 'content.error.bodyRequired' })
+  })
+})
+
+/**
+ * La tabla de campos y los CHECK de la base tienen que decir lo mismo.
+ *
+ * Lo que se fija aquí es la parte que se puede comprobar sin Postgres: que
+ * ningun tipo declare como usable un campo que la base prohibe para el. Los
+ * nombres de la derecha son los de los CHECK que lo imponen.
+ */
+describe('la tabla de campos no contradice a los CHECK', () => {
+  it('solo texto, hero y banner llevan cuerpo (`content_blocks_body_only_text`)', () => {
+    const conCuerpo = CONTENT_BLOCK_TYPES.filter(
+      (type) => blockFieldRules(type).body !== 'unused',
+    )
+    expect([...conCuerpo].sort()).toEqual(['banner', 'hero', 'rich_text'])
+  })
+
+  it('solo la campaña lleva promoción (`content_blocks_promotion_only_campaign`)', () => {
+    const conPromo = CONTENT_BLOCK_TYPES.filter(
+      (type) => blockFieldRules(type).promotion !== 'unused',
+    )
+    expect(conPromo).toEqual(['campaign'])
+  })
+
+  it('solo las colecciones llevan categoría (`content_blocks_category_only_collection`)', () => {
+    const conCategoria = CONTENT_BLOCK_TYPES.filter(
+      (type) => blockFieldRules(type).category !== 'unused',
+    )
+    expect([...conCategoria].sort()).toEqual([
+      'carousel',
+      'category_collection',
+      'product_collection',
+    ])
+  })
+
+  it('lo que la base EXIGE se declara obligatorio (`content_blocks_shape`)', () => {
+    expect(blockFieldRules('campaign').title).toBe('required')
+    expect(blockFieldRules('rich_text').body).toBe('required')
+    expect(blockFieldRules('hero').titleOrMedia).toBe(true)
+    expect(blockFieldRules('banner').titleOrMedia).toBe(true)
+  })
+})
+
+describe('cambiar de tipo limpia lo que el nuevo no admite', () => {
+  it('el cuerpo de un hero no sobrevive al pasarlo a carrusel de imágenes', () => {
+    const limpio = clearUnusedBlockFields(
+      form({ block_type: 'slider', body: [{ type: 'paragraph', text: 'hola' }], cta_label: 'Ver' }),
+    )
+
+    // Sin esto quedaria escondido —el campo ya no se pinta— y la base
+    // rechazaria el guardado sin que el formulario tuviera nada que senalar.
+    expect(limpio.body).toBeNull()
+    expect(limpio.cta_label).toBe('')
+    expect(validateBlockForm(limpio)).toEqual([])
+  })
+
+  it('no toca lo que el tipo nuevo sí admite', () => {
+    const limpio = clearUnusedBlockFields(form({ block_type: 'hero', title: 'Hola' }))
+    expect(limpio.title).toBe('Hola')
   })
 })
 
