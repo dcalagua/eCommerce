@@ -318,26 +318,37 @@ describe('con contenido publicado', () => {
     // propia consulta: dar por hecho que ya está cuando aparece la región era
     // una carrera que se ganaba por casualidad, y cualquier cambio en el orden
     // de montado la perdía.
-    const footer = await screen.findByRole('contentinfo')
+    const header = await screen.findByRole('banner')
     expect(
-      await within(footer).findByRole('link', { name: 'Envíos y devoluciones' }),
+      await within(header).findByRole('link', { name: 'Envíos y devoluciones' }),
     ).toHaveAttribute('href', '/s/casa-verde/p/envios')
 
-    // Y NO en la cabecera: sus tres trabajos son buscar, entrar a lo tuyo y ver
-    // el carrito. Cada enlace de más compite con esos tres.
-    const header = screen.getByRole('banner')
-    expect(
-      within(header).queryByRole('link', { name: 'Envíos y devoluciones' }),
-    ).not.toBeInTheDocument()
+    // Estaban en el pie hasta que se pidió quitarlo. Vuelven a la cabecera
+    // porque eran el ÚNICO camino a «Términos y condiciones»: una tienda que no
+    // deja llegar a sus condiciones de venta no está incompleta, incumple.
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument()
   })
 })
 
 describe('white-label: la marca del tenant, no la de casa', () => {
-  it('el pie usa el nombre comercial cuando el tenant lo declara', async () => {
+  it('la vitrina ya no pinta el nombre comercial: se fue con el pie', async () => {
+    /**
+     * Esto NO es una mejora, es la constancia de una pérdida.
+     *
+     * `business_display_name` solo se enseñaba en el pie («© Casa Verde
+     * S.A.C.»), y al quitarse el pie por encargo del operador dejó de verse en
+     * ninguna parte de la tienda. El dato sigue en `store_settings` y sigue
+     * viajando en `public_stores`: lo que falta es dónde pintarlo.
+     *
+     * El test se queda —invertido— para que la ausencia sea deliberada y no un
+     * hueco silencioso: si alguien vuelve a necesitar el nombre comercial,
+     * tendrá que decidir dónde va, y este test se lo recordará al ponerse rojo.
+     */
     renderStorefront(backend(), '/s/casa-verde')
+    await screen.findByRole('banner')
 
-    const footer = await screen.findByRole('contentinfo')
-    expect(within(footer).getByText('© Casa Verde S.A.C.')).toBeInTheDocument()
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument()
+    expect(screen.queryByText('© Casa Verde S.A.C.')).not.toBeInTheDocument()
   })
 
   it('la densidad de la tienda se aplica a quien llega sin preferencia', async () => {

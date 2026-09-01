@@ -23,6 +23,19 @@
  */
 
 .sf-scope {
+  /* La vitrina NUNCA se desplaza en horizontal. Es una promesa del diseno: todo
+     es responsive y nada deberia exceder el ancho, asi que si algo lo excede es
+     un fallo y lo correcto es que no arrastre a la pagina entera.
+
+     `clip` y no `hidden`: `hidden` convierte la caja en un contenedor de
+     desplazamiento y eso ROMPE el `position: sticky` de la cabecera. `clip`
+     recorta sin crear contenedor, que es justo lo que hace falta aqui.
+
+     No sustituye a arreglar lo que se sale —la flecha del carrusel iba a -6 px
+     y ya esta corregida—, pero evita que el proximo descuido de un pixel
+     convierta la tienda en una pagina que se arrastra de lado. */
+  overflow-x: clip;
+
   /* Radios mas generosos que en el backoffice: una tarjeta de producto a 14 px
      de radio se lee como una fila de tabla con foto. */
   --sf-radius: 20px;

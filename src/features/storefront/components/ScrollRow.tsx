@@ -130,7 +130,11 @@ export function ScrollRow({
                 position: 'absolute',
                 top: '50%',
                 transform: 'translateY(-50%)',
-                [side]: -6,
+                // Dentro, no a -6 px. Un botón que asoma fuera de su contenedor
+                // es ancho de página que nadie pidió: basta con que el elemento
+                // de más a la derecha sobresalga para que el documento entero
+                // gane barra horizontal.
+                [side]: 2,
                 width: 34,
                 height: 34,
                 bgcolor: 'var(--card)',

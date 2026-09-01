@@ -1,3 +1,4 @@
+import FavoriteBorderRoundedIcon from '@mui/icons-material/FavoriteBorderRounded'
 import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded'
 import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
 import {
@@ -5,7 +6,6 @@ import {
   Box,
   Button,
   Container,
-  Divider,
   Link as MuiLink,
   Stack,
   Toolbar,
@@ -16,7 +16,6 @@ import { Link, Outlet, useLocation, useParams } from 'react-router-dom'
 import { ErrorBoundary } from '@/app/ErrorBoundary'
 import { useSessionContext } from '@/features/auth/session-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
-import { EbimMark } from '@/shared/ui/EbimMark'
 import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/states'
 import { SkipToContentLink, CONTENT_ANCHOR } from '@/shared/ui/SkipToContentLink'
@@ -30,6 +29,7 @@ import { CartDrawer } from './cart/CartDrawer'
 import { CartProvider } from './cart/CartProvider'
 import { useCart } from './cart/cart-context'
 import { usePublicStore, useStoreNavigation, type StorefrontOutlet } from './hooks'
+import { useFavorites } from './useFavorites'
 import type { PublicStore } from './types'
 import './storefront.css'
 
@@ -42,8 +42,14 @@ import './storefront.css'
  * respuesta es un 404 de tienda, no una pantalla vacía sin explicar.
  *
  * Todo lo de identidad (logo, nombre, acento, banner, contacto) sale de
- * `store_settings`. Aquí no hay ni un color ni un nombre cableado: lo único de
- * casa es el lockup "by EBIM" del pie, y desaparece si la tienda es white-label.
+ * `store_settings`. Aquí no hay ni un color ni un nombre cableado.
+ *
+ * **La vitrina ya no lleva pie.** Con él se fue el lockup «by EBIM», que era lo
+ * único de casa que quedaba a la vista, y también el bloque de contacto; el
+ * correo, el teléfono y la dirección siguen en `store_settings` y los puede
+ * pintar un bloque de contenido donde el comercio quiera. Las páginas
+ * administrables sí tienen que seguir alcanzables —«Términos y condiciones» no
+ * es opcional en una tienda—, así que vuelven a la cabecera.
  */
 export function StorefrontLayout() {
   const { storeSlug } = useParams<{ storeSlug: string }>()
@@ -151,7 +157,6 @@ export function StorefrontLayout() {
             </ErrorBoundary>
           </Container>
 
-          <StoreFooter store={store} storeSlug={storeSlug as string} />
           <CartDrawer storeSlug={storeSlug as string} />
         </Box>
       </CartProvider>
@@ -251,9 +256,20 @@ function StoreHeader({ store, storeSlug }: { store: PublicStore; storeSlug: stri
               entrar a lo tuyo y ver el carrito; cada enlace que se le anade
               compite con esos tres y ninguno de ellos vende. Se leen una vez,
               casi siempre buscandolas, y su sitio de siempre es el pie. */}
+          <FavoritesButton storeSlug={storeSlug} storeId={store.store_id} />
           <AccountButton storeSlug={storeSlug} />
           <CartButton />
         </Toolbar>
+
+        {/* Las páginas del comercio vuelven a la cabecera al quitarse el pie.
+            No es un cambio de criterio: eran el ÚNICO camino a «Términos y
+            condiciones» y a «Envíos y devoluciones», y una tienda que no deja
+            llegar a sus condiciones de venta no está incompleta, está
+            incumpliendo. Van en su propia fila bajo la barra para no volver a
+            apretar el logo, el buscador y el carrito en una sola. */}
+        <Box sx={{ px: { xs: 2, md: 3 }, pb: 1 }}>
+          <StorePagesNav storeSlug={storeSlug} />
+        </Box>
       </Container>
     </Box>
   )
@@ -322,6 +338,46 @@ function StorePagesNav({ storeSlug }: { storeSlug: string }) {
  * Qué cuenta es la suya lo decide el servidor (`my_business_accounts`); esto es
  * solo la puerta.
  */
+/**
+ * Acceso a los favoritos, con su contador.
+ *
+ * El corazon de la tarjeta guardaba en un sitio al que no se podia llegar: se
+ * podia marcar y no habia donde mirar lo marcado. Esto es la otra mitad de esa
+ * funcion, y por eso vive en la cabecera y no escondido en la cuenta — los
+ * favoritos NO exigen sesion (sin ella viven en el navegador), asi que ponerlos
+ * dentro de «Tu cuenta» los dejaria fuera del alcance de quien todavia no ha
+ * entrado, que es justo quien mas los usa.
+ *
+ * Sin nada guardado no se pinta: un contador a cero es un boton que solo
+ * ensena que no has hecho nada.
+ */
+function FavoritesButton({ storeSlug, storeId }: { storeSlug: string; storeId: string }) {
+  const { t } = useI18n()
+  // La tienda llega por prop y no por `useStorefront`: ese hook lee el contexto
+  // del `<Outlet>`, y la cabecera es quien lo PROVEE — dentro de ella el
+  // contexto todavia no existe y el boton no aparecia nunca.
+  const favorites = useFavorites(storeId)
+  if (favorites.ids.size === 0) return null
+
+  return (
+    <Button
+      component={Link}
+      to={`/s/${storeSlug}/favoritos`}
+      startIcon={
+        <Badge badgeContent={favorites.ids.size} color="primary" aria-hidden>
+          <FavoriteBorderRoundedIcon />
+        </Badge>
+      }
+      aria-label={`${t('store.favorites.nav')} (${favorites.ids.size})`}
+      sx={{ flexShrink: 0 }}
+    >
+      <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+        {t('store.favorites.nav')}
+      </Box>
+    </Button>
+  )
+}
+
 function AccountButton({ storeSlug }: { storeSlug: string }) {
   const { t } = useI18n()
   const { status } = useSessionContext()
@@ -368,70 +424,3 @@ function CartButton() {
   )
 }
 
-function StoreFooter({ store, storeSlug }: { store: PublicStore; storeSlug: string }) {
-  const { t } = useI18n()
-  const hasContact = Boolean(store.contact_phone || store.support_email || store.contact_address)
-
-  return (
-    <Box component="footer" sx={{ borderTop: '1px solid var(--border)', bgcolor: 'var(--card)', mt: 4 }}>
-      <Container maxWidth="lg" sx={{ py: { xs: 3, md: 4 } }}>
-        <Box sx={{ mb: 2.5 }}>
-          <StorePagesNav storeSlug={storeSlug} />
-        </Box>
-
-        {hasContact && (
-          <>
-            <Typography component="h2" sx={{ fontSize: T.label, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase', color: 'var(--muted)', mb: 1 }}>
-              {t('store.contact.title')}
-            </Typography>
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              sx={{ gap: { xs: 0.75, sm: 3 }, flexWrap: 'wrap', fontSize: T.body }}
-            >
-              {store.support_email && (
-                <MuiLink
-                  href={`mailto:${store.support_email}`}
-                  sx={{ color: 'var(--accent-deep)', fontWeight: 700, fontSize: T.body }}
-                >
-                  {store.support_email}
-                </MuiLink>
-              )}
-              {store.contact_phone && (
-                <MuiLink
-                  href={`tel:${store.contact_phone.replace(/\s+/g, '')}`}
-                  sx={{ color: 'var(--accent-deep)', fontWeight: 700, fontSize: T.body }}
-                >
-                  {store.contact_phone}
-                </MuiLink>
-              )}
-              {store.contact_address && (
-                <Typography sx={{ color: 'var(--muted)', fontSize: T.body }}>
-                  {store.contact_address}
-                </Typography>
-              )}
-            </Stack>
-            <Divider sx={{ my: 2.5 }} />
-          </>
-        )}
-
-        <Stack
-          direction="row"
-          sx={{ justifyContent: 'space-between', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}
-        >
-          <Typography sx={{ fontSize: T.label, fontWeight: 700, color: 'var(--muted)' }}>
-            © {store.business_display_name?.trim() || store.name}
-          </Typography>
-          {/* El lockup de suite acompaña a la vitrina salvo white-label. */}
-          {!store.white_label && (
-            <Stack direction="row" sx={{ gap: 0.75, alignItems: 'center' }}>
-              <EbimMark size={14} />
-              <Typography sx={{ fontSize: T.label, fontWeight: 700, color: 'var(--muted)' }}>
-                eCommerce by EBIM
-              </Typography>
-            </Stack>
-          )}
-        </Stack>
-      </Container>
-    </Box>
-  )
-}

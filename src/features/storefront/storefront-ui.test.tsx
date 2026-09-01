@@ -336,16 +336,25 @@ describe('resolución del tenant por slug', () => {
     )
   })
 
-  it('el pie sirve el contacto configurado por el tenant', async () => {
+  it('el contacto del tenant ya no se pinta: se fue con el pie', async () => {
+    /**
+     * Constancia de una pérdida, no de una mejora.
+     *
+     * El correo, el teléfono y la dirección solo vivían en el pie, y al quitarse
+     * el pie por encargo del operador dejaron de verse. Siguen en
+     * `store_settings` y siguen llegando en `public_stores`: un bloque de
+     * contenido del CMS puede pintarlos donde el comercio quiera, pero eso hay
+     * que hacerlo, no ocurre solo.
+     *
+     * El test se queda invertido para que la ausencia sea deliberada: si el
+     * contacto vuelve, este se pone rojo y obliga a decidir dónde va.
+     */
     renderStorefront(backend(), '/s/casa-nordica')
+    await screen.findByRole('banner')
 
-    const footer = await screen.findByRole('contentinfo')
-    expect(within(footer).getByText('hola@casanordica.demo')).toHaveAttribute(
-      'href',
-      'mailto:hola@casanordica.demo',
-    )
-    expect(within(footer).getByText('+51 999 111 222')).toHaveAttribute('href', 'tel:+51999111222')
-    expect(within(footer).getByText('Av. Primavera 120')).toBeInTheDocument()
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument()
+    expect(screen.queryByText('hola@casanordica.demo')).not.toBeInTheDocument()
+    expect(screen.queryByText('+51 999 111 222')).not.toBeInTheDocument()
   })
 
   it('una tienda sin contacto ni hero se ve igual, con los fallbacks neutrales', async () => {
