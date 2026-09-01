@@ -82,6 +82,77 @@ export function persistAppearance(next: Appearance): void {
 }
 
 /** Refleja la apariencia en el `<html>` para que las CSS vars se resuelvan. */
+/**
+ * El color del tenant, TAMBIEN en las variables CSS.
+ *
+ * `accent_color` llegaba solo al tema de MUI (`primary.main`), y la mitad de la
+ * vitrina no se pinta con MUI sino con `var(--accent)`. El resultado en una
+ * tienda con acento propio era una pantalla partida en dos: los botones de MUI
+ * del color del comercio y las pildoras, los estados y los enlaces del verde de
+ * suite. Se veia exactamente como lo que era, un fallo.
+ *
+ * `--accent-deep` no es el mismo color: es el que escribe TEXTO, y el contrato
+ * lo dice —«`accent` para rellenos; `accent-deep` para texto, nunca `accent`
+ * puro»—. Se deriva oscureciendo en claro y aclarando en oscuro, porque el hex
+ * del comercio puede ser un amarillo palido y sobre blanco no se leeria.
+ *
+ * Se aplica en el elemento raiz, igual que `data-theme` y `data-density`, y se
+ * RETIRA cuando no hay tenant: al salir de la vitrina al backoffice, el acento
+ * de suite tiene que volver sin recargar.
+ */
+/**
+ * Todo lo que el color del tenant PISA. Poner y quitar leen la misma lista: el
+ * dia que se anada una variable, olvidarla en el borrado dejaria el rojo de una
+ * tienda pintando el backoffice al salir de la vitrina.
+ */
+const TENANT_ACCENT_VARS = [
+  '--accent',
+  '--accent-deep',
+  '--accent-soft',
+  '--accent2',
+  '--hero-grad',
+  '--badge-grad',
+] as const
+
+export function applyTenantAccentToDom(
+  hex: string | null,
+  mode: ColorMode,
+  root: HTMLElement = document.documentElement,
+): void {
+  if (!hex) {
+    for (const name of TENANT_ACCENT_VARS) root.style.removeProperty(name)
+    return
+  }
+
+  const deep =
+    mode === 'dark'
+      ? `color-mix(in srgb, ${hex} 72%, #FFFFFF)`
+      : `color-mix(in srgb, ${hex} 78%, #071A16)`
+
+  root.style.setProperty('--accent', hex)
+  root.style.setProperty('--accent-deep', deep)
+  root.style.setProperty('--accent-soft', `color-mix(in srgb, ${hex} 14%, var(--card))`)
+  // Segundo acento: el mas oscuro de la familia, para textos sobre relleno
+  // tenue y para el extremo de los degradados.
+  root.style.setProperty('--accent2', `color-mix(in srgb, ${hex} 60%, #071A16)`)
+  // El HERO y las pastillas de campana tambien son del tenant.
+  //
+  // Sin estas dos, una tienda que elegia rojo se quedaba con el degradado verde
+  // de la suite ocupando media portada, y con los chips de descuento en verde
+  // sobre botones rojos: el color cambiaba en los botones y en nada mas. Es
+  // texto claro sobre fondo oscuro en los dos casos, asi que el degradado
+  // arranca del acento muy oscurecido y termina en el acento.
+  root.style.setProperty(
+    '--hero-grad',
+    `linear-gradient(135deg, color-mix(in srgb, ${hex} 30%, #06120f) 0%, ` +
+      `color-mix(in srgb, ${hex} 70%, #000) 55%, ${hex} 100%)`,
+  )
+  root.style.setProperty(
+    '--badge-grad',
+    `linear-gradient(135deg, ${hex} 0%, color-mix(in srgb, ${hex} 68%, #000) 100%)`,
+  )
+}
+
 export function applyAppearanceToDom(next: Appearance, root: HTMLElement = document.documentElement): void {
   root.setAttribute('data-theme', next.mode)
   if (next.accent === DEFAULT_ACCENT) root.removeAttribute('data-accent')

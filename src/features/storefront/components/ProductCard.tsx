@@ -142,15 +142,20 @@ export function ProductCard({
         '&:has(a:focus-visible)': { outline: '2px solid var(--accent)', outlineOffset: 2 },
       }}
     >
+      {/* La foto flota sobre la tarjeta, sin caja propia.
+          Con fondo y relleno propios, un frasco fotografiado sobre blanco
+          —casi todo el catalogo de una botica— quedaba como un rectangulo
+          blanco dentro de otro gris dentro de la tarjeta: tres bordes para
+          ensenar un producto. */}
       <Box
         className="eb-card-media"
         sx={{
           position: 'relative',
           borderRadius: 'var(--sf-radius-sm)',
           overflow: 'hidden',
-          p: 1,
-          background:
-            'linear-gradient(160deg, color-mix(in srgb, var(--accent) 5%, var(--card)) 0%, var(--sf-media-bg) 100%)',
+          px: 0.5,
+          pt: 0.5,
+          bgcolor: 'transparent',
           '& img': {
             transition: 'transform .35s ease',
             '@media (prefers-reduced-motion: reduce)': { transition: 'none', transform: 'none' },
@@ -183,12 +188,25 @@ export function ProductCard({
                 top: 8,
                 right: 8,
                 zIndex: 1,
-                bgcolor: 'color-mix(in srgb, var(--card) 82%, transparent)',
+                width: 30,
+                height: 30,
+                // Un disco limpio, sin aro: el borde dibujaba una moneda sobre
+                // la foto y era lo primero que se veia de la tarjeta. La sombra
+                // basta para despegarlo del fondo, y guardado se reconoce por
+                // el relleno del corazon, no por el marco.
+                bgcolor: 'color-mix(in srgb, var(--card) 88%, transparent)',
                 backdropFilter: 'blur(6px)',
-                color: favorite ? 'var(--red)' : 'var(--muted)',
+                boxShadow: '0 2px 8px -2px rgba(16, 24, 32, 0.22)',
+                color: favorite ? 'var(--sf-heart)' : 'var(--muted)',
+                transition: 'transform .15s ease, background-color .15s ease, color .15s ease',
                 '&:hover': {
                   bgcolor: 'var(--card)',
-                  color: favorite ? 'var(--red)' : 'var(--text)',
+                  color: 'var(--sf-heart)',
+                  transform: 'scale(1.08)',
+                },
+                '@media (prefers-reduced-motion: reduce)': {
+                  transition: 'none',
+                  '&:hover': { transform: 'none' },
                 },
               }}
             >

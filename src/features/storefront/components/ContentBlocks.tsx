@@ -958,9 +958,9 @@ function CollectionCard({
         '& .sf-collection-media': {
           borderRadius: 'var(--sf-radius-sm)',
           overflow: 'hidden',
-          p: 1,
-          background:
-            'linear-gradient(160deg, color-mix(in srgb, var(--accent) 5%, var(--card)) 0%, var(--sf-media-bg) 100%)',
+          px: 0.5,
+          pt: 0.5,
+          bgcolor: 'transparent',
           mb: 0.75,
         },
         // La foto crece un poco al pasar por encima: es la señal de que la

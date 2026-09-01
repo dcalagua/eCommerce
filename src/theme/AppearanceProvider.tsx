@@ -1,14 +1,7 @@
 import { CssBaseline, ThemeProvider } from '@mui/material'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { AppearanceContext, type AppearanceContextValue } from './appearance-context'
-import {
-  DEFAULT_APPEARANCE,
-  applyAppearanceToDom,
-  hasStoredDensity,
-  persistAppearance,
-  readStoredAppearance,
-  type Appearance,
-} from './appearance'
+import { DEFAULT_APPEARANCE, applyAppearanceToDom, applyTenantAccentToDom, hasStoredDensity, persistAppearance, readStoredAppearance, type Appearance } from './appearance'
 import { createEbimTheme } from './createEbimTheme'
 import { DENSITIES } from './tokens'
 import './tokens.css'
@@ -58,6 +51,16 @@ export function AppearanceProvider({
     applyAppearanceToDom(effective)
     persistAppearance(appearance)
   }, [appearance, effective])
+
+  // El acento del tenant, también a las variables CSS. Sin esto la vitrina
+  // salía partida en dos: los botones de MUI del color del comercio y todo lo
+  // que se pinta con `var(--accent)` —píldoras, estados, enlaces— del verde de
+  // suite. Se retira al desmontar para que salir al backoffice devuelva el
+  // acento de casa sin recargar.
+  useEffect(() => {
+    applyTenantAccentToDom(tenantAccent ?? null, effective.mode)
+    return () => applyTenantAccentToDom(null, effective.mode)
+  }, [tenantAccent, effective.mode])
 
   const value = useMemo<AppearanceContextValue>(
     () => ({

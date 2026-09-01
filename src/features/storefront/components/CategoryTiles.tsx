@@ -1,17 +1,21 @@
-import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded'
 import ChildCareRoundedIcon from '@mui/icons-material/ChildCareRounded'
 import ContentCutRoundedIcon from '@mui/icons-material/ContentCutRounded'
 import HealingRoundedIcon from '@mui/icons-material/HealingRounded'
 import LocalPharmacyRoundedIcon from '@mui/icons-material/LocalPharmacyRounded'
 import MonitorHeartRoundedIcon from '@mui/icons-material/MonitorHeartRounded'
 import SanitizerRoundedIcon from '@mui/icons-material/SanitizerRounded'
+import PsychologyRoundedIcon from '@mui/icons-material/PsychologyRounded'
 import SpaRoundedIcon from '@mui/icons-material/SpaRounded'
 import VaccinesRoundedIcon from '@mui/icons-material/VaccinesRounded'
+import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
+import WaterDropRoundedIcon from '@mui/icons-material/WaterDropRounded'
 import { Box, Button, Stack, Typography } from '@mui/material'
 import type { ComponentType } from 'react'
 import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { T } from '@/theme/tokens'
+import { initials } from '../branding'
+import { tintFor } from '../tint'
 import { ScrollRow } from './ScrollRow'
 
 export interface CategoryTile {
@@ -42,9 +46,21 @@ const ICONOS: readonly (readonly [readonly string[], ComponentType<{ sx?: object
   [['afeitad', 'cabello', 'capilar', 'shav', 'hair'], ContentCutRoundedIcon],
   [['cuidado', 'personal', 'care'], HealingRoundedIcon],
   [['cardio', 'presion', 'corazon', 'diabet', 'heart'], MonitorHeartRoundedIcon],
+  [['nervioso', 'neuro', 'psiq', 'sueno', 'nerve'], PsychologyRoundedIcon],
+  [['desodorante', 'antitranspirante', 'deo'], WaterDropRoundedIcon],
+  [['ocular', 'oftalm', 'ojo', 'vision', 'eye'], VisibilityRoundedIcon],
 ]
 
-function iconoDe(nombre: string): ComponentType<{ sx?: object }> {
+/**
+ * Devuelve `null` cuando no reconoce la familia.
+ *
+ * Antes caia a un icono generico, y con el catalogo real —donde media lista son
+ * nombres de marca colados como categoria— la fila acababa siendo siete cajas
+ * con el MISMO pictograma: peor que no tener icono, porque promete una
+ * distincion que no existe. Sin icono se pintan sus iniciales, igual que las
+ * marcas: dos letras distinguen; siete iconos iguales, no.
+ */
+function iconoDe(nombre: string): ComponentType<{ sx?: object }> | null {
   // Sin tildes y en minúsculas: «Antimicóticos» y «antimicoticos» son la misma
   // palabra, y el catálogo real trae las dos formas.
   const limpio = nombre
@@ -54,7 +70,7 @@ function iconoDe(nombre: string): ComponentType<{ sx?: object }> {
   for (const [palabras, Icono] of ICONOS) {
     if (palabras.some((palabra) => limpio.includes(palabra))) return Icono
   }
-  return CategoryRoundedIcon
+  return null
 }
 
 /**
@@ -109,6 +125,7 @@ export function CategoryTiles({
       <ScrollRow ariaLabel={t('store.categories.shopBy')} gap={1.25}>
         {categories.map((category) => {
           const Icono = iconoDe(category.name)
+          const tinte = tintFor(category.name)
           return (
             <Box
               key={category.code}
@@ -123,17 +140,20 @@ export function CategoryTiles({
                 flexDirection: 'column',
                 gap: 1,
                 textDecoration: 'none',
-                color: 'var(--text)',
                 borderRadius: 'var(--sf-radius)',
-                border: '1px solid var(--sf-line)',
-                bgcolor: 'var(--card)',
+                // Fondo de color, opaco: en una fila de doce cajas grises
+                // ninguna se distingue de la de al lado, y no hay donde volver
+                // la vista para «la que mire antes».
+                border: `1px solid ${tinte.line}`,
+                bgcolor: tinte.bg,
+                color: tinte.fg,
                 boxShadow: 'var(--sf-shadow)',
                 transition: 'transform .18s ease, box-shadow .18s ease, border-color .18s ease',
                 '@media (hover: hover)': {
                   '&:hover': {
                     transform: 'translateY(-2px)',
                     boxShadow: 'var(--sf-shadow-hover)',
-                    borderColor: 'color-mix(in srgb, var(--accent) 45%, transparent)',
+                    borderColor: tinte.fg,
                   },
                 },
                 '@media (prefers-reduced-motion: reduce)': {
@@ -142,27 +162,38 @@ export function CategoryTiles({
                 },
               }}
             >
+              {/* El icono, con peso: relleno, sobre un disco del color del
+                  tinte y en blanco. A 22 px y en linea fina se leia como un
+                  pictograma de formulario, no como la cara de una familia. */}
               <Box
                 aria-hidden
                 sx={{
-                  width: 42,
-                  height: 42,
+                  width: 46,
+                  height: 46,
                   display: 'grid',
                   placeItems: 'center',
-                  borderRadius: 'var(--sf-radius-sm)',
-                  bgcolor: 'color-mix(in srgb, var(--accent) 14%, var(--card))',
-                  color: 'var(--accent-deep)',
+                  borderRadius: '50%',
+                  bgcolor: tinte.fg,
+                  color: tinte.bg,
+                  boxShadow: `0 6px 16px -8px ${tinte.fg}`,
                 }}
               >
-                <Icono sx={{ fontSize: 22 }} />
+                {Icono ? (
+                  <Icono sx={{ fontSize: 26 }} />
+                ) : (
+                  <Box component="span" sx={{ fontSize: 15, fontWeight: 800 }}>
+                    {initials(category.name)}
+                  </Box>
+                )}
               </Box>
 
               <Typography
                 sx={{
                   fontSize: 14,
-                  fontWeight: 700,
+                  fontWeight: 800,
                   lineHeight: 1.3,
                   mt: 'auto',
+                  color: tinte.fg,
                   display: '-webkit-box',
                   WebkitLineClamp: 2,
                   WebkitBoxOrient: 'vertical',
@@ -173,7 +204,9 @@ export function CategoryTiles({
               </Typography>
 
               {category.count === null ? null : (
-                <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+                <Typography
+                  sx={{ fontSize: T.label, color: tinte.fg, opacity: 0.75, fontWeight: 600 }}
+                >
                   {t('store.brands.count').replace('{count}', String(category.count))}
                 </Typography>
               )}

@@ -61,6 +61,50 @@
   /* Cabecera translucida. El desenfoque solo se aplica donde el navegador lo
      soporta; sin el, el color de respaldo es opaco y legible igual. */
   --sf-header-bg: color-mix(in srgb, var(--card) 88%, transparent);
+
+  /* ---------------------------------------------------------------------
+     TINTES DE ORIENTACION
+     ---------------------------------------------------------------------
+     Seis fondos suaves para las puertas de la portada: categorias y marcas.
+
+     Y no, esto no le quita el color al comercio. El acento del tenant sigue
+     siendo el unico color de ACCION —botones, precios, estados— y aqui no se
+     toca. Estos tintes son WAYFINDING: sirven para que en una fila de doce
+     puertas cada una tenga sitio propio y se vuelva a encontrar por el rabillo
+     del ojo, que es lo que una fila de doce cajas grises no permite.
+
+     Se asignan por el NOMBRE, no al azar: la misma categoria cae siempre en el
+     mismo tinte, aunque cambie de posicion o entren otras nuevas. Un color que
+     baila cada vez que se recarga no orienta, marea.
+
+     Cada tinte trae fondo (`-bg`), borde (`-line`) y color de contenido
+     (`-fg`), y los tres se redefinen en oscuro: un pastel de claro sobre fondo
+     oscuro se convierte en una mancha lechosa. */
+  --sf-tint-1-bg: #EAF3FF;
+  --sf-tint-1-line: #CBE0FA;
+  --sf-tint-1-fg: #1B4F86;
+  --sf-tint-2-bg: #E9F7F0;
+  --sf-tint-2-line: #C7EADA;
+  --sf-tint-2-fg: #1C6647;
+  --sf-tint-3-bg: #FFF3E6;
+  --sf-tint-3-line: #F8DEC1;
+  --sf-tint-3-fg: #8A4B12;
+  --sf-tint-4-bg: #F4EEFF;
+  --sf-tint-4-line: #E0D3F8;
+  --sf-tint-4-fg: #543089;
+  --sf-tint-5-bg: #FFECEF;
+  --sf-tint-5-line: #FBD2D9;
+  --sf-tint-5-fg: #8C2740;
+  --sf-tint-6-bg: #E8F6F8;
+  --sf-tint-6-line: #C6E8ED;
+  --sf-tint-6-fg: #145A66;
+
+  /* El corazon de guardar. Es el UNICO sitio de la vitrina donde manda un color
+     que no es el del comercio, y es a proposito: «guardado» es una convencion
+     tan asentada como el carrito, y pintarla del acento del tenant la volveria
+     invisible entre todo lo demas que ya es de ese color. */
+  --sf-heart: #E23E57;
+  --sf-heart-soft: color-mix(in srgb, var(--sf-heart) 12%, var(--card));
 }
 
 /* En oscuro la sombra no separa —todo es oscuro sobre oscuro—, asi que el canto
@@ -70,6 +114,31 @@
   --sf-shadow: 0 1px 0 rgba(255, 255, 255, 0.03), 0 16px 36px -22px rgba(0, 0, 0, 0.75);
   --sf-shadow-hover: 0 1px 0 rgba(255, 255, 255, 0.05), 0 28px 60px -26px rgba(0, 0, 0, 0.85);
   --sf-media-bg: color-mix(in srgb, var(--neutral-soft) 75%, var(--card));
+
+  /* En oscuro los pasteles se vuelven manchas: los tintes pasan a ser tonos
+     PROFUNDOS con el contenido claro. Mismo orden, misma asignacion, distinta
+     materia. */
+  --sf-tint-1-bg: #16283C;
+  --sf-tint-1-line: #24405E;
+  --sf-tint-1-fg: #9DC6F2;
+  --sf-tint-2-bg: #142E24;
+  --sf-tint-2-line: #21493A;
+  --sf-tint-2-fg: #92D9B8;
+  --sf-tint-3-bg: #33230F;
+  --sf-tint-3-line: #4E3618;
+  --sf-tint-3-fg: #F0BE85;
+  --sf-tint-4-bg: #241B39;
+  --sf-tint-4-line: #392C57;
+  --sf-tint-4-fg: #C4AEF0;
+  --sf-tint-5-bg: #351720;
+  --sf-tint-5-line: #522432;
+  --sf-tint-5-fg: #F1A2B3;
+  --sf-tint-6-bg: #102C31;
+  --sf-tint-6-line: #1C464D;
+  --sf-tint-6-fg: #8FD3DD;
+
+  --sf-heart: #FF6E85;
+  --sf-heart-soft: color-mix(in srgb, var(--sf-heart) 18%, var(--card));
 }
 
 :root[data-theme='light'] .sf-scope {

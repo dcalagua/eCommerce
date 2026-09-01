@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { T } from '@/theme/tokens'
 import { initials } from '../branding'
+import { tintFor } from '../tint'
 import { ScrollRow } from './ScrollRow'
 
 export interface BrandOption {
@@ -70,6 +71,7 @@ export function BrandRow({
       <ScrollRow ariaLabel={t('store.brands.title')} gap={1}>
         {brands.map((brand) => {
           const activa = selected === brand.code
+          const tinte = tintFor(brand.name)
           return (
             <Box
               key={brand.code}
@@ -88,17 +90,18 @@ export function BrandRow({
                 py: 1.25,
                 width: 190,
                 borderRadius: 'var(--sf-radius)',
-                border: activa
-                  ? '1px solid color-mix(in srgb, var(--accent) 55%, transparent)'
-                  : '1px solid var(--sf-line)',
-                bgcolor: activa ? 'color-mix(in srgb, var(--accent) 12%, var(--card))' : 'var(--card)',
+                // Elegida: manda el acento del comercio, que es el color de lo
+                // que esta ACTIVO. Sin elegir: su propio tinte, para que la
+                // fila se lea de lado y cada marca tenga sitio propio.
+                border: activa ? '1px solid var(--accent)' : `1px solid ${tinte.line}`,
+                bgcolor: activa ? 'color-mix(in srgb, var(--accent) 12%, var(--card))' : tinte.bg,
                 boxShadow: 'var(--sf-shadow)',
                 transition: 'transform .18s ease, box-shadow .18s ease, border-color .18s ease',
                 '@media (hover: hover)': {
                   '&:hover': {
                     transform: 'translateY(-2px)',
                     boxShadow: 'var(--sf-shadow-hover)',
-                    borderColor: 'color-mix(in srgb, var(--accent) 45%, transparent)',
+                    borderColor: activa ? 'var(--accent)' : tinte.fg,
                   },
                 },
                 '@media (prefers-reduced-motion: reduce)': {
@@ -121,12 +124,13 @@ export function BrandRow({
                   flexShrink: 0,
                   display: 'grid',
                   placeItems: 'center',
-                  borderRadius: 'var(--sf-radius-sm)',
-                  bgcolor: 'color-mix(in srgb, var(--accent) 14%, var(--card))',
-                  color: 'var(--accent-deep)',
+                  borderRadius: '50%',
+                  bgcolor: tinte.fg,
+                  color: tinte.bg,
                   fontSize: 14,
                   fontWeight: 800,
                   letterSpacing: '0.02em',
+                  boxShadow: `0 6px 16px -8px ${tinte.fg}`,
                 }}
               >
                 {initials(brand.name)}
@@ -136,9 +140,9 @@ export function BrandRow({
                 <Typography
                   sx={{
                     fontSize: 14,
-                    fontWeight: 700,
+                    fontWeight: 800,
                     lineHeight: 1.25,
-                    color: activa ? 'var(--accent-deep)' : 'var(--text)',
+                    color: activa ? 'var(--accent-deep)' : tinte.fg,
                     display: '-webkit-box',
                     WebkitLineClamp: 2,
                     WebkitBoxOrient: 'vertical',
@@ -151,7 +155,14 @@ export function BrandRow({
                     resto sale a cero y ese cero significaría «no hay nada»
                     cuando en realidad significa «no te lo he contado». */}
                 {brand.count === null ? null : (
-                  <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+                  <Typography
+                    sx={{
+                      fontSize: T.label,
+                      fontWeight: 600,
+                      color: activa ? 'var(--muted)' : tinte.fg,
+                      opacity: activa ? 1 : 0.75,
+                    }}
+                  >
                     {t('store.brands.count').replace('{count}', String(brand.count))}
                   </Typography>
                 )}

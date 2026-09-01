@@ -308,7 +308,13 @@ export function StoreHomePage() {
   useEffect(() => {
     if (listaPrevia.current === listaVista) return
     listaPrevia.current = listaVista
-    window.scrollTo({ top: 0, behavior: 'auto' })
+    try {
+      window.scrollTo({ top: 0, behavior: 'auto' })
+    } catch {
+      // jsdom no implementa `scrollTo` y lo grita por consola en cada test que
+      // monta la portada. Que un entorno sin scroll no pueda desplazarse no es
+      // un error: es que no hay a dónde.
+    }
   }, [listaVista])
 
   const resultCount = new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'es-PE').format(total)
