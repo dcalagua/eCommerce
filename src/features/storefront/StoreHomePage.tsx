@@ -1,6 +1,6 @@
-import { Box, Button, Card, Stack, Typography } from '@mui/material'
+import { Box, Button, Card, Link as MuiLink, Stack, Typography } from '@mui/material'
 import { useEffect, useMemo, useRef } from 'react'
-import { useLocation, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import type { SearchQuery, SearchSort } from '@/domain'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
@@ -11,6 +11,7 @@ import { T } from '@/theme/tokens'
 import { BackToTop } from './components/BackToTop'
 import { BrandRow } from './components/BrandRow'
 import { CategoryBar } from './components/CategoryBar'
+import { ProductRow } from './components/ProductRow'
 import { PromoCarousel } from './components/PromoCarousel'
 import { ContentBlocks } from './components/ContentBlocks'
 import { ProductGrid, ProductGridSkeleton } from './components/ProductGrid'
@@ -116,7 +117,46 @@ export function StoreHomePage() {
     [search, categorySlug, brand, availability, sort],
   )
 
+  const filtered = Boolean(search.trim() || categorySlug || brand || availability === 'in-stock')
+
+  /**
+   * Portada o catálogo.
+   *
+   * La rejilla de 400 productos con su panel de filtros es lo que se quiere
+   * cuando YA se sabe qué se busca. Quien acaba de entrar necesita antes saber
+   * QUÉ HAY, y eso son filas cortas con nombre: ofertas, categorías, marcas,
+   * novedades. La rejilla aparece al pedirla —«Ver todo»— o en cuanto hay un
+   * filtro, una búsqueda o una marca elegida, que es la misma intención dicha
+   * de otra forma.
+   *
+   * Vive en la URL (`?ver=todo`) como el resto: se comparte, el botón de atrás
+   * devuelve a la portada y recargar no cambia lo que se estaba mirando.
+   */
+  const catalogo = filtered || params.get('ver') === 'todo'
+
   const results = useCatalogPages(storeSlug, query)
+
+  /**
+   * Novedades, solo para la portada.
+   *
+   * `storeSlug` a `undefined` en el catálogo es lo que APAGA esta consulta: la
+   * fila no se pinta ahí, y pedir doce productos que nadie va a ver es pagar
+   * una llamada por cada filtro que alguien toca.
+   */
+  const novedadesQuery: SearchQuery = useMemo(
+    () => ({ term: '', filters: {}, sort: 'recent', limit: 12, offset: 0 }),
+    [],
+  )
+  const novedadesPages = useCatalogPages(catalogo ? undefined : storeSlug, novedadesQuery)
+  const novedades = useMemo(
+    () =>
+      (novedadesPages.data?.pages[0]?.items ?? []).map((hit) =>
+        hitToPublicProduct(hit, store.store_id),
+      ),
+    [novedadesPages.data, store.store_id],
+  )
+  const novedadesThumbs = useSignedThumbnails(novedades.map((p) => p.primary_image_path))
+
   const pages = useMemo(() => results.data?.pages ?? [], [results.data])
   const products = useMemo(
     () => pages.flatMap((page) => page.items.map((hit) => hitToPublicProduct(hit, store.store_id))),
@@ -125,9 +165,23 @@ export function StoreHomePage() {
   const thumbnails = useSignedThumbnails(products.map((product) => product.primary_image_path))
   const prefetchProduct = usePrefetchProduct(store.store_id)
 
+  /**
+   * La segunda fila no repite la primera.
+   *
+   * «Novedades» y «Lo más vendido» son dos consultas distintas, pero en una
+   * tienda pequeña devuelven casi lo mismo — y una portada que enseña el mismo
+   * producto dos veces con dos títulos distintos parece rota. Si al quitar lo
+   * repetido no queda nada, la fila entera desaparece: mejor una fila menos que
+   * una fila que miente.
+   */
+  const destacados = useMemo(() => {
+    const yaVistos = new Set(novedades.map((p) => p.product_id))
+    return products.filter((p) => !yaVistos.has(p.product_id)).slice(0, 12)
+  }, [products, novedades])
+
   const blocks = content.data?.cms ? (content.data.blocks ?? []) : []
   const hasCmsHero = blocks.some((block) => block.type === 'hero')
-  const filtered = Boolean(search.trim() || categorySlug || brand || availability === 'in-stock')
+  const cmsTraeProductos = blocks.some((block) => block.items.length > 0)
   const first = pages[0]
   const total = first?.total ?? 0
   const brandFacets = first?.facets.brands ?? []
@@ -194,6 +248,20 @@ export function StoreHomePage() {
 
   const resultCount = new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'es-PE').format(total)
 
+  /**
+   * Qué se está mirando, dicho con sus palabras.
+   *
+   * «Todo el catálogo» solo cuando de verdad no hay filtro: si se llegó por una
+   * marca o una categoría, el título es esa marca o esa categoría — es la
+   * respuesta a «¿dónde estoy?», que en una lista de 400 filas es la primera
+   * pregunta.
+   */
+  const tituloCatalogo = search.trim()
+    ? `${t('store.catalog.resultsFor')} "${search.trim()}"`
+    : (categoryOptions.find((c) => c.code === categorySlug)?.name ??
+       brandOptions.find((b) => b.code === brand)?.name ??
+       t('store.catalog.all'))
+
   // Metadatos de la portada. Cuelgan de la tienda YA RESUELTA, así que el
   // nombre, el banner y el contacto que se le enseñan a un buscador son los del
   // tenant. Se recalculan si cambia el filtro porque el canonical conserva la
@@ -207,14 +275,45 @@ export function StoreHomePage() {
 
   return (
     <Stack sx={{ gap: { xs: 2, md: 3 } }}>
-      {/* El hero del CMS SUSTITUYE al de `store_settings`, no se suma a él. */}
-      {hasCmsHero ? null : <StoreHero store={store} />}
+      {/* El hero y lo que compuso el comercio son la PORTADA. Al pedir «Ver
+          todo» estorban: quien va al catálogo tiene que volver a pasar por
+          delante de todo lo que ya vio para llegar a la rejilla. */}
+      {catalogo || hasCmsHero ? null : <StoreHero store={store} />}
+
+      {/* Cabecera del catálogo: de dónde se viene, qué se está mirando y cómo
+          se vuelve. Sin esto, «Ver todo» dejaba una rejilla sin título y sin
+          camino de vuelta que no fuera el botón de atrás del navegador. */}
+      {catalogo ? (
+        <Stack sx={{ gap: 0.5 }}>
+          <MuiLink
+            component={Link}
+            to={`/s/${storeSlug}`}
+            sx={{
+              fontSize: T.label,
+              fontWeight: 700,
+              color: 'var(--muted)',
+              textDecoration: 'none',
+              alignSelf: 'flex-start',
+              '&:hover': { color: 'var(--accent-deep)' },
+            }}
+          >
+            {`\u2190 ${t('store.catalog.back')}`}
+          </MuiLink>
+          <Typography
+            component="h1"
+            sx={{ fontSize: { xs: 22, md: 26 }, fontWeight: 800, letterSpacing: '-0.02em' }}
+          >
+            {tituloCatalogo}
+          </Typography>
+        </Stack>
+      ) : null}
 
       {/* `leadingHeading`: cuando el hero del CMS sustituye al de
           `store_settings`, es él quien tiene que llevar el `<h1>`. Sin esto la
           portada se quedaba sin encabezado de nivel 1 en cuanto el comercio
           publicaba una portada — y quien navega por encabezados perdía la
           única referencia de dónde empieza el documento. */}
+      {catalogo ? null : (
       <ContentBlocks
         blocks={blocks}
         storeSlug={storeSlug}
@@ -223,6 +322,7 @@ export function StoreHomePage() {
         currency={store.currency}
         leadingHeading={hasCmsHero}
       />
+      )}
 
 {/* Las ofertas vigentes, ANTES del catálogo y pasando solas.
           Salen del motor de promociones, no de un cartel escrito a mano: si
@@ -248,10 +348,65 @@ export function StoreHomePage() {
           marca tanto como por familia. Solo en la portada sin filtrar — con un
           filtro puesto, la faceta se queda en la marca elegida y la fila
           dejaría de ser una puerta para ser un espejo. */}
-      {filtered ? null : (
-        <BrandRow brands={brandOptions} selected={brand} onSelect={(code) => update('b', code)} />
+      {catalogo ? null : (
+        <BrandRow
+          brands={brandOptions}
+          selected={brand}
+          onSelect={(code) => update('b', code)}
+          seeAllHref={`/s/${storeSlug}?ver=todo`}
+        />
       )}
 
+      {/* Lo nuevo y lo de siempre, en filas cortas con su puerta al catálogo.
+          Una fila se recorre de un vistazo; una rejilla infinita, no. */}
+      {catalogo ? null : (
+        <>
+          <ProductRow
+            title={t('store.row.new')}
+            products={novedades}
+            loading={novedadesPages.isPending}
+            storeSlug={storeSlug}
+            thumbnails={novedadesThumbs}
+            seeAllHref={`/s/${storeSlug}?ver=todo&sort=recent`}
+            onPrefetch={prefetchProduct}
+            onQuickView={(slug) => update('p', slug)}
+            favorites={favorites.ids}
+            onToggleFavorite={(productId) => void favorites.toggle(productId)}
+          />
+
+          {/* Solo si el comercio no compuso ya sus propias filas: repetir «Lo
+              más vendido» dos veces con productos distintos no es más tienda,
+              es una portada que se contradice. */}
+          {cmsTraeProductos ? null : (
+          <ProductRow
+            title={t('store.row.featured')}
+            products={destacados}
+            loading={results.isPending}
+            storeSlug={storeSlug}
+            thumbnails={thumbnails}
+            seeAllHref={`/s/${storeSlug}?ver=todo`}
+            onPrefetch={prefetchProduct}
+            onQuickView={(slug) => update('p', slug)}
+            favorites={favorites.ids}
+            onToggleFavorite={(productId) => void favorites.toggle(productId)}
+          />
+          )}
+        </>
+      )}
+
+      {/* Una tienda sin catalogo publicado no puede quedarse en una portada
+          muda: sin filas ni bloques, aqui no habria NADA, y una pantalla vacia
+          sin explicacion parece rota. */}
+      {!catalogo && results.isSuccess && total === 0 && blocks.length === 0 && (
+        <Card>
+          <EmptyState
+            title={t('store.catalog.empty')}
+            description={t('store.catalog.emptyBody')}
+          />
+        </Card>
+      )}
+
+      {catalogo ? (
       <Stack direction={{ xs: 'column', md: 'row' }} sx={{ gap: { xs: 2, md: 3 }, alignItems: 'flex-start' }}>
         <Box sx={{ width: { xs: '100%', md: 280 }, flexShrink: 0 }}>
           <StoreFilterPanel
@@ -358,6 +513,7 @@ export function StoreHomePage() {
           )}
         </Box>
       </Stack>
+      ) : null}
 
       {/* El producto abierto vive en `?p=`: el boton de atras cierra el
           dialogo y el enlace se puede pegar en un chat. */}

@@ -407,7 +407,9 @@ describe('resolución del tenant por slug', () => {
 
 describe('catálogo', () => {
   it('lista los productos publicados con precio, descuento y disponibilidad', async () => {
-    renderStorefront(backend(), '/s/casa-nordica')
+    // `?ver=todo`: la rejilla con su recuento y su panel ya no esta puesta de
+    // entrada. La portada ensena filas cortas; esto es el catalogo.
+    renderStorefront(backend(), '/s/casa-nordica?ver=todo')
 
     expect(await screen.findByText('Silla de roble')).toBeInTheDocument()
     expect(screen.getByText('3 resultados')).toBeInTheDocument()
@@ -481,9 +483,38 @@ describe('catálogo', () => {
     expect(await screen.findByText('Silla de roble')).toBeInTheDocument()
   })
 
-  it('el filtro de disponibilidad esconde lo agotado', async () => {
+  /**
+   * Portada y catálogo son dos pantallas.
+   *
+   * La rejilla con su panel de filtros es lo que se quiere cuando YA se sabe
+   * qué se busca. Quien acaba de entrar necesita saber QUÉ HAY, y eso son filas
+   * cortas con nombre. Poner las dos cosas a la vez obligaba a bajar media
+   * pantalla de filtros para ver el primer producto.
+   */
+  it('la portada enseña filas; la rejilla con filtros llega al pedir «Ver todo»', async () => {
     const user = userEvent.setup()
     renderStorefront(backend(), '/s/casa-nordica')
+
+    // Los productos SÍ están —en una fila, no en la rejilla—, y el panel no.
+    expect(await screen.findByText('Silla de roble')).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: /solo disponibles/i })).not.toBeInTheDocument()
+
+    await user.click(screen.getAllByRole('link', { name: 'Ver todo' })[0] as HTMLElement)
+
+    expect(
+      await screen.findByRole('checkbox', { name: /solo disponibles/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Todo el catálogo' })).toBeInTheDocument()
+    // Y hay camino de vuelta: sin esto, la única salida es el botón de atrás.
+    expect(screen.getByRole('link', { name: /Volver a la portada/ })).toHaveAttribute(
+      'href',
+      '/s/casa-nordica',
+    )
+  })
+
+  it('el filtro de disponibilidad esconde lo agotado', async () => {
+    const user = userEvent.setup()
+    renderStorefront(backend(), '/s/casa-nordica?ver=todo')
     await screen.findByText('Silla de lino')
 
     await user.click(screen.getByRole('checkbox', { name: /solo disponibles/i }))
