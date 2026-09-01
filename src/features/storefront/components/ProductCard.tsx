@@ -58,6 +58,7 @@ export function ProductCard({
   onQuickView,
   favorite,
   onToggleFavorite,
+  compact = false,
 }: {
   product: PublicProduct
   storeSlug: string
@@ -85,6 +86,20 @@ export function ProductCard({
   favorite?: boolean
   /** Sin esto no se pinta el corazón: quien no ofrece guardar, no lo enseña. */
   onToggleFavorite?: (productId: string) => void
+  /**
+   * La misma tarjeta, para una FILA.
+   *
+   * En la rejilla del catálogo la tarjeta es el sitio donde se decide comprar,
+   * y por eso lleva estado y botón. En una fila de la portada es un escaparate:
+   * se recorre de lado, se mira y se entra. Allí el botón de comprar y la
+   * pastilla de disponibilidad convierten seis productos en media pantalla
+   * cada uno, y lo que se pierde es lo único que la fila tenía que hacer —
+   * enseñar QUE HAY.
+   *
+   * Lo que se quita es lo que se decide DENTRO de la ficha; no se quita ni el
+   * precio ni el descuento, que es lo que hace que alguien entre.
+   */
+  compact?: boolean
 }) {
   const { t, locale } = useI18n()
   const { add } = useCart()
@@ -101,8 +116,8 @@ export function ProductCard({
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        p: { xs: 1.25, md: 1.5 },
-        gap: 1,
+        p: compact ? 1 : { xs: 1.25, md: 1.5 },
+        gap: compact ? 0.75 : 1,
         borderRadius: 'var(--sf-radius)',
         // La separación entre tarjetas la da la sombra, no el borde: una línea
         // nítida alrededor de cada una convierte la rejilla en una cuadrícula.
@@ -133,7 +148,9 @@ export function ProductCard({
           position: 'relative',
           borderRadius: 'var(--sf-radius-sm)',
           overflow: 'hidden',
-          bgcolor: 'var(--sf-media-bg)',
+          p: 1,
+          background:
+            'linear-gradient(160deg, color-mix(in srgb, var(--accent) 5%, var(--card)) 0%, var(--sf-media-bg) 100%)',
           '& img': {
             transition: 'transform .35s ease',
             '@media (prefers-reduced-motion: reduce)': { transition: 'none', transform: 'none' },
@@ -143,7 +160,11 @@ export function ProductCard({
           ...(available ? {} : { '& img': { filter: 'grayscale(1)', opacity: 0.5 } }),
         }}
       >
-        <ProductMedia url={imageUrl} alt={product.primary_image_alt ?? product.name} />
+        <ProductMedia
+          url={imageUrl}
+          alt={product.primary_image_alt ?? product.name}
+          fit="contain"
+        />
 
         {onToggleFavorite && (
           // Por encima de la capa que hace pulsable la tarjeta (`zIndex: 1`):
@@ -189,15 +210,17 @@ export function ProductCard({
               position: 'absolute',
               top: 10,
               left: 10,
-              px: 0.875,
+              zIndex: 1,
+              px: 1,
               py: 0.25,
               borderRadius: 'var(--sf-pill)',
-              bgcolor: 'var(--accent)',
+              bgcolor: 'var(--accent-deep)',
               color: '#FFFFFF',
               fontSize: T.label,
               fontWeight: 800,
               letterSpacing: '0.02em',
               lineHeight: 1.6,
+              boxShadow: '0 2px 8px rgba(0,0,0,.18)',
             }}
           >
             {`-${discount}%`}
@@ -223,7 +246,7 @@ export function ProductCard({
         <Typography
           component="h3"
           sx={{
-            fontSize: 15,
+            fontSize: compact ? 13.5 : 15,
             fontWeight: 650,
             lineHeight: 1.35,
             letterSpacing: '-0.005em',
@@ -269,7 +292,12 @@ export function ProductCard({
               pesaban lo mismo y la tarjeta no tenía protagonista. */}
           <Typography
             className="tnum"
-            sx={{ fontSize: 19, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.2 }}
+            sx={{
+              fontSize: compact ? 16 : 19,
+              fontWeight: 800,
+              letterSpacing: '-0.02em',
+              lineHeight: 1.2,
+            }}
           >
             {formatMoney(Number(product.price), product.currency, locale)}
           </Typography>
@@ -285,7 +313,9 @@ export function ProductCard({
         </Stack>
 
         {/* El estado, en pastilla: en una línea de texto suelta se confunde con
-            el resto de la ficha, y es lo que decide si el botón sirve. */}
+            el resto de la ficha, y es lo que decide si el botón sirve. En la
+            fila no se pinta: allí no hay botón al que condicionar. */}
+        {compact ? null : (
         <Box
           sx={{
             alignSelf: 'flex-start',
@@ -301,10 +331,12 @@ export function ProductCard({
         >
           {available ? t('store.availability.inStock') : t('store.availability.outOfStock')}
         </Box>
+        )}
       </Stack>
 
       {/* Por encima de la capa que hace pulsable la tarjeta: pulsar aquí compra,
           no navega. */}
+      {compact ? null : (
       <Button
         fullWidth
         variant={available ? 'contained' : 'outlined'}
@@ -340,6 +372,7 @@ export function ProductCard({
       >
         {hasVariants ? t('store.product.chooseOptions') : t('store.product.addToCart')}
       </Button>
+      )}
     </Card>
   )
 }

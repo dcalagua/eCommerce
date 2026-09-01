@@ -122,7 +122,7 @@ const STORE_SELECT = [
   'business_display_name',
 ].join(', ')
 
-const CATEGORY_SELECT = 'category_id, store_id, slug, name, position'
+const CATEGORY_SELECT = 'category_id, store_id, parent_id, slug, name, position'
 
 /** `::text` en los importes: el céntimo no pasa por el float del navegador. */
 const PRODUCT_SELECT = [
@@ -204,6 +204,29 @@ async function resolveStoreAssets(store: PublicStore): Promise<PublicStore> {
   return { ...store, logo_url: resolve(store.logo_url), banner_url: resolve(store.banner_url) }
 }
 
+/**
+ * La UNICA tienda activa del proyecto, si es que hay solo una.
+ *
+ * Sirve a la portada del dominio raiz para poder ofrecer «ver la tienda» en un
+ * despliegue de una sola tienda —el caso de una demo o de un cliente unico— sin
+ * cablear su slug en el codigo.
+ *
+ * Pide DOS y devuelve `null` si vienen dos: con varias tiendas, la raiz no
+ * elige por el visitante, y sobre todo no las lista. La lista de tiendas
+ * activas de un SaaS es la lista de clientes, y la portada publica no es sitio
+ * para publicarla.
+ */
+export async function fetchOnlyPublicStore(): Promise<{ slug: string; name: string } | null> {
+  const { data, error } = await storefront()
+    .from(PUBLIC_STORES_VIEW)
+    .select('slug, name')
+    .limit(2)
+
+  if (error || !data || data.length !== 1) return null
+  const [store] = data as Array<{ slug: string; name: string }>
+  return store ?? null
+}
+
 export async function fetchPublicStore(slug: string): Promise<PublicStore> {
   const { data, error } = await storefront()
     .from(PUBLIC_STORES_VIEW)
@@ -272,6 +295,36 @@ export async function fetchPublicProducts(query: CatalogQuery): Promise<PublicPr
   const { data, error } = await request.limit(query.limit)
   if (error) throw new StorefrontError(error)
   return publicProductSchema.array().parse(data ?? [])
+}
+
+/**
+ * Los productos guardados, en el orden en que se pidieron.
+ *
+ * PostgREST devuelve lo que quiere para un `in`, y una lista de favoritos que
+ * cambia de orden en cada recarga se siente rota. El orden lo pone quien llama
+ * —que es quien sabe cuál se guardó antes— y aquí solo se reordena.
+ *
+ * Un id que ya no esté publicado simplemente no vuelve: el producto se
+ * despublicó o se archivó despues de guardarlo, y la lista lo omite en vez de
+ * pintar un hueco. Sigue guardado, por si vuelve a la vitrina.
+ */
+export async function fetchPublicProductsByIds(
+  storeId: string | null,
+  ids: readonly string[],
+): Promise<PublicProduct[]> {
+  if (!storeId || ids.length === 0) return []
+
+  const { data, error } = await storefront()
+    .from(PUBLIC_PRODUCTS_VIEW)
+    .select(PRODUCT_SELECT)
+    .eq('store_id', storeId)
+    .in('product_id', [...ids])
+    .limit(ids.length)
+
+  if (error) throw new StorefrontError(error)
+  const rows = publicProductSchema.array().parse(data ?? [])
+  const byId = new Map(rows.map((row) => [row.product_id, row]))
+  return ids.map((id) => byId.get(id)).filter((row): row is PublicProduct => row !== undefined)
 }
 
 export async function fetchPublicProduct(input: {

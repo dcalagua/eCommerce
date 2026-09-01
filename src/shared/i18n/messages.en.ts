@@ -1845,6 +1845,7 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'store.promos.goTo': 'See deal: {name}',
     'store.promos.see': 'See the products',
     'store.brands.title': 'Shop by brand',
+    'store.categories.shopBy': 'Shop by category',
     'store.row.seeAll': 'See all',
     'store.catalog.back': 'Back to the shop front',
     'store.catalog.all': 'The whole catalogue',

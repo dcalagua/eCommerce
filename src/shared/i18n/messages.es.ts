@@ -1856,6 +1856,7 @@ export const es = {
     'store.promos.goTo': 'Ver la oferta: {name}',
     'store.promos.see': 'Ver los productos',
     'store.brands.title': 'Compra por marca',
+    'store.categories.shopBy': 'Compra por categoría',
     'store.row.seeAll': 'Ver todo',
     'store.catalog.back': 'Volver a la portada',
     'store.catalog.all': 'Todo el catálogo',

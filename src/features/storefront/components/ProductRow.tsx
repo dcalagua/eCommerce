@@ -77,13 +77,14 @@ export function ProductRow({
       <ScrollRow ariaLabel={title} gap={1.5}>
         {loading
           ? Array.from({ length: 6 }, (_, i) => (
-              <Box key={i} sx={{ width: 208, flexShrink: 0 }}>
-                <Skeleton variant="rounded" height={260} sx={{ borderRadius: 'var(--sf-radius)' }} />
+              <Box key={i} sx={{ width: 168, flexShrink: 0 }}>
+                <Skeleton variant="rounded" height={220} sx={{ borderRadius: 'var(--sf-radius)' }} />
               </Box>
             ))
           : products.map((product) => (
-              <Box key={product.product_id} sx={{ width: 208, flexShrink: 0, display: 'flex' }}>
+              <Box key={product.product_id} sx={{ width: 168, flexShrink: 0, display: 'flex' }}>
                 <ProductCard
+                  compact
                   product={product}
                   storeSlug={storeSlug}
                   {...(onQuickView ? { onQuickView } : {})}

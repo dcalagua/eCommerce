@@ -946,7 +946,11 @@ function CollectionCard({
         boxShadow: 'var(--sf-shadow)',
         scrollSnapAlign: snap ? 'start' : undefined,
         transition: 'box-shadow .18s ease, transform .18s ease',
-        '&:hover': { boxShadow: 'var(--sf-shadow-hover)', transform: 'translateY(-3px)' },
+        '&:hover': {
+          boxShadow: 'var(--sf-shadow-hover)',
+          transform: 'translateY(-3px)',
+          borderColor: 'color-mix(in srgb, var(--accent) 45%, transparent)',
+        },
         '@media (prefers-reduced-motion: reduce)': {
           transition: 'none',
           '&:hover': { transform: 'none' },
@@ -954,9 +958,19 @@ function CollectionCard({
         '& .sf-collection-media': {
           borderRadius: 'var(--sf-radius-sm)',
           overflow: 'hidden',
-          bgcolor: 'var(--sf-media-bg)',
+          p: 1,
+          background:
+            'linear-gradient(160deg, color-mix(in srgb, var(--accent) 5%, var(--card)) 0%, var(--sf-media-bg) 100%)',
           mb: 0.75,
         },
+        // La foto crece un poco al pasar por encima: es la señal de que la
+        // tarjeta entera es pulsable, y sin ella una fila de fotos quietas no
+        // parece un escaparate.
+        '& .sf-collection-media img': {
+          transition: 'transform .35s ease',
+          '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
+        },
+        '&:hover .sf-collection-media img': { transform: 'scale(1.05)' },
       }}
     >
       <Box className="sf-collection-media" sx={{ position: 'relative' }}>
@@ -967,14 +981,15 @@ function CollectionCard({
             top: 8,
             left: 8,
             zIndex: 1,
-            px: 0.875,
+            px: 1,
             py: 0.25,
             borderRadius: 'var(--sf-pill)',
-            bgcolor: 'var(--accent)',
+            bgcolor: 'var(--accent-deep)',
             color: '#FFFFFF',
             fontSize: T.label,
             fontWeight: 800,
             lineHeight: 1.6,
+            boxShadow: '0 2px 8px rgba(0,0,0,.18)',
           }}
         >
           {`-${descuento}%`}
@@ -983,6 +998,7 @@ function CollectionCard({
       <ProductMedia
         url={item.image_path ? (images[item.image_path] ?? null) : null}
         alt={item.image_alt ?? item.name}
+        fit="contain"
       />
       </Box>
       {item.kind === 'product' && item.brand_name ? (

@@ -462,7 +462,10 @@ describe('catálogo', () => {
 
   it('filtra por categoría desde las píldoras y marca cuál está activa', async () => {
     const user = userEvent.setup()
-    renderStorefront(backend(), '/s/casa-nordica')
+    // Las píldoras son la forma que toman las categorías DENTRO del catálogo:
+    // ahí son un filtro que se enciende y se apaga. En la portada son azulejos
+    // con icono, que son una puerta y no un interruptor.
+    renderStorefront(backend(), '/s/casa-nordica?ver=todo')
     await screen.findByText('Silla de roble')
 
     await user.click(screen.getByRole('button', { name: 'Mesas' }))
@@ -510,6 +513,28 @@ describe('catálogo', () => {
       'href',
       '/s/casa-nordica',
     )
+  })
+
+  it('al abrir el catálogo la página empieza por arriba, no por donde iba', async () => {
+    const user = userEvent.setup()
+    const scrollTo = vi.fn()
+    vi.stubGlobal('scrollTo', scrollTo)
+    try {
+      renderStorefront(backend(), '/s/casa-nordica')
+      await screen.findByText('Silla de roble')
+      // El montaje no cuenta: solo los CAMBIOS de lista mueven el scroll.
+      expect(scrollTo).not.toHaveBeenCalled()
+
+      await user.click(screen.getAllByRole('link', { name: 'Ver todo' })[0] as HTMLElement)
+      await screen.findByRole('heading', { name: 'Todo el catálogo' })
+
+      // «Ver todo» no cambia de ruta, solo de parametro: sin esto el navegador
+      // conserva el desplazamiento y el catalogo aparecia empezado por la
+      // mitad, con su cabecera y sus filtros fuera de la vista.
+      expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'auto' })
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 
   it('el filtro de disponibilidad esconde lo agotado', async () => {

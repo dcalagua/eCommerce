@@ -11,6 +11,7 @@ import { T } from '@/theme/tokens'
 import { BackToTop } from './components/BackToTop'
 import { BrandRow } from './components/BrandRow'
 import { CategoryBar } from './components/CategoryBar'
+import { CategoryTiles } from './components/CategoryTiles'
 import { ProductRow } from './components/ProductRow'
 import { PromoCarousel } from './components/PromoCarousel'
 import { ContentBlocks } from './components/ContentBlocks'
@@ -199,14 +200,39 @@ export function StoreHomePage() {
    * Con un filtro puesto, el resto sale a cero, y ese cero no significa «no hay
    * nada» sino «no te lo he contado». `null` es «no se sabe», y no se pinta.
    */
-  const categoryCounts = new Map(
-    (first?.facets.categories ?? []).map((facet) => [facet.code, facet.count]),
+  const categoryCounts = useMemo(
+    () => new Map((first?.facets.categories ?? []).map((facet) => [facet.code, facet.count])),
+    [first],
   )
   const categoryOptions = (categories.data ?? []).map((category) => ({
     code: category.slug,
     name: category.name,
     count: categorySlug ? null : (categoryCounts.get(category.slug) ?? 0),
   }))
+  /**
+   * Las familias, para la portada.
+   *
+   * Solo las de primer nivel. Con el catálogo real importado, la lista plana
+   * mezclaba «Cuidado personal» con «Antimicóticos (hongos)» y las pintaba
+   * igual de grandes: doce puertas donde solo tres eran puertas.
+   *
+   * Si el comercio no ha hecho jerarquía —todas cuelgan de nadie— eso no
+   * arregla nada, así que en ese caso manda el TAMAÑO: las diez con más
+   * producto publicado, que es la mejor aproximación a «las importantes» sin
+   * inventarse un campo que nadie ha rellenado.
+   */
+  const familias = useMemo(() => {
+    const todas = (categories.data ?? []).map((category) => ({
+      code: category.slug,
+      name: category.name,
+      count: categoryCounts.get(category.slug) ?? null,
+      raiz: category.parent_id === null,
+    }))
+    const raices = todas.filter((c) => c.raiz)
+    const base = raices.length >= 2 && raices.length < todas.length ? raices : todas
+    return [...base].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).slice(0, 12)
+  }, [categories.data, categoryCounts])
+
   const brandOptions = brandFacets.map((facet) => ({
     code: facet.code,
     name: facet.name,
@@ -245,6 +271,28 @@ export function StoreHomePage() {
     observer.observe(node)
     return () => observer.disconnect()
   }, [hasNextPage, isFetchingNextPage, fetchNextPage, products.length])
+
+  /**
+   * Cambiar de lista empieza por el principio.
+   *
+   * «Ver todo» no cambia de ruta —solo de parámetro—, así que el navegador
+   * conserva el desplazamiento: se pulsaba desde media página y el catálogo
+   * aparecía empezado por la mitad, con la cabecera y los filtros arriba, fuera
+   * de la vista. Lo mismo al volver a la portada y al cambiar de categoría o de
+   * marca: es OTRA lista, y una lista nueva que empieza por su fila 40 no se
+   * entiende.
+   *
+   * No entra el ORDEN ni la disponibilidad a propósito: ahí se está mirando lo
+   * mismo de otra forma, y devolver el scroll al principio haría perder el
+   * sitio a quien solo quería reordenar.
+   */
+  const listaVista = `${catalogo}|${categorySlug ?? ''}|${brand ?? ''}|${search.trim()}`
+  const listaPrevia = useRef(listaVista)
+  useEffect(() => {
+    if (listaPrevia.current === listaVista) return
+    listaPrevia.current = listaVista
+    window.scrollTo({ top: 0, behavior: 'auto' })
+  }, [listaVista])
 
   const resultCount = new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'es-PE').format(total)
 
@@ -335,14 +383,24 @@ export function StoreHomePage() {
         />
       )}
 
-      {/* Las categorías siguen aquí, en horizontal, ADEMÁS de en el panel: son
-          el atajo de quien llega sin saber qué busca, y en el móvil el panel
-          queda debajo del catálogo. */}
-      <CategoryBar
-        categories={categories.data ?? []}
-        selected={categorySlug}
-        onSelect={(slug) => update('c', slug)}
-      />
+      {/* Dos formas de la misma lista, y la diferencia no es de adorno.
+          En el CATÁLOGO son píldoras: ahí son un filtro, se comparan de un
+          vistazo y se encienden y apagan. En la PORTADA son puertas, y una
+          puerta tiene que decir a dónde lleva —de ahí el icono, que separa una
+          familia de otra antes de leerla— y cuánto hay detrás. */}
+      {catalogo ? (
+        <CategoryBar
+          categories={categories.data ?? []}
+          selected={categorySlug}
+          onSelect={(slug) => update('c', slug)}
+        />
+      ) : (
+        <CategoryTiles
+          categories={familias}
+          storeSlug={storeSlug}
+          seeAllHref={`/s/${storeSlug}?ver=todo`}
+        />
+      )}
 
       {/* Las marcas, al lado de las categorías: en una botica se compra por
           marca tanto como por familia. Solo en la portada sin filtrar — con un

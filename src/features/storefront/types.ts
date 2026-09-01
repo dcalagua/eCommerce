@@ -90,6 +90,13 @@ export type PublicStore = z.infer<typeof publicStoreSchema>
 export const publicCategorySchema = z.object({
   category_id: z.string().uuid(),
   store_id: z.string().uuid(),
+  /**
+   * De quién cuelga. La portada solo enseña las FAMILIAS —las que no cuelgan de
+   * nadie—: con el catálogo real importado, la lista plana mezclaba «Cuidado
+   * personal» con «Antimicóticos (hongos)» y las dos se veían igual de
+   * importantes.
+   */
+  parent_id: z.string().uuid().nullable().default(null),
   slug: z.string().min(1),
   name: z.string().min(1),
   position: z.number().int(),

@@ -2,6 +2,7 @@ import { Box, Button, Stack, Typography } from '@mui/material'
 import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { T } from '@/theme/tokens'
+import { initials } from '../branding'
 import { ScrollRow } from './ScrollRow'
 
 export interface BrandOption {
@@ -80,41 +81,81 @@ export function BrandRow({
                 cursor: 'pointer',
                 flexShrink: 0,
                 textAlign: 'left',
-                px: 2,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.25,
+                px: 1.5,
                 py: 1.25,
-                minWidth: 132,
-                borderRadius: 'var(--sf-radius-sm)',
+                width: 190,
+                borderRadius: 'var(--sf-radius)',
                 border: activa
                   ? '1px solid color-mix(in srgb, var(--accent) 55%, transparent)'
                   : '1px solid var(--sf-line)',
                 bgcolor: activa ? 'color-mix(in srgb, var(--accent) 12%, var(--card))' : 'var(--card)',
-                transition: 'border-color .15s ease, background-color .15s ease',
+                boxShadow: 'var(--sf-shadow)',
+                transition: 'transform .18s ease, box-shadow .18s ease, border-color .18s ease',
                 '@media (hover: hover)': {
-                  '&:hover': { borderColor: 'color-mix(in srgb, var(--accent) 45%, transparent)' },
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: 'var(--sf-shadow-hover)',
+                    borderColor: 'color-mix(in srgb, var(--accent) 45%, transparent)',
+                  },
                 },
-                '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
+                '@media (prefers-reduced-motion: reduce)': {
+                  transition: 'none',
+                  '&:hover': { transform: 'none' },
+                },
               }}
             >
-              <Typography
+              {/* El monograma hace de logo mientras no haya logo.
+                  Un catálogo de marcas sin imagen es una lista de texto gris
+                  donde ninguna se distingue de la de al lado; con dos letras
+                  sobre el acento del comercio, cada una tiene forma propia y la
+                  fila se lee de lado. El día que la marca traiga logo, va en su
+                  sitio sin mover nada más. */}
+              <Box
+                aria-hidden
                 sx={{
+                  width: 40,
+                  height: 40,
+                  flexShrink: 0,
+                  display: 'grid',
+                  placeItems: 'center',
+                  borderRadius: 'var(--sf-radius-sm)',
+                  bgcolor: 'color-mix(in srgb, var(--accent) 14%, var(--card))',
+                  color: 'var(--accent-deep)',
                   fontSize: 14,
-                  fontWeight: 700,
-                  color: activa ? 'var(--accent-deep)' : 'var(--text)',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
+                  fontWeight: 800,
+                  letterSpacing: '0.02em',
                 }}
               >
-                {brand.name}
-              </Typography>
-              {/* El contador solo cuando se sabe: con un filtro puesto, el resto
-                  sale a cero y ese cero significaría «no hay nada» cuando en
-                  realidad significa «no te lo he contado». */}
-              {brand.count === null ? null : (
-                <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
-                  {t('store.brands.count').replace('{count}', String(brand.count))}
+                {initials(brand.name)}
+              </Box>
+
+              <Box sx={{ minWidth: 0 }}>
+                <Typography
+                  sx={{
+                    fontSize: 14,
+                    fontWeight: 700,
+                    lineHeight: 1.25,
+                    color: activa ? 'var(--accent-deep)' : 'var(--text)',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {brand.name}
                 </Typography>
-              )}
+                {/* El contador solo cuando se sabe: con un filtro puesto, el
+                    resto sale a cero y ese cero significaría «no hay nada»
+                    cuando en realidad significa «no te lo he contado». */}
+                {brand.count === null ? null : (
+                  <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+                    {t('store.brands.count').replace('{count}', String(brand.count))}
+                  </Typography>
+                )}
+              </Box>
             </Box>
           )
         })}
