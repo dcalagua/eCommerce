@@ -79,8 +79,10 @@ export const FONT_STACK = "'DM Sans', system-ui, -apple-system, 'Segoe UI', sans
  * navegación al proveedor de fuentes, y un recurso de terceros que puede
  * cambiar sin que nadie lo revise).
  *
- * `dm-sans` es la de suite y ya viene cargada en `index.html`; las otras cuatro
- * son pilas del sistema operativo y no cuestan ni una petición. Añadir una
+ * `dm-sans` es la de suite y ya viene cargada en `index.html`; `plus-jakarta`
+ * es la de la vitrina y se auto-aloja con `@fontsource` (llega en el chunk del
+ * storefront, no en el del backoffice); las otras cuatro son pilas del sistema
+ * operativo y no cuestan ni una petición. Añadir una
  * fuente web nueva es una decisión de producto —hay que cargarla, medirla y
  * comprobar su contraste— y por eso es una línea de código, no una fila.
  *
@@ -88,11 +90,15 @@ export const FONT_STACK = "'DM Sans', system-ui, -apple-system, 'Segoe UI', sans
  * `20260828140200`: si las dos listas se separan, un valor válido en la base
  * caería aquí al fallback y el tenant vería otra fuente sin que nada fallara.
  */
-export const BRAND_FONTS = ['dm-sans', 'system', 'grotesk', 'serif', 'mono'] as const
+export const BRAND_FONTS = ['dm-sans', 'plus-jakarta', 'system', 'grotesk', 'serif', 'mono'] as const
 export type BrandFont = (typeof BRAND_FONTS)[number]
 
 export const BRAND_FONT_STACKS: Record<BrandFont, string> = {
   'dm-sans': FONT_STACK,
+  // La de la VITRINA por defecto (P17). Se auto-aloja con `@fontsource`, que es
+  // la diferencia entre servir la fuente desde el dominio del comercio y pedirle
+  // al navegador del comprador que la baje de un tercero.
+  'plus-jakarta': "'Plus Jakarta Sans', 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif",
   system: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
   grotesk: "'Helvetica Neue', Helvetica, Arial, sans-serif",
   serif: "Georgia, 'Times New Roman', Times, serif",
