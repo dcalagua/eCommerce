@@ -1,4 +1,4 @@
-import { Box, Button, Card, Link as MuiLink, Stack, Typography } from '@mui/material'
+import { Box, Breadcrumbs, Button, Card, Link as MuiLink, Stack, Typography } from '@mui/material'
 import { useEffect, useMemo, useRef } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import type { SearchQuery, SearchSort } from '@/domain'
@@ -11,7 +11,6 @@ import { T } from '@/theme/tokens'
 import { BackToTop } from './components/BackToTop'
 import { BrandRow } from './components/BrandRow'
 import { CategoryBar } from './components/CategoryBar'
-import { CategoryTiles } from './components/CategoryTiles'
 import { ProductRow } from './components/ProductRow'
 import { PromoCarousel } from './components/PromoCarousel'
 import { ContentBlocks } from './components/ContentBlocks'
@@ -31,6 +30,7 @@ import {
   useStorefront,
   useStorePromotions,
 } from './hooks'
+import { categoryBarItems, categoryTrail, rollUpCategoryCounts } from './categoryTree'
 import { hitToPublicProduct } from './search'
 import { homeMeta } from './seo'
 
@@ -217,39 +217,38 @@ export function StoreHomePage() {
    * Con un filtro puesto, el resto sale a cero, y ese cero no significa «no hay
    * nada» sino «no te lo he contado». `null` es «no se sabe», y no se pinta.
    */
-  const categoryCounts = useMemo(
-    () => new Map((first?.facets.categories ?? []).map((facet) => [facet.code, facet.count])),
-    [first],
-  )
-  const categoryOptions = (categories.data ?? []).map((category) => ({
-    code: category.slug,
-    name: category.name,
-    count: categorySlug ? null : (categoryCounts.get(category.slug) ?? 0),
-  }))
   /**
-   * Las familias, para la portada.
+   * P18 · Las cifras SUMAN lo que cuelga.
    *
-   * Solo las de primer nivel. Con el catálogo real importado, la lista plana
-   * mezclaba «Cuidado personal» con «Antimicóticos (hongos)» y las pintaba
-   * igual de grandes: doce puertas donde solo tres eran puertas.
-   *
-   * Si el comercio no ha hecho jerarquía —todas cuelgan de nadie— eso no
-   * arregla nada, así que en ese caso manda el TAMAÑO: las diez con más
-   * producto publicado, que es la mejor aproximación a «las importantes» sin
-   * inventarse un campo que nadie ha rellenado.
+   * Las facetas cuentan por la categoría exacta del producto, que es lo único
+   * que el producto declara. Con árbol eso deja a las madres a cero: «Nutrición»
+   * reparte sus 81 productos entre sus hijas y no tiene ninguno propio. Un cero
+   * al lado de una puerta que sí lleva a algún sitio dice «vacío» de algo lleno.
    */
-  const familias = useMemo(() => {
-    const todas = (categories.data ?? []).map((category) => ({
+  const categoryCounts = useMemo(() => {
+    const propias = new Map<string, number | null>(
+      (first?.facets.categories ?? []).map((facet) => [facet.code, facet.count]),
+    )
+    return rollUpCategoryCounts(categories.data ?? [], propias)
+  }, [first, categories.data])
+  /**
+   * P18 · La barra enseña el nivel en el que se está: raíces en la portada,
+   * hijas al entrar en una, hermanas dentro de una hoja. Con treinta categorías
+   * planas la barra era un muro; con el árbol es una ruta.
+   */
+  const categoryOptions = categoryBarItems(categories.data ?? [], categorySlug).map(
+    (category) => ({
       code: category.slug,
       name: category.name,
-      count: categoryCounts.get(category.slug) ?? null,
-      raiz: category.parent_id === null,
-    }))
-    const raices = todas.filter((c) => c.raiz)
-    const base = raices.length >= 2 && raices.length < todas.length ? raices : todas
-    return [...base].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).slice(0, 12)
-  }, [categories.data, categoryCounts])
+      count: categorySlug ? null : (categoryCounts.get(category.slug) ?? 0),
+    }),
+  )
 
+  /** Por dónde ha llegado. Sin esto, entrar desde el buscador no dice dónde estás. */
+  const trail = useMemo(
+    () => categoryTrail(categories.data ?? [], categorySlug),
+    [categories.data, categorySlug],
+  )
   const brandOptions = brandFacets.map((facet) => ({
     code: facet.code,
     name: facet.name,
@@ -329,7 +328,7 @@ export function StoreHomePage() {
    */
   const tituloCatalogo = search.trim()
     ? `${t('store.catalog.resultsFor')} "${search.trim()}"`
-    : (categoryOptions.find((c) => c.code === categorySlug)?.name ??
+    : (trail.at(-1)?.name ??
        brandOptions.find((b) => b.code === brand)?.name ??
        t('store.catalog.all'))
 
@@ -412,18 +411,54 @@ export function StoreHomePage() {
           puerta tiene que decir a dónde lleva —de ahí el icono, que separa una
           familia de otra antes de leerla— y cuánto hay detrás. */}
       {catalogo ? (
-        <CategoryBar
-          categories={categories.data ?? []}
-          selected={categorySlug}
-          onSelect={(slug) => update('c', slug)}
-        />
-      ) : (
-        <CategoryTiles
-          categories={familias}
-          storeSlug={storeSlug}
-          seeAllHref={`/s/${storeSlug}?ver=todo`}
-        />
-      )}
+        <Stack sx={{ gap: 1 }}>
+          {/* Las migas: sin ellas, quien abre «Desodorantes» desde el buscador
+              no sabe que esta dentro de «Cuidado personal» ni como subir. */}
+          {trail.length > 0 && (
+            <Breadcrumbs
+              aria-label={t('store.categories.title')}
+              separator="›"
+              sx={{ fontSize: T.label, color: 'var(--muted)' }}
+            >
+              <MuiLink
+                component="button"
+                type="button"
+                underline="hover"
+                onClick={() => update('c', null)}
+                sx={{ fontSize: T.label, color: 'var(--muted)' }}
+              >
+                {/* «Todo el catálogo» y no «Todo»: la píldora de la barra ya se
+                    llama así, y dos controles con el mismo nombre en la misma
+                    pantalla no se distinguen ni con el ratón ni con un lector. */}
+                {t('store.catalog.all')}
+              </MuiLink>
+              {trail.map((node, index) =>
+                index === trail.length - 1 ? (
+                  <Box key={node.category_id} component="span" sx={{ fontWeight: 700, color: 'var(--text)' }}>
+                    {node.name}
+                  </Box>
+                ) : (
+                  <MuiLink
+                    key={node.category_id}
+                    component="button"
+                    type="button"
+                    underline="hover"
+                    onClick={() => update('c', node.slug)}
+                    sx={{ fontSize: T.label, color: 'var(--muted)' }}
+                  >
+                    {node.name}
+                  </MuiLink>
+                ),
+              )}
+            </Breadcrumbs>
+          )}
+          <CategoryBar
+            categories={categoryBarItems(categories.data ?? [], categorySlug)}
+            selected={categorySlug}
+            onSelect={(slug) => update('c', slug)}
+          />
+        </Stack>
+      ) : null}
 
       {/* Las marcas, al lado de las categorías: en una botica se compra por
           marca tanto como por familia. Solo en la portada sin filtrar — con un

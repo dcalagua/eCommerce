@@ -24,13 +24,26 @@ import { R, T } from '@/theme/tokens'
 import { StorefrontNotFoundError } from './api'
 import { notFoundMeta } from './seo'
 import { initials } from './branding'
+import { StoreCategoryNav } from './components/StoreCategoryNav'
 import { StoreQuickSearch } from './components/StoreQuickSearch'
 import { CartDrawer } from './cart/CartDrawer'
 import { CartProvider } from './cart/CartProvider'
 import { useCart } from './cart/cart-context'
-import { usePublicStore, useStoreNavigation, type StorefrontOutlet } from './hooks'
+import { usePublicCategories, usePublicStore, useStoreNavigation, type StorefrontOutlet } from './hooks'
 import { useFavorites } from './useFavorites'
 import type { PublicStore } from './types'
+// La tipografia de la VITRINA, auto-alojada. Se importa aqui —y no en el
+// arranque de la app— para que viaje en el chunk del storefront: quien entra al
+// backoffice no baja ni un byte de ella.
+//
+// Cuatro pesos y SOLO el subconjunto latino: los acentos y la enne del espanol
+// estan en `latin`, mientras que los ficheros genericos arrastran ademas
+// latin-ext, cirilico y vietnamita — tres alfabetos que esta tienda no escribe,
+// multiplicados por cada peso.
+import '@fontsource/plus-jakarta-sans/latin-400.css'
+import '@fontsource/plus-jakarta-sans/latin-500.css'
+import '@fontsource/plus-jakarta-sans/latin-700.css'
+import '@fontsource/plus-jakarta-sans/latin-800.css'
 import './storefront.css'
 
 /**
@@ -104,7 +117,12 @@ export function StorefrontLayout() {
     // que el encargo prohíbe.
     <AppearanceProvider
       tenantAccent={store.accent_color}
-      tenantFont={store.font_family}
+      // Plus Jakarta Sans es la fuente POR DEFECTO de la vitrina; el token del
+      // tenant, cuando existe, manda sobre ella. El defecto vive aqui y no en
+      // la fila: una tienda con `font_family` en null es una tienda que no ha
+      // elegido, y asi el dia que la suite cambie de fuente cambian todas sin
+      // migrar un solo dato.
+      tenantFont={store.font_family ?? 'plus-jakarta'}
       tenantRadius={store.ui_radius}
       tenantDensity={store.ui_density}
     >
@@ -275,6 +293,11 @@ function StoreHeader({ store, storeSlug }: { store: PublicStore; storeSlug: stri
           <CartButton />
         </Toolbar>
       </Container>
+
+      {/* Las familias, bajo la barra y en TODAS las pantallas de la tienda.
+          Estaban a media portada: para cambiar de familia habia que volver
+          arriba, y desde una ficha de producto no habia forma de llegar. */}
+      <StoreCategories storeSlug={storeSlug} storeId={store.store_id} />
     </Box>
   )
 }
@@ -302,6 +325,20 @@ function StoreHeader({ store, storeSlug }: { store: PublicStore; storeSlug: stri
  * Sigue siendo un `<nav>` con nombre: quien navega por regiones con un lector
  * de pantalla las encuentra por ahi, este arriba o abajo.
  */
+/**
+ * Las categorias de la tienda, ya cargadas.
+ *
+ * Vive aparte del encabezado para que la consulta de categorias no vuelva a
+ * pedirse cada vez que cambia algo de la barra (buscador, carrito): son datos
+ * de tienda, no de pantalla, y `usePublicCategories` los comparte con la
+ * portada por clave de consulta — una sola llamada para las dos.
+ */
+function StoreCategories({ storeSlug, storeId }: { storeSlug: string; storeId: string }) {
+  const { data } = usePublicCategories(storeId)
+  if (!data || data.length === 0) return null
+  return <StoreCategoryNav storeSlug={storeSlug} categories={data} />
+}
+
 function StorePagesFooter({ storeSlug, storeName }: { storeSlug: string; storeName: string }) {
   const { data } = useStoreNavigation(storeSlug)
 
@@ -386,43 +423,50 @@ function StorePagesNav({
 /**
  * Las tres acciones de la cabecera, con una sola anatomía.
  *
- * Antes eran tres `Button` sueltos con el icono de contorno por defecto de MUI:
- * a 24 px y con trazo de 1,5 px, un glifo hueco al lado de un nombre de tienda
- * en negrita se lee como un vector pegado, no como un control. Y los tres iban
- * en verde, así que ninguno destacaba — tres acentos son ninguno.
+ * Eran tres `Button` con el icono de contorno por defecto de MUI: a trazo de
+ * 1,5 px, un glifo hueco al lado de un nombre de tienda en negrita se lee como
+ * un vector pegado, no como un control.
  *
  * Lo que hace esta pieza:
  *
- *  · **Iconos RELLENOS** y a 21 px, que es el peso que aguanta al lado de un
- *    texto de 700. El contorno se reserva para lo que no está activo.
- *  · **Píldora con superficie al pasar por encima**: el botón deja de ser
- *    texto flotando y pasa a tener canto, que es lo que dice «esto se pulsa».
- *  · **Un solo acento, el carrito.** Es la acción que cierra la venta; el resto
- *    va en tinta. Favoritos y cuenta se distinguen por su icono, no por color.
- *  · **La cifra, encima del icono y no delante.** Pegada a la esquina con un
- *    anillo del color de la barra, que es lo que la separa del glifo sin
- *    dibujarle una caja.
+ *  · **El icono va RELLENO y dentro de una pastilla de su color.** El tinte es
+ *    lo que lo convierte en una etiqueta y no en un adorno; es la misma
+ *    gramática que el backoffice usa en `AppIcon`, traída a la vitrina.
+ *  · **Cada acción tiene SU color, y ninguno es decorativo.** El corazón va en
+ *    rojo porque un corazón es rojo —y es el mismo rojo que la tarjeta de
+ *    producto usa cuando algo está guardado, así que la cabecera y la rejilla
+ *    dicen lo mismo—; la cuenta en azul, que es el color de «tú»; el carrito en
+ *    el acento del tenant, porque es la acción que cierra la venta.
+ *  · **El texto NO se tiñe.** Va en tinta: el color lo lleva el icono, que es
+ *    donde ayuda a distinguir de un vistazo. Tres etiquetas de colores serían
+ *    tres cosas gritando.
  *
  * El nombre accesible SIEMPRE incluye la cifra: quien no ve la píldora necesita
  * oír «Carrito, 3», no «Carrito».
  */
+const ACTION_TONES = {
+  favorite: { bg: 'var(--red-soft)', fg: 'var(--red)' },
+  account: { bg: 'var(--blue-soft)', fg: 'var(--blue)' },
+  cart: { bg: 'var(--accent-soft)', fg: 'var(--accent-deep)' },
+} as const
+
 function HeaderAction({
   icon,
   label,
   badge = 0,
-  tone = 'neutral',
+  tone,
   to,
   onClick,
 }: {
   icon: ReactNode
   label: string
   badge?: number
-  tone?: 'neutral' | 'accent'
+  tone: keyof typeof ACTION_TONES
   /** Enlace o botón: uno de los dos, nunca los dos. */
   to?: string
   onClick?: () => void
 }) {
-  const accent = tone === 'accent'
+  const { bg, fg } = ACTION_TONES[tone]
 
   return (
     <Button
@@ -431,20 +475,14 @@ function HeaderAction({
       sx={{
         flexShrink: 0,
         minWidth: 0,
-        gap: 0.75,
-        px: { xs: 1, sm: 1.5 },
-        py: 0.75,
+        gap: 1,
+        px: { xs: 0.75, sm: 1.25 },
+        py: 0.625,
         borderRadius: 'var(--sf-pill)',
         fontWeight: 700,
         fontSize: T.body,
-        color: accent ? 'var(--accent-deep)' : 'var(--text)',
-        bgcolor: accent ? 'var(--accent-soft)' : 'transparent',
-        '&:hover': {
-          bgcolor: accent
-            ? 'color-mix(in srgb, var(--accent) 20%, transparent)'
-            : 'var(--sf-media-bg)',
-        },
-        '& .MuiSvgIcon-root': { fontSize: 21 },
+        color: 'var(--text)',
+        '&:hover': { bgcolor: 'var(--sf-media-bg)' },
       }}
     >
       <Badge
@@ -454,20 +492,33 @@ function HeaderAction({
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
         sx={{
           '& .MuiBadge-badge': {
-            height: 16,
-            minWidth: 16,
+            height: 17,
+            minWidth: 17,
             padding: '0 4px',
             fontSize: 10,
             fontWeight: 800,
             bgcolor: 'var(--accent)',
             color: '#fff',
-            // El anillo del color de la barra: separa la cifra del glifo sin
+            // El anillo del color de la barra separa la cifra del glifo sin
             // dibujarle una caja alrededor.
             border: '2px solid var(--card)',
           },
         }}
       >
-        {icon}
+        <Box
+          sx={{
+            width: 34,
+            height: 34,
+            borderRadius: 'var(--sf-pill)',
+            display: 'grid',
+            placeItems: 'center',
+            bgcolor: bg,
+            color: fg,
+            '& .MuiSvgIcon-root': { fontSize: 19 },
+          }}
+        >
+          {icon}
+        </Box>
       </Badge>
       <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
         {label}
@@ -492,6 +543,7 @@ function FavoritesButton({ storeSlug, storeId }: { storeSlug: string; storeId: s
       icon={<FavoriteRoundedIcon />}
       label={t('store.favorites.nav')}
       badge={favorites.ids.size}
+      tone="favorite"
     />
   )
 }
@@ -506,6 +558,7 @@ function AccountButton({ storeSlug }: { storeSlug: string }) {
       to={`/s/${storeSlug}/account`}
       icon={<PersonRoundedIcon />}
       label={t('account.title')}
+      tone="account"
     />
   )
 }
@@ -528,7 +581,7 @@ function CartButton() {
       icon={<ShoppingCartRoundedIcon />}
       label={t('store.cart.title')}
       badge={count}
-      tone="accent"
+      tone="cart"
     />
   )
 }

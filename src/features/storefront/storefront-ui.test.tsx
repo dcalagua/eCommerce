@@ -632,11 +632,15 @@ describe('ficha de producto', () => {
     // migas es un ENLACE al catálogo ya filtrado —a donde se va tras descartar
     // este producto— y en la ficha de datos es un dato más. Se comprueba el
     // enlace, que es la parte que puede romperse sin que se note.
-    expect(screen.getByRole('link', { name: 'Sillas' })).toHaveAttribute(
+    // Se busca DENTRO del contenido: desde que las familias viven en la
+    // cabecera, «Sillas» también es una entrada de la barra, y esa es otra cosa
+    // —navegación de tienda, no la ruta de este producto—.
+    const contenido = screen.getByRole('main')
+    expect(within(contenido).getByRole('link', { name: 'Sillas' })).toHaveAttribute(
       'href',
       '/s/casa-nordica?c=sillas',
     )
-    expect(screen.getAllByText('Sillas')).toHaveLength(2)
+    expect(within(contenido).getAllByText('Sillas')).toHaveLength(2)
     expect(screen.getAllByText('Disponible').length).toBeGreaterThan(0)
 
     // Bucket privado: la imagen llega por URL firmada, no por URL pública.
