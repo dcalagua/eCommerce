@@ -27,6 +27,7 @@ import { UomsPanel } from './pim/UomsPanel'
 import { VariantsPanel } from './pim/VariantsPanel'
 import { useBrands, useFamilies } from './pim/hooks'
 import {
+  categoryTree,
   PRODUCT_KINDS,
   PRODUCT_STATUSES,
   productFormSchema,
@@ -285,9 +286,12 @@ export function ProductDrawer({
             {...register('category_id')}
           >
             <MenuItem value="">{t('common.none')}</MenuItem>
-            {categories.map((category) => (
-              <MenuItem key={category.id} value={category.id}>
-                {category.name}
+            {/* Con RUTA y con sangría: en una lista de treinta, dos «Cuidado»
+                sueltos no se distinguen, y saber de qué madre cuelga cada uno
+                es justo lo que evita clasificar mal el producto. */}
+            {categoryTree(categories).map((node) => (
+              <MenuItem key={node.category.id} value={node.category.id}>
+                <span style={{ paddingLeft: node.depth * 14 }}>{node.category.name}</span>
               </MenuItem>
             ))}
           </TextField>

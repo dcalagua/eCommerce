@@ -1,4 +1,5 @@
 import { Box, Breadcrumbs, Button, Card, Link as MuiLink, Stack, Typography } from '@mui/material'
+import { visuallyHidden } from '@mui/utils'
 import { useEffect, useMemo, useRef } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import type { SearchQuery, SearchSort } from '@/domain'
@@ -182,6 +183,21 @@ export function StoreHomePage() {
 
   const blocks = content.data?.cms ? (content.data.blocks ?? []) : []
   const hasCmsHero = blocks.some((block) => block.type === 'hero')
+  /**
+   * ¿Trae el CMS su propia cubierta?
+   *
+   * `StoreHero` es la cabecera de RESERVA: existe para que una tienda que
+   * todavía no ha compuesto nada tenga portada. Un carrusel de imágenes arriba
+   * YA es esa cubierta, y que apareciera el hero de reserva justo al apagar el
+   * bloque del CMS es lo que hace pensar que el interruptor no funciona —se
+   * apaga una cabecera y sale otra, con otro texto.
+   *
+   * El carrusel solo cuenta si tiene diapositivas: uno vacío no pinta nada, y
+   * quitar la reserva por él dejaría la portada sin nada arriba.
+   */
+  const cmsTraePortada = blocks.some(
+    (block) => block.type === 'hero' || (block.type === 'slider' && block.items.length > 0),
+  )
   const cmsTraeProductos = blocks.some((block) => block.items.length > 0)
 
   /**
@@ -348,7 +364,20 @@ export function StoreHomePage() {
       {/* El hero y lo que compuso el comercio son la PORTADA. Al pedir «Ver
           todo» estorban: quien va al catálogo tiene que volver a pasar por
           delante de todo lo que ya vio para llegar a la rejilla. */}
-      {catalogo || hasCmsHero ? null : <StoreHero store={store} />}
+      {catalogo || cmsTraePortada ? null : <StoreHero store={store} />}
+
+      {/* El `<h1>` cuando la cubierta es un carrusel.
+          Un carrusel son imágenes: no tiene texto que pueda ser el encabezado
+          de nivel 1, y sin esto la portada se quedaría sin él en cuanto el
+          comercio cambiara el hero por un banner rotatorio. Va oculto a la
+          vista y no al lector: quien navega por encabezados necesita saber
+          dónde empieza el documento, y el nombre de la tienda ya está escrito
+          arriba en la cabecera. */}
+      {!catalogo && cmsTraePortada && !hasCmsHero && (
+        <Typography component="h1" sx={visuallyHidden}>
+          {store.name}
+        </Typography>
+      )}
 
       {/* Cabecera del catálogo: de dónde se viene, qué se está mirando y cómo
           se vuelve. Sin esto, «Ver todo» dejaba una rejilla sin título y sin

@@ -136,6 +136,12 @@ export const promotionScopeSchema = z.object({
   brand_id: z.string().nullable().default(null),
   required_quantity: moneyText.nullable().default(null),
   is_exclusion: z.boolean(),
+  /**
+   * Solo en un alcance de categoría: la campaña cubre también las
+   * subcategorías. Apagada por defecto — una campaña guardada no puede
+   * ampliarse sola a lo que alguien cuelgue mañana.
+   */
+  include_descendants: z.boolean().default(false),
 })
 export type PromotionScope = z.infer<typeof promotionScopeSchema>
 

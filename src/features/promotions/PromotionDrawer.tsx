@@ -157,6 +157,7 @@ export function PromotionDrawer({
   const [scopeVariant, setScopeVariant] = useState('')
   const [scopeQuantity, setScopeQuantity] = useState('')
   const [scopeExclusion, setScopeExclusion] = useState(false)
+  const [scopeDescendants, setScopeDescendants] = useState(false)
   const [tierQuantity, setTierQuantity] = useState('')
   const [tierPercent, setTierPercent] = useState('')
 
@@ -204,10 +205,12 @@ export function PromotionDrawer({
         brandId: scopeKind === 'brand' ? scopeTarget : null,
         requiredQuantity: promotion.kind === 'bundle' ? scopeQuantity : null,
         isExclusion: scopeExclusion,
+        includeDescendants: scopeDescendants,
       })
       setScopeTarget('')
       setScopeVariant('')
       setScopeQuantity('')
+      setScopeDescendants(false)
       notify(t('promotions.scope.added'), 'success')
     } catch (error) {
       const key: MessageKey =
@@ -589,6 +592,20 @@ export function PromotionDrawer({
                   value={scopeQuantity}
                   onChange={(event) => setScopeQuantity(event.target.value)}
                   sx={{ minWidth: 140 }}
+                />
+              )}
+              {/* Solo en un alcance de CATEGORÍA: en los demás la casilla no
+                  significa nada y la base la rechaza. Apagada por defecto —una
+                  campaña no se amplía sola a lo que alguien cuelgue mañana—. */}
+              {scopeKind === 'category' && (
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={scopeDescendants}
+                      onChange={(event) => setScopeDescendants(event.target.checked)}
+                    />
+                  }
+                  label={t('promotions.field.includeDescendants')}
                 />
               )}
               <FormControlLabel

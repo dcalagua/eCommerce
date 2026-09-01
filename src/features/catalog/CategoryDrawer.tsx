@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Alert, Box, Button, FormControlLabel, Stack, Switch, TextField } from '@mui/material'
+import { Alert, Box, Button, FormControlLabel, MenuItem, Stack, Switch, TextField } from '@mui/material'
 import { useEffect, useState, type ChangeEvent } from 'react'
 import { useForm } from 'react-hook-form'
 import { slugify } from '@/shared/lib/slug'
@@ -8,19 +8,34 @@ import type { MessageKey } from '@/shared/i18n/messages'
 import { FormDrawer } from '@/shared/ui/FormDrawer'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import { CatalogError } from './api/errors'
-import { categoryFormSchema, categoryToForm, type Category, type CategoryFormValues } from './types'
+import {
+  categoryDescendants,
+  categoryFormSchema,
+  categoryToForm,
+  categoryTree,
+  type Category,
+  type CategoryFormValues,
+} from './types'
 import { useSaveCategory } from './useCategories'
 
 /**
- * CRUD mínimo de categoría: nombre, dirección y si se ve en la vitrina.
+ * CRUD de categoría: nombre, dirección, madre y si se ve en la vitrina.
  *
- * Sin selector de padre a propósito. La tabla admite jerarquía, pero el árbol
- * (y su límite de profundidad) es trabajo de otra fase; ofrecer aquí un padre
- * dejaría crear una jerarquía que ninguna pantalla sabe todavía dibujar.
+ * ## El desplegable de madre no ofrece lo que la base va a rechazar
+ *
+ * Se excluyen la propia categoría y toda su descendencia —eso sería un ciclo— y
+ * las que ya están a la profundidad máxima, porque colgar de ellas crearía un
+ * cuarto nivel. La base lo rechaza igual (`CATEGORIA_CICLO`,
+ * `CATEGORIA_PROFUNDIDAD`): esto no es la validación, es no ofrecer una opción
+ * que se sabe que va a fallar.
+ *
+ * Las opciones llevan su RUTA completa («Salud › Sistema nervioso») y no solo
+ * su nombre: en una lista de treinta, dos «Cuidado» sueltos no se distinguen.
  */
 export function CategoryDrawer({
   open,
   category,
+  categories,
   organizationId,
   companyId,
   storeId,
@@ -29,6 +44,8 @@ export function CategoryDrawer({
 }: {
   open: boolean
   category: Category | null
+  /** Todas las de la tienda: de aquí sale el desplegable de madre. */
+  categories: Category[]
   organizationId: string
   companyId: string
   storeId: string
@@ -84,6 +101,13 @@ export function CategoryDrawer({
 
   const busy = isSubmitting || save.isPending
 
+  // Tres niveles es el tope de la base: una categoría que ya está en el segundo
+  // puede ser madre; una que está en el tercero, no.
+  const blocked = category ? categoryDescendants(categories, category.id) : new Set<string>()
+  const parents = categoryTree(categories).filter(
+    (node) => node.depth < 2 && !blocked.has(node.category.id),
+  )
+
   return (
     <FormDrawer
       open={open}
@@ -135,6 +159,23 @@ export function CategoryDrawer({
             inputProps={{ spellCheck: false }}
             {...register('slug', { onChange: () => setSlugEdited(true) })}
           />
+
+          <TextField
+            select
+            label={t('catalog.categories.parent')}
+            fullWidth
+            disabled={!canWrite}
+            value={watch('parent_id')}
+            onChange={(event) => setValue('parent_id', event.target.value)}
+            helperText={t('catalog.categories.parentHelp')}
+          >
+            <MenuItem value="">{t('catalog.categories.parentNone')}</MenuItem>
+            {parents.map((node) => (
+              <MenuItem key={node.category.id} value={node.category.id}>
+                {node.path}
+              </MenuItem>
+            ))}
+          </TextField>
 
           <FormControlLabel
             control={

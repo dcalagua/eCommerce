@@ -8,11 +8,13 @@ import { RowActions } from '@/shared/ui/RowActions'
 import { FilterBar } from '@/shared/ui/FilterBar'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded'
+import SubdirectoryArrowRightRoundedIcon from '@mui/icons-material/SubdirectoryArrowRightRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import {
   Box,
   Button,
-  Card,  Stack,
+  Card,
+  Stack,
   Table,
   TableBody,
   TableCell,
@@ -20,6 +22,7 @@ import {
   TableRow,
 } from '@mui/material'
 import { useMemo, useState } from 'react'
+import { categoryTree } from './types'
 import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
@@ -68,14 +71,24 @@ export function CategoriesPage() {
   const toggleActive = useSetCategoryActive()
   const removeCategory = useDeleteCategory()
 
+  /**
+   * El listado, en orden de ÁRBOL: cada madre seguida de su descendencia.
+   *
+   * Al buscar se sale del árbol a propósito y se enseña una lista plana con la
+   * RUTA de cada resultado: filtrar un árbol o esconde a las madres —y entonces
+   * las hijas aparecen sin contexto— o las conserva vacías, que es peor. Una
+   * ruta completa dice dónde está cada coincidencia sin dibujar el árbol.
+   */
   const visible = useMemo(() => {
     const term = search.trim().toLowerCase()
-    const list = categories.data ?? []
-    if (!term) return list
-    return list.filter(
-      (category) =>
-        category.name.toLowerCase().includes(term) || category.slug.includes(term),
-    )
+    const nodes = categoryTree(categories.data ?? [])
+    if (!term) return nodes
+    return nodes
+      .filter(
+        (node) =>
+          node.category.name.toLowerCase().includes(term) || node.category.slug.includes(term),
+      )
+      .map((node) => ({ ...node, depth: 0 }))
   }, [categories.data, search])
 
   // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
@@ -193,9 +206,30 @@ export function CategoriesPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {pager.rows.map((category) => (
+                {pager.rows.map(({ category, depth, path }) => (
                   <TableRow key={category.id} hover>
-                    <TableCell sx={{ fontWeight: 700 }}>{category.name}</TableCell>
+                    <TableCell sx={{ fontWeight: depth === 0 ? 700 : 600 }}>
+                      {/* La sangría es el árbol. Se hace con relleno y no con
+                          guiones en el texto: un nombre con prefijos deja de
+                          poder buscarse y de poder copiarse. */}
+                      <Box
+                        sx={{
+                          pl: depth * 3,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.75,
+                          minWidth: 0,
+                        }}
+                      >
+                        {depth > 0 && (
+                          <SubdirectoryArrowRightRoundedIcon
+                            aria-hidden
+                            sx={{ fontSize: 16, color: 'var(--muted)', flexShrink: 0 }}
+                          />
+                        )}
+                        <span title={path}>{category.name}</span>
+                      </Box>
+                    </TableCell>
                     <TableCell sx={{ color: 'var(--muted)' }}>{category.slug}</TableCell>
                     <TableCell>
                       <StatusChip
@@ -262,6 +296,7 @@ export function CategoriesPage() {
       <CategoryDrawer
         open={drawer.open}
         category={drawer.category}
+        categories={categories.data ?? []}
         organizationId={tenant.organization_id}
         companyId={activeCompanyId}
         storeId={storeId}

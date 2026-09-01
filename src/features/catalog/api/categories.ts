@@ -57,7 +57,14 @@ export async function saveCategory(input: {
   if (input.categoryId) {
     const { data, error } = await supabase
       .from(CATEGORIES_TABLE)
-      .update({ name: values.name, slug: values.slug, is_active: values.is_active })
+      // `parent_id` viaja como cadena vacia desde el formulario: en la base es
+      // NULL, que es lo que significa «raiz».
+      .update({
+        name: values.name,
+        slug: values.slug,
+        is_active: values.is_active,
+        parent_id: values.parent_id || null,
+      })
       .eq('id', input.categoryId)
       .select('id')
       .single()
@@ -74,6 +81,7 @@ export async function saveCategory(input: {
       name: values.name,
       slug: values.slug,
       is_active: values.is_active,
+      parent_id: values.parent_id || null,
     })
     .select('id')
     .single()

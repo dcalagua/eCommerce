@@ -157,6 +157,14 @@ export const categoryFormSchema = z.object({
     .max(160, errorKey('catalog.error.name')),
   slug: z.string().trim().toLowerCase().regex(SLUG_RE, errorKey('catalog.error.slug')),
   is_active: z.boolean(),
+  /**
+   * De quién cuelga. Cadena vacía = raíz, no `null`, porque es lo que devuelve
+   * un `<select>` vacío y convertirlo aquí evita que cada pantalla se acuerde.
+   *
+   * Con defecto: una categoría sin madre es el caso NORMAL, y quien construye
+   * el objeto —un formulario, una prueba— no tiene por qué declarar la ausencia.
+   */
+  parent_id: z.string().default(''),
 })
 export type CategoryFormValues = z.infer<typeof categoryFormSchema>
 
@@ -182,5 +190,77 @@ export function categoryToForm(category: Category | null): CategoryFormValues {
     name: category?.name ?? '',
     slug: category?.slug ?? '',
     is_active: category?.is_active ?? true,
+    parent_id: category?.parent_id ?? '',
   }
+}
+
+// ---------------------------------------------------------------------------
+// El árbol de categorías, en el cliente
+//
+// La lista completa ya viaja al backoffice para el desplegable del producto, y
+// son decenas de filas, no miles: armar el árbol aquí es una pasada sobre un
+// array frente a una consulta recursiva por pantalla. El servidor guarda la
+// jerarquía y pone las barandillas; el orden y la sangría son presentación.
+// ---------------------------------------------------------------------------
+
+export interface CategoryNode {
+  category: Category
+  /** 0 = raíz. La sangría de la tabla y el prefijo del desplegable salen de aquí. */
+  depth: number
+  /** «Salud › Sistema nervioso». Es lo que hace legible un selector de 30 filas. */
+  path: string
+}
+
+/**
+ * Aplana el árbol EN ORDEN DE LECTURA: cada madre seguida de su descendencia.
+ *
+ * Las huérfanas —una fila cuyo padre ya no está visible por un filtro— se
+ * tratan como raíces en vez de desaparecer: una categoría que existe y no sale
+ * en su pantalla es la clase de dato que nadie vuelve a encontrar.
+ */
+export function categoryTree(categories: Category[]): CategoryNode[] {
+  const byParent = new Map<string, Category[]>()
+  const ids = new Set(categories.map((category) => category.id))
+
+  for (const category of categories) {
+    const key = category.parent_id && ids.has(category.parent_id) ? category.parent_id : ''
+    const siblings = byParent.get(key) ?? []
+    siblings.push(category)
+    byParent.set(key, siblings)
+  }
+
+  const order = (list: Category[]) =>
+    [...list].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name))
+
+  const out: CategoryNode[] = []
+  const walk = (parent: string, depth: number, prefix: string) => {
+    for (const category of order(byParent.get(parent) ?? [])) {
+      const path = prefix ? `${prefix} › ${category.name}` : category.name
+      out.push({ category, depth, path })
+      walk(category.id, depth + 1, path)
+    }
+  }
+  walk('', 0, '')
+  return out
+}
+
+/**
+ * Las que NO pueden ser madre de `categoryId`: ella misma y su descendencia.
+ *
+ * La base lo rechaza igual (`CATEGORIA_CICLO`), pero un desplegable que ofrece
+ * una opción que va a fallar es un desplegable que miente.
+ */
+export function categoryDescendants(categories: Category[], categoryId: string): Set<string> {
+  const blocked = new Set([categoryId])
+  let grew = true
+  while (grew) {
+    grew = false
+    for (const category of categories) {
+      if (category.parent_id && blocked.has(category.parent_id) && !blocked.has(category.id)) {
+        blocked.add(category.id)
+        grew = true
+      }
+    }
+  }
+  return blocked
 }

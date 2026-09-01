@@ -197,7 +197,7 @@ export async function fetchScopes(promotionId: string | null): Promise<Promotion
   const { data, error } = await client()
     .from(PROMOTION_SCOPES_TABLE)
     .select(
-      'id, promotion_id, scope_kind, product_id, variant_id, category_id, brand_id, required_quantity, is_exclusion',
+      'id, promotion_id, scope_kind, product_id, variant_id, category_id, brand_id, required_quantity, is_exclusion, include_descendants',
     )
     .eq('promotion_id', promotionId)
     .order('is_exclusion', { ascending: true })
@@ -216,6 +216,8 @@ export interface ScopeInput {
   readonly brandId: string | null
   readonly requiredQuantity: string | null
   readonly isExclusion: boolean
+  /** Solo para `category`: la campana cubre tambien las subcategorias. */
+  readonly includeDescendants?: boolean
 }
 
 export async function addScope(scope: PromotionScopeIds, input: ScopeInput): Promise<void> {
@@ -235,6 +237,9 @@ export async function addScope(scope: PromotionScopeIds, input: ScopeInput): Pro
     brand_id: input.brandId,
     required_quantity: input.requiredQuantity,
     is_exclusion: input.isExclusion,
+    // Solo tiene sentido en un alcance de categoria; la base lo comprueba con
+    // un CHECK, asi que mandarlo en otro alcance seria un error, no un dato.
+    include_descendants: input.scopeKind === 'category' ? input.includeDescendants : false,
   })
   if (error) throw promotionsErrorFromDb(error)
 }

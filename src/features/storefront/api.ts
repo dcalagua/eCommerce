@@ -120,6 +120,7 @@ const STORE_SELECT = [
   'ui_radius',
   'ui_density',
   'business_display_name',
+  'checkout_requires_account',
 ].join(', ')
 
 const CATEGORY_SELECT = 'category_id, store_id, parent_id, slug, name, position'
