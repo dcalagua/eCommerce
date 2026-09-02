@@ -543,6 +543,213 @@ export type Database = {
           },
         ]
       }
+      assortment_assignments: {
+        Row: {
+          assortment_id: string
+          channel_id: string | null
+          company_id: string
+          created_at: string
+          customer_id: string | null
+          id: string
+          is_active: boolean
+          organization_id: string
+          priority: number
+          scope: Database["public"]["Enums"]["assortment_scope"]
+          segment_id: string | null
+          store_id: string
+          territory_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          assortment_id: string
+          channel_id?: string | null
+          company_id: string
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          is_active?: boolean
+          organization_id: string
+          priority?: number
+          scope: Database["public"]["Enums"]["assortment_scope"]
+          segment_id?: string | null
+          store_id: string
+          territory_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assortment_id?: string
+          channel_id?: string | null
+          company_id?: string
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          is_active?: boolean
+          organization_id?: string
+          priority?: number
+          scope?: Database["public"]["Enums"]["assortment_scope"]
+          segment_id?: string | null
+          store_id?: string
+          territory_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assortment_assignments_assortment_fk"
+            columns: ["assortment_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "assortments"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "assortment_assignments_channel_fk"
+            columns: ["channel_id", "store_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id", "store_id"]
+          },
+          {
+            foreignKeyName: "assortment_assignments_customer_fk"
+            columns: ["customer_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "assortment_assignments_segment_fk"
+            columns: ["segment_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "customer_segments"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "assortment_assignments_store_fk"
+            columns: ["store_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "assortment_assignments_territory_fk"
+            columns: ["territory_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "sales_territories"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
+      assortment_items: {
+        Row: {
+          assortment_id: string
+          company_id: string
+          created_at: string
+          id: string
+          organization_id: string
+          product_id: string
+          variant_id: string | null
+        }
+        Insert: {
+          assortment_id: string
+          company_id: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          product_id: string
+          variant_id?: string | null
+        }
+        Update: {
+          assortment_id?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          product_id?: string
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assortment_items_assortment_fk"
+            columns: ["assortment_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "assortments"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "assortment_items_product_fk"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assortment_items_product_fk"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "public_products"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "assortment_items_variant_fk"
+            columns: ["variant_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id", "product_id"]
+          },
+          {
+            foreignKeyName: "assortment_items_variant_fk"
+            columns: ["variant_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "public_product_variants"
+            referencedColumns: ["variant_id", "product_id"]
+          },
+        ]
+      }
+      assortments: {
+        Row: {
+          code: string
+          company_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          is_allow_list: boolean
+          name: string
+          organization_id: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          company_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_allow_list?: boolean
+          name: string
+          organization_id: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_allow_list?: boolean
+          name?: string
+          organization_id?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assortments_store_fk"
+            columns: ["store_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
       attribute_values: {
         Row: {
           attribute_data_type: Database["public"]["Enums"]["attribute_data_type"]
@@ -10449,6 +10656,12 @@ export type Database = {
         | "viewer"
         | "sales_rep"
       ar_document_kind: "invoice" | "debit_note" | "credit_note"
+      assortment_scope:
+        | "store"
+        | "channel"
+        | "territory"
+        | "segment"
+        | "customer"
       attribute_data_type: "text" | "number" | "boolean" | "date" | "option"
       audit_actor_kind: "user" | "service" | "support" | "system"
       business_role: "admin" | "buyer" | "approver" | "viewer"
@@ -10828,6 +11041,13 @@ export const Constants = {
       analytics_source: ["storefront", "server"],
       app_role: ["owner", "admin", "catalog", "orders", "viewer", "sales_rep"],
       ar_document_kind: ["invoice", "debit_note", "credit_note"],
+      assortment_scope: [
+        "store",
+        "channel",
+        "territory",
+        "segment",
+        "customer",
+      ],
       attribute_data_type: ["text", "number", "boolean", "date", "option"],
       audit_actor_kind: ["user", "service", "support", "system"],
       business_role: ["admin", "buyer", "approver", "viewer"],

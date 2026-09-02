@@ -60,6 +60,8 @@ export const SELLABLE_CAPABILITY_IDS = [
   'credit.management',
   // Fase 06. La cotizacion comercial: documento con vigencia y estado.
   'trade.quotes',
+  // Fase 08. Que puede comprar cada cliente del canal.
+  'trade.assortments',
 ] as const
 
 export const CAPABILITY_IDS = [
@@ -281,6 +283,17 @@ export const CAPABILITIES: readonly Capability[] = [
     state: 'implemented',
     grants:
       'Cotizaciones con vigencia, estado que solo avanza y líneas con la forma del pedido para convertir sin traducir.',
+  },
+  {
+    id: 'trade.assortments',
+    boundary: 'trade',
+    entitlement: `${ENTITLEMENT_PREFIX}trade.assortments`,
+    // Fase 08. Calca `price_list_assignments`, que resuelve el mismo problema
+    // —«que aplica a quien, con precedencia»— y cuya forma ya esta probada.
+    // Inventar otra para lo mismo obliga a aprender dos.
+    state: 'implemented',
+    grants:
+      'Surtido por cliente, segmento, territorio, canal o tienda, en lista blanca o negra, con precedencia resuelta en un solo sitio.',
   },
   {
     id: 'content.cms',
