@@ -11,6 +11,22 @@ el recorrido SaaS P00–P17 queda cerrado)
 > (`claude-saas-opus/config/phases.json`), que se identifica siempre como «P0x-SaaS». No son la misma
 > serie: el P12 histórico es el framework de integraciones; el P12-SaaS es fulfillment y devoluciones.
 
+## Recorrido B2B (arranca 2026-09-02, rama `feat/b2b-upgrade`)
+
+**Tercera numeración**, y tampoco es la misma serie: 17 fases de evolución hacia B2B corporativo +
+canal tradicional (`claude_b2b_upgrade/MANIFEST.json`), identificadas como «P0x-B2B». El P00-B2B es
+el maestro comercial; el P00-SaaS fue el análisis de plataforma.
+
+- **Fase 00-B2B (análisis GAP) — TERMINADA** el 2026-09-02. Sin cambios de código: solo documentación.
+  - [`docs/B2B_GAP_ANALYSIS.md`](B2B_GAP_ANALYSIS.md) — inventario con evidencia, 5 hallazgos de
+    trabajo parcial, gaps de backend y riesgos.
+  - [`docs/B2B_TARGET_ARCHITECTURE.md`](B2B_TARGET_ARCHITECTURE.md) — 4 fronteras nuevas
+    (`sales`, `credit`, `trade`, `planning`) + 3 extensiones, capacidades, permisos y lo que NO se crea.
+  - Informe de fase: `claude_b2b_upgrade/.claude-b2b-state/phase-reports/00_ANALISIS_GAP.md`.
+  - Línea base de gates al iniciar el recorrido: `typecheck`, `lint`, `build` y `test`
+    (**133 archivos, 2735 tests**) **todos en verde**. No hay deuda previa.
+- **Siguiente: P00-B2B — Maestro Comercial** (extiende `customers`, no crea dominio nuevo).
+
 ## Recuperación de la ejecución interrumpida (2026-08-30)
 
 Segunda parada del runner (`claude-saas-opus`), otra vez con `phase: RECOVERY` en
