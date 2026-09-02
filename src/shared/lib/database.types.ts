@@ -2516,6 +2516,124 @@ export type Database = {
           },
         ]
       }
+      delivery_plan_stops: {
+        Row: {
+          company_id: string
+          created_at: string
+          eta: string | null
+          fulfillment_id: string
+          id: string
+          organization_id: string
+          plan_id: string
+          sequence: number
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          eta?: string | null
+          fulfillment_id: string
+          id?: string
+          organization_id: string
+          plan_id: string
+          sequence: number
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          eta?: string | null
+          fulfillment_id?: string
+          id?: string
+          organization_id?: string
+          plan_id?: string
+          sequence?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_plan_stops_fulfillment_fk"
+            columns: ["fulfillment_id"]
+            isOneToOne: true
+            referencedRelation: "fulfillment_overview"
+            referencedColumns: ["fulfillment_id"]
+          },
+          {
+            foreignKeyName: "delivery_plan_stops_fulfillment_fk"
+            columns: ["fulfillment_id"]
+            isOneToOne: true
+            referencedRelation: "fulfillments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_plan_stops_plan_fk"
+            columns: ["plan_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_plans"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
+      delivery_plans: {
+        Row: {
+          closed_at: string | null
+          code: string
+          company_id: string
+          created_at: string
+          dispatched_at: string | null
+          driver_name: string | null
+          id: string
+          organization_id: string
+          plan_date: string
+          status: Database["public"]["Enums"]["delivery_plan_status"]
+          store_id: string
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          closed_at?: string | null
+          code: string
+          company_id: string
+          created_at?: string
+          dispatched_at?: string | null
+          driver_name?: string | null
+          id?: string
+          organization_id: string
+          plan_date: string
+          status?: Database["public"]["Enums"]["delivery_plan_status"]
+          store_id: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          closed_at?: string | null
+          code?: string
+          company_id?: string
+          created_at?: string
+          dispatched_at?: string | null
+          driver_name?: string | null
+          id?: string
+          organization_id?: string
+          plan_date?: string
+          status?: Database["public"]["Enums"]["delivery_plan_status"]
+          store_id?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_plans_store_fk"
+            columns: ["store_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "delivery_plans_vehicle_fk"
+            columns: ["vehicle_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_vehicles"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
       delivery_rates: {
         Row: {
           base_amount: number
@@ -2610,6 +2728,48 @@ export type Database = {
             referencedColumns: ["id", "store_id"]
           },
         ]
+      }
+      delivery_vehicles: {
+        Row: {
+          capacity_kg: number | null
+          capacity_m3: number | null
+          code: string
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          organization_id: string
+          plate: string | null
+          updated_at: string
+        }
+        Insert: {
+          capacity_kg?: number | null
+          capacity_m3?: number | null
+          code: string
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          organization_id: string
+          plate?: string | null
+          updated_at?: string
+        }
+        Update: {
+          capacity_kg?: number | null
+          capacity_m3?: number | null
+          code?: string
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          organization_id?: string
+          plate?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       delivery_windows: {
         Row: {
@@ -5179,6 +5339,47 @@ export type Database = {
           },
         ]
       }
+      pod_evidence: {
+        Row: {
+          caption: string | null
+          company_id: string
+          content_type: string | null
+          created_at: string
+          id: string
+          organization_id: string
+          pod_id: string
+          storage_path: string
+        }
+        Insert: {
+          caption?: string | null
+          company_id: string
+          content_type?: string | null
+          created_at?: string
+          id?: string
+          organization_id: string
+          pod_id: string
+          storage_path: string
+        }
+        Update: {
+          caption?: string | null
+          company_id?: string
+          content_type?: string | null
+          created_at?: string
+          id?: string
+          organization_id?: string
+          pod_id?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pod_evidence_pod_fk"
+            columns: ["pod_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "proof_of_delivery"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
       price_change_events: {
         Row: {
           action: string
@@ -6708,6 +6909,76 @@ export type Database = {
             columns: ["store_id", "organization_id", "company_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
+      proof_of_delivery: {
+        Row: {
+          company_id: string
+          created_at: string
+          document_id: string | null
+          fulfillment_id: string
+          geo_lat: number | null
+          geo_lng: number | null
+          id: string
+          organization_id: string
+          outcome: Database["public"]["Enums"]["pod_outcome"]
+          reason: string | null
+          received_by: string | null
+          recorded_by: string | null
+          stop_id: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          document_id?: string | null
+          fulfillment_id: string
+          geo_lat?: number | null
+          geo_lng?: number | null
+          id?: string
+          organization_id: string
+          outcome: Database["public"]["Enums"]["pod_outcome"]
+          reason?: string | null
+          received_by?: string | null
+          recorded_by?: string | null
+          stop_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          document_id?: string | null
+          fulfillment_id?: string
+          geo_lat?: number | null
+          geo_lng?: number | null
+          id?: string
+          organization_id?: string
+          outcome?: Database["public"]["Enums"]["pod_outcome"]
+          reason?: string | null
+          received_by?: string | null
+          recorded_by?: string | null
+          stop_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proof_of_delivery_fulfillment_fk"
+            columns: ["fulfillment_id"]
+            isOneToOne: false
+            referencedRelation: "fulfillment_overview"
+            referencedColumns: ["fulfillment_id"]
+          },
+          {
+            foreignKeyName: "proof_of_delivery_fulfillment_fk"
+            columns: ["fulfillment_id"]
+            isOneToOne: false
+            referencedRelation: "fulfillments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proof_of_delivery_stop_fk"
+            columns: ["stop_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_plan_stops"
             referencedColumns: ["id", "organization_id", "company_id"]
           },
         ]
@@ -10894,6 +11165,7 @@ export type Database = {
       content_status: "draft" | "published" | "archived"
       credit_status: "ok" | "watch" | "blocked"
       customer_kind: "person" | "company"
+      delivery_plan_status: "draft" | "dispatched" | "closed" | "cancelled"
       delivery_strategy: "ship" | "pickup" | "local_delivery" | "digital"
       domain_event_status:
         | "pending"
@@ -11018,6 +11290,7 @@ export type Database = {
         | "refunded"
         | "failed"
         | "voided"
+      pod_outcome: "delivered" | "partial" | "refused" | "not_found"
       price_scope: "store" | "channel" | "segment" | "customer"
       product_kind: "simple" | "variant" | "bundle"
       product_relation_kind:
@@ -11283,6 +11556,7 @@ export const Constants = {
       content_status: ["draft", "published", "archived"],
       credit_status: ["ok", "watch", "blocked"],
       customer_kind: ["person", "company"],
+      delivery_plan_status: ["draft", "dispatched", "closed", "cancelled"],
       delivery_strategy: ["ship", "pickup", "local_delivery", "digital"],
       domain_event_status: [
         "pending",
@@ -11423,6 +11697,7 @@ export const Constants = {
         "failed",
         "voided",
       ],
+      pod_outcome: ["delivered", "partial", "refused", "not_found"],
       price_scope: ["store", "channel", "segment", "customer"],
       product_kind: ["simple", "variant", "bundle"],
       product_relation_kind: [

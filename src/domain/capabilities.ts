@@ -62,6 +62,8 @@ export const SELLABLE_CAPABILITY_IDS = [
   'trade.quotes',
   // Fase 08. Que puede comprar cada cliente del canal.
   'trade.assortments',
+  // Fases 10 y 11. La hoja de ruta y la prueba de que llego.
+  'fulfillment.routing',
 ] as const
 
 export const CAPABILITY_IDS = [
@@ -298,6 +300,17 @@ export const CAPABILITIES: readonly Capability[] = [
     state: 'implemented',
     grants:
       'Surtido por cliente, segmento, territorio, canal o tienda, en lista blanca o negra, con precedencia resuelta en un solo sitio.',
+  },
+  {
+    id: 'fulfillment.routing',
+    boundary: 'fulfillment',
+    entitlement: `${ENTITLEMENT_PREFIX}fulfillment.routing`,
+    // Fases 10 y 11. Extiende el despacho que ya existe: la parada apunta al
+    // `fulfillment`, no crea uno paralelo. Y la evidencia es append-only —una
+    // firma que se puede cambiar despues no prueba nada.
+    state: 'implemented',
+    grants:
+      'Planificación de reparto con vehículo y orden de visita, y evidencia de entrega inmutable con firma, geoposición y fotos.',
   },
   {
     id: 'content.cms',
