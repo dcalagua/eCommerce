@@ -1716,6 +1716,117 @@ export type Database = {
           },
         ]
       }
+      commission_rules: {
+        Row: {
+          code: string
+          company_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          min_attainment: number | null
+          name: string
+          organization_id: string
+          rate: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          company_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          min_attainment?: number | null
+          name: string
+          organization_id: string
+          rate: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          min_attainment?: number | null
+          name?: string
+          organization_id?: string
+          rate?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      commission_statements: {
+        Row: {
+          amount: number
+          approved_at: string | null
+          base_amount: number
+          company_id: string
+          created_at: string
+          currency: string
+          id: string
+          organization_id: string
+          paid_at: string | null
+          period_end: string
+          period_start: string
+          rate: number
+          rule_id: string | null
+          sales_rep_id: string
+          status: Database["public"]["Enums"]["commission_status"]
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          approved_at?: string | null
+          base_amount?: number
+          company_id: string
+          created_at?: string
+          currency: string
+          id?: string
+          organization_id: string
+          paid_at?: string | null
+          period_end: string
+          period_start: string
+          rate: number
+          rule_id?: string | null
+          sales_rep_id: string
+          status?: Database["public"]["Enums"]["commission_status"]
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          approved_at?: string | null
+          base_amount?: number
+          company_id?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          organization_id?: string
+          paid_at?: string | null
+          period_end?: string
+          period_start?: string
+          rate?: number
+          rule_id?: string | null
+          sales_rep_id?: string
+          status?: Database["public"]["Enums"]["commission_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_statements_rep_fk"
+            columns: ["sales_rep_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "sales_reps"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "commission_statements_rule_fk"
+            columns: ["rule_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "commission_rules"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
       content_block_items: {
         Row: {
           block_id: string
@@ -7747,6 +7858,66 @@ export type Database = {
           },
         ]
       }
+      sales_goals: {
+        Row: {
+          company_id: string
+          created_at: string
+          currency: string | null
+          id: string
+          metric: Database["public"]["Enums"]["goal_metric"]
+          organization_id: string
+          period_end: string
+          period_start: string
+          sales_rep_id: string | null
+          target_value: number
+          territory_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          currency?: string | null
+          id?: string
+          metric: Database["public"]["Enums"]["goal_metric"]
+          organization_id: string
+          period_end: string
+          period_start: string
+          sales_rep_id?: string | null
+          target_value: number
+          territory_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          currency?: string | null
+          id?: string
+          metric?: Database["public"]["Enums"]["goal_metric"]
+          organization_id?: string
+          period_end?: string
+          period_start?: string
+          sales_rep_id?: string | null
+          target_value?: number
+          territory_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_goals_rep_fk"
+            columns: ["sales_rep_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "sales_reps"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "sales_goals_territory_fk"
+            columns: ["territory_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "sales_territories"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
       sales_rep_customers: {
         Row: {
           assigned_at: string
@@ -8041,6 +8212,126 @@ export type Database = {
             columns: ["parent_id", "organization_id", "company_id"]
             isOneToOne: false
             referencedRelation: "sales_territories"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
+      sales_visit_tasks: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          is_done: boolean
+          label: string
+          organization_id: string
+          position: number
+          visit_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          is_done?: boolean
+          label: string
+          organization_id: string
+          position?: number
+          visit_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_done?: boolean
+          label?: string
+          organization_id?: string
+          position?: number
+          visit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_visit_tasks_visit_fk"
+            columns: ["visit_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "sales_visits"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
+      sales_visits: {
+        Row: {
+          checked_in_at: string | null
+          checked_out_at: string | null
+          company_id: string
+          created_at: string
+          customer_id: string
+          geo_lat: number | null
+          geo_lng: number | null
+          id: string
+          notes: string | null
+          order_id: string | null
+          organization_id: string
+          outcome: Database["public"]["Enums"]["visit_outcome"]
+          planned_at: string | null
+          route_id: string | null
+          sales_rep_id: string
+          updated_at: string
+        }
+        Insert: {
+          checked_in_at?: string | null
+          checked_out_at?: string | null
+          company_id: string
+          created_at?: string
+          customer_id: string
+          geo_lat?: number | null
+          geo_lng?: number | null
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          organization_id: string
+          outcome?: Database["public"]["Enums"]["visit_outcome"]
+          planned_at?: string | null
+          route_id?: string | null
+          sales_rep_id: string
+          updated_at?: string
+        }
+        Update: {
+          checked_in_at?: string | null
+          checked_out_at?: string | null
+          company_id?: string
+          created_at?: string
+          customer_id?: string
+          geo_lat?: number | null
+          geo_lng?: number | null
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          organization_id?: string
+          outcome?: Database["public"]["Enums"]["visit_outcome"]
+          planned_at?: string | null
+          route_id?: string | null
+          sales_rep_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_visits_customer_fk"
+            columns: ["customer_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "sales_visits_rep_fk"
+            columns: ["sales_rep_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "sales_reps"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "sales_visits_route_fk"
+            columns: ["route_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "sales_routes"
             referencedColumns: ["id", "organization_id", "company_id"]
           },
         ]
@@ -11151,6 +11442,7 @@ export type Database = {
         | "publish_events"
         | "notify"
       circuit_state: "closed" | "open" | "half_open"
+      commission_status: "draft" | "approved" | "paid"
       content_block_type:
         | "hero"
         | "banner"
@@ -11199,6 +11491,7 @@ export type Database = {
         | "expire"
         | "cancel"
       gift_card_status: "active" | "depleted" | "expired" | "cancelled"
+      goal_metric: "amount" | "units" | "orders" | "coverage"
       integration_direction: "outbound" | "inbound" | "bidirectional"
       integration_kind:
         | "erp"
@@ -11371,6 +11664,12 @@ export type Database = {
         | "returned"
         | "cancelled"
         | "info"
+      visit_outcome:
+        | "planned"
+        | "completed"
+        | "no_order"
+        | "closed"
+        | "rescheduled"
       warehouse_kind: "warehouse" | "store" | "virtual"
     }
     CompositeTypes: {
@@ -11541,6 +11840,7 @@ export const Constants = {
         "notify",
       ],
       circuit_state: ["closed", "open", "half_open"],
+      commission_status: ["draft", "approved", "paid"],
       content_block_type: [
         "hero",
         "banner",
@@ -11594,6 +11894,7 @@ export const Constants = {
         "cancel",
       ],
       gift_card_status: ["active", "depleted", "expired", "cancelled"],
+      goal_metric: ["amount", "units", "orders", "coverage"],
       integration_direction: ["outbound", "inbound", "bidirectional"],
       integration_kind: [
         "erp",
@@ -11786,6 +12087,13 @@ export const Constants = {
         "returned",
         "cancelled",
         "info",
+      ],
+      visit_outcome: [
+        "planned",
+        "completed",
+        "no_order",
+        "closed",
+        "rescheduled",
       ],
       warehouse_kind: ["warehouse", "store", "virtual"],
     },

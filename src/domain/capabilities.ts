@@ -64,6 +64,8 @@ export const SELLABLE_CAPABILITY_IDS = [
   'trade.assortments',
   // Fases 10 y 11. La hoja de ruta y la prueba de que llego.
   'fulfillment.routing',
+  // Fases 12 y 13. Visitas, metas y comisiones: cierran `sales`.
+  'sales.performance',
 ] as const
 
 export const CAPABILITY_IDS = [
@@ -311,6 +313,18 @@ export const CAPABILITIES: readonly Capability[] = [
     state: 'implemented',
     grants:
       'Planificación de reparto con vehículo y orden de visita, y evidencia de entrega inmutable con firma, geoposición y fotos.',
+  },
+  {
+    id: 'sales.performance',
+    boundary: 'sales',
+    entitlement: `${ENTITLEMENT_PREFIX}sales.performance`,
+    // Fases 12 y 13. La liquidacion pagada es INMUTABLE: es dinero de terceros,
+    // y recalcular una cerrada porque cambio una regla es como se pierde la
+    // confianza de una fuerza de ventas. Se corrige con un ajuste del periodo
+    // siguiente, como cualquier nomina.
+    state: 'implemented',
+    grants:
+      'Visitas con agenda y hecho separados, metas por vendedor o territorio, reglas de comisión y liquidaciones inmutables una vez pagadas.',
   },
   {
     id: 'content.cms',
