@@ -58,6 +58,8 @@ export const SELLABLE_CAPABILITY_IDS = [
   'sales.territory',
   // Fase 04. La cobranza: documento, recibo, aplicacion y antiguedad.
   'credit.management',
+  // Fase 06. La cotizacion comercial: documento con vigencia y estado.
+  'trade.quotes',
 ] as const
 
 export const CAPABILITY_IDS = [
@@ -268,6 +270,17 @@ export const CAPABILITIES: readonly Capability[] = [
     state: 'implemented',
     grants:
       'Documento por cobrar con vencimiento y saldo, cobros con aplicación N:M y antigüedad de saldos por cliente.',
+  },
+  {
+    id: 'trade.quotes',
+    boundary: 'trade',
+    entitlement: `${ENTITLEMENT_PREFIX}trade.quotes`,
+    // Fase 06. Guarda lo que el motor de precios devolvio, con su fecha; no
+    // calcula. Dos verdades sobre el precio discreparian el dia que alguien
+    // toque una lista.
+    state: 'implemented',
+    grants:
+      'Cotizaciones con vigencia, estado que solo avanza y líneas con la forma del pedido para convertir sin traducir.',
   },
   {
     id: 'content.cms',

@@ -6341,6 +6341,188 @@ export type Database = {
           },
         ]
       }
+      quote_items: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          line_total: number
+          organization_id: string
+          position: number
+          product_id: string
+          quantity: number
+          quote_id: string
+          tax_amount: number | null
+          tax_rate: number | null
+          unit_price: number
+          uom_code: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          line_total: number
+          organization_id: string
+          position?: number
+          product_id: string
+          quantity: number
+          quote_id: string
+          tax_amount?: number | null
+          tax_rate?: number | null
+          unit_price: number
+          uom_code?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          line_total?: number
+          organization_id?: string
+          position?: number
+          product_id?: string
+          quantity?: number
+          quote_id?: string
+          tax_amount?: number | null
+          tax_rate?: number | null
+          unit_price?: number
+          uom_code?: string | null
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_items_product_fk"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_items_product_fk"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "public_products"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "quote_items_quote_fk"
+            columns: ["quote_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "quote_items_variant_fk"
+            columns: ["variant_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id", "product_id"]
+          },
+          {
+            foreignKeyName: "quote_items_variant_fk"
+            columns: ["variant_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "public_product_variants"
+            referencedColumns: ["variant_id", "product_id"]
+          },
+        ]
+      }
+      quotes: {
+        Row: {
+          business_account_id: string | null
+          company_id: string
+          created_at: string
+          currency: string
+          customer_id: string
+          grand_total: number
+          id: string
+          issued_at: string
+          notes: string | null
+          order_id: string | null
+          organization_id: string
+          quote_number: string
+          sales_rep_id: string | null
+          status: Database["public"]["Enums"]["quote_status"]
+          store_id: string
+          subtotal: number
+          tax_total: number
+          updated_at: string
+          valid_until: string
+        }
+        Insert: {
+          business_account_id?: string | null
+          company_id: string
+          created_at?: string
+          currency: string
+          customer_id: string
+          grand_total?: number
+          id?: string
+          issued_at?: string
+          notes?: string | null
+          order_id?: string | null
+          organization_id: string
+          quote_number: string
+          sales_rep_id?: string | null
+          status?: Database["public"]["Enums"]["quote_status"]
+          store_id: string
+          subtotal?: number
+          tax_total?: number
+          updated_at?: string
+          valid_until: string
+        }
+        Update: {
+          business_account_id?: string | null
+          company_id?: string
+          created_at?: string
+          currency?: string
+          customer_id?: string
+          grand_total?: number
+          id?: string
+          issued_at?: string
+          notes?: string | null
+          order_id?: string | null
+          organization_id?: string
+          quote_number?: string
+          sales_rep_id?: string | null
+          status?: Database["public"]["Enums"]["quote_status"]
+          store_id?: string
+          subtotal?: number
+          tax_total?: number
+          updated_at?: string
+          valid_until?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotes_account_fk"
+            columns: ["business_account_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "business_accounts"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "quotes_customer_fk"
+            columns: ["customer_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "quotes_rep_fk"
+            columns: ["sales_rep_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "sales_reps"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "quotes_store_fk"
+            columns: ["store_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
       reconciliation_records: {
         Row: {
           company_id: string
@@ -10447,6 +10629,7 @@ export type Database = {
         | "bundle"
       promotion_scope_kind: "all" | "product" | "variant" | "category" | "brand"
       promotion_status: "draft" | "active" | "paused" | "archived"
+      quote_status: "draft" | "sent" | "accepted" | "rejected" | "expired"
       reconciliation_status: "unmatched" | "matched" | "discrepancy" | "ignored"
       refund_status:
         | "requested"
@@ -10846,6 +11029,7 @@ export const Constants = {
       ],
       promotion_scope_kind: ["all", "product", "variant", "category", "brand"],
       promotion_status: ["draft", "active", "paused", "archived"],
+      quote_status: ["draft", "sent", "accepted", "rejected", "expired"],
       reconciliation_status: ["unmatched", "matched", "discrepancy", "ignored"],
       refund_status: [
         "requested",

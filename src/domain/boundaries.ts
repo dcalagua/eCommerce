@@ -31,6 +31,7 @@ export const DOMAIN_IDS = [
   'integrations',
   'sales',
   'credit',
+  'trade',
 ] as const
 export type DomainId = (typeof DOMAIN_IDS)[number]
 
@@ -367,6 +368,26 @@ export const BOUNDARIES: readonly Boundary[] = [
       'ar_documents, ar_receipts y ar_applications con RLS default deny (20260902120000)',
       'el saldo lo mantiene un trigger, no la aplicación: ebim.ar_apply_balance',
       'ebim.customer_aging — los cinco tramos de la antigüedad, en un solo viaje',
+    ],
+  },
+  {
+    id: 'trade',
+    kind: 'domain',
+    // Recorrido B2B, fase 06. Que se le OFRECE a cada cliente del canal.
+    //
+    // No calcula precio. «Cotizacion» significa dos cosas en este repositorio y
+    // no son la misma: `ebim.build_quote` es el motor que dice cuanto cuesta un
+    // carrito AHORA, y una cotizacion comercial es un documento con vigencia y
+    // estado. Esta frontera crea la segunda y le pide el precio a la primera; si
+    // calculara por su cuenta habria dos verdades sobre el precio.
+    state: 'implemented',
+    responsibility:
+      'Qué se le ofrece a cada cliente del canal: cotización con vigencia y estado, y su conversión a pedido.',
+    paths: ['features/trade'],
+    serverSide: [
+      'quotes y quote_items con RLS default deny (20260902130000)',
+      'quote_items calca order_items con impuesto por línea: convertir es copiar, no traducir',
+      'una cotización aceptada, rechazada o vencida no se edita: dos triggers lo impiden',
     ],
   },
 
