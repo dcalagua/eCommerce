@@ -78,8 +78,11 @@ describe('mapa de fronteras', () => {
     expect(new Set(ids).size).toBe(ids.length)
   })
 
-  it('están los doce dominios de negocio', () => {
-    expect(DOMAIN_IDS).toHaveLength(12)
+  it('están los trece dominios de negocio', () => {
+    // Doce del core de comercio + `sales`, la operación comercial de campo que
+    // abre el recorrido B2B. Cada frontera nueva se declara en el commit que
+    // crea su carpeta, no antes: `architecture.test.ts` exige que la ruta exista.
+    expect(DOMAIN_IDS).toHaveLength(13)
     for (const id of DOMAIN_IDS) expect(boundary(id).kind).toBe('domain')
   })
 

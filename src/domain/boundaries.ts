@@ -29,6 +29,7 @@ export const DOMAIN_IDS = [
   'fulfillment',
   'analytics',
   'integrations',
+  'sales',
 ] as const
 export type DomainId = (typeof DOMAIN_IDS)[number]
 
@@ -323,6 +324,28 @@ export const BOUNDARIES: readonly Boundary[] = [
       'supabase/functions/integration-worker — el que vacía la cola y firma los webhooks',
       'supabase/functions/_shared/api y _shared/webhooks — contrato, rutas, OpenAPI y firma',
     ],
+  },
+
+  {
+    id: 'sales',
+    kind: 'domain',
+    // Recorrido B2B, fases 02-03 y 12-13. La capa que el core de comercio no
+    // tiene: la OPERACION comercial. Quien vende, a que cartera, en que
+    // territorio, siguiendo que ruta, con que meta y cobrando que comision.
+    //
+    // La propiedad que sostiene la frontera: `sales` no decide precio ni
+    // existencia. Se los pregunta a `pricing` y a `inventory`. Un vendedor que
+    // pudiera fijar el precio seria un segundo motor de precios, que es
+    // exactamente el error que `pricing` documenta desde P04.
+    //
+    // Y el territorio comercial es SUYO, no de `fulfillment`: reutilizar
+    // `delivery_zones` ataria la cartera de un vendedor al recorrido de un
+    // camion, y cambiar una ruta de reparto movería clientes de dueño.
+    state: 'declared',
+    responsibility:
+      'La estructura comercial de campo: vendedor, jerarquía, cartera, territorio, ruta, visita, meta y comisión.',
+    paths: ['features/sales'],
+    serverSide: [],
   },
 
   {

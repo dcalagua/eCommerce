@@ -49,6 +49,10 @@ export const SELLABLE_CAPABILITY_IDS = [
   'payments',
   'pricing.lists',
   'promotions',
+  // Recorrido B2B, fase 02. La estructura comercial de campo: vendedor,
+  // jerarquia y cartera. Sin ella el tenant SIGUE vendiendo como antes — nada
+  // de lo nuevo es prerrequisito del checkout que ya existe.
+  'sales.force',
 ] as const
 
 export const CAPABILITY_IDS = [
@@ -222,6 +226,20 @@ export const CAPABILITIES: readonly Capability[] = [
     state: 'implemented',
     grants:
       'Campañas con prioridad y combinación explícitas, cupones, tarjetas regalo y desglose de descuento sobre el precio base (P10).',
+  },
+  {
+    id: 'sales.force',
+    boundary: 'sales',
+    entitlement: `${ENTITLEMENT_PREFIX}sales.force`,
+    // Recorrido B2B, fase 02. La primera pieza de la operación comercial de
+    // campo, y la que desbloquea territorios, rutas, visitas, metas y
+    // comisiones: todas cuelgan de que exista un vendedor y una cartera.
+    //
+    // Se degrada como el resto: sin la capacidad el tenant sigue vendiendo
+    // exactamente como antes. Nada de esto es prerrequisito del checkout.
+    state: 'implemented',
+    grants:
+      'Fuerza de ventas: vendedores con jerarquía sin ciclos y cartera de clientes con un solo titular por cuenta.',
   },
   {
     id: 'content.cms',

@@ -6718,6 +6718,113 @@ export type Database = {
           },
         ]
       }
+      sales_rep_customers: {
+        Row: {
+          assigned_at: string
+          company_id: string
+          created_at: string
+          customer_id: string
+          id: string
+          is_primary: boolean
+          organization_id: string
+          sales_rep_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          company_id: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          is_primary?: boolean
+          organization_id: string
+          sales_rep_id: string
+        }
+        Update: {
+          assigned_at?: string
+          company_id?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          is_primary?: boolean
+          organization_id?: string
+          sales_rep_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_rep_customers_customer_fk"
+            columns: ["customer_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "sales_rep_customers_rep_fk"
+            columns: ["sales_rep_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "sales_reps"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
+      sales_reps: {
+        Row: {
+          company_id: string
+          created_at: string
+          email: string | null
+          employee_code: string
+          full_name: string
+          hired_at: string | null
+          id: string
+          manager_id: string | null
+          notes: string | null
+          organization_id: string
+          phone: string | null
+          status: Database["public"]["Enums"]["member_status"]
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          email?: string | null
+          employee_code: string
+          full_name: string
+          hired_at?: string | null
+          id?: string
+          manager_id?: string | null
+          notes?: string | null
+          organization_id: string
+          phone?: string | null
+          status?: Database["public"]["Enums"]["member_status"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          email?: string | null
+          employee_code?: string
+          full_name?: string
+          hired_at?: string | null
+          id?: string
+          manager_id?: string | null
+          notes?: string | null
+          organization_id?: string
+          phone?: string | null
+          status?: Database["public"]["Enums"]["member_status"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_reps_manager_fk"
+            columns: ["manager_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "sales_reps"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
       search_synonyms: {
         Row: {
           company_id: string
@@ -6929,6 +7036,7 @@ export type Database = {
           accent_color: string
           banner_url: string | null
           business_display_name: string | null
+          checkout_requires_account: boolean
           company_id: string
           config: Json
           contact_address: string | null
@@ -6960,6 +7068,7 @@ export type Database = {
           accent_color?: string
           banner_url?: string | null
           business_display_name?: string | null
+          checkout_requires_account?: boolean
           company_id: string
           config?: Json
           contact_address?: string | null
@@ -6991,6 +7100,7 @@ export type Database = {
           accent_color?: string
           banner_url?: string | null
           business_display_name?: string | null
+          checkout_requires_account?: boolean
           company_id?: string
           config?: Json
           contact_address?: string | null
@@ -8679,6 +8789,7 @@ export type Database = {
           accent_color: string | null
           banner_url: string | null
           business_display_name: string | null
+          checkout_requires_account: boolean | null
           contact_address: string | null
           contact_phone: string | null
           currency: string | null
@@ -9192,6 +9303,7 @@ export type Database = {
         }
         Returns: Json
       }
+      current_buyer: { Args: never; Returns: Json }
       customer_deletion_usage: {
         Args: { p_customer_id: string }
         Returns: Json
@@ -9786,7 +9898,13 @@ export type Database = {
         | "order_completed"
         | "promotion_used"
       analytics_source: "storefront" | "server"
-      app_role: "owner" | "admin" | "catalog" | "orders" | "viewer"
+      app_role:
+        | "owner"
+        | "admin"
+        | "catalog"
+        | "orders"
+        | "viewer"
+        | "sales_rep"
       attribute_data_type: "text" | "number" | "boolean" | "date" | "option"
       audit_actor_kind: "user" | "service" | "support" | "system"
       business_role: "admin" | "buyer" | "approver" | "viewer"
@@ -10037,12 +10155,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -10066,11 +10184,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -10091,11 +10209,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -10116,11 +10234,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -10133,11 +10251,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -10162,7 +10280,7 @@ export const Constants = {
         "promotion_used",
       ],
       analytics_source: ["storefront", "server"],
-      app_role: ["owner", "admin", "catalog", "orders", "viewer"],
+      app_role: ["owner", "admin", "catalog", "orders", "viewer", "sales_rep"],
       attribute_data_type: ["text", "number", "boolean", "date", "option"],
       audit_actor_kind: ["user", "service", "support", "system"],
       business_role: ["admin", "buyer", "approver", "viewer"],

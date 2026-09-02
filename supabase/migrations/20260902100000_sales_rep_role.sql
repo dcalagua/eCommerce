@@ -1,0 +1,22 @@
+-- =============================================================================
+-- Recorrido B2B · fase 02 (1 de 2) — el rol del vendedor de campo.
+--
+-- Va SOLO en su migracion porque Postgres no deja usar un valor de enum en la
+-- misma transaccion que lo crea: la migracion siguiente lo nombra en las
+-- policies, y juntas fallarian con «unsafe use of new value».
+--
+-- ## Por que `app_role` y no `business_role`
+--
+-- El vendedor de campo es personal DEL TENANT. `business_role` es donde vive el
+-- comprador de una cuenta B2B, que es personal del CLIENTE: meterlo alli seria
+-- un error categorico y le daria alcance sobre la cuenta de un tercero.
+--
+-- ## Por que no se le da el rol `orders`, que era lo comodo
+--
+-- Ese rol abre el listado completo de pedidos del tenant y `orders.export`, que
+-- es la extraccion masiva de correos, telefonos, direcciones y documentos
+-- fiscales de TODOS los compradores. Un preventista responde por SU cartera.
+-- El alcance no lo pone el rol: lo pone la RLS contra `sales_rep_customers`.
+-- =============================================================================
+
+alter type public.app_role add value if not exists 'sales_rep';
