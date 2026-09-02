@@ -53,6 +53,9 @@ export const SELLABLE_CAPABILITY_IDS = [
   // jerarquia y cartera. Sin ella el tenant SIGUE vendiendo como antes — nada
   // de lo nuevo es prerrequisito del checkout que ya existe.
   'sales.force',
+  // Fase 03. El territorio COMERCIAL y la ruta de visita — distintos de
+  // `delivery_zones`, que es logistica.
+  'sales.territory',
 ] as const
 
 export const CAPABILITY_IDS = [
@@ -240,6 +243,17 @@ export const CAPABILITIES: readonly Capability[] = [
     state: 'implemented',
     grants:
       'Fuerza de ventas: vendedores con jerarquía sin ciclos y cartera de clientes con un solo titular por cuenta.',
+  },
+  {
+    id: 'sales.territory',
+    boundary: 'sales',
+    entitlement: `${ENTITLEMENT_PREFIX}sales.territory`,
+    // Fase 03. El territorio es COMERCIAL y por eso es una tabla propia:
+    // reutilizar `delivery_zones` ataria la cartera de un vendedor al recorrido
+    // de un camion, y cambiar una ruta de reparto moveria comisiones.
+    state: 'implemented',
+    grants:
+      'Territorios con jerarquía sin ciclos, cobertura por vendedor y rutas de visita con orden único.',
   },
   {
     id: 'content.cms',

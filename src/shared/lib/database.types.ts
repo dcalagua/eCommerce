@@ -6766,6 +6766,48 @@ export type Database = {
           },
         ]
       }
+      sales_rep_territories: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          organization_id: string
+          sales_rep_id: string
+          territory_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          sales_rep_id: string
+          territory_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          sales_rep_id?: string
+          territory_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_rep_territories_rep_fk"
+            columns: ["sales_rep_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "sales_reps"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "sales_rep_territories_territory_fk"
+            columns: ["territory_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "sales_territories"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
       sales_reps: {
         Row: {
           company_id: string
@@ -6821,6 +6863,155 @@ export type Database = {
             columns: ["manager_id", "organization_id", "company_id"]
             isOneToOne: false
             referencedRelation: "sales_reps"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
+      sales_route_stops: {
+        Row: {
+          company_id: string
+          created_at: string
+          customer_id: string
+          id: string
+          organization_id: string
+          route_id: string
+          sequence: number
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          organization_id: string
+          route_id: string
+          sequence: number
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          organization_id?: string
+          route_id?: string
+          sequence?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_route_stops_customer_fk"
+            columns: ["customer_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "sales_route_stops_route_fk"
+            columns: ["route_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "sales_routes"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
+      sales_routes: {
+        Row: {
+          code: string
+          company_id: string
+          created_at: string
+          frequency_weeks: number
+          id: string
+          is_active: boolean
+          name: string
+          organization_id: string
+          sales_rep_id: string
+          territory_id: string | null
+          updated_at: string
+          weekday: number
+        }
+        Insert: {
+          code: string
+          company_id: string
+          created_at?: string
+          frequency_weeks?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          organization_id: string
+          sales_rep_id: string
+          territory_id?: string | null
+          updated_at?: string
+          weekday: number
+        }
+        Update: {
+          code?: string
+          company_id?: string
+          created_at?: string
+          frequency_weeks?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          organization_id?: string
+          sales_rep_id?: string
+          territory_id?: string | null
+          updated_at?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_routes_rep_fk"
+            columns: ["sales_rep_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "sales_reps"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "sales_routes_territory_fk"
+            columns: ["territory_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "sales_territories"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
+      sales_territories: {
+        Row: {
+          code: string
+          company_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          organization_id: string
+          parent_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          company_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          organization_id: string
+          parent_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          organization_id?: string
+          parent_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_territories_parent_fk"
+            columns: ["parent_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "sales_territories"
             referencedColumns: ["id", "organization_id", "company_id"]
           },
         ]
