@@ -2,7 +2,7 @@ import ZoomInRoundedIcon from '@mui/icons-material/ZoomInRounded'
 import { Box, ButtonBase, Stack, Typography } from '@mui/material'
 import { useEffect, useState } from 'react'
 import { useI18n } from '@/shared/i18n/i18n-context'
-import { R, T } from '@/theme/tokens'
+import { R, TS } from '@/theme/tokens'
 import type { GalleryImage } from '../types'
 import { ImageLightbox } from './ImageLightbox'
 import { ProductMedia } from './ProductMedia'
@@ -133,7 +133,7 @@ export function ProductGallery({ images, alt }: { images: GalleryImage[]; alt: s
       )}
 
       {hasImages && (
-        <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+        <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
           {t('store.product.zoomHint')}
         </Typography>
       )}

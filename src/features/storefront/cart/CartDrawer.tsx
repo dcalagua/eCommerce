@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
 import { EmptyState } from '@/shared/ui/states'
-import { T } from '@/theme/tokens'
+import { TS } from '@/theme/tokens'
 import { CartLineList } from './CartLineList'
 import { useCart } from './cart-context'
 
@@ -89,7 +89,7 @@ export function CartDrawer({ storeSlug }: { storeSlug: string }) {
               direction="row"
               sx={{ justifyContent: 'space-between', alignItems: 'baseline', gap: 2 }}
             >
-              <Typography sx={{ fontWeight: 700, fontSize: T.bodyStrong }}>
+              <Typography sx={{ fontWeight: 700, fontSize: TS.bodyStrong }}>
                 {t('store.cart.subtotal')}
               </Typography>
               <Typography className="tnum" sx={{ fontWeight: 800, fontSize: 20 }}>
@@ -98,7 +98,7 @@ export function CartDrawer({ storeSlug }: { storeSlug: string }) {
             </Stack>
             {/* El impuesto y el total definitivos los calcula el servidor al
                 confirmar: aquí no se promete un número que no es el de cobro. */}
-            <Typography sx={{ fontSize: T.label, color: 'var(--muted)', mt: 0.5, mb: 1.75 }}>
+            <Typography sx={{ fontSize: TS.label, color: 'var(--muted)', mt: 0.5, mb: 1.75 }}>
               {t('store.cart.taxNote')}
             </Typography>
             <Stack sx={{ gap: 0.5 }}>

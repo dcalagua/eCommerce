@@ -6,7 +6,7 @@ import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatDate, formatMoney } from '@/shared/lib/format'
 import { BrandLoader } from '@/shared/ui/BrandLoader'
 import { ErrorState } from '@/shared/ui/states'
-import { T } from '@/theme/tokens'
+import { TS } from '@/theme/tokens'
 import { fetchMyOrderDetail, myOrderDetailKey } from '../portal'
 import { EstadoChip } from './EstadoChip'
 
@@ -107,12 +107,12 @@ export function MyOrderDrawer({
         </Box>
 
         <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography sx={{ fontSize: T.cardTitle, fontWeight: 800, letterSpacing: '-0.2px' }}>
+          <Typography sx={{ fontSize: TS.cardTitle, fontWeight: 800, letterSpacing: '-0.2px' }}>
             {orderNumber ?? t('account.orders.number')}
           </Typography>
           {detail && (
             <>
-              <Typography sx={{ fontSize: T.label, color: 'var(--muted)', mt: 0.25 }}>
+              <Typography sx={{ fontSize: TS.label, color: 'var(--muted)', mt: 0.25 }}>
                 {formatDate(new Date(detail.placed_at), locale)}
               </Typography>
               {/* El estado también aquí: se abre el detalle justo para saber si
@@ -161,7 +161,7 @@ export function MyOrderDrawer({
                 placeItems: 'center',
                 bgcolor: 'var(--neutral-soft)',
                 color: 'var(--text)',
-                fontSize: T.label,
+                fontSize: TS.label,
                 fontWeight: 800,
               }}
             >
@@ -169,22 +169,22 @@ export function MyOrderDrawer({
             </Box>
 
             <Box sx={{ minWidth: 0, flex: 1 }}>
-              <Typography sx={{ fontSize: T.body, fontWeight: 600, lineHeight: 1.4 }}>
+              <Typography sx={{ fontSize: TS.body, fontWeight: 600, lineHeight: 1.4 }}>
                 {item.name}
               </Typography>
-              <Typography sx={{ fontSize: T.label, color: 'var(--muted)', mt: 0.25 }}>
+              <Typography sx={{ fontSize: TS.label, color: 'var(--muted)', mt: 0.25 }}>
                 {[item.sku, item.variant_label].filter(Boolean).join(' · ')}
               </Typography>
             </Box>
 
             <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
-              <Typography className="tnum" sx={{ fontSize: T.body, fontWeight: 800 }}>
+              <Typography className="tnum" sx={{ fontSize: TS.body, fontWeight: 800 }}>
                 {money(item.total)}
               </Typography>
               {/* El precio unitario solo dice algo cuando hay más de uno: con
                   cantidad 1 repite el importe de al lado. */}
               {item.quantity > 1 && (
-                <Typography className="tnum" sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+                <Typography className="tnum" sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
                   {money(item.unit_price)} c/u
                 </Typography>
               )}
@@ -241,7 +241,7 @@ function Linea({
     <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 2, alignItems: 'baseline' }}>
       <Typography
         sx={{
-          fontSize: fuerte ? T.bodyStrong : T.body,
+          fontSize: fuerte ? TS.bodyStrong : TS.body,
           color: fuerte ? 'var(--text)' : 'var(--muted)',
           fontWeight: fuerte ? 800 : 500,
         }}
@@ -251,7 +251,7 @@ function Linea({
       <Typography
         className="tnum"
         sx={{
-          fontSize: fuerte ? T.figure : T.body,
+          fontSize: fuerte ? TS.figure : TS.body,
           fontWeight: fuerte ? 800 : 600,
           letterSpacing: fuerte ? '-0.02em' : undefined,
           color: tono ?? 'var(--text)',

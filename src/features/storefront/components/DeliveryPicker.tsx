@@ -12,7 +12,7 @@ import {
 } from '@mui/material'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
-import { T } from '@/theme/tokens'
+import { TS } from '@/theme/tokens'
 import type { DeliveryOption } from '../delivery'
 
 /**
@@ -54,7 +54,7 @@ export function DeliveryPicker({
 
   if (loading) {
     return (
-      <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+      <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
         {t('common.loading')}
       </Typography>
     )
@@ -65,7 +65,7 @@ export function DeliveryPicker({
   // comportamiento que tenía la vitrina antes de P12.
   if (failed || options.length === 0) {
     return (
-      <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+      <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
         {t('store.delivery.none')}
       </Typography>
     )
@@ -88,7 +88,7 @@ export function DeliveryPicker({
               control={<Radio />}
               label={
                 <Stack>
-                  <Typography sx={{ fontSize: T.body, fontWeight: 600 }}>
+                  <Typography sx={{ fontSize: TS.body, fontWeight: 600 }}>
                     {option.name}
                     {option.available && option.amount !== null
                       ? ` · ${
@@ -98,7 +98,7 @@ export function DeliveryPicker({
                         }`
                       : ''}
                   </Typography>
-                  <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+                  <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
                     {option.available
                       ? option.promised_from
                         ? `${t('store.delivery.promised')} ${option.promised_from} – ${option.promised_to}`

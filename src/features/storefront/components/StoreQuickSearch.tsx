@@ -15,7 +15,7 @@ import type { SearchQuery } from '@/domain'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
 import { useDebouncedValue } from '@/shared/lib/useDebouncedValue'
-import { R, T } from '@/theme/tokens'
+import { R, TS } from '@/theme/tokens'
 import { useCatalogSearch, useSignedThumbnails } from '../hooks'
 
 /** Id de la lista. Fijo: lo referencian `aria-controls` y cada opción. */
@@ -186,7 +186,7 @@ export function StoreQuickSearch({ storeSlug }: { storeSlug: string }) {
             }}
           >
             {hits.length === 0 ? (
-              <Typography sx={{ p: 2, fontSize: T.body, color: 'var(--muted)' }}>
+              <Typography sx={{ p: 2, fontSize: TS.body, color: 'var(--muted)' }}>
                 {results.isFetching ? t('common.loading') : t('store.search.empty')}
               </Typography>
             ) : (

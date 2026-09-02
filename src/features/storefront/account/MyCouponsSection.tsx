@@ -7,7 +7,7 @@ import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatDate, formatMoney } from '@/shared/lib/format'
 import { BrandLoader } from '@/shared/ui/BrandLoader'
 import { EmptyState, ErrorState } from '@/shared/ui/states'
-import { T } from '@/theme/tokens'
+import { TS } from '@/theme/tokens'
 import { fetchMyCoupons, myCouponsKey, type MyCoupon } from '../portal'
 
 /**
@@ -96,13 +96,13 @@ function CuponCard({ cupon }: { cupon: MyCoupon }) {
               {valor}
             </Typography>
           )}
-          <Typography sx={{ fontSize: T.bodyStrong, fontWeight: 700 }}>
+          <Typography sx={{ fontSize: TS.bodyStrong, fontWeight: 700 }}>
             {cupon.promotion_name}
           </Typography>
         </Stack>
 
         {cupon.promotion_description && (
-          <Typography sx={{ fontSize: T.body, color: 'var(--muted)' }}>
+          <Typography sx={{ fontSize: TS.body, color: 'var(--muted)' }}>
             {cupon.promotion_description}
           </Typography>
         )}

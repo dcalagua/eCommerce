@@ -1,14 +1,17 @@
+import { SectionHeading } from './SectionHeading'
 import { SliderBlock } from './SliderBlock'
 import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
-import { Box, Button, Card, Chip, Stack, Typography } from '@mui/material'
+import { Box, Button, Card, Stack, Typography } from '@mui/material'
 import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
 import { isInternalPath, isSafeHref } from '@/domain/href'
 import { RichText } from '@/shared/ui/RichText'
-import { T } from '@/theme/tokens'
+import { TS } from '@/theme/tokens'
 import type { ContentBlock, ContentCollectionItem } from '../content'
 import { moneyCorto, offerBadge, vigenciaTexto } from '../offer'
+import { iconoDe } from '../categoryIcon'
+import { tintFor } from '../tint'
 import { ProductMedia } from './ProductMedia'
 import { ScrollRow } from './ScrollRow'
 
@@ -195,18 +198,7 @@ function CampaignWall({
 
   return (
     <Stack component="section" aria-label={t('store.content.campaignWall')} sx={{ gap: 1.5 }}>
-      <Typography
-        component="h2"
-        sx={{
-          fontSize: T.label,
-          fontWeight: 800,
-          letterSpacing: '0.12em',
-          textTransform: 'uppercase',
-          color: 'var(--accent-deep)',
-        }}
-      >
-        {t('store.content.campaignWall')}
-      </Typography>
+      <SectionHeading title={t('store.content.campaignWall')} />
       <Box
         sx={{
           display: 'grid',
@@ -442,7 +434,7 @@ function HeroBlock({
         {block.subtitle ? (
           <Typography
             sx={{
-              fontSize: { xs: T.bodyStrong, md: 17 },
+              fontSize: { xs: TS.bodyStrong, md: 17 },
               lineHeight: 1.55,
               maxWidth: 560,
               opacity: 0.92,
@@ -497,12 +489,12 @@ function BannerBlock({ block, assets }: { block: ContentBlock; assets: Record<st
         ) : null}
         <Stack sx={{ gap: 1, p: { xs: 2.5, md: 3.5 }, justifyContent: 'center', flex: 1 }}>
           {block.title ? (
-            <Typography component="h2" sx={{ fontSize: T.pageTitle, fontWeight: 800 }}>
+            <Typography component="h2" sx={{ fontSize: TS.pageTitle, fontWeight: 800 }}>
               {block.title}
             </Typography>
           ) : null}
           {block.subtitle ? (
-            <Typography sx={{ fontSize: T.body, color: 'var(--muted)', lineHeight: 1.6 }}>
+            <Typography sx={{ fontSize: TS.body, color: 'var(--muted)', lineHeight: 1.6 }}>
               {block.subtitle}
             </Typography>
           ) : null}
@@ -527,7 +519,10 @@ function BannerBlock({ block, assets }: { block: ContentBlock; assets: Record<st
  * todavía— cae a la etiqueta de oferta, que ocupa 56 píxeles y no una columna.
  */
 function OfferMedallion({ badge, dense }: { badge: string | null; dense: boolean }) {
-  const lado = dense ? 52 : 64
+  // En la pieza ancha el descuento es el argumento: comparte sitio con el botón
+  // y tiene que leerse desde la misma distancia que el titular. En el mural es
+  // una marca de esquina y ahí 52 px es todo lo que cabe sin tapar la foto.
+  const lado = dense ? 52 : 78
 
   return (
     <Box
@@ -549,7 +544,7 @@ function OfferMedallion({ badge, dense }: { badge: string | null; dense: boolean
       {badge ? (
         <Typography
           sx={{
-            fontSize: dense ? 20 : 24,
+            fontSize: dense ? 20 : 32,
             fontWeight: 900,
             letterSpacing: '-0.03em',
             whiteSpace: 'nowrap',
@@ -558,7 +553,7 @@ function OfferMedallion({ badge, dense }: { badge: string | null; dense: boolean
           {badge}
         </Typography>
       ) : (
-        <LocalOfferRoundedIcon sx={{ fontSize: dense ? 24 : 28 }} />
+        <LocalOfferRoundedIcon sx={{ fontSize: dense ? 24 : 34 }} />
       )}
     </Box>
   )
@@ -617,25 +612,57 @@ function CampaignBlock({
       decoding="async"
       // Proporción declarada: sin ella la tarjeta salta cuando la foto llega.
       sx={{
-        width: dense ? '100%' : { xs: '100%', sm: 260 },
-        height: dense ? 150 : { xs: 170, sm: 'auto' },
-        minHeight: dense ? 150 : 168,
-        objectFit: 'cover',
+        width: dense ? '100%' : { xs: '100%', sm: 300, md: 360 },
+        height: dense ? 150 : { xs: 200, sm: 'auto' },
+        minHeight: dense ? 150 : 240,
+        // A lo ancho la foto es el producto y se ve ENTERA; en el mural es una
+        // ilustración de cabecera y ahí recortar mantiene las tres tarjetas
+        // iguales. Recortar el producto en la pieza grande esconde justo lo que
+        // se está anunciando.
+        objectFit: dense ? 'cover' : 'contain',
+        objectPosition: 'center',
+        p: dense ? 0 : { xs: 1, md: 2 },
         flexShrink: 0,
         bgcolor: 'var(--sf-media-bg)',
       }}
     />
   ) : null
 
+  /**
+   * ¿Lleva enlace esta campaña?
+   *
+   * Importa para la maqueta del mural: la rejilla estira todas las tarjetas a la
+   * altura de la más alta, y la que no tiene enlace reservaba igualmente el
+   * hueco del fondo (`mt: 'auto'`). El resultado era una tarjeta con el texto
+   * pegado arriba y un agujero debajo — que es exactamente lo que se ve en una
+   * portada donde una campaña trae subtítulo y la de al lado no.
+   */
+  const tieneCta = Boolean(block.ctaHref && block.ctaLabel && isSafeHref(block.ctaHref))
+
   const textos = (
-    <Stack sx={{ gap: 0.75, flex: 1, minWidth: 0, height: '100%' }}>
+    <Stack
+      sx={{
+        gap: 0.75,
+        flex: 1,
+        minWidth: 0,
+        height: '100%',
+        // Sin enlace no hay nada que anclar al fondo: el contenido se centra y
+        // el aire sobrante se reparte arriba y abajo en vez de acumularse
+        // debajo. Con enlace manda `mt: 'auto'`, que ya alinea los enlaces de
+        // todas las tarjetas a la misma altura.
+        justifyContent: dense && !tieneCta ? 'center' : 'flex-start',
+      }}
+    >
       <Typography
         component="h2"
         sx={{
-          fontSize: dense ? { xs: 18, md: 19 } : { xs: 21, md: 24 },
+          // A lo ancho es la pieza de cabecera de la portada: el titular tiene
+          // que pesar como tal. A 24 px competía con el título de la fila de
+          // productos que viene debajo.
+          fontSize: dense ? { xs: 18, md: 19 } : { xs: 26, md: 34 },
           fontWeight: 800,
-          letterSpacing: '-0.02em',
-          lineHeight: 1.2,
+          letterSpacing: '-0.03em',
+          lineHeight: 1.15,
         }}
       >
         {block.title}
@@ -644,13 +671,14 @@ function CampaignBlock({
       {block.subtitle ? (
         <Typography
           sx={{
-            fontSize: T.body,
+            fontSize: dense ? TS.body : { xs: TS.bodyStrong, md: 16.5 },
             color: 'var(--muted)',
-            maxWidth: '58ch',
+            maxWidth: '52ch',
             // En el mural las tarjetas van a la par: dos líneas cada una, y la
-            // que se pase se corta en vez de estirar su columna.
+            // que se pase se corta en vez de estirar su columna. A lo ancho hay
+            // sitio para tres.
             display: '-webkit-box',
-            WebkitLineClamp: 2,
+            WebkitLineClamp: dense ? 2 : 3,
             WebkitBoxOrient: 'vertical',
             overflow: 'hidden',
           }}
@@ -666,7 +694,7 @@ function CampaignBlock({
         {vigencia ? (
           <Typography
             sx={{
-              fontSize: T.label,
+              fontSize: TS.label,
               fontWeight: 800,
               color: acaba ? 'var(--accent-deep)' : 'var(--muted)',
               ...(acaba
@@ -684,7 +712,7 @@ function CampaignBlock({
         ) : null}
 
         {block.campaign?.minSubtotal && currency ? (
-          <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+          <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
             {t('store.content.offer.minSubtotal').replace(
               '{amount}',
               moneyCorto(block.campaign.minSubtotal, currency, locale),
@@ -697,7 +725,7 @@ function CampaignBlock({
         {block.campaign?.needsCoupon ? (
           <Typography
             sx={{
-              fontSize: T.label,
+              fontSize: TS.label,
               fontWeight: 700,
               color: 'var(--text)',
               px: 1,
@@ -714,7 +742,7 @@ function CampaignBlock({
       {/* En el mural el enlace va al fondo de la tarjeta: así las tres filas de
           enlaces quedan a la misma altura aunque una campaña traiga una línea
           más que otra. */}
-      {dense ? (
+      {dense && tieneCta ? (
         <Box sx={{ mt: 'auto', pt: 0.75 }}>
           <BlockCta block={block} quiet />
         </Box>
@@ -736,7 +764,11 @@ function CampaignBlock({
         borderRadius: 'var(--sf-radius)',
         border: '1px solid var(--sf-line)',
         boxShadow: 'var(--sf-shadow)',
-        bgcolor: 'var(--card)',
+        // La pieza ancha es cabecera de portada: un tinte del acento al 5 % la
+        // separa del blanco de todo lo demás sin meter un color que no sea del
+        // comercio. En el mural se queda blanca — tres tarjetas teñidas seguidas
+        // dejan de ser piezas y pasan a ser una franja.
+        bgcolor: dense ? 'var(--card)' : 'color-mix(in srgb, var(--accent) 5%, var(--card))',
         transition: 'transform .18s ease, box-shadow .18s ease, border-color .18s ease',
         '@media (hover: hover)': {
           '&:hover': {
@@ -764,7 +796,10 @@ function CampaignBlock({
       />
 
       <Stack
-        direction={dense ? 'column' : { xs: 'column', sm: 'row' }}
+        // A lo ancho la foto va a la DERECHA: se lee primero qué se ofrece y
+        // después se mira el producto, que es el orden en que alguien decide.
+        // Con la foto a la izquierda, el titular empieza a media tarjeta.
+        direction={dense ? 'column' : { xs: 'column', sm: 'row-reverse' }}
         sx={{ flex: 1, alignItems: 'stretch' }}
       >
         {foto}
@@ -772,42 +807,60 @@ function CampaignBlock({
         <Stack
           direction="row"
           sx={{
-            gap: dense ? 1.75 : 2.5,
-            p: dense ? 2 : { xs: 2.25, md: 3 },
+            gap: dense ? 1.75 : 3,
+            p: dense ? 2 : { xs: 2.5, md: 4 },
             flex: 1,
             minWidth: 0,
             alignItems: dense ? 'flex-start' : 'center',
           }}
         >
-          {/* Con foto, el medallón se cuela sobre ella —el descuento no pierde
-              el primer sitio por tener una imagen bonita—; sin foto, ocupa el
-              hueco que antes gastaba el panel de color. */}
-          {foto ? null : <OfferMedallion badge={badge} dense={dense} />}
+          {/* En el mural, con foto el medallón se cuela sobre ella —el descuento
+              no pierde el primer sitio por tener una imagen bonita—; sin foto,
+              ocupa el hueco que antes gastaba el panel de color. */}
+          {dense && !foto ? <OfferMedallion badge={badge} dense /> : null}
 
           {textos}
 
-          {/* Sola y a lo ancho, el botón va a la derecha y en el centro: la
-              tarjeta se lee de izquierda a derecha —cuánto, qué, y qué hago—
-              en vez de dejar la mitad derecha en blanco. */}
+          {/* A lo ancho, el descuento y el botón van JUNTOS a la derecha: son
+              las dos mitades de la misma frase —cuánto me ahorro y dónde pulso—
+              y separarlas obligaba a cruzar la tarjeta entera para leerla. */}
           {dense ? null : (
-            <Box sx={{ flexShrink: 0, display: { xs: 'none', sm: 'block' } }}>
+            <Stack
+              sx={{
+                flexShrink: 0,
+                gap: 1.5,
+                alignItems: 'flex-start',
+                display: { xs: 'none', sm: 'flex' },
+              }}
+            >
+              <OfferMedallion badge={badge} dense={false} />
               <BlockCta block={block} />
-            </Box>
+            </Stack>
           )}
         </Stack>
 
-        {/* En móvil el botón vuelve abajo, a lo ancho de la tarjeta: a la
-            derecha no cabe sin estrangular el texto. */}
+        {/* En móvil el descuento y el botón vuelven abajo, a lo ancho de la
+            tarjeta: a la derecha no caben sin estrangular el texto. */}
         {dense ? null : (
-          <Box sx={{ display: { xs: 'block', sm: 'none' }, px: 2.25, pb: 2.25 }}>
+          <Stack
+            direction="row"
+            sx={{
+              display: { xs: 'flex', sm: 'none' },
+              gap: 1.5,
+              alignItems: 'center',
+              px: 2.5,
+              pb: 2.5,
+            }}
+          >
+            <OfferMedallion badge={badge} dense />
             <BlockCta block={block} />
-          </Box>
+          </Stack>
         )}
       </Stack>
 
-      {foto ? (
-        <Box sx={{ position: 'absolute', top: dense ? 18 : 22, left: dense ? 16 : 20 }}>
-          <OfferMedallion badge={badge} dense={dense} />
+      {dense && foto ? (
+        <Box sx={{ position: 'absolute', top: 18, left: 16 }}>
+          <OfferMedallion badge={badge} dense />
         </Box>
       ) : null}
     </Card>
@@ -819,7 +872,7 @@ function RichTextBlock({ block }: { block: ContentBlock }) {
     <Card component="section" aria-label={block.title ?? undefined} sx={{ p: { xs: 2.5, md: 3.5 } }}>
       <Stack sx={{ gap: 1.5 }}>
         {block.title ? (
-          <Typography component="h2" sx={{ fontSize: T.pageTitle, fontWeight: 800 }}>
+          <Typography component="h2" sx={{ fontSize: TS.pageTitle, fontWeight: 800 }}>
             {block.title}
           </Typography>
         ) : null}
@@ -845,19 +898,114 @@ function CategoryCollectionBlock({
   return (
     <Stack component="section" aria-label={block.title ?? undefined} sx={{ gap: 1.5 }}>
       <BlockHeading block={block} />
-      <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
+      {/* Puertas, no etiquetas.
+          Eran `Chip` en fila: el mismo tratamiento que un filtro activo del
+          catálogo, y aquí no filtran nada — llevan a otro sitio. Una fila de
+          píldoras grises tampoco se recorre con el rabillo del ojo, que es como
+          se lee una portada.
+
+          El tinte sale de `tintFor`, asignado por el NOMBRE: la misma familia
+          cae siempre en el mismo color aunque cambie de orden o entren otras. Un
+          color que baila en cada recarga no orienta, marea. Y no le quita el
+          acento al comercio: estos seis tintes son señalización, mientras que el
+          acento sigue siendo el único color de ACCIÓN. */}
+      <Box
+        sx={{
+          display: 'grid',
+          gap: { xs: 1.25, md: 2 },
+          gridTemplateColumns: {
+            xs: 'repeat(2, minmax(0, 1fr))',
+            sm: 'repeat(3, minmax(0, 1fr))',
+            md: `repeat(${Math.min(Math.max(categories.length, 2), 4)}, minmax(0, 1fr))`,
+          },
+        }}
+      >
         {categories.map((category) => (
-          <Chip
-            key={category.category_id}
-            component={Link}
-            clickable
-            to={`/s/${storeSlug}?c=${encodeURIComponent(category.slug)}`}
-            label={category.name}
-            sx={{ fontWeight: 700 }}
-          />
+          <CategoryDoor key={category.category_id} category={category} storeSlug={storeSlug} />
         ))}
-      </Stack>
+      </Box>
     </Stack>
+  )
+}
+
+/**
+ * Una puerta de categoría.
+ *
+ * Lo que la hace legible de un vistazo es que cada familia tiene SITIO propio:
+ * su tinte y su icono, los dos derivados del nombre, así que se vuelve a
+ * encontrar por el color antes de leerla. Es la misma asignación que usa la
+ * barra de la cabecera — la categoría que arriba es azul, aquí también.
+ *
+ * La flecha no es decoración: dice que esto lleva a otro sitio, que es
+ * exactamente lo que una píldora gris no decía.
+ */
+function CategoryDoor({
+  category,
+  storeSlug,
+}: {
+  category: Extract<ContentCollectionItem, { kind: 'category' }>
+  storeSlug: string
+}) {
+  const { t } = useI18n()
+  const tinte = tintFor(category.name)
+  const Icono = iconoDe(category.name)
+
+  return (
+    <Box
+      component={Link}
+      to={`/s/${storeSlug}?c=${encodeURIComponent(category.slug)}`}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 1,
+        p: { xs: 1.75, md: 2.25 },
+        minHeight: { xs: 124, md: 150 },
+        borderRadius: 'var(--sf-radius)',
+        textDecoration: 'none',
+        bgcolor: tinte.bg,
+        border: `1px solid ${tinte.line}`,
+        color: tinte.fg,
+        transition: 'transform .18s ease, box-shadow .18s ease',
+        '@media (hover: hover)': {
+          '&:hover': { transform: 'translateY(-2px)', boxShadow: 'var(--sf-shadow-hover)' },
+        },
+        '@media (prefers-reduced-motion: reduce)': {
+          transition: 'none',
+          '&:hover': { transform: 'none' },
+        },
+      }}
+    >
+      <Box
+        aria-hidden
+        sx={{
+          width: 38,
+          height: 38,
+          display: 'grid',
+          placeItems: 'center',
+          borderRadius: '50%',
+          bgcolor: 'var(--card)',
+          color: tinte.fg,
+        }}
+      >
+        <Icono sx={{ fontSize: 21 }} />
+      </Box>
+
+      <Typography
+        sx={{
+          mt: 'auto',
+          fontSize: { xs: 15, md: 17 },
+          fontWeight: 800,
+          letterSpacing: '-0.02em',
+          lineHeight: 1.25,
+        }}
+      >
+        {category.name}
+      </Typography>
+
+      <Typography sx={{ fontSize: TS.label, fontWeight: 800, opacity: 0.85 }}>
+        {`${t('store.categories.see')} →`}
+      </Typography>
+    </Box>
   )
 }
 
@@ -953,46 +1101,10 @@ function ProductCollectionBlock({
  * nada.
  */
 function BlockHeading({ block }: { block: ContentBlock }) {
+  // Un bloque sin titulo ni subtitulo no tiene cabecera: pintar la regla sola
+  // seria un separador que no separa nada.
   if (!block.title && !block.subtitle) return null
-  return (
-    <Stack direction="row" sx={{ alignItems: 'flex-end', gap: 2 }}>
-      <Stack sx={{ gap: 0.25, flexShrink: 0 }}>
-        {block.title ? (
-          <Typography
-            component="h2"
-            sx={{
-              fontSize: { xs: 21, md: 26 },
-              fontWeight: 800,
-              letterSpacing: '-0.025em',
-              lineHeight: 1.2,
-            }}
-          >
-            {block.title}
-          </Typography>
-        ) : null}
-        {block.subtitle ? (
-          <Typography sx={{ fontSize: T.bodyStrong, color: 'var(--muted)' }}>
-            {block.subtitle}
-          </Typography>
-        ) : null}
-      </Stack>
-      {/* Regla que arranca en el acento y se apaga hacia el borde: cierra el
-          bloque y ordena la lectura sin competir con el titulo. A 1 px y en
-          gris no se veia; el degradado se ve y sigue sin gritar. */}
-      <Box
-        aria-hidden
-        sx={{
-          flex: 1,
-          height: 2,
-          minWidth: 24,
-          mb: 1.25,
-          borderRadius: 1,
-          background:
-            'linear-gradient(to right, color-mix(in srgb, var(--accent) 55%, transparent), transparent)',
-        }}
-      />
-    </Stack>
-  )
+  return <SectionHeading title={block.title} subtitle={block.subtitle} />
 }
 
 function CollectionCard({
@@ -1073,7 +1185,7 @@ function CollectionCard({
             borderRadius: 'var(--sf-pill)',
             bgcolor: 'var(--accent-deep)',
             color: '#FFFFFF',
-            fontSize: T.label,
+            fontSize: TS.label,
             fontWeight: 800,
             lineHeight: 1.6,
             boxShadow: '0 2px 8px rgba(0,0,0,.18)',
@@ -1118,7 +1230,7 @@ function CollectionCard({
         {item.name}
       </Typography>
       {item.kind === 'variant' && item.variant_label ? (
-        <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+        <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
           {item.variant_label}
         </Typography>
       ) : null}
@@ -1145,7 +1257,7 @@ function CollectionCard({
         </Stack>
       ) : null}
       {item.in_stock === false ? (
-        <Typography sx={{ fontSize: T.micro, fontWeight: 700, color: 'var(--muted)' }}>
+        <Typography sx={{ fontSize: TS.micro, fontWeight: 700, color: 'var(--muted)' }}>
           {t('store.availability.outOfStock')}
         </Typography>
       ) : null}

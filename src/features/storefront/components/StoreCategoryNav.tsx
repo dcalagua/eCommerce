@@ -1,61 +1,12 @@
-import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded'
-import ChildCareRoundedIcon from '@mui/icons-material/ChildCareRounded'
-import ContentCutRoundedIcon from '@mui/icons-material/ContentCutRounded'
-import ElderlyRoundedIcon from '@mui/icons-material/ElderlyRounded'
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
-import HealingRoundedIcon from '@mui/icons-material/HealingRounded'
-import LocalPharmacyRoundedIcon from '@mui/icons-material/LocalPharmacyRounded'
-import MedicalServicesRoundedIcon from '@mui/icons-material/MedicalServicesRounded'
-import MonitorHeartRoundedIcon from '@mui/icons-material/MonitorHeartRounded'
-import PsychologyRoundedIcon from '@mui/icons-material/PsychologyRounded'
-import SanitizerRoundedIcon from '@mui/icons-material/SanitizerRounded'
-import SpaRoundedIcon from '@mui/icons-material/SpaRounded'
-import VaccinesRoundedIcon from '@mui/icons-material/VaccinesRounded'
-import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
-import WaterDropRoundedIcon from '@mui/icons-material/WaterDropRounded'
 import { Box, Container, Stack, Typography } from '@mui/material'
-import { useEffect, useRef, useState, type ComponentType } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
-import { T } from '@/theme/tokens'
+import { TS } from '@/theme/tokens'
+import { iconoDe } from '../categoryIcon'
 import { tintFor } from '../tint'
 import type { PublicCategory } from '../types'
-
-/**
- * La cara de cada familia.
- *
- * Se elige por PALABRA del nombre: el comercio no tiene dónde declarar un
- * icono, y pedirle que lo rellene para que su tienda no se vea gris es cobrarle
- * nuestro problema. Sin coincidencia va el icono genérico — aquí sí, porque en
- * una barra de ocho entradas el hueco vacío descuadra la fila entera.
- */
-const ICONOS: readonly (readonly [readonly string[], ComponentType<{ sx?: object }>])[] = [
-  [['medicamento', 'farmac', 'etico', 'generico', 'drug'], LocalPharmacyRoundedIcon],
-  [['vitamina', 'suplemento', 'nutric', 'vitamin'], VaccinesRoundedIcon],
-  [['dermo', 'cosmet', 'piel', 'facial', 'skin'], SpaRoundedIcon],
-  [['bebe', 'infantil', 'nino', 'mama', 'baby'], ChildCareRoundedIcon],
-  [['adulto mayor', 'geriatr', 'senior'], ElderlyRoundedIcon],
-  [['dispositivo', 'equipo', 'instrumental', 'device'], MedicalServicesRoundedIcon],
-  [['higiene', 'limpieza', 'antisep', 'hygiene'], SanitizerRoundedIcon],
-  [['belleza', 'maquillaje', 'beauty'], SpaRoundedIcon],
-  [['afeitad', 'cabello', 'capilar', 'shav', 'hair'], ContentCutRoundedIcon],
-  [['cuidado', 'personal', 'care'], HealingRoundedIcon],
-  [['cardio', 'presion', 'corazon', 'diabet', 'heart'], MonitorHeartRoundedIcon],
-  [['nervioso', 'neuro', 'psiq', 'sueno', 'nerve'], PsychologyRoundedIcon],
-  [['desodorante', 'antitranspirante', 'deo'], WaterDropRoundedIcon],
-  [['ocular', 'oftalm', 'ojo', 'vision', 'eye'], VisibilityRoundedIcon],
-]
-
-function iconoDe(nombre: string): ComponentType<{ sx?: object }> {
-  const limpio = nombre
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-  for (const [palabras, Icono] of ICONOS) {
-    if (palabras.some((palabra) => limpio.includes(palabra))) return Icono
-  }
-  return CategoryRoundedIcon
-}
 
 interface Nodo {
   readonly category: PublicCategory
@@ -103,9 +54,18 @@ function arbol(categories: readonly PublicCategory[]): Nodo[] {
 export function StoreCategoryNav({
   storeSlug,
   categories,
+  showOffers = false,
 }: {
   storeSlug: string
   categories: readonly PublicCategory[]
+  /**
+   * ¿Hay campañas vivas a las que llevar?
+   *
+   * Lo decide quien monta la barra, no ella: esta pieza pinta lo que le dan y
+   * no consulta nada — es lo que la deja probarse sin montar medio árbol. Y un
+   * enlace a una sección que no está en la página es peor que no tenerlo.
+   */
+  showOffers?: boolean
 }) {
   const { t } = useI18n()
   const [params] = useSearchParams()
@@ -232,6 +192,18 @@ export function StoreCategoryNav({
               </Box>
             )
           })}
+
+          {/* Dos puertas que no son categorías: la oferta y la marca.
+              Van al FINAL y separadas por una línea fina — si se mezclaran con
+              las familias, «Ofertas» parecería una categoría más del catálogo, y
+              no lo es: es un corte transversal.
+
+              «Ofertas» solo aparece si hay campañas vivas. Un enlace que lleva a
+              una sección que no está en la página es peor que no tenerlo, y esa
+              consulta es la MISMA que ya hizo la portada — misma clave de
+              TanStack, cero peticiones nuevas. */}
+          {showOffers ? <PuertaFija to={`/s/${storeSlug}#ofertas`} label={t('store.nav.offers')} /> : null}
+          <PuertaFija to={`/s/${storeSlug}?ver=todo#marcas`} label={t('store.nav.brands')} />
         </Stack>
       </Container>
 
@@ -270,7 +242,7 @@ export function StoreCategoryNav({
                   component={Link}
                   to={`/s/${storeSlug}?c=${encodeURIComponent(category.slug)}`}
                   sx={{
-                    fontSize: T.label,
+                    fontSize: TS.label,
                     fontWeight: 700,
                     color: 'var(--muted)',
                     textDecoration: 'none',
@@ -313,6 +285,42 @@ export function StoreCategoryNav({
           </Box>
         ) : null,
       )}
+    </Box>
+  )
+}
+
+/**
+ * Una entrada de navegación que no es una categoría.
+ *
+ * Sin icono ni tinte a propósito: los tintes de la barra identifican FAMILIAS
+ * del catálogo, y darle uno a «Ofertas» la disfrazaría de familia. Lo que la
+ * distingue es el peso y el color de acento, que es el idioma de la acción en
+ * el resto de la tienda.
+ */
+function PuertaFija({ to, label }: { to: string; label: string }) {
+  return (
+    <Box
+      component={Link}
+      to={to}
+      sx={{
+        flexShrink: 0,
+        display: 'flex',
+        alignItems: 'center',
+        py: 0.75,
+        px: 0.5,
+        ml: 0.5,
+        borderLeft: '1px solid var(--sf-line)',
+        pl: 2,
+        textDecoration: 'none',
+        fontSize: 13.5,
+        fontWeight: 800,
+        whiteSpace: 'nowrap',
+        color: 'var(--accent-deep)',
+        borderBottom: '2px solid transparent',
+        '&:hover': { borderBottomColor: 'var(--accent)' },
+      }}
+    >
+      {label}
     </Box>
   )
 }

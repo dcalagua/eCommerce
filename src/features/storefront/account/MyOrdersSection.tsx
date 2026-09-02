@@ -17,7 +17,7 @@ import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatDate, formatMoney } from '@/shared/lib/format'
 import { BrandLoader } from '@/shared/ui/BrandLoader'
 import { EmptyState, ErrorState } from '@/shared/ui/states'
-import { T } from '@/theme/tokens'
+import { TS } from '@/theme/tokens'
 import { fetchMyOrders, myOrdersKey, type MyOrder } from '../portal'
 import { EstadoChip } from './EstadoChip'
 import { MyOrderDrawer } from './MyOrderDrawer'
@@ -85,12 +85,12 @@ export function MyOrdersSection({ storeSlug }: { storeSlug: string }) {
               sx={{ cursor: 'pointer' }}
             >
               <TableCell>
-                <Typography sx={{ fontSize: T.body, fontWeight: 800 }}>
+                <Typography sx={{ fontSize: TS.body, fontWeight: 800 }}>
                   {order.order_number}
                 </Typography>
                 {/* De qué empresa es. Solo dice algo cuando se compra para más
                     de una, pero cuando lo dice es lo primero que se mira. */}
-                <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+                <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
                   {order.account_name}
                 </Typography>
               </TableCell>
@@ -118,7 +118,7 @@ export function MyOrdersSection({ storeSlug }: { storeSlug: string }) {
         </TableBody>
       </Table>
       <Box sx={{ px: 2, py: 1.25, borderTop: '1px solid var(--sf-line)' }}>
-        <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+        <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
           {t('account.orders.tracking').replace('{store}', storeSlug)}
         </Typography>
       </Box>

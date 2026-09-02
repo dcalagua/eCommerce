@@ -17,7 +17,7 @@ import { formatMoney } from '@/shared/lib/format'
 import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
 import { AppBreadcrumbs } from '@/shared/ui/AppBreadcrumbs'
 import { EmptyState, ErrorState } from '@/shared/ui/states'
-import { T } from '@/theme/tokens'
+import { TS } from '@/theme/tokens'
 import { StorefrontNotFoundError } from './api'
 import { ProductPageSkeleton } from './components/ProductPageSkeleton'
 import { notFoundMeta, productMeta } from './seo'
@@ -224,7 +224,7 @@ export function StoreProductPage() {
         >
         <Stack sx={{ gap: 1.25 }}>
           {item.brand_name && (
-            <Typography sx={{ fontSize: T.label, fontWeight: 800, color: 'var(--accent-deep)' }}>
+            <Typography sx={{ fontSize: TS.label, fontWeight: 800, color: 'var(--accent-deep)' }}>
               {item.brand_name}
             </Typography>
           )}
@@ -273,7 +273,7 @@ export function StoreProductPage() {
               px: 1,
               py: 0.25,
               borderRadius: 'var(--sf-pill)',
-              fontSize: T.body,
+              fontSize: TS.body,
               fontWeight: 700,
               bgcolor: available ? 'var(--accent-soft)' : 'var(--neutral-soft)',
               color: available ? 'var(--accent-deep)' : 'var(--muted)',
@@ -303,7 +303,7 @@ export function StoreProductPage() {
           <Typography
             component="h2"
             sx={{
-              fontSize: T.label,
+              fontSize: TS.label,
               fontWeight: 800,
               letterSpacing: '0.1em',
               textTransform: 'uppercase',
@@ -340,7 +340,7 @@ export function StoreProductPage() {
         <Typography
           component="h2"
           sx={{
-            fontSize: T.label,
+            fontSize: TS.label,
             fontWeight: 800,
             letterSpacing: '0.1em',
             textTransform: 'uppercase',
@@ -397,8 +397,8 @@ function SheetRow({ label, value }: { label: string; value: string | null }) {
         '&:last-of-type': { borderBottom: 0 },
       }}
     >
-      <Typography sx={{ fontSize: T.body, color: 'var(--muted)' }}>{label}</Typography>
-      <Typography sx={{ fontSize: T.body, fontWeight: 700, textAlign: 'right' }}>
+      <Typography sx={{ fontSize: TS.body, color: 'var(--muted)' }}>{label}</Typography>
+      <Typography sx={{ fontSize: TS.body, fontWeight: 700, textAlign: 'right' }}>
         {value ?? '—'}
       </Typography>
     </Stack>

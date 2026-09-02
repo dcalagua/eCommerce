@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { STOREFRONT_SLUG, isSupabaseConfigured } from '@/shared/lib/env'
 import { BrandLockup } from '@/shared/ui/BrandLockup'
-import { T } from '@/theme/tokens'
+import { TS } from '@/theme/tokens'
 import { fetchOnlyPublicStore } from './api'
 
 /**
@@ -61,10 +61,10 @@ export function LandingPage() {
           <BrandLockup size={40} />
 
           <Box>
-            <Typography component="h1" sx={{ fontSize: T.hero, fontWeight: 800, letterSpacing: '-0.6px' }}>
+            <Typography component="h1" sx={{ fontSize: TS.hero, fontWeight: 800, letterSpacing: '-0.6px' }}>
               {t('landing.title')}
             </Typography>
-            <Typography sx={{ color: 'var(--muted)', fontSize: T.bodyStrong, mt: 1, lineHeight: 1.6 }}>
+            <Typography sx={{ color: 'var(--muted)', fontSize: TS.bodyStrong, mt: 1, lineHeight: 1.6 }}>
               {t('auth.valueProp')}
             </Typography>
           </Box>
@@ -102,7 +102,7 @@ export function LandingPage() {
             )}
           </Stack>
 
-          <Typography sx={{ color: 'var(--muted)', fontSize: T.label, mt: 0.5 }}>
+          <Typography sx={{ color: 'var(--muted)', fontSize: TS.label, mt: 0.5 }}>
             {t('landing.hint')}
           </Typography>
         </Stack>

@@ -5,7 +5,8 @@ import { Box, Button, Card, IconButton, Stack, Typography } from '@mui/material'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
-import { T } from '@/theme/tokens'
+import { TS } from '@/theme/tokens'
+import { SectionHeading } from './SectionHeading'
 import { moneyCorto, offerBadge, vigenciaTexto } from '../offer'
 import type { StorePromotion } from '../promotions'
 
@@ -70,6 +71,10 @@ export function PromoCarousel({
   return (
     <Stack
       component="section"
+      // Destino del enlace «Ofertas» de la barra de navegación. `scroll-margin`
+      // porque la cabecera es pegajosa: sin él, el salto deja el título debajo
+      // de la cabecera y parece que no ha ido a ninguna parte.
+      id="ofertas"
       aria-roledescription="carousel"
       aria-label={t('store.promos.title')}
       ref={contenedor}
@@ -79,43 +84,36 @@ export function PromoCarousel({
       onBlurCapture={(event) => {
         if (!contenedor.current?.contains(event.relatedTarget as Node | null)) setParado(false)
       }}
-      sx={{ gap: 1.25 }}
+      sx={{ gap: 1.25, scrollMarginTop: 96 }}
     >
-      <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
-        <Typography
-          component="h2"
-          sx={{
-            fontSize: T.label,
-            fontWeight: 800,
-            letterSpacing: '0.12em',
-            textTransform: 'uppercase',
-            color: 'var(--accent-deep)',
-          }}
-        >
-          {t('store.promos.title')}
-        </Typography>
-
-        {total > 1 ? (
-          <Stack direction="row" sx={{ gap: 0.5, ml: 'auto' }}>
-            <IconButton
-              size="small"
-              aria-label={t('store.promos.prev')}
-              onClick={() => ir(actual - 1)}
-              sx={{ border: '1px solid var(--sf-line)', bgcolor: 'var(--card)' }}
-            >
-              <ChevronLeftRoundedIcon fontSize="small" />
-            </IconButton>
-            <IconButton
-              size="small"
-              aria-label={t('store.promos.next')}
-              onClick={() => ir(actual + 1)}
-              sx={{ border: '1px solid var(--sf-line)', bgcolor: 'var(--card)' }}
-            >
-              <ChevronRightRoundedIcon fontSize="small" />
-            </IconButton>
-          </Stack>
-        ) : null}
-      </Stack>
+      {/* El nombre de la seccion era una versalita de 12 px: en una portada que
+          ya lleva titulares grandes, eso se lee como el pie de la fila anterior
+          y no como el principio de esta. Ahora es un titular como los demas. */}
+      <SectionHeading
+        title={t('store.promos.title')}
+        action={
+          total > 1 ? (
+            <Stack direction="row" sx={{ gap: 0.5 }}>
+              <IconButton
+                size="small"
+                aria-label={t('store.promos.prev')}
+                onClick={() => ir(actual - 1)}
+                sx={{ border: '1px solid var(--sf-line)', bgcolor: 'var(--card)' }}
+              >
+                <ChevronLeftRoundedIcon fontSize="small" />
+              </IconButton>
+              <IconButton
+                size="small"
+                aria-label={t('store.promos.next')}
+                onClick={() => ir(actual + 1)}
+                sx={{ border: '1px solid var(--sf-line)', bgcolor: 'var(--card)' }}
+              >
+                <ChevronRightRoundedIcon fontSize="small" />
+              </IconButton>
+            </Stack>
+          ) : undefined
+        }
+      />
 
       <Box sx={{ position: 'relative' }}>
         {promotions.map((item, indice) => (
@@ -255,7 +253,7 @@ function PromoSlide({
           {promo.description ? (
             <Typography
               sx={{
-                fontSize: T.body,
+                fontSize: TS.body,
                 color: 'var(--muted)',
                 maxWidth: '58ch',
                 display: '-webkit-box',
@@ -272,7 +270,7 @@ function PromoSlide({
             {vigencia ? (
               <Typography
                 sx={{
-                  fontSize: T.label,
+                  fontSize: TS.label,
                   fontWeight: 800,
                   color: vigencia.urgente ? 'var(--accent-deep)' : 'var(--muted)',
                   ...(vigencia.urgente
@@ -290,7 +288,7 @@ function PromoSlide({
             ) : null}
 
             {promo.minSubtotal ? (
-              <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+              <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
                 {t('store.content.offer.minSubtotal').replace(
                   '{amount}',
                   moneyCorto(promo.minSubtotal, currency, locale),

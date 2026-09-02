@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/states'
-import { T } from '@/theme/tokens'
+import { TS } from '@/theme/tokens'
 import { ContentBlocks } from './components/ContentBlocks'
 import { useContentAssets, useStoreContent, useStorefront } from './hooks'
 import { contentMeta, notFoundMeta } from './seo'
@@ -86,7 +86,7 @@ export function StoreContentPage() {
           {page.title}
         </Typography>
         {page.seoDescription ? (
-          <Typography sx={{ fontSize: T.bodyStrong, color: 'var(--muted)', maxWidth: 720 }}>
+          <Typography sx={{ fontSize: TS.bodyStrong, color: 'var(--muted)', maxWidth: 720 }}>
             {page.seoDescription}
           </Typography>
         ) : null}

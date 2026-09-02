@@ -51,12 +51,16 @@ const ARBOL: PublicCategory[] = [
   }),
 ]
 
-function pintar(categories: PublicCategory[] = ARBOL) {
+function pintar(categories: PublicCategory[] = ARBOL, showOffers = false) {
   return render(
     <I18nProvider initial="es">
       <AppearanceProvider initial={DEFAULT_APPEARANCE} tenantAccent={null}>
         <MemoryRouter initialEntries={['/s/miquimica']}>
-          <StoreCategoryNav storeSlug="miquimica" categories={categories} />
+          <StoreCategoryNav
+            storeSlug="miquimica"
+            categories={categories}
+            showOffers={showOffers}
+          />
         </MemoryRouter>
       </AppearanceProvider>
     </I18nProvider>,
@@ -108,6 +112,32 @@ describe('la barra de familias de la cabecera', () => {
     await user.keyboard('{Escape}')
 
     expect(screen.queryByRole('link', { name: 'Antiinfecciosos' })).not.toBeInTheDocument()
+  })
+
+  /**
+   * «Ofertas» y «Marcas» no son familias del catálogo: son cortes
+   * transversales. Van al final de la barra por eso, y «Ofertas» solo cuando
+   * hay campañas vivas — un enlace a una sección que no está en la página es
+   * peor que no tenerlo.
+   */
+  it('«Marcas» siempre está; «Ofertas» solo si hay campañas', () => {
+    pintar(ARBOL, true)
+
+    expect(screen.getByRole('link', { name: 'Ofertas' })).toHaveAttribute(
+      'href',
+      '/s/miquimica#ofertas',
+    )
+    expect(screen.getByRole('link', { name: 'Marcas' })).toHaveAttribute(
+      'href',
+      '/s/miquimica?ver=todo#marcas',
+    )
+  })
+
+  it('sin campañas vivas no ofrece «Ofertas»', () => {
+    pintar(ARBOL, false)
+
+    expect(screen.queryByRole('link', { name: 'Ofertas' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Marcas' })).toBeInTheDocument()
   })
 
   it('sin categorías no pinta nada: una barra vacía es una franja sin sentido', () => {

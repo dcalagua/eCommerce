@@ -14,7 +14,7 @@ import { formatMoney } from '@/shared/lib/format'
 import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { EmptyState } from '@/shared/ui/states'
-import { T } from '@/theme/tokens'
+import { TS } from '@/theme/tokens'
 import { useCart } from './cart/cart-context'
 import { DeliveryPicker } from './components/DeliveryPicker'
 import { useDeliveryOptions } from './delivery'
@@ -350,7 +350,7 @@ export function StoreCheckoutPage() {
         }}
       >
         <Card sx={{ p: { xs: 2, md: 3 } }}>
-          <Typography component="h2" sx={{ fontSize: T.cardTitle, fontWeight: 800, mb: 2 }}>
+          <Typography component="h2" sx={{ fontSize: TS.cardTitle, fontWeight: 800, mb: 2 }}>
             {t('store.checkout.contact')}
           </Typography>
 
@@ -363,28 +363,39 @@ export function StoreCheckoutPage() {
               helperText={errors.customerName ? t(errors.customerName.message as MessageKey) : ' '}
               {...register('customerName')}
             />
-            <TextField
-              label={t('store.checkout.email')}
-              type="email"
-              autoComplete="email"
-              required
-              error={Boolean(errors.customerEmail)}
-              helperText={
-                errors.customerEmail
-                  ? t(errors.customerEmail.message as MessageKey)
-                  : t('store.checkout.emailHint')
-              }
-              {...register('customerEmail')}
-            />
-            <TextField
-              label={t('store.checkout.phone')}
-              type="tel"
-              autoComplete="tel"
-              required
-              error={Boolean(errors.customerPhone)}
-              helperText={errors.customerPhone ? t(errors.customerPhone.message as MessageKey) : ' '}
-              {...register('customerPhone')}
-            />
+            {/* Correo y teléfono comparten fila desde `sm`. Un teléfono con el
+                ancho de una dirección no solo desperdicia espacio: sugiere que
+                cabe algo más de lo que cabe, y alarga el formulario justo donde
+                el comprador ya decidió y solo quiere terminar. El nombre y la
+                dirección sí se quedan a lo ancho, que es lo que piden. */}
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <TextField
+                label={t('store.checkout.email')}
+                type="email"
+                autoComplete="email"
+                required
+                fullWidth
+                error={Boolean(errors.customerEmail)}
+                helperText={
+                  errors.customerEmail
+                    ? t(errors.customerEmail.message as MessageKey)
+                    : t('store.checkout.emailHint')
+                }
+                {...register('customerEmail')}
+              />
+              <TextField
+                label={t('store.checkout.phone')}
+                type="tel"
+                autoComplete="tel"
+                required
+                sx={{ width: { xs: '100%', sm: 220 }, flexShrink: 0 }}
+                error={Boolean(errors.customerPhone)}
+                helperText={
+                  errors.customerPhone ? t(errors.customerPhone.message as MessageKey) : ' '
+                }
+                {...register('customerPhone')}
+              />
+            </Stack>
             <TextField
               label={t('store.checkout.address')}
               autoComplete="street-address"
@@ -469,7 +480,7 @@ export function StoreCheckoutPage() {
               error={null}
             />
             {deliveryOptions.length > 0 && (
-              <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+              <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
                 {t('store.delivery.help')}
               </Typography>
             )}
@@ -477,7 +488,7 @@ export function StoreCheckoutPage() {
         </Card>
 
         <Card sx={{ p: { xs: 2, md: 2.5 } }}>
-          <Typography component="h2" sx={{ fontSize: T.cardTitle, fontWeight: 800, mb: 1.5 }}>
+          <Typography component="h2" sx={{ fontSize: TS.cardTitle, fontWeight: 800, mb: 1.5 }}>
             {t('store.cart.summary')}
           </Typography>
 
@@ -498,17 +509,17 @@ export function StoreCheckoutPage() {
                   component="li"
                   key={`${line.product_id}|${line.variant_id ?? ''}`}
                   direction="row"
-                  sx={{ justifyContent: 'space-between', gap: 1, fontSize: T.body }}
+                  sx={{ justifyContent: 'space-between', gap: 1, fontSize: TS.body }}
                 >
                   <Stack sx={{ minWidth: 0 }}>
-                    <Typography sx={{ fontSize: T.body, color: 'var(--muted)', fontWeight: 600 }}>
+                    <Typography sx={{ fontSize: TS.body, color: 'var(--muted)', fontWeight: 600 }}>
                       {line.quantity} × {line.name}
                     </Typography>
-                    <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+                    <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
                       {formatMoney(Number(unitPrice), lineCurrency, locale)} · {t('store.cart.each')}
                     </Typography>
                   </Stack>
-                  <Typography sx={{ fontSize: T.body, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                  <Typography sx={{ fontSize: TS.body, fontWeight: 700, whiteSpace: 'nowrap' }}>
                     {formatMoney(Number(unitPrice) * line.quantity, lineCurrency, locale)}
                   </Typography>
                 </Stack>
@@ -566,7 +577,7 @@ export function StoreCheckoutPage() {
           {/* Estado de la cotización: siempre uno de los tres, nunca el vacío.
               «Confirmando precios…» tiene que poder distinguirse de «este es el
               precio» y de «no pudimos confirmarlo». */}
-          <Typography sx={{ fontSize: T.label, color: 'var(--muted)', mt: 0.5 }}>
+          <Typography sx={{ fontSize: TS.label, color: 'var(--muted)', mt: 0.5 }}>
             {quote.isFetching
               ? t('store.cart.quoting')
               : quoted
@@ -595,7 +606,7 @@ export function StoreCheckoutPage() {
             >
               {t(errorKey)}
               {stageKey && (
-                <Typography component="span" sx={{ display: 'block', fontSize: T.label, mt: 0.5 }}>
+                <Typography component="span" sx={{ display: 'block', fontSize: TS.label, mt: 0.5 }}>
                   {t(stageKey)}
                 </Typography>
               )}
@@ -626,7 +637,7 @@ export function StoreCheckoutPage() {
             </Button>
           )}
 
-          <Typography sx={{ fontSize: T.label, color: 'var(--muted)', mt: 1.5 }}>
+          <Typography sx={{ fontSize: TS.label, color: 'var(--muted)', mt: 1.5 }}>
             {t('store.checkout.noPayment')}
           </Typography>
         </Card>

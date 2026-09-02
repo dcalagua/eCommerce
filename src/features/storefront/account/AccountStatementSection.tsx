@@ -17,7 +17,7 @@ import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatDate, formatMoney } from '@/shared/lib/format'
 import { BrandLoader } from '@/shared/ui/BrandLoader'
 import { EmptyState, ErrorState } from '@/shared/ui/states'
-import { T } from '@/theme/tokens'
+import { TS } from '@/theme/tokens'
 import { fetchMyStatement, myStatementKey, type AccountStatement } from '../portal'
 
 /**
@@ -86,7 +86,7 @@ function CuentaCard({ cuenta }: { cuenta: AccountStatement }) {
           <Typography component="h2" sx={{ fontSize: 18, fontWeight: 800 }}>
             {cuenta.account_name}
           </Typography>
-          <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+          <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
             {cuenta.payment_terms_days > 0
               ? t('account.statement.terms').replace('{n}', String(cuenta.payment_terms_days))
               : t('account.statement.cash')}
@@ -131,7 +131,7 @@ function CuentaCard({ cuenta }: { cuenta: AccountStatement }) {
                 },
               }}
             />
-            <Typography sx={{ fontSize: T.label, color: 'var(--muted)', mt: 0.75 }}>
+            <Typography sx={{ fontSize: TS.label, color: 'var(--muted)', mt: 0.75 }}>
               {t('account.statement.creditUsed')
                 .replace('{used}', formatMoney(deuda, moneda, locale))
                 .replace('{limit}', formatMoney(limite, moneda, locale))}
@@ -151,7 +151,7 @@ function CuentaCard({ cuenta }: { cuenta: AccountStatement }) {
         </Stack>
 
         {cuenta.documents.length === 0 ? (
-          <Typography sx={{ fontSize: T.body, color: 'var(--accent-deep)', fontWeight: 700 }}>
+          <Typography sx={{ fontSize: TS.body, color: 'var(--accent-deep)', fontWeight: 700 }}>
             {t('account.statement.noDebt')}
           </Typography>
         ) : (
@@ -216,7 +216,7 @@ function Cifra({
     <Stack sx={{ gap: 0.25, minWidth: 150 }}>
       <Typography
         sx={{
-          fontSize: T.label,
+          fontSize: TS.label,
           fontWeight: 800,
           letterSpacing: '0.1em',
           textTransform: 'uppercase',
@@ -242,7 +242,7 @@ function Cifra({
 
 function Menor({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   return (
-    <Typography sx={{ fontSize: T.body, color: 'var(--muted)' }}>
+    <Typography sx={{ fontSize: TS.body, color: 'var(--muted)' }}>
       {etiqueta}: <strong style={{ color: 'var(--text)' }}>{valor}</strong>
     </Typography>
   )

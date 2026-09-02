@@ -3,7 +3,7 @@ import { Box, Stack, Typography } from '@mui/material'
 import { useQuery } from '@tanstack/react-query'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { EmptyState, ErrorState } from '@/shared/ui/states'
-import { T } from '@/theme/tokens'
+import { TS } from '@/theme/tokens'
 import { fetchPublicProductsByIds } from './api'
 import { ProductGrid, ProductGridSkeleton } from './components/ProductGrid'
 import { useSignedThumbnails, useStorefront } from './hooks'
@@ -51,10 +51,10 @@ export function StoreFavoritesPage() {
   return (
     <Stack sx={{ gap: 2.5 }}>
       <Box>
-        <Typography component="h1" sx={{ fontSize: T.hero, fontWeight: 800, letterSpacing: '-0.5px' }}>
+        <Typography component="h1" sx={{ fontSize: TS.hero, fontWeight: 800, letterSpacing: '-0.5px' }}>
           {t('store.favorites.title')}
         </Typography>
-        <Typography sx={{ color: 'var(--muted)', fontSize: T.body, mt: 0.5 }}>
+        <Typography sx={{ color: 'var(--muted)', fontSize: TS.body, mt: 0.5 }}>
           {/* El aviso solo cuando toca: quien tiene sesión no necesita que le
               recuerden que sus favoritos viajan con ella. */}
           {favorites.persisted ? t('store.favorites.synced') : t('store.favorites.localOnly')}

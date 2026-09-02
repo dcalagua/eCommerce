@@ -1,10 +1,11 @@
 import { Box, Button, Stack, Typography } from '@mui/material'
 import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
-import { T } from '@/theme/tokens'
+import { TS } from '@/theme/tokens'
 import { initials } from '../branding'
 import { tintFor } from '../tint'
 import { ScrollRow } from './ScrollRow'
+import { SectionHeading } from './SectionHeading'
 
 export interface BrandOption {
   readonly code: string
@@ -40,33 +41,36 @@ export function BrandRow({
   if (brands.length === 0) return null
 
   return (
-    <Stack sx={{ gap: 1 }}>
-      <Stack direction="row" sx={{ gap: 1.5, alignItems: 'center' }}>
-        <Typography
-          component="h2"
-          sx={{ fontSize: { xs: 19, md: 22 }, fontWeight: 800, letterSpacing: '-0.02em' }}
-        >
-          {t('store.brands.title')}
-        </Typography>
-        {seeAllHref ? (
-          <Button
-            component={Link}
-            to={seeAllHref}
-            size="small"
-            sx={{
-              textTransform: 'none',
-              fontWeight: 700,
-              borderRadius: 'var(--sf-pill)',
-              border: '1px solid var(--sf-line-strong)',
-              color: 'var(--text)',
-              px: 1.75,
-              '&:hover': { borderColor: 'var(--accent)', bgcolor: 'transparent' },
-            }}
-          >
-            {t('store.row.seeAll')}
-          </Button>
-        ) : null}
-      </Stack>
+    <Stack
+      component="section"
+      // Destino del enlace «Marcas». `scroll-margin` por la cabecera pegajosa.
+      id="marcas"
+      aria-label={t('store.brands.title')}
+      sx={{ gap: 1, scrollMarginTop: 96 }}
+    >
+      <SectionHeading
+        title={t('store.brands.title')}
+        action={
+          seeAllHref ? (
+            <Button
+              component={Link}
+              to={seeAllHref}
+              size="small"
+              sx={{
+                textTransform: 'none',
+                fontWeight: 700,
+                borderRadius: 'var(--sf-pill)',
+                border: '1px solid var(--sf-line-strong)',
+                color: 'var(--text)',
+                px: 1.75,
+                '&:hover': { borderColor: 'var(--accent)', bgcolor: 'transparent' },
+              }}
+            >
+              {t('store.row.seeAll')}
+            </Button>
+          ) : undefined
+        }
+      />
 
       <ScrollRow ariaLabel={t('store.brands.title')} gap={1}>
         {brands.map((brand) => {
@@ -157,7 +161,7 @@ export function BrandRow({
                 {brand.count === null ? null : (
                   <Typography
                     sx={{
-                      fontSize: T.label,
+                      fontSize: TS.label,
                       fontWeight: 600,
                       color: activa ? 'var(--muted)' : tinte.fg,
                       opacity: activa ? 1 : 0.75,

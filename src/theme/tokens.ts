@@ -57,6 +57,40 @@ export const T = {
   micro: 10,
 } as const
 
+/**
+ * Escala tipografica de la VITRINA.
+ *
+ * `T` esta calibrada para el backoffice, que es una herramienta de trabajo:
+ * cuerpo a 13 px y etiquetas a 11 px caben mas filas en pantalla, y quien las
+ * lee esta sentado mirando datos. La tienda publica no compite por lo mismo —lo
+ * dice el propio `storefront.css`: «el backoffice es una herramienta; la vitrina
+ * vende»— y sin embargo heredaba esos mismos numeros en ochenta y siete sitios.
+ *
+ * Un catalogo con el cuerpo a 13 px se lee como un listado de inventario. Aqui
+ * cada papel sube un escalon, sin inventar tamanos nuevos: los mismos nombres,
+ * la misma jerarquia, un paso mas grandes. La escala sigue siendo una lista
+ * cerrada — el problema que resuelve no es que los numeros fueran pequenos sino
+ * que ademas cada componente elegia el suyo.
+ *
+ * Solo la usa `src/features/storefront`. El backoffice sigue con `T`, intacto.
+ */
+export const TS = {
+  /** Titular de portada. */
+  hero: 32,
+  /** Cifra grande: precio destacado, importe de una oferta. */
+  figure: 26,
+  /** Titulo de pagina o de seccion. */
+  pageTitle: 23,
+  /** Nombre de producto en tarjeta. */
+  cardTitle: 15.5,
+  /** Cuerpo. Es el cambio que mas se nota: 13 -> 14. */
+  body: 14,
+  bodyStrong: 14.5,
+  /** Versalitas de contexto: categoria, vigencia, estado. */
+  label: 12,
+  micro: 10.5,
+} as const
+
 /** Sombras (conmutan light/dark). */
 export const SH = {
   sm: 'var(--shadow-sm)',

@@ -21,7 +21,7 @@ import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
 import { AppBreadcrumbs } from '@/shared/ui/AppBreadcrumbs'
 import { ErrorState } from '@/shared/ui/states'
-import { R, T } from '@/theme/tokens'
+import { R, TS } from '@/theme/tokens'
 import { track } from '../analytics'
 import { useCart } from '../cart/cart-context'
 import { useGallery, usePublicProduct } from '../hooks'
@@ -226,7 +226,7 @@ export function ProductQuickView({
 
                   {/* Marca y categoría en una línea tenue bajo el título: son
                       contexto, no titular. */}
-                  <Typography sx={{ fontSize: T.body, color: 'var(--muted)' }}>
+                  <Typography sx={{ fontSize: TS.body, color: 'var(--muted)' }}>
                     {[item.brand_name, item.category_name].filter(Boolean).join(' / ') || '—'}
                   </Typography>
 
@@ -234,7 +234,7 @@ export function ProductQuickView({
                     {discount !== null && item.compare_at_price && (
                       <Typography
                         component="s"
-                        sx={{ fontSize: T.body, color: 'var(--muted)', fontWeight: 600 }}
+                        sx={{ fontSize: TS.body, color: 'var(--muted)', fontWeight: 600 }}
                       >
                         {formatMoney(Number(item.compare_at_price), item.currency, locale)}
                       </Typography>
@@ -254,7 +254,7 @@ export function ProductQuickView({
                     sx={{
                       alignSelf: 'flex-start',
                       fontWeight: 800,
-                      fontSize: T.label,
+                      fontSize: TS.label,
                       bgcolor: available ? 'var(--accent-soft)' : 'var(--neutral-soft)',
                       color: available ? 'var(--accent-deep)' : 'var(--muted)',
                     }}
@@ -320,7 +320,7 @@ export function ProductQuickView({
                   <Box>
                     <Typography
                       component="h3"
-                      sx={{ fontSize: T.cardTitle, fontWeight: 800, mb: 0.75 }}
+                      sx={{ fontSize: TS.cardTitle, fontWeight: 800, mb: 0.75 }}
                     >
                       {t('store.product.description')}
                     </Typography>
@@ -329,7 +329,7 @@ export function ProductQuickView({
                         vista, y eso cansa antes de la tercera. */}
                     <Typography
                       sx={{
-                        fontSize: T.body,
+                        fontSize: TS.body,
                         color: 'var(--muted)',
                         lineHeight: 1.6,
                         whiteSpace: 'pre-line',
@@ -388,7 +388,7 @@ function FactRow({ icon, value }: { icon: ReactNode; value: string | null }) {
       </Box>
       <Typography
         sx={{
-          fontSize: T.body,
+          fontSize: TS.body,
           color: value ? 'var(--text)' : 'var(--muted)',
           fontWeight: value ? 600 : 400,
         }}

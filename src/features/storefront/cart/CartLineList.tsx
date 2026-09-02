@@ -3,7 +3,7 @@ import { Box, IconButton, Stack, Typography } from '@mui/material'
 import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
-import { R, T } from '@/theme/tokens'
+import { R, TS } from '@/theme/tokens'
 import { ProductMedia } from '../components/ProductMedia'
 import { QuantityStepper } from '../components/QuantityStepper'
 import { useSignedThumbnails } from '../hooks'
@@ -102,18 +102,18 @@ function CartLineRow({
           onClick={onNavigate}
           sx={{ textDecoration: 'none', color: 'inherit' }}
         >
-          <Typography sx={{ fontSize: T.cardTitle, fontWeight: 700, lineHeight: 1.35 }}>
+          <Typography sx={{ fontSize: TS.cardTitle, fontWeight: 700, lineHeight: 1.35 }}>
             {line.name}
           </Typography>
           {/* La variante va en su propia linea y no pegada al nombre: es lo que
               distingue dos lineas del mismo producto en el carrito. */}
           {line.variant_name && (
-            <Typography sx={{ fontSize: T.label, color: 'var(--muted)', fontWeight: 700 }}>
+            <Typography sx={{ fontSize: TS.label, color: 'var(--muted)', fontWeight: 700 }}>
               {line.variant_name}
             </Typography>
           )}
         </Box>
-        <Typography sx={{ fontSize: T.label, color: 'var(--muted)', fontWeight: 600 }}>
+        <Typography sx={{ fontSize: TS.label, color: 'var(--muted)', fontWeight: 600 }}>
           {formatMoney(Number(line.unit_price), line.currency, locale)} · {t('store.cart.each')}
         </Typography>
 
@@ -144,7 +144,7 @@ function CartLineRow({
         </Stack>
       </Stack>
 
-      <Typography sx={{ fontWeight: 800, fontSize: T.bodyStrong, whiteSpace: 'nowrap' }}>
+      <Typography sx={{ fontWeight: 800, fontSize: TS.bodyStrong, whiteSpace: 'nowrap' }}>
         {formatMoney(lineTotalCents(line) / 100, line.currency, locale)}
       </Typography>
     </Stack>

@@ -1,7 +1,7 @@
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import { Autocomplete, InputAdornment, TextField, Typography } from '@mui/material'
 import { useI18n } from '@/shared/i18n/i18n-context'
-import { T } from '@/theme/tokens'
+import { TS } from '@/theme/tokens'
 import type { Suggestion } from '@/domain'
 
 /**
@@ -57,8 +57,8 @@ export function StoreSearchField({
       }
       renderOption={(props, option) => (
         <li {...props} key={`${option.kind}:${option.slug}`}>
-          <Typography sx={{ fontSize: T.body, fontWeight: 600 }}>{option.label}</Typography>
-          <Typography sx={{ fontSize: T.micro, color: 'var(--muted)', ml: 1 }}>
+          <Typography sx={{ fontSize: TS.body, fontWeight: 600 }}>{option.label}</Typography>
+          <Typography sx={{ fontSize: TS.micro, color: 'var(--muted)', ml: 1 }}>
             {t(`store.search.kind.${option.kind}`)}
           </Typography>
         </li>

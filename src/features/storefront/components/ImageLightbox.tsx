@@ -4,7 +4,7 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import { Box, Dialog, IconButton, Stack, Typography } from '@mui/material'
 import { useEffect } from 'react'
 import { useI18n } from '@/shared/i18n/i18n-context'
-import { R, T } from '@/theme/tokens'
+import { R, TS } from '@/theme/tokens'
 import type { GalleryImage } from '../types'
 
 /**
@@ -109,7 +109,7 @@ export function ImageLightbox({
           direction="row"
           sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 1, px: 2, py: 1.25 }}
         >
-          <Typography sx={{ fontSize: T.body, fontWeight: 700, color: 'rgba(255,255,255,0.82)' }}>
+          <Typography sx={{ fontSize: TS.body, fontWeight: 700, color: 'rgba(255,255,255,0.82)' }}>
             {t('store.product.imageOf')
               .replace('{n}', String(position + 1))
               .replace('{total}', String(images.length))}

@@ -1,7 +1,7 @@
 import { Chip } from '@mui/material'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
-import { T } from '@/theme/tokens'
+import { TS } from '@/theme/tokens'
 
 /**
  * Estado en pastilla, con su traducción y su color.
@@ -28,7 +28,7 @@ export function EstadoChip({ valor, clave }: { valor: string; clave: string }) {
     <Chip
       size="small"
       label={etiqueta === key ? valor : etiqueta}
-      sx={{ ...tono, fontWeight: 700, fontSize: T.label }}
+      sx={{ ...tono, fontWeight: 700, fontSize: TS.label }}
     />
   )
 }

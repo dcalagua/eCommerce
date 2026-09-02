@@ -6,7 +6,7 @@ import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { formatMoney } from '@/shared/lib/format'
 import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
-import { R, T } from '@/theme/tokens'
+import { R, TS } from '@/theme/tokens'
 import { fetchOrderByToken } from './api'
 import { orderResultSchema, type OrderResult } from './checkout'
 import { useStorefront } from './hooks'
@@ -129,7 +129,7 @@ export function StoreOrderPage() {
           {t('store.order.body')}
         </Typography>
 
-        <Typography sx={{ mt: 2, fontSize: T.label, color: 'var(--muted)', fontWeight: 700 }}>
+        <Typography sx={{ mt: 2, fontSize: TS.label, color: 'var(--muted)', fontWeight: 700 }}>
           {t('store.order.number')}
         </Typography>
         <Typography sx={{ fontSize: 20, fontWeight: 800, letterSpacing: 0.5 }}>
@@ -145,7 +145,7 @@ export function StoreOrderPage() {
 
       {order && (
         <Card sx={{ p: { xs: 2, md: 3 } }}>
-          <Typography component="h2" sx={{ fontSize: T.cardTitle, fontWeight: 800, mb: 1.5 }}>
+          <Typography component="h2" sx={{ fontSize: TS.cardTitle, fontWeight: 800, mb: 1.5 }}>
             {t('store.order.detail')}
           </Typography>
 
@@ -157,10 +157,10 @@ export function StoreOrderPage() {
                 direction="row"
                 sx={{ justifyContent: 'space-between', gap: 1 }}
               >
-                <Typography sx={{ fontSize: T.body, color: 'var(--muted)', fontWeight: 600 }}>
+                <Typography sx={{ fontSize: TS.body, color: 'var(--muted)', fontWeight: 600 }}>
                   {item.quantity} × {item.name}
                 </Typography>
-                <Typography sx={{ fontSize: T.body, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                <Typography sx={{ fontSize: TS.body, fontWeight: 700, whiteSpace: 'nowrap' }}>
                   {formatMoney(Number(item.unit_price) * item.quantity, order.currency, locale)}
                 </Typography>
               </Stack>
@@ -205,23 +205,23 @@ export function StoreOrderPage() {
           de navegacion no lo trae. */}
       {(tracked.data?.deliveries ?? []).length > 0 && (
         <Card sx={{ p: { xs: 2, md: 3 } }}>
-          <Typography component="h2" sx={{ fontSize: T.cardTitle, fontWeight: 800, mb: 1.5 }}>
+          <Typography component="h2" sx={{ fontSize: TS.cardTitle, fontWeight: 800, mb: 1.5 }}>
             {t('store.delivery.title')}
           </Typography>
           <Stack sx={{ gap: 1.5 }}>
             {(tracked.data?.deliveries ?? []).map((entry) => (
               <Stack key={entry.sequence} sx={{ gap: 0.25 }}>
-                <Typography sx={{ fontSize: T.body, fontWeight: 700 }}>
+                <Typography sx={{ fontSize: TS.body, fontWeight: 700 }}>
                   {entry.method_name}
                 </Typography>
-                <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+                <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
                   {t(`fulfillment.state.${entry.state}` as MessageKey)}
                   {entry.promised_from
                     ? ` · ${t('store.delivery.promised')} ${entry.promised_from} – ${entry.promised_to}`
                     : ''}
                 </Typography>
                 {entry.pickup_point && (
-                  <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+                  <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
                     {t('store.delivery.pickupPoint')}: {entry.pickup_point.name}
                     {typeof entry.pickup_point.address.address === 'string'
                       ? ` · ${entry.pickup_point.address.address}`
@@ -229,7 +229,7 @@ export function StoreOrderPage() {
                   </Typography>
                 )}
                 {entry.tracking_number && (
-                  <Typography sx={{ fontSize: T.label, fontWeight: 700 }}>
+                  <Typography sx={{ fontSize: TS.label, fontWeight: 700 }}>
                     {t('fulfillment.field.tracking')}: {entry.tracking_number}
                   </Typography>
                 )}
@@ -240,7 +240,7 @@ export function StoreOrderPage() {
       )}
 
       <Card sx={{ p: { xs: 2, md: 3 } }}>
-        <Typography sx={{ fontSize: T.body, color: 'var(--muted)' }}>
+        <Typography sx={{ fontSize: TS.body, color: 'var(--muted)' }}>
           {t('store.order.contactNote')}{' '}
           {store.support_email && (
             <Box component="span" sx={{ color: 'var(--accent-deep)', fontWeight: 700 }}>

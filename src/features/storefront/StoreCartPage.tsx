@@ -8,7 +8,7 @@ import { formatMoney } from '@/shared/lib/format'
 import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { EmptyState } from '@/shared/ui/states'
-import { T } from '@/theme/tokens'
+import { TS } from '@/theme/tokens'
 import { CartLineList } from './cart/CartLineList'
 import { useCart } from './cart/cart-context'
 import { useStorefront } from './hooks'
@@ -97,7 +97,7 @@ export function StoreCartPage() {
         </Card>
 
         <Card sx={{ p: { xs: 1.5, md: 2.5 } }}>
-          <Typography component="h2" sx={{ fontSize: T.cardTitle, fontWeight: 800, mb: 1.5 }}>
+          <Typography component="h2" sx={{ fontSize: TS.cardTitle, fontWeight: 800, mb: 1.5 }}>
             {t('store.cart.summary')}
           </Typography>
 
@@ -142,7 +142,7 @@ export function StoreCartPage() {
             <Chip size="small" color="success" label={t('store.cart.listPrice')} sx={{ mt: 1 }} />
           )}
 
-          <Typography sx={{ fontSize: T.label, color: 'var(--muted)', mt: 0.5 }}>
+          <Typography sx={{ fontSize: TS.label, color: 'var(--muted)', mt: 0.5 }}>
             {quote.isPending
               ? t('store.cart.quoting')
               : quoted

@@ -20,7 +20,7 @@ import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/states'
 import { SkipToContentLink, CONTENT_ANCHOR } from '@/shared/ui/SkipToContentLink'
 import { AppearanceProvider } from '@/theme/AppearanceProvider'
-import { R, T } from '@/theme/tokens'
+import { R, TS } from '@/theme/tokens'
 import { StorefrontNotFoundError } from './api'
 import { notFoundMeta } from './seo'
 import { initials } from './branding'
@@ -29,7 +29,13 @@ import { StoreQuickSearch } from './components/StoreQuickSearch'
 import { CartDrawer } from './cart/CartDrawer'
 import { CartProvider } from './cart/CartProvider'
 import { useCart } from './cart/cart-context'
-import { usePublicCategories, usePublicStore, useStoreNavigation, type StorefrontOutlet } from './hooks'
+import {
+  usePublicCategories,
+  usePublicStore,
+  useStoreNavigation,
+  useStorePromotions,
+  type StorefrontOutlet,
+} from './hooks'
 import { useFavorites } from './useFavorites'
 import type { PublicStore } from './types'
 // La tipografia de la VITRINA, auto-alojada. Se importa aqui —y no en el
@@ -260,7 +266,7 @@ function StoreHeader({ store, storeSlug }: { store: PublicStore; storeSlug: stri
                   bgcolor: 'var(--accent-soft)',
                   color: 'var(--accent-deep)',
                   fontWeight: 800,
-                  fontSize: T.label,
+                  fontSize: TS.label,
                 }}
               >
                 {initials(store.name)}
@@ -335,8 +341,17 @@ function StoreHeader({ store, storeSlug }: { store: PublicStore; storeSlug: stri
  */
 function StoreCategories({ storeSlug, storeId }: { storeSlug: string; storeId: string }) {
   const { data } = usePublicCategories(storeId)
+  // Misma clave de TanStack que ya usa la portada: la barra puede saber si hay
+  // campañas sin que eso cueste una peticion mas.
+  const { data: promociones } = useStorePromotions(storeSlug)
   if (!data || data.length === 0) return null
-  return <StoreCategoryNav storeSlug={storeSlug} categories={data} />
+  return (
+    <StoreCategoryNav
+      storeSlug={storeSlug}
+      categories={data}
+      showOffers={(promociones ?? []).length > 0}
+    />
+  )
 }
 
 function StorePagesFooter({ storeSlug, storeName }: { storeSlug: string; storeName: string }) {
@@ -354,7 +369,7 @@ function StorePagesFooter({ storeSlug, storeName }: { storeSlug: string; storeNa
           borderTop: '1px solid var(--sf-line)',
         }}
       >
-        <Typography sx={{ fontSize: T.label, color: 'var(--muted)' }}>
+        <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
           {`© ${new Date().getFullYear()} ${storeName}`}
         </Typography>
         {data && data.length > 0 ? <StorePagesNav storeSlug={storeSlug} pages={data} /> : null}
@@ -385,7 +400,7 @@ function StorePagesNav({
           component={Link}
           to={`/s/${storeSlug}/p/${item.slug}`}
           sx={{
-            fontSize: T.body,
+            fontSize: TS.body,
             fontWeight: 700,
             color: 'var(--muted)',
             textDecoration: 'none',
@@ -480,7 +495,7 @@ function HeaderAction({
         py: 0.625,
         borderRadius: 'var(--sf-pill)',
         fontWeight: 700,
-        fontSize: T.body,
+        fontSize: TS.body,
         color: 'var(--text)',
         '&:hover': { bgcolor: 'var(--sf-media-bg)' },
       }}

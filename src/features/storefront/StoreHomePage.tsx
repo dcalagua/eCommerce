@@ -8,7 +8,7 @@ import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
 import { BrandLoader } from '@/shared/ui/BrandLoader'
 import { CONTENT_ANCHOR } from '@/shared/ui/SkipToContentLink'
 import { EmptyState, ErrorState } from '@/shared/ui/states'
-import { T } from '@/theme/tokens'
+import { TS } from '@/theme/tokens'
 import { BackToTop } from './components/BackToTop'
 import { BrandRow } from './components/BrandRow'
 import { CategoryBar } from './components/CategoryBar'
@@ -388,7 +388,7 @@ export function StoreHomePage() {
             component={Link}
             to={`/s/${storeSlug}`}
             sx={{
-              fontSize: T.label,
+              fontSize: TS.label,
               fontWeight: 700,
               color: 'var(--muted)',
               textDecoration: 'none',
@@ -447,14 +447,14 @@ export function StoreHomePage() {
             <Breadcrumbs
               aria-label={t('store.categories.title')}
               separator="›"
-              sx={{ fontSize: T.label, color: 'var(--muted)' }}
+              sx={{ fontSize: TS.label, color: 'var(--muted)' }}
             >
               <MuiLink
                 component="button"
                 type="button"
                 underline="hover"
                 onClick={() => update('c', null)}
-                sx={{ fontSize: T.label, color: 'var(--muted)' }}
+                sx={{ fontSize: TS.label, color: 'var(--muted)' }}
               >
                 {/* «Todo el catálogo» y no «Todo»: la píldora de la barra ya se
                     llama así, y dos controles con el mismo nombre en la misma
@@ -473,7 +473,7 @@ export function StoreHomePage() {
                     type="button"
                     underline="hover"
                     onClick={() => update('c', node.slug)}
-                    sx={{ fontSize: T.label, color: 'var(--muted)' }}
+                    sx={{ fontSize: TS.label, color: 'var(--muted)' }}
                   >
                     {node.name}
                   </MuiLink>
@@ -578,14 +578,14 @@ export function StoreHomePage() {
             <Stack direction="row" sx={{ gap: 1, alignItems: 'baseline', flexWrap: 'wrap' }}>
               <Typography
                 aria-live="polite"
-                sx={{ fontSize: T.label, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted)' }}
+                sx={{ fontSize: TS.label, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted)' }}
               >
                 {`${resultCount} ${total === 1 ? t('store.catalog.result') : t('store.catalog.results')}`}
               </Typography>
               {/* Un resultado por tolerancia a erratas no es lo mismo que uno
                   exacto, y decirlo es la diferencia entre ayudar y fingir. */}
               {first?.mode === 'fuzzy' && (
-                <Typography sx={{ fontSize: T.label, color: 'var(--amber)', fontWeight: 700 }}>
+                <Typography sx={{ fontSize: TS.label, color: 'var(--amber)', fontWeight: 700 }}>
                   {t('store.search.fuzzy')}
                 </Typography>
               )}
@@ -649,7 +649,7 @@ export function StoreHomePage() {
 
           {!results.hasNextPage && products.length > PAGE_SIZE && (
             <Typography
-              sx={{ fontSize: T.label, color: 'var(--muted)', textAlign: 'center', mt: 2 }}
+              sx={{ fontSize: TS.label, color: 'var(--muted)', textAlign: 'center', mt: 2 }}
             >
               {t('store.catalog.endOfList')}
             </Typography>

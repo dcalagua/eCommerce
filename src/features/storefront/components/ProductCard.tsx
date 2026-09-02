@@ -6,7 +6,7 @@ import { Box, Button, Card, IconButton, Stack, Tooltip, Typography } from '@mui/
 import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
-import { T } from '@/theme/tokens'
+import { TS } from '@/theme/tokens'
 import { track } from '../analytics'
 import { useCart } from '../cart/cart-context'
 import { discountPercent, type PublicProduct } from '../types'
@@ -234,7 +234,7 @@ export function ProductCard({
               borderRadius: 'var(--sf-pill)',
               bgcolor: 'var(--accent-deep)',
               color: '#FFFFFF',
-              fontSize: T.label,
+              fontSize: TS.label,
               fontWeight: 800,
               letterSpacing: '0.02em',
               lineHeight: 1.6,
@@ -340,7 +340,7 @@ export function ProductCard({
             px: 0.875,
             py: 0.125,
             borderRadius: 'var(--sf-pill)',
-            fontSize: T.label,
+            fontSize: TS.label,
             fontWeight: 700,
             lineHeight: 1.7,
             bgcolor: available ? 'var(--accent-soft)' : 'var(--neutral-soft)',

@@ -1,9 +1,10 @@
-import { Box, Button, Skeleton, Stack, Typography } from '@mui/material'
+import { Box, Button, Skeleton, Stack } from '@mui/material'
 import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { PublicProduct } from '../types'
 import { ProductCard } from './ProductCard'
 import { ScrollRow } from './ScrollRow'
+import { SectionHeading } from './SectionHeading'
 
 /**
  * Una fila de productos con su título y su «Ver todo».
@@ -45,34 +46,30 @@ export function ProductRow({
 
   return (
     <Stack component="section" aria-label={title} sx={{ gap: 1.25 }}>
-      <Stack direction="row" sx={{ gap: 1.5, alignItems: 'center' }}>
-        <Typography
-          component="h2"
-          sx={{ fontSize: { xs: 19, md: 22 }, fontWeight: 800, letterSpacing: '-0.02em' }}
-        >
-          {title}
-        </Typography>
-
-        {/* La puerta al catálogo, al lado del título y no al final de la fila:
-            al final hay que desplazarse hasta el borde para encontrarla, que es
-            justo lo que se quiere evitar. */}
-        <Button
-          component={Link}
-          to={seeAllHref}
-          size="small"
-          sx={{
-            textTransform: 'none',
-            fontWeight: 700,
-            borderRadius: 'var(--sf-pill)',
-            border: '1px solid var(--sf-line-strong)',
-            color: 'var(--text)',
-            px: 1.75,
-            '&:hover': { borderColor: 'var(--accent)', bgcolor: 'transparent' },
-          }}
-        >
-          {t('store.row.seeAll')}
-        </Button>
-      </Stack>
+      <SectionHeading
+        title={title}
+        /* La puerta al catálogo, al lado del título y no al final de la fila:
+           al final hay que desplazarse hasta el borde para encontrarla, que es
+           justo lo que se quiere evitar. */
+        action={
+          <Button
+            component={Link}
+            to={seeAllHref}
+            size="small"
+            sx={{
+              textTransform: 'none',
+              fontWeight: 700,
+              borderRadius: 'var(--sf-pill)',
+              border: '1px solid var(--sf-line-strong)',
+              color: 'var(--text)',
+              px: 1.75,
+              '&:hover': { borderColor: 'var(--accent)', bgcolor: 'transparent' },
+            }}
+          >
+            {t('store.row.seeAll')}
+          </Button>
+        }
+      />
 
       <ScrollRow ariaLabel={title} gap={1.5}>
         {loading

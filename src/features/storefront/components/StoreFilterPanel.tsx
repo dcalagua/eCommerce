@@ -13,7 +13,7 @@ import {
 } from '@mui/material'
 import { useState, type ReactNode } from 'react'
 import { useI18n } from '@/shared/i18n/i18n-context'
-import { T } from '@/theme/tokens'
+import { TS } from '@/theme/tokens'
 
 export interface FacetOption {
   /** Slug de categoría o código de marca. `null` no se pinta: no se puede filtrar por nada. */
@@ -111,7 +111,7 @@ export function StoreFilterPanel({
           />
         }
         label={
-          <Typography sx={{ fontSize: T.body, fontWeight: 700 }}>
+          <Typography sx={{ fontSize: TS.body, fontWeight: 700 }}>
             {t('store.filter.inStock')}
           </Typography>
         }
@@ -182,7 +182,7 @@ function FacetGroup({ title, children }: { title: string; children: ReactNode })
         <Typography
           component="h3"
           sx={{
-            fontSize: T.label,
+            fontSize: TS.label,
             fontWeight: 800,
             letterSpacing: '0.1em',
             textTransform: 'uppercase',
@@ -240,7 +240,7 @@ function FacetRow({
         <Stack direction="row" sx={{ alignItems: 'center', gap: 0.75, minWidth: 0 }}>
           <Typography
             sx={{
-              fontSize: T.body,
+              fontSize: TS.body,
               fontWeight: checked ? 800 : 500,
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -250,7 +250,7 @@ function FacetRow({
             {option.name ?? option.code}
           </Typography>
           {option.count !== null && (
-            <Typography sx={{ fontSize: T.label, color: 'var(--muted)', flexShrink: 0 }}>
+            <Typography sx={{ fontSize: TS.label, color: 'var(--muted)', flexShrink: 0 }}>
               ({option.count})
             </Typography>
           )}

@@ -1,6 +1,6 @@
 import { Box, Stack, Typography } from '@mui/material'
 import { useT } from '@/shared/i18n/i18n-context'
-import { T } from '@/theme/tokens'
+import { TS } from '@/theme/tokens'
 import type { PublicStore } from '../types'
 
 /**
@@ -117,7 +117,7 @@ export function StoreHero({ store }: { store: PublicStore }) {
       >
         <Typography
           sx={{
-            fontSize: T.label,
+            fontSize: TS.label,
             fontWeight: 800,
             letterSpacing: '0.14em',
             textTransform: 'uppercase',
@@ -142,7 +142,7 @@ export function StoreHero({ store }: { store: PublicStore }) {
         </Typography>
         <Typography
           sx={{
-            fontSize: { xs: T.bodyStrong, md: 17 },
+            fontSize: { xs: TS.bodyStrong, md: 17 },
             lineHeight: 1.55,
             maxWidth: 560,
             opacity: 0.92,
