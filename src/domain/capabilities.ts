@@ -56,6 +56,8 @@ export const SELLABLE_CAPABILITY_IDS = [
   // Fase 03. El territorio COMERCIAL y la ruta de visita — distintos de
   // `delivery_zones`, que es logistica.
   'sales.territory',
+  // Fase 04. La cobranza: documento, recibo, aplicacion y antiguedad.
+  'credit.management',
 ] as const
 
 export const CAPABILITY_IDS = [
@@ -254,6 +256,18 @@ export const CAPABILITIES: readonly Capability[] = [
     state: 'implemented',
     grants:
       'Territorios con jerarquía sin ciclos, cobertura por vendedor y rutas de visita con orden único.',
+  },
+  {
+    id: 'credit.management',
+    boundary: 'credit',
+    entitlement: `${ENTITLEMENT_PREFIX}credit.management`,
+    // Fase 04. El saldo lo mantiene la base con un trigger y no quien inserta:
+    // si lo escribiera la aplicacion, existiria la ruta que se olvida —una
+    // carga masiva, una correccion a mano— y el saldo dejaria de ser cierto sin
+    // que nada fallara.
+    state: 'implemented',
+    grants:
+      'Documento por cobrar con vencimiento y saldo, cobros con aplicación N:M y antigüedad de saldos por cliente.',
   },
   {
     id: 'content.cms',

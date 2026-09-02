@@ -376,6 +376,173 @@ export type Database = {
           },
         ]
       }
+      ar_applications: {
+        Row: {
+          amount: number
+          company_id: string
+          created_at: string
+          document_id: string
+          id: string
+          organization_id: string
+          receipt_id: string
+        }
+        Insert: {
+          amount: number
+          company_id: string
+          created_at?: string
+          document_id: string
+          id?: string
+          organization_id: string
+          receipt_id: string
+        }
+        Update: {
+          amount?: number
+          company_id?: string
+          created_at?: string
+          document_id?: string
+          id?: string
+          organization_id?: string
+          receipt_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ar_applications_document_fk"
+            columns: ["document_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "ar_documents"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "ar_applications_receipt_fk"
+            columns: ["receipt_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "ar_receipts"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
+      ar_documents: {
+        Row: {
+          amount: number
+          balance: number
+          business_account_id: string | null
+          company_id: string
+          created_at: string
+          currency: string
+          customer_id: string
+          document_number: string
+          due_at: string
+          id: string
+          issued_at: string
+          kind: Database["public"]["Enums"]["ar_document_kind"]
+          order_id: string | null
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          balance: number
+          business_account_id?: string | null
+          company_id: string
+          created_at?: string
+          currency: string
+          customer_id: string
+          document_number: string
+          due_at: string
+          id?: string
+          issued_at?: string
+          kind?: Database["public"]["Enums"]["ar_document_kind"]
+          order_id?: string | null
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          balance?: number
+          business_account_id?: string | null
+          company_id?: string
+          created_at?: string
+          currency?: string
+          customer_id?: string
+          document_number?: string
+          due_at?: string
+          id?: string
+          issued_at?: string
+          kind?: Database["public"]["Enums"]["ar_document_kind"]
+          order_id?: string | null
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ar_documents_account_fk"
+            columns: ["business_account_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "business_accounts"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "ar_documents_customer_fk"
+            columns: ["customer_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
+      ar_receipts: {
+        Row: {
+          amount: number
+          company_id: string
+          created_at: string
+          currency: string
+          customer_id: string
+          id: string
+          method: string | null
+          notes: string | null
+          organization_id: string
+          receipt_number: string
+          received_at: string
+          reference: string | null
+        }
+        Insert: {
+          amount: number
+          company_id: string
+          created_at?: string
+          currency: string
+          customer_id: string
+          id?: string
+          method?: string | null
+          notes?: string | null
+          organization_id: string
+          receipt_number: string
+          received_at?: string
+          reference?: string | null
+        }
+        Update: {
+          amount?: number
+          company_id?: string
+          created_at?: string
+          currency?: string
+          customer_id?: string
+          id?: string
+          method?: string | null
+          notes?: string | null
+          organization_id?: string
+          receipt_number?: string
+          received_at?: string
+          reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ar_receipts_customer_fk"
+            columns: ["customer_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
       attribute_values: {
         Row: {
           attribute_data_type: Database["public"]["Enums"]["attribute_data_type"]
@@ -795,6 +962,7 @@ export type Database = {
           company_id: string
           created_at: string
           credit_limit: number | null
+          credit_status: Database["public"]["Enums"]["credit_status"]
           customer_id: string
           customer_kind: Database["public"]["Enums"]["customer_kind"]
           id: string
@@ -813,6 +981,7 @@ export type Database = {
           company_id: string
           created_at?: string
           credit_limit?: number | null
+          credit_status?: Database["public"]["Enums"]["credit_status"]
           customer_id: string
           customer_kind?: Database["public"]["Enums"]["customer_kind"]
           id?: string
@@ -831,6 +1000,7 @@ export type Database = {
           company_id?: string
           created_at?: string
           credit_limit?: number | null
+          credit_status?: Database["public"]["Enums"]["credit_status"]
           customer_id?: string
           customer_kind?: Database["public"]["Enums"]["customer_kind"]
           id?: string
@@ -10096,6 +10266,7 @@ export type Database = {
         | "orders"
         | "viewer"
         | "sales_rep"
+      ar_document_kind: "invoice" | "debit_note" | "credit_note"
       attribute_data_type: "text" | "number" | "boolean" | "date" | "option"
       audit_actor_kind: "user" | "service" | "support" | "system"
       business_role: "admin" | "buyer" | "approver" | "viewer"
@@ -10127,6 +10298,7 @@ export type Database = {
       content_item_kind: "product" | "variant" | "category" | "media"
       content_page_kind: "home" | "landing" | "legal"
       content_status: "draft" | "published" | "archived"
+      credit_status: "ok" | "watch" | "blocked"
       customer_kind: "person" | "company"
       delivery_strategy: "ship" | "pickup" | "local_delivery" | "digital"
       domain_event_status:
@@ -10472,6 +10644,7 @@ export const Constants = {
       ],
       analytics_source: ["storefront", "server"],
       app_role: ["owner", "admin", "catalog", "orders", "viewer", "sales_rep"],
+      ar_document_kind: ["invoice", "debit_note", "credit_note"],
       attribute_data_type: ["text", "number", "boolean", "date", "option"],
       audit_actor_kind: ["user", "service", "support", "system"],
       business_role: ["admin", "buyer", "approver", "viewer"],
@@ -10505,6 +10678,7 @@ export const Constants = {
       content_item_kind: ["product", "variant", "category", "media"],
       content_page_kind: ["home", "landing", "legal"],
       content_status: ["draft", "published", "archived"],
+      credit_status: ["ok", "watch", "blocked"],
       customer_kind: ["person", "company"],
       delivery_strategy: ["ship", "pickup", "local_delivery", "digital"],
       domain_event_status: [

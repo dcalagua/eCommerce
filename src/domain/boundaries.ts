@@ -30,6 +30,7 @@ export const DOMAIN_IDS = [
   'analytics',
   'integrations',
   'sales',
+  'credit',
 ] as const
 export type DomainId = (typeof DOMAIN_IDS)[number]
 
@@ -346,6 +347,27 @@ export const BOUNDARIES: readonly Boundary[] = [
       'La estructura comercial de campo: vendedor, jerarquía, cartera, territorio, ruta, visita, meta y comisión.',
     paths: ['features/sales'],
     serverSide: [],
+  },
+  {
+    id: 'credit',
+    kind: 'domain',
+    // Recorrido B2B, fase 04. `business_accounts` ya guardaba la LINEA; lo que
+    // faltaba es el DOCUMENTO por cobrar con su vencimiento y su saldo, que es
+    // lo que convierte «te fio 10.000» en «me debes 3.200, y 800 estan
+    // vencidos desde hace doce dias».
+    //
+    // No decide si el pedido se despacha: el bloqueo por mora sera un gancho
+    // del pipeline de checkout, que ya tiene puertos, y nunca un `if` dentro de
+    // `create_order`.
+    state: 'implemented',
+    responsibility:
+      'Cuánto se le fía a un cliente y cuánto debe: línea, documento por cobrar, cobro, aplicación y antigüedad de saldos.',
+    paths: ['features/credit'],
+    serverSide: [
+      'ar_documents, ar_receipts y ar_applications con RLS default deny (20260902120000)',
+      'el saldo lo mantiene un trigger, no la aplicación: ebim.ar_apply_balance',
+      'ebim.customer_aging — los cinco tramos de la antigüedad, en un solo viaje',
+    ],
   },
 
   {
