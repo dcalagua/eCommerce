@@ -32,6 +32,7 @@ export const DOMAIN_IDS = [
   'sales',
   'credit',
   'trade',
+  'planning',
 ] as const
 export type DomainId = (typeof DOMAIN_IDS)[number]
 
@@ -388,6 +389,25 @@ export const BOUNDARIES: readonly Boundary[] = [
       'quotes y quote_items con RLS default deny (20260902130000)',
       'quote_items calca order_items con impuesto por línea: convertir es copiar, no traducir',
       'una cotización aceptada, rechazada o vencida no se edita: dos triggers lo impiden',
+    ],
+  },
+  {
+    id: 'planning',
+    kind: 'domain',
+    // Recorrido B2B, fases 14 y 15. Que se PREVE y que se SUGIERE.
+    //
+    // La sugerencia no crea pedidos: produce una lista que una persona
+    // confirma, y de ahi sale un carrito que entra por el pipeline de checkout
+    // de siempre. Un sistema que pide por ti es un sistema que se equivoca por
+    // ti, y en distribucion eso se paga en devoluciones y mercaderia vencida.
+    state: 'implemented',
+    responsibility:
+      'Qué se prevé y qué se sugiere: recomendación de pedido con su motivo auditable y previsión de demanda por producto, periodo y territorio.',
+    paths: ['features/planning'],
+    serverSide: [
+      'order_suggestions, order_suggestion_items y demand_forecasts con RLS default deny (20260902180000)',
+      'ebim.suggest_order — devuelve FILAS con su motivo; no crea nada',
+      'cada línea sugerida guarda por qué: una cifra que nadie discute es una que nadie corrige',
     ],
   },
 

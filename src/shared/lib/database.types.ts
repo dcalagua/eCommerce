@@ -3018,6 +3018,100 @@ export type Database = {
           },
         ]
       }
+      demand_forecasts: {
+        Row: {
+          company_id: string
+          confidence: number | null
+          created_at: string
+          forecast_quantity: number
+          generated_at: string
+          id: string
+          model_code: string
+          organization_id: string
+          period_end: string
+          period_start: string
+          product_id: string
+          store_id: string
+          territory_id: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          company_id: string
+          confidence?: number | null
+          created_at?: string
+          forecast_quantity: number
+          generated_at?: string
+          id?: string
+          model_code?: string
+          organization_id: string
+          period_end: string
+          period_start: string
+          product_id: string
+          store_id: string
+          territory_id?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          confidence?: number | null
+          created_at?: string
+          forecast_quantity?: number
+          generated_at?: string
+          id?: string
+          model_code?: string
+          organization_id?: string
+          period_end?: string
+          period_start?: string
+          product_id?: string
+          store_id?: string
+          territory_id?: string | null
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demand_forecasts_product_fk"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demand_forecasts_product_fk"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "public_products"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "demand_forecasts_store_fk"
+            columns: ["store_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "demand_forecasts_territory_fk"
+            columns: ["territory_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "sales_territories"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "demand_forecasts_variant_fk"
+            columns: ["variant_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id", "product_id"]
+          },
+          {
+            foreignKeyName: "demand_forecasts_variant_fk"
+            columns: ["variant_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "public_product_variants"
+            referencedColumns: ["variant_id", "product_id"]
+          },
+        ]
+      }
       domain_events: {
         Row: {
           aggregate_id: string | null
@@ -4554,6 +4648,157 @@ export type Database = {
           },
           {
             foreignKeyName: "order_status_events_store_fk"
+            columns: ["store_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
+      order_suggestion_items: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          last_period_quantity: number | null
+          on_hand_quantity: number | null
+          organization_id: string
+          position: number
+          product_id: string
+          reason: string
+          suggested_quantity: number
+          suggestion_id: string
+          uom_code: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          last_period_quantity?: number | null
+          on_hand_quantity?: number | null
+          organization_id: string
+          position?: number
+          product_id: string
+          reason: string
+          suggested_quantity: number
+          suggestion_id: string
+          uom_code?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          last_period_quantity?: number | null
+          on_hand_quantity?: number | null
+          organization_id?: string
+          position?: number
+          product_id?: string
+          reason?: string
+          suggested_quantity?: number
+          suggestion_id?: string
+          uom_code?: string | null
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_suggestion_items_product_fk"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_suggestion_items_product_fk"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "public_products"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "order_suggestion_items_suggestion_fk"
+            columns: ["suggestion_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "order_suggestions"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "order_suggestion_items_variant_fk"
+            columns: ["variant_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id", "product_id"]
+          },
+          {
+            foreignKeyName: "order_suggestion_items_variant_fk"
+            columns: ["variant_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "public_product_variants"
+            referencedColumns: ["variant_id", "product_id"]
+          },
+        ]
+      }
+      order_suggestions: {
+        Row: {
+          company_id: string
+          created_at: string
+          customer_id: string
+          generated_at: string
+          id: string
+          model_code: string
+          order_id: string | null
+          organization_id: string
+          sales_rep_id: string | null
+          status: Database["public"]["Enums"]["suggestion_status"]
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          customer_id: string
+          generated_at?: string
+          id?: string
+          model_code?: string
+          order_id?: string | null
+          organization_id: string
+          sales_rep_id?: string | null
+          status?: Database["public"]["Enums"]["suggestion_status"]
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          customer_id?: string
+          generated_at?: string
+          id?: string
+          model_code?: string
+          order_id?: string | null
+          organization_id?: string
+          sales_rep_id?: string | null
+          status?: Database["public"]["Enums"]["suggestion_status"]
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_suggestions_customer_fk"
+            columns: ["customer_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "order_suggestions_rep_fk"
+            columns: ["sales_rep_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "sales_reps"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "order_suggestions_store_fk"
             columns: ["store_id", "organization_id", "company_id"]
             isOneToOne: false
             referencedRelation: "stores"
@@ -11647,6 +11892,7 @@ export type Database = {
       sourcing_strategy: "store_priority" | "single_warehouse_atp"
       stock_staleness_policy: "unknown" | "trust_last_known"
       store_status: "draft" | "active" | "suspended"
+      suggestion_status: "draft" | "sent" | "accepted" | "discarded"
       tenant_status: "active" | "suspended" | "closed"
       tracking_source:
         | "provider_webhook"
@@ -12069,6 +12315,7 @@ export const Constants = {
       sourcing_strategy: ["store_priority", "single_warehouse_atp"],
       stock_staleness_policy: ["unknown", "trust_last_known"],
       store_status: ["draft", "active", "suspended"],
+      suggestion_status: ["draft", "sent", "accepted", "discarded"],
       tenant_status: ["active", "suspended", "closed"],
       tracking_source: [
         "provider_webhook",

@@ -66,6 +66,8 @@ export const SELLABLE_CAPABILITY_IDS = [
   'fulfillment.routing',
   // Fases 12 y 13. Visitas, metas y comisiones: cierran `sales`.
   'sales.performance',
+  // Fases 14 y 15. Sugerido y prevision de demanda.
+  'planning.demand',
 ] as const
 
 export const CAPABILITY_IDS = [
@@ -325,6 +327,17 @@ export const CAPABILITIES: readonly Capability[] = [
     state: 'implemented',
     grants:
       'Visitas con agenda y hecho separados, metas por vendedor o territorio, reglas de comisión y liquidaciones inmutables una vez pagadas.',
+  },
+  {
+    id: 'planning.demand',
+    boundary: 'planning',
+    entitlement: `${ENTITLEMENT_PREFIX}planning.demand`,
+    // Fases 14 y 15. La sugerencia devuelve filas con su motivo y no crea
+    // pedidos; el forecast guarda con que modelo y cuando se calculo, para que
+    // una prevision no se confunda nunca con una venta real.
+    state: 'implemented',
+    grants:
+      'Recomendación de pedido con motivo auditable y previsión de demanda por producto, periodo, territorio y modelo.',
   },
   {
     id: 'content.cms',
