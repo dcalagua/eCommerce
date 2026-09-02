@@ -4193,6 +4193,181 @@ export type Database = {
           },
         ]
       }
+      invoice_events: {
+        Row: {
+          company_id: string
+          created_at: string
+          detail: string | null
+          id: string
+          invoice_id: string
+          organization_id: string
+          status: Database["public"]["Enums"]["invoice_status"]
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          invoice_id: string
+          organization_id: string
+          status: Database["public"]["Enums"]["invoice_status"]
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          invoice_id?: string
+          organization_id?: string
+          status?: Database["public"]["Enums"]["invoice_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_events_invoice_fk"
+            columns: ["invoice_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
+      invoice_items: {
+        Row: {
+          company_id: string
+          created_at: string
+          description: string
+          id: string
+          invoice_id: string
+          net_amount: number
+          organization_id: string
+          position: number
+          quantity: number
+          tax_amount: number
+          tax_rate: number
+          unit_price: number
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          description: string
+          id?: string
+          invoice_id: string
+          net_amount: number
+          organization_id: string
+          position?: number
+          quantity: number
+          tax_amount: number
+          tax_rate: number
+          unit_price: number
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          invoice_id?: string
+          net_amount?: number
+          organization_id?: string
+          position?: number
+          quantity?: number
+          tax_amount?: number
+          tax_rate?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_items_invoice_fk"
+            columns: ["invoice_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          company_id: string
+          created_at: string
+          currency: string
+          customer_name: string
+          customer_tax_id: string | null
+          document_ref: string | null
+          gross_total: number
+          id: string
+          issued_at: string
+          net_total: number
+          number: string | null
+          order_id: string
+          organization_id: string
+          provider_code: string | null
+          reject_reason: string | null
+          series: string
+          status: Database["public"]["Enums"]["invoice_status"]
+          store_id: string
+          tax_total: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          currency: string
+          customer_name: string
+          customer_tax_id?: string | null
+          document_ref?: string | null
+          gross_total: number
+          id?: string
+          issued_at?: string
+          net_total: number
+          number?: string | null
+          order_id: string
+          organization_id: string
+          provider_code?: string | null
+          reject_reason?: string | null
+          series: string
+          status?: Database["public"]["Enums"]["invoice_status"]
+          store_id: string
+          tax_total: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          currency?: string
+          customer_name?: string
+          customer_tax_id?: string | null
+          document_ref?: string | null
+          gross_total?: number
+          id?: string
+          issued_at?: string
+          net_total?: number
+          number?: string | null
+          order_id?: string
+          organization_id?: string
+          provider_code?: string | null
+          reject_reason?: string | null
+          series?: string
+          status?: Database["public"]["Enums"]["invoice_status"]
+          store_id?: string
+          tax_total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_order_fk"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_store_fk"
+            columns: ["store_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
       ops_events: {
         Row: {
           code: string
@@ -11887,6 +12062,12 @@ export type Database = {
         | "identity"
         | "webhook"
       inventory_source: "local" | "erp"
+      invoice_status:
+        | "pending"
+        | "issued"
+        | "accepted"
+        | "rejected"
+        | "cancelled"
       member_status: "active" | "invited" | "revoked"
       movement_kind:
         | "receipt"
@@ -12294,6 +12475,13 @@ export const Constants = {
         "webhook",
       ],
       inventory_source: ["local", "erp"],
+      invoice_status: [
+        "pending",
+        "issued",
+        "accepted",
+        "rejected",
+        "cancelled",
+      ],
       member_status: ["active", "invited", "revoked"],
       movement_kind: [
         "receipt",

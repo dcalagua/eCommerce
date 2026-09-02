@@ -68,6 +68,8 @@ export const SELLABLE_CAPABILITY_IDS = [
   'sales.performance',
   // Fases 14 y 15. Sugerido y prevision de demanda.
   'planning.demand',
+  // Fase 07. El comprobante fiscal, sobre el puerto que ya estaba escrito.
+  'invoicing',
 ] as const
 
 export const CAPABILITY_IDS = [
@@ -338,6 +340,18 @@ export const CAPABILITIES: readonly Capability[] = [
     state: 'implemented',
     grants:
       'Recomendación de pedido con motivo auditable y previsión de demanda por producto, periodo, territorio y modelo.',
+  },
+  {
+    id: 'invoicing',
+    boundary: 'credit',
+    entitlement: `${ENTITLEMENT_PREFIX}invoicing`,
+    // Fase 07. Implementa el puerto `InvoicingProvider`, que ya estaba escrito
+    // y dejaba anotada su precondicion: impuesto POR LINEA. Se llena copiando
+    // del pedido, nunca recalculando — el IGV de una factura es el del dia de
+    // la venta, y una tasa que cambia en enero no reescribe una de diciembre.
+    state: 'implemented',
+    grants:
+      'Comprobante fiscal con impuesto por línea copiado del pedido, su bitácora de estados y la inmutabilidad de lo ya aceptado.',
   },
   {
     id: 'content.cms',
