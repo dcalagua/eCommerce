@@ -152,7 +152,11 @@ export const CAPABILITIES: readonly Capability[] = [
     id: 'orders.advanced',
     boundary: 'orders',
     entitlement: `${ENTITLEMENT_PREFIX}orders.advanced`,
-    state: 'declared',
+    // Recorrido B2B, fase 05: deja de estar `declared`. Lo que la llena no es
+    // un motor nuevo —el de aprobacion ya existia, igual que la idempotencia
+    // por fila y la referencia externa— sino lo unico que faltaba de verdad:
+    // la plantilla de pedido y su programacion con estado.
+    state: 'implemented',
     grants: 'Pedidos programados, repetición de pedido e importación masiva.',
   },
   {

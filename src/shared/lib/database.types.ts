@@ -4173,6 +4173,66 @@ export type Database = {
           },
         ]
       }
+      order_schedules: {
+        Row: {
+          company_id: string
+          created_at: string
+          ends_on: string | null
+          id: string
+          interval_days: number
+          last_run_at: string | null
+          next_run_on: string
+          organization_id: string
+          status: Database["public"]["Enums"]["order_schedule_status"]
+          store_id: string
+          template_id: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          ends_on?: string | null
+          id?: string
+          interval_days: number
+          last_run_at?: string | null
+          next_run_on: string
+          organization_id: string
+          status?: Database["public"]["Enums"]["order_schedule_status"]
+          store_id: string
+          template_id: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          ends_on?: string | null
+          id?: string
+          interval_days?: number
+          last_run_at?: string | null
+          next_run_on?: string
+          organization_id?: string
+          status?: Database["public"]["Enums"]["order_schedule_status"]
+          store_id?: string
+          template_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_schedules_store_fk"
+            columns: ["store_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "order_schedules_template_fk"
+            columns: ["template_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "order_templates"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
       order_status_events: {
         Row: {
           actor_email: string | null
@@ -4271,6 +4331,145 @@ export type Database = {
           },
           {
             foreignKeyName: "order_tags_store_fk"
+            columns: ["store_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
+      order_template_items: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          organization_id: string
+          position: number
+          product_id: string
+          quantity: number
+          template_id: string
+          uom_code: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          position?: number
+          product_id: string
+          quantity: number
+          template_id: string
+          uom_code?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          position?: number
+          product_id?: string
+          quantity?: number
+          template_id?: string
+          uom_code?: string | null
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_template_items_product_fk"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_template_items_product_fk"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "public_products"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "order_template_items_template_fk"
+            columns: ["template_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "order_templates"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "order_template_items_variant_fk"
+            columns: ["variant_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id", "product_id"]
+          },
+          {
+            foreignKeyName: "order_template_items_variant_fk"
+            columns: ["variant_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "public_product_variants"
+            referencedColumns: ["variant_id", "product_id"]
+          },
+        ]
+      }
+      order_templates: {
+        Row: {
+          business_account_id: string | null
+          code: string
+          company_id: string
+          created_at: string
+          customer_id: string
+          id: string
+          is_active: boolean
+          name: string
+          organization_id: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          business_account_id?: string | null
+          code: string
+          company_id: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          is_active?: boolean
+          name: string
+          organization_id: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          business_account_id?: string | null
+          code?: string
+          company_id?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          organization_id?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_templates_account_fk"
+            columns: ["business_account_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "business_accounts"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "order_templates_customer_fk"
+            columns: ["customer_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "order_templates_store_fk"
             columns: ["store_id", "organization_id", "company_id"]
             isOneToOne: false
             referencedRelation: "stores"
@@ -10771,6 +10970,7 @@ export type Database = {
         | "system"
         | "api"
         | "import"
+      order_schedule_status: "active" | "paused" | "finished"
       order_source_channel:
         | "storefront"
         | "backoffice"
@@ -11169,6 +11369,7 @@ export const Constants = {
         "api",
         "import",
       ],
+      order_schedule_status: ["active", "paused", "finished"],
       order_source_channel: [
         "storefront",
         "backoffice",
