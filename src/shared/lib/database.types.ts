@@ -2348,6 +2348,39 @@ export type Database = {
           },
         ]
       }
+      customer_business_types: {
+        Row: {
+          code: string
+          company_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          company_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       customer_contacts: {
         Row: {
           company_id: string
@@ -2483,10 +2516,13 @@ export type Database = {
       }
       customers: {
         Row: {
+          business_type_id: string | null
           code: string
           company_id: string
           created_at: string
           email: string | null
+          geo_lat: number | null
+          geo_lng: number | null
           id: string
           is_active: boolean
           kind: Database["public"]["Enums"]["customer_kind"]
@@ -2497,13 +2533,18 @@ export type Database = {
           phone: string | null
           segment_id: string | null
           tax_id: string | null
+          tier: Database["public"]["Enums"]["customer_tier"] | null
           updated_at: string
+          visit_frequency: Database["public"]["Enums"]["visit_frequency"] | null
         }
         Insert: {
+          business_type_id?: string | null
           code: string
           company_id: string
           created_at?: string
           email?: string | null
+          geo_lat?: number | null
+          geo_lng?: number | null
           id?: string
           is_active?: boolean
           kind?: Database["public"]["Enums"]["customer_kind"]
@@ -2514,13 +2555,20 @@ export type Database = {
           phone?: string | null
           segment_id?: string | null
           tax_id?: string | null
+          tier?: Database["public"]["Enums"]["customer_tier"] | null
           updated_at?: string
+          visit_frequency?:
+            | Database["public"]["Enums"]["visit_frequency"]
+            | null
         }
         Update: {
+          business_type_id?: string | null
           code?: string
           company_id?: string
           created_at?: string
           email?: string | null
+          geo_lat?: number | null
+          geo_lng?: number | null
           id?: string
           is_active?: boolean
           kind?: Database["public"]["Enums"]["customer_kind"]
@@ -2531,9 +2579,20 @@ export type Database = {
           phone?: string | null
           segment_id?: string | null
           tax_id?: string | null
+          tier?: Database["public"]["Enums"]["customer_tier"] | null
           updated_at?: string
+          visit_frequency?:
+            | Database["public"]["Enums"]["visit_frequency"]
+            | null
         }
         Relationships: [
+          {
+            foreignKeyName: "customers_business_type_fk"
+            columns: ["business_type_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "customer_business_types"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
           {
             foreignKeyName: "customers_segment_fk"
             columns: ["segment_id", "organization_id", "company_id"]
@@ -6807,6 +6866,86 @@ export type Database = {
             columns: ["store_id", "organization_id", "company_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+        ]
+      }
+      promotion_budgets: {
+        Row: {
+          budget_amount: number
+          company_id: string
+          consumed_amount: number
+          created_at: string
+          currency: string
+          customer_id: string | null
+          id: string
+          is_active: boolean
+          organization_id: string
+          period_end: string | null
+          period_start: string | null
+          promotion_id: string
+          territory_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          budget_amount: number
+          company_id: string
+          consumed_amount?: number
+          created_at?: string
+          currency: string
+          customer_id?: string | null
+          id?: string
+          is_active?: boolean
+          organization_id: string
+          period_end?: string | null
+          period_start?: string | null
+          promotion_id: string
+          territory_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          budget_amount?: number
+          company_id?: string
+          consumed_amount?: number
+          created_at?: string
+          currency?: string
+          customer_id?: string | null
+          id?: string
+          is_active?: boolean
+          organization_id?: string
+          period_end?: string | null
+          period_start?: string | null
+          promotion_id?: string
+          territory_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotion_budgets_customer_fk"
+            columns: ["customer_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "promotion_budgets_promotion_fk"
+            columns: ["promotion_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "promotion_overview"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "promotion_budgets_promotion_fk"
+            columns: ["promotion_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "promotions"
+            referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "promotion_budgets_territory_fk"
+            columns: ["territory_id", "organization_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "sales_territories"
             referencedColumns: ["id", "organization_id", "company_id"]
           },
         ]
@@ -11702,6 +11841,7 @@ export type Database = {
       content_status: "draft" | "published" | "archived"
       credit_status: "ok" | "watch" | "blocked"
       customer_kind: "person" | "company"
+      customer_tier: "a" | "b" | "c"
       delivery_plan_status: "draft" | "dispatched" | "closed" | "cancelled"
       delivery_strategy: "ship" | "pickup" | "local_delivery" | "digital"
       domain_event_status:
@@ -11910,6 +12050,7 @@ export type Database = {
         | "returned"
         | "cancelled"
         | "info"
+      visit_frequency: "weekly" | "biweekly" | "monthly" | "on_demand"
       visit_outcome:
         | "planned"
         | "completed"
@@ -12102,6 +12243,7 @@ export const Constants = {
       content_status: ["draft", "published", "archived"],
       credit_status: ["ok", "watch", "blocked"],
       customer_kind: ["person", "company"],
+      customer_tier: ["a", "b", "c"],
       delivery_plan_status: ["draft", "dispatched", "closed", "cancelled"],
       delivery_strategy: ["ship", "pickup", "local_delivery", "digital"],
       domain_event_status: [
@@ -12335,6 +12477,7 @@ export const Constants = {
         "cancelled",
         "info",
       ],
+      visit_frequency: ["weekly", "biweekly", "monthly", "on_demand"],
       visit_outcome: [
         "planned",
         "completed",
