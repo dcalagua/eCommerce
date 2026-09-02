@@ -241,7 +241,7 @@ inspeccionaron uno a uno y son **comentarios o vocabulario de otros dominios**
 | 04 | P03 Crédito y cobranza | **PARCIAL** → ver **H2** | `credit_limit`, `payment_terms_days`, `my_account_statement()`. Falta cobranza, documentos, bloqueo por mora y pantalla de backoffice. |
 | 05 | P04 Pedido B2B avanzado | **PARCIAL** → ver **H1** y **H4** | Enum, `order_external_refs`, `checkout_intents`, `cart_replace_lines`, motor de aprobación completo. Faltan programación, repetición e importación. |
 | 06 | P05 Cotizaciones | **FALTANTE** | No hay entidad `quotes`. Los aciertos de «quote» son `price_quote` / `resolve_prices` — **motor de precios reutilizable como base de la cotización**. |
-| 07 | P06 Facturación | **DECLARADO** → ver **H3** | Puerto `InvoicingProvider` + operaciones en `integration_providers`. Cero tablas. Con bloqueo de impuesto por línea a verificar. |
+| 07 | P06 Facturación | **DECLARADO** → ver **H3** | Puerto `InvoicingProvider` + operaciones en `integration_providers`. Cero tablas. El impuesto por línea **ya está resuelto** (H3): no requiere migración de esquema. |
 | 08 | P07 Surtidos | **FALTANTE** | `product_channels` y `price_list_assignments` dan el patrón de «qué ve quién», pero no hay surtido por cliente. |
 | 09 | P08 Promociones trade | **PARCIAL** | Motor completo (`evaluate_promotions`, prioridad, stacking, audiencias por cuenta/cliente). Faltan mecánicas trade: escalonado por volumen, combo, bonificación en producto, presupuesto por cliente. |
 | 10 | P09 Planificación de reparto | **PARCIAL** | `fulfillments`, `shipments`, `delivery_windows`, `pickup_points`, `ebim.select_warehouse`. Falta la **planificación**: carga de vehículo, secuencia, capacidad, hoja de ruta. |

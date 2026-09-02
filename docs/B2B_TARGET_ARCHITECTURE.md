@@ -162,9 +162,12 @@ invoice_items [NUEVA]   con tax_rate y tax_amount POR LÍNEA  ← requisito del 
 invoice_events [NUEVA]  aceptada/rechazada por la autoridad
 ```
 
-> **Precondición dura:** verificar primero si `order_item_snapshots` (migr. 110100) ya guarda
-> el impuesto por línea. Si no, esa columna es lo primero que hay que añadir. El puerto está
-> escrito para que **no se pueda implementar a medias sin que se note** (H3).
+> **La precondición que se creía dura ya está satisfecha** (H3, verificado en la fase 00):
+> la migración 110100 añadió `tax_rate`, `tax_amount`, `tax_inclusive` y `tax_category_code`
+> a `order_items`, y `create_order` los escribe línea a línea. `invoice_items` se llena
+> **copiando del pedido**, sin migración previa ni recálculo desde la configuración actual.
+> Lo único que hay que manejar es el NULL de las líneas anteriores a esa migración: es
+> «no facturable por falta de dato fiscal», nunca cero.
 > La emisión sale por el **outbox de integraciones existente**, no por un cliente HTTP nuevo.
 
 ### 2.8 · Fase 08 · Surtidos → frontera `trade`
@@ -389,8 +392,10 @@ para el operador:
 1. **Fase 04 (Crédito) antes que Fase 07 (Facturación).** Al arrancar la 04 hay que decidir si
    `ar_documents` nace del pedido con `invoice_id` nullable (propuesta de §2.4) o se espera a
    la 07. La propuesta permite avanzar sin bloquear y sin migrar datos después.
-2. **Verificar el impuesto por línea al arrancar la Fase 07** (H3). Es la única precondición
-   dura conocida de todo el recorrido.
+2. **El impuesto por línea ya no es precondición de la Fase 07** (H3, verificado en la fase
+   00): el esquema y `create_order` ya lo guardan. Lo que queda es tratar como «no
+   facturable» —no como cero— las líneas anteriores a la migración 110100, que lo tienen en
+   NULL. No se conoce ninguna otra precondición dura en todo el recorrido.
 
 ---
 
