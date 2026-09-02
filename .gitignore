@@ -12,3 +12,12 @@ coverage/
 Thumbs.db
 supabase/.temp/
 supabase/.branches/
+
+# Arneses de Claude: herramientas de trabajo del operador, no producto.
+# No se versionan — uno de ellos (claude_visual_ecommerce_opus) ademas marca sus
+# fases como completadas sin haber escrito nada, y un repositorio no es sitio
+# para una herramienta que informa de exito cuando no lo hubo.
+claude_b2b_upgrade/
+claude_visual_ecommerce_opus/
+claude-overnight/
+claude-saas-opus/
