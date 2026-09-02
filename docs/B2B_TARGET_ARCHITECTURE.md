@@ -8,7 +8,7 @@
 
 > **REUTILIZAR > EXTENDER > CREAR.**
 
-El core de comercio (109 tablas, 12 dominios `implemented`) **no se toca salvo extensión
+El core de comercio (113 tablas, 12 dominios `implemented`) **no se toca salvo extensión
 aditiva**. Lo que se añade es la capa que hoy no existe: la **operación comercial de
 distribución** — quién vende, a qué territorio, en qué ruta, con qué crédito, contra qué meta.
 

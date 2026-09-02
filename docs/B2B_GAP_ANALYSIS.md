@@ -12,7 +12,7 @@ Todo estado de esta tabla sale de **leer el repositorio**, no de suponerlo. Las 
 |---|---|
 | `src/domain/boundaries.ts` | mapa de fronteras con `state` declarado y ruta de cada una |
 | `src/domain/capabilities.ts` | 6 capacidades baseline + 12 vendibles, con `state` real |
-| `supabase/migrations/` (110 archivos) | 109 tablas `public.*` — la lista es exhaustiva, se extrajo con `grep` |
+| `supabase/migrations/` (112 archivos) | 113 tablas `public.*` — la lista es exhaustiva, se extrajo con `grep` |
 | `src/app/routes.tsx` · `src/features/admin/navigation.tsx` | rutas y menú reales del backoffice |
 | `src/shared/lib/roles.ts` + `supabase/functions/_shared/roles.ts` | matriz de permisos (duplicada a propósito, con test de paridad) |
 | `src/architecture.test.ts` | las reglas que se ponen rojas si el mapa deja de ser cierto |
@@ -38,7 +38,7 @@ react-hook-form + zod · Supabase (Postgres con RLS, Auth, Edge Functions en Den
 Vitest (unit + PGlite para SQL) · i18n ES/EN propio.
 
 **Estructura:** `src/app` (router/providers) · `src/domain` (puro, sin infraestructura) ·
-`src/features/<dominio>` (21 carpetas) · `src/shared` (ui kit, lib, i18n, security, seo) ·
+`src/features/<dominio>` (19 carpetas) · `src/shared` (ui kit, lib, i18n, security, seo) ·
 `src/theme` · `supabase/migrations` · `supabase/functions`.
 
 ### 1.1 · Los tres ejes de autorización (ya existen, y no son intercambiables)
@@ -120,7 +120,7 @@ parte (normalmente solo base o solo contrato) · **DECLARADO** = contrato escrit
 | Observabilidad (correlation id, audit_log, ops_health, trace) | IMPLEMENTADO | `features/ops`, migr. 160000/160300/160400 |
 | Storefront + portal del comprador | IMPLEMENTADO | `features/storefront` (60+ archivos), `/s/:storeSlug/account` |
 
-**109 tablas** en total. El core de comercio está completo y probado; **este proyecto no
+**113 tablas** en total. El core de comercio está completo y probado; **este proyecto no
 necesita rehacer nada de lo anterior.**
 
 ---
@@ -176,14 +176,28 @@ Lo que **NO existe** y hay que construir:
 `InvoiceRequest`, `InvoiceLine` e `InvoiceStatus`, y las operaciones `invoice.issue` /
 `invoice.read` declaradas en `integration_providers`.
 
-**No existe ninguna tabla `invoices`** (confirmado contra la lista de 109 tablas).
+**No existe ninguna tabla `invoices`** (confirmado contra la lista de 113 tablas).
 
-**Bloqueo de diseño ya identificado en el propio puerto** (`ports/invoicing.ts:24-30`):
-`InvoiceLine` exige `taxRate` y `taxAmount` **por línea**, y `order_items` **no los guarda** —
-solo quedan los totales del pedido. Un carrito con dos tipos impositivos **no puede
-reconstruir su comprobante desde la base**. El comentario decía que lo cerraba «P08»; la
-migración 110100 (`order_item_snapshots`) hay que **verificarla explícitamente al arrancar
-P06** antes de dar por resuelto el problema.
+**El «bloqueo de diseño» del puerto ya está RESUELTO — no rehacerlo en P06** (verificado en
+esta fase): el comentario de `src/domain/ports/invoicing.ts:12-17` advierte que `InvoiceLine`
+exige `taxRate` y `taxAmount` **por línea**, que `order_items` no los guardaba, y anuncia que
+«lo cierra P08». **P08 lo cerró, y el comentario quedó obsoleto.**
+
+- `supabase/migrations/20260828110100_order_item_snapshots.sql` añadió a `order_items` las
+  columnas `tax_rate`, `tax_amount`, `tax_inclusive` y `tax_category_code` (además de
+  `discount_amount` / `discount_snapshot` y `components_snapshot`).
+- La versión vigente de `create_order`
+  (`20260828150600_create_order_delivery.sql:713-738`) **las escribe línea a línea**,
+  resolviendo la tasa con `ebim.effective_tax_rate(store, tax_category, now())`.
+
+Es decir: un carrito con dos tipos impositivos **sí** puede reconstruir su comprobante desde
+la base. P06 **no** necesita migración de esquema para el desglose fiscal de la línea.
+
+> **El caveat real, que sí sigue en pie:** esas columnas fiscales son NULLABLE y sin default
+> —decisión explicada en la propia migración: `0` significaría «el impuesto era cero», no «no
+> se sabe»—. Las líneas creadas **antes** de `110100` tienen `tax_rate`/`tax_amount` en NULL.
+> P06 debe tratar ese NULL como «pedido no facturable por falta de dato fiscal» y nunca
+> como cero, y de paso actualizar el comentario obsoleto de `ports/invoicing.ts`.
 
 ### H4 · Aprobaciones B2B: el motor existe, el flujo también → reutilizar en **Fase 05 (P04)**
 
@@ -326,7 +340,7 @@ decisión a tomar al inicio de la fase 04.
 
 ## 8 · Conclusión
 
-El core de comercio está **completo, probado y bien documentado**: 109 tablas, 2735 tests
+El core de comercio está **completo, probado y bien documentado**: 113 tablas, 2735 tests
 verdes, fronteras verificadas por test y tres ejes de autorización ya separados. El trabajo
 B2B **no es una reescritura**: es añadir la capa comercial de distribución —vendedor,
 territorio, ruta, visita, crédito, cotización, surtido, meta— sobre un núcleo que ya sabe
