@@ -118,6 +118,14 @@ export const serverCartLineSchema = z.object({
   name: z.string().min(1),
   unit_price_snapshot: moneyText.nullable().default(null),
   unit_price: moneyText.nullable().default(null),
+  /**
+   * P18 · La RUTA de la foto principal, nunca una URL.
+   *
+   * `default(null)` y no `optional`: una respuesta anterior al despliegue de
+   * esta migración se lee como la línea sin foto que era, y el carrito sigue
+   * cayendo a la copia local — que es lo que hacía antes.
+   */
+  image_path: z.string().nullable().default(null),
   /** El precio de catálogo cambió desde que la línea entró en el carrito. */
   price_changed: z.boolean().default(false),
   in_stock: z.boolean().default(true),

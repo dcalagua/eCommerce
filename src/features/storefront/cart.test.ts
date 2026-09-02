@@ -14,6 +14,8 @@ import {
   setLineQuantity,
   toOrderItems,
   writeCart,
+  applyServerLines,
+  type ServerLine,
 } from './cart/cart'
 import {
   publicProductSchema,
@@ -268,6 +270,52 @@ describe('variantes en el carrito', () => {
       { product_id: SILLA, quantity: 1, variant_id: VARIANTE_M },
       { product_id: MESA, quantity: 1 },
     ])
+  })
+
+  /**
+   * La foto de la línea, cuando manda el servidor.
+   *
+   * El fallo que lo destapó: con la sesión iniciada el carrito del servidor se
+   * impone entero, y la foto salía SOLO de la copia local —que en ese caso no
+   * existe—. El cajón se llenaba de cuadros grises con los productos bien
+   * puestos, que es peor que no tener foto: parece que el catálogo está roto.
+   */
+  it('la foto de la línea la manda el SERVIDOR, no la copia local', () => {
+    const local = addToCart(emptyCart(STORE_A), product({ primary_image_path: 'org/store/prod/vieja.jpg' }), 1)
+    const delServidor: ServerLine[] = [
+      {
+        product_id: SILLA,
+        variant_id: null,
+        quantity: 1,
+        slug: 'silla-roble',
+        name: 'Silla de roble',
+        unit_price: '389.90',
+        unit_price_snapshot: null,
+        image_path: 'org/store/prod/nueva.jpg',
+      },
+    ]
+
+    const fusionado = applyServerLines(local, delServidor, 'PEN')
+
+    expect(fusionado.lines[0]?.image_path).toBe('org/store/prod/nueva.jpg')
+  })
+
+  it('sin foto del servidor se cae a la local: una respuesta vieja no borra la miniatura', () => {
+    const local = addToCart(emptyCart(STORE_A), product({ primary_image_path: 'org/store/prod/vieja.jpg' }), 1)
+    const previa = local.lines[0]?.image_path ?? null
+    const delServidor: ServerLine[] = [
+      {
+        product_id: SILLA,
+        variant_id: null,
+        quantity: 1,
+        slug: 'silla-roble',
+        name: 'Silla de roble',
+        unit_price: '389.90',
+        unit_price_snapshot: null,
+      },
+    ]
+
+    expect(applyServerLines(local, delServidor, 'PEN').lines[0]?.image_path).toBe(previa)
   })
 
   it('un carrito guardado antes del PIM se sigue leyendo, sin variante', () => {

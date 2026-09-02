@@ -307,6 +307,8 @@ export interface ServerLine {
   name: string
   unit_price: string | null
   unit_price_snapshot: string | null
+  /** P18 · Ruta de la foto principal en el bucket. `null` si el producto no tiene. */
+  image_path?: string | null
 }
 
 /**
@@ -346,7 +348,11 @@ export function applyServerLines(cart: Cart, lines: readonly ServerLine[], fallb
         name: line.name,
         unit_price: line.unit_price ?? local?.unit_price ?? '0.00',
         currency: local?.currency ?? fallbackCurrency,
-        image_path: local?.image_path ?? null,
+        // Manda la del SERVIDOR. Antes solo estaba la copia local, y con sesión
+        // iniciada esa copia no existe —el carrito del servidor se impone
+        // entero—, así que el cajón se llenaba de cuadros grises con los
+        // productos bien puestos.
+        image_path: line.image_path ?? local?.image_path ?? null,
         quantity: clampQuantity(line.quantity),
       }
     }),
