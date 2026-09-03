@@ -157,6 +157,15 @@ function MediaCarousel({
         borderRadius: 'var(--sf-radius)',
         overflow: 'hidden',
         bgcolor: 'var(--sf-media-bg)',
+        // Funde y ACERCA, no desliza. La diapositiva es `inset: 0` dentro de
+        // un `overflow: hidden`: moverla de lado destaparia una franja del
+        // fondo en el borde durante el medio segundo de la transicion, que
+        // se lee como un fallo de pintado. Un 3 % de acercamiento no deja
+        // hueco por ningun lado.
+        '@keyframes sfSliderEntra': {
+          from: { opacity: 0, transform: 'scale(1.03)' },
+          to: { opacity: 1, transform: 'scale(1)' },
+        },
         // Una sola proporción para todas: con alturas distintas por diapositiva
         // la página daría un salto en cada avance. La manda el comercio si la ha
         // fijado; si no, la de la primera imagen; y hasta que cargue, un marco
@@ -173,7 +182,18 @@ function MediaCarousel({
           // `inert` no está en todos los navegadores: lo que garantiza que una
           // diapositiva oculta no sea tabulable es que no se pinta.
           hidden={posicion !== index}
-          sx={{ position: 'absolute', inset: 0 }}
+          sx={
+            posicion === index
+              ? {
+                  position: 'absolute',
+                  inset: 0,
+                  // La que entra ES la que acaba de dejar de estar oculta, y
+                  // por eso la animacion se dispara sola.
+                  animation: 'sfSliderEntra .5s ease both',
+                  '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+                }
+              : { position: 'absolute', inset: 0 }
+          }
         >
           <Diapositiva
             slide={slide}

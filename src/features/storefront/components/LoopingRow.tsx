@@ -85,8 +85,25 @@ export function LoopingRow<T>({
   ariaLabel?: string
 }) {
   const pista = useRef<HTMLDivElement | null>(null)
+  const clon = useRef<HTMLDivElement | null>(null)
   const posicion = useRef(0)
   const arrastre = useRef({ activo: false, desdeX: 0, desdeScroll: 0, recorrido: 0 })
+
+  // La copia sale del orden de tabulacion, y se hace AQUI y no en cada
+  // consumidor porque lo que se duplica puede ser una tarjeta entera con sus
+  // tres botones dentro —favorito, vista rapida, añadir—, y pedirle a quien la
+  // pinta que se acuerde de todos es pedir que un dia se olvide de uno.
+  //
+  // `inert` seria la respuesta si estuviera en todos los navegadores, y por eso
+  // mismo `SliderBlock` tampoco lo usa. Se hace a mano.
+  useEffect(() => {
+    const nodo = clon.current
+    if (!nodo) return
+    const enfocables = nodo.querySelectorAll<HTMLElement>(
+      'a, button, input, select, textarea, [tabindex]',
+    )
+    for (const elemento of enfocables) elemento.tabIndex = -1
+  }, [items])
 
   const [encima, setEncima] = useState(false)
   const [arrastrando, setArrastrando] = useState(false)
@@ -237,7 +254,7 @@ export function LoopingRow<T>({
       {huecos(false)}
       {/* La copia que hace posible el bucle. Invisible para el lector de
           pantalla: se ve, se pulsa, y no se cuenta. */}
-      <Box aria-hidden sx={{ display: 'contents' }}>
+      <Box ref={clon} aria-hidden sx={{ display: 'contents' }}>
         {huecos(true)}
       </Box>
     </Box>

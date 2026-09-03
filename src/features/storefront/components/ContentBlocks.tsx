@@ -14,7 +14,6 @@ import { iconoDe } from '../categoryIcon'
 import { tintFor } from '../tint'
 import { ProductMedia } from './ProductMedia'
 import { LoopingRow } from './LoopingRow'
-import { ScrollRow } from './ScrollRow'
 
 /**
  * Pinta los bloques de una página del CMS (P11-SaaS).
@@ -1129,29 +1128,21 @@ function ProductCollectionBlock({
           escritorio no ofrece ningun gesto —no hay rueda horizontal— y encima
           dejaba la barra gris cruzando la seccion. */}
       {scroll ? (
-        <ScrollRow gap={2} ariaLabel={block.title ?? undefined}>
-          {items.map((item) => (
-            <Box
-              key={'variant_id' in item ? item.variant_id : item.product_id}
-              sx={{
-                flex: '0 0 auto',
-                // Ancho fijo por tarjeta: en una fila que se desplaza, dejarlas
-                // crecer hace que la ultima quede a medias de una forma
-                // distinta en cada pantalla.
-                width: { xs: '68%', sm: '42%', md: 250 },
-                scrollSnapAlign: 'start',
-              }}
-            >
-              <CollectionCard
-                item={item}
-                storeSlug={storeSlug}
-                images={images}
-                showPrice={showPrice}
-                snap={false}
-              />
-            </Box>
-          ))}
-        </ScrollRow>
+        <LoopingRow
+          items={items}
+          keyOf={(item) => ('variant_id' in item ? item.variant_id : item.product_id)}
+          itemWidth={{ xs: '68%', sm: '42%', md: 250 }}
+          ariaLabel={block.title ?? undefined}
+          render={(item) => (
+            <CollectionCard
+              item={item}
+              storeSlug={storeSlug}
+              images={images}
+              showPrice={showPrice}
+              snap={false}
+            />
+          )}
+        />
       ) : (
         <Box
           sx={{
