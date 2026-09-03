@@ -1,4 +1,7 @@
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
+import DoDisturbAltRoundedIcon from '@mui/icons-material/DoDisturbAltRounded'
 import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded'
+import LoginRoundedIcon from '@mui/icons-material/LoginRounded'
 import {
   Alert,
   Box,
@@ -17,6 +20,7 @@ import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { FilterBar } from '@/shared/ui/FilterBar'
+import { RowActions, type RowAction } from '@/shared/ui/RowActions'
 import { SearchField } from '@/shared/ui/SearchField'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import { TablePager } from '@/shared/ui/TablePager'
@@ -97,6 +101,44 @@ export function VisitsSection() {
     }
   }
 
+  // Las tres acciones de la fila se arman aquí y no en el JSX porque no todas
+  // aplican a la vez: registrar entrada solo antes de haberla registrado, y
+  // «cerrado» solo mientras la visita siga planificada.
+  function acciones(visit: Visit): RowAction[] {
+    const lista: RowAction[] = []
+    if (visit.outcome === 'planned' && visit.checked_in_at === null) {
+      lista.push({
+        id: 'check-in',
+        icon: <LoginRoundedIcon fontSize="small" />,
+        label: `${t('sales.visits.checkIn')}: ${visit.customer_name ?? ''}`,
+        tone: 'neutral',
+        disabled: !canWrite || checkIn.isPending,
+        onClick: () => void registrarEntrada(visit.id),
+      })
+    }
+    // Sin entrada registrada no se puede dar por visitada: el CHECK de la base
+    // lo rechazaría, y con razón.
+    lista.push({
+      id: 'complete',
+      icon: <CheckCircleRoundedIcon fontSize="small" />,
+      label: `${t('sales.visits.complete')}: ${visit.customer_name ?? ''}`,
+      tone: 'accent',
+      disabled: !canWrite || !canComplete(visit) || close.isPending,
+      onClick: () => void cerrar(visit.id, 'completed'),
+    })
+    if (visit.outcome === 'planned') {
+      lista.push({
+        id: 'closed',
+        icon: <DoDisturbAltRoundedIcon fontSize="small" />,
+        label: `${t('sales.visits.markClosed')}: ${visit.customer_name ?? ''}`,
+        tone: 'neutral',
+        disabled: !canWrite || close.isPending,
+        onClick: () => void cerrar(visit.id, 'closed'),
+      })
+    }
+    return lista
+  }
+
   async function cerrar(id: string, outcome: VisitOutcome) {
     setError(null)
     try {
@@ -175,35 +217,7 @@ export function VisitsSection() {
                     />
                   </TableCell>
                   <TableCell align="right">
-                    <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                      {visit.outcome === 'planned' && visit.checked_in_at === null && (
-                        <Button
-                          size="small"
-                          disabled={!canWrite || checkIn.isPending}
-                          onClick={() => void registrarEntrada(visit.id)}
-                        >
-                          {t('sales.visits.checkIn')}
-                        </Button>
-                      )}
-                      {/* Sin entrada registrada no se puede dar por visitada:
-                          el CHECK de la base lo rechazaría, y con razón. */}
-                      <Button
-                        size="small"
-                        disabled={!canWrite || !canComplete(visit) || close.isPending}
-                        onClick={() => void cerrar(visit.id, 'completed')}
-                      >
-                        {t('sales.visits.complete')}
-                      </Button>
-                      {visit.outcome === 'planned' && (
-                        <Button
-                          size="small"
-                          disabled={!canWrite || close.isPending}
-                          onClick={() => void cerrar(visit.id, 'closed')}
-                        >
-                          {t('sales.visits.markClosed')}
-                        </Button>
-                      )}
-                    </Stack>
+                    <RowActions actions={acciones(visit)} />
                   </TableCell>
                 </TableRow>
               ))}

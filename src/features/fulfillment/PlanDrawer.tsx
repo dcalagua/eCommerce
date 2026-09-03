@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
+import DrawRoundedIcon from '@mui/icons-material/DrawRounded'
 import {
   Alert,
   Box,
@@ -19,7 +20,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { FieldRow, FormDrawer } from '@/shared/ui/FormDrawer'
-import { RowActions } from '@/shared/ui/RowActions'
+import { RowActions, type RowAction } from '@/shared/ui/RowActions'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import { PodDrawer } from './PodDrawer'
@@ -40,6 +41,7 @@ import {
   planFormSchema,
   type Plan,
   type PlanFormValues,
+  type PlanStop,
 } from './routing-types'
 
 /**
@@ -170,6 +172,39 @@ export function PlanDrawer({
     }
   }
 
+  /**
+   * Las acciones de una parada, en un solo sitio.
+   *
+   * Se arma fuera del JSX porque firmar es condicional: un `.filter(Boolean)`
+   * dentro del array dejaría el tipo como `(RowAction | false)[]` y no compila.
+   */
+  function accionesParada(stop: PlanStop): RowAction[] {
+    const acciones: RowAction[] = []
+
+    // Firmada una vez, no se vuelve a ofrecer: la tabla no admite correcciones.
+    if (!firmados.has(stop.fulfillment_id)) {
+      acciones.push({
+        id: 'sign',
+        icon: <DrawRoundedIcon fontSize="small" />,
+        label: `${t('fulfillment.pod.sign')}: ${stop.sequence}`,
+        tone: 'accent',
+        disabled: !canWrite,
+        onClick: () => setFirmando({ fulfillmentId: stop.fulfillment_id, stopId: stop.id }),
+      })
+    }
+
+    acciones.push({
+      id: 'del',
+      icon: <DeleteRoundedIcon fontSize="small" />,
+      label: `${t('fulfillment.routing.removeStop')}: ${stop.sequence}`,
+      tone: 'danger',
+      disabled: !puedeEditar || removeStop.isPending,
+      onClick: () => void quitar(stop.id),
+    })
+
+    return acciones
+  }
+
   return (
     <FormDrawer
       open={open}
@@ -287,36 +322,7 @@ export function PlanDrawer({
                         )}
                       </TableCell>
                       <TableCell align="right">
-                        <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                          {/* Firmada una vez, no se vuelve a ofrecer: la tabla
-                              no admite correcciones. */}
-                          {!firmados.has(stop.fulfillment_id) && (
-                            <Button
-                              size="small"
-                              disabled={!canWrite}
-                              onClick={() =>
-                                setFirmando({
-                                  fulfillmentId: stop.fulfillment_id,
-                                  stopId: stop.id,
-                                })
-                              }
-                            >
-                              {t('fulfillment.pod.sign')}
-                            </Button>
-                          )}
-                          <RowActions
-                            actions={[
-                              {
-                                id: 'del',
-                                icon: <DeleteRoundedIcon fontSize="small" />,
-                                label: `${t('fulfillment.routing.removeStop')}: ${stop.sequence}`,
-                                tone: 'danger',
-                                disabled: !puedeEditar || removeStop.isPending,
-                                onClick: () => void quitar(stop.id),
-                              },
-                            ]}
-                          />
-                        </Stack>
+                        <RowActions actions={accionesParada(stop)} />
                       </TableCell>
                     </TableRow>
                   ))}

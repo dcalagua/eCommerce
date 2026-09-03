@@ -150,6 +150,13 @@ function pintar(fake: FakeSupabase) {
   )
 }
 
+/** Los nombres accesibles de las acciones de una fila, en orden. */
+function nombresDe(row: HTMLElement): string[] {
+  return Array.from(row.querySelectorAll('button')).map(
+    (boton) => boton.getAttribute('aria-label') ?? '',
+  )
+}
+
 function filaCon(texto: string): HTMLElement {
   const fila = screen.getAllByRole('row').find((row) => row.textContent?.includes(texto))
   if (!fila) throw new Error(`No hay una fila con «${texto}»`)
@@ -170,12 +177,10 @@ describe('el listado de sugerencias', () => {
     pintar(backend())
     await screen.findByText('Bodega Aceptada')
 
-    const aceptada = filaCon('Bodega Aceptada')
-    const borrador = filaCon('Bodega Central')
-
-    expect(aceptada.textContent).not.toContain('Enviar')
-    expect(aceptada.textContent).not.toContain('Descartar')
-    expect(borrador.textContent).toContain('Enviar')
+    // Las acciones son ICONOS: lo que hay que mirar es su nombre accesible, no
+    // el texto de la fila. A una aceptada solo le queda abrirla.
+    expect(nombresDe(filaCon('Bodega Aceptada'))).toEqual(['Abrir: Bodega Aceptada'])
+    expect(nombresDe(filaCon('Bodega Central'))).toContain('Enviar: Bodega Central')
   })
 
   it('sin el módulo contratado dice qué falta, no enseña una tabla vacía', async () => {

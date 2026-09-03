@@ -1,4 +1,9 @@
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
+import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded'
+import DoDisturbAltRoundedIcon from '@mui/icons-material/DoDisturbAltRounded'
+import SendRoundedIcon from '@mui/icons-material/SendRounded'
+import UndoRoundedIcon from '@mui/icons-material/UndoRounded'
 import {
   Alert,
   Box,
@@ -12,11 +17,12 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { FilterBar } from '@/shared/ui/FilterBar'
+import { RowActions, type RowActionTone } from '@/shared/ui/RowActions'
 import { SearchField } from '@/shared/ui/SearchField'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import { TablePager } from '@/shared/ui/TablePager'
@@ -28,6 +34,24 @@ import { SuggestionDrawer } from './SuggestionDrawer'
 import { PlanningError } from './errors'
 import { useSetSuggestionStatus, useSuggestions } from './hooks'
 import { nextSuggestionStatuses, type Suggestion, type SuggestionStatus } from './types'
+
+/**
+ * Cómo se ve cada transición.
+ *
+ * El tono lo pone lo que la acción HACE, no el estado del que sale: enviar y
+ * aceptar empujan la sugerencia hacia adelante y van en el acento; descartar la
+ * mata y va en rojo; volver a borrador solo deshace y es neutro.
+ */
+function accionVisual(status: SuggestionStatus): { icon: ReactNode; tone: RowActionTone } {
+  if (status === 'sent') return { icon: <SendRoundedIcon fontSize="small" />, tone: 'accent' }
+  if (status === 'accepted') {
+    return { icon: <CheckCircleRoundedIcon fontSize="small" />, tone: 'accent' }
+  }
+  if (status === 'discarded') {
+    return { icon: <DoDisturbAltRoundedIcon fontSize="small" />, tone: 'danger' }
+  }
+  return { icon: <UndoRoundedIcon fontSize="small" />, tone: 'neutral' }
+}
 
 /**
  * Sugerido de pedido: qué convendría pedir, y por qué.
@@ -168,21 +192,26 @@ export function SuggestionsSection() {
                     />
                   </TableCell>
                   <TableCell align="right">
-                    <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                      {nextSuggestionStatuses(row.status).map((status) => (
-                        <Button
-                          key={status}
-                          size="small"
-                          disabled={!canWrite || setStatus.isPending}
-                          onClick={() => void avanzar(row.id, status)}
-                        >
-                          {t(`planning.action.${status}` as MessageKey)}
-                        </Button>
-                      ))}
-                      <Button size="small" onClick={() => setAbierta(row)}>
-                        {t('common.open')}
-                      </Button>
-                    </Stack>
+                    <RowActions
+                      actions={[
+                        ...nextSuggestionStatuses(row.status).map((status) => ({
+                          id: status,
+                          ...accionVisual(status),
+                          label:
+                            `${t(`planning.action.${status}` as MessageKey)}: ` +
+                            `${row.customer_name ?? ''}`,
+                          disabled: !canWrite || setStatus.isPending,
+                          onClick: () => void avanzar(row.id, status),
+                        })),
+                        {
+                          id: 'open',
+                          icon: <ChevronRightRoundedIcon fontSize="small" />,
+                          label: `${t('common.open')}: ${row.customer_name ?? ''}`,
+                          tone: 'neutral' as const,
+                          onClick: () => setAbierta(row),
+                        },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

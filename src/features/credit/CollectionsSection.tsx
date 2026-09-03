@@ -16,6 +16,7 @@ import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
 import { FilterBar } from '@/shared/ui/FilterBar'
+import { RowActions } from '@/shared/ui/RowActions'
 import { SearchField } from '@/shared/ui/SearchField'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import { TablePager } from '@/shared/ui/TablePager'
@@ -162,13 +163,18 @@ export function CollectionsSection() {
                     <StatusChip tone={tono(doc)} label={etiqueta(doc)} />
                   </TableCell>
                   <TableCell align="right">
-                    <Button
-                      size="small"
-                      disabled={!canWrite || Number(doc.balance) <= 0}
-                      onClick={() => setCobrando(doc.customer_id)}
-                    >
-                      {t('credit.receipt.new')}
-                    </Button>
+                    <RowActions
+                      actions={[
+                        {
+                          id: 'receipt',
+                          icon: <PaymentsRoundedIcon fontSize="small" />,
+                          label: `${t('credit.receipt.new')}: ${doc.document_number}`,
+                          tone: 'accent',
+                          disabled: !canWrite || Number(doc.balance) <= 0,
+                          onClick: () => setCobrando(doc.customer_id),
+                        },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

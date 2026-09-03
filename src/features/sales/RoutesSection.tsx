@@ -1,4 +1,5 @@
 import AltRouteRoundedIcon from '@mui/icons-material/AltRouteRounded'
+import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded'
 import {
   Box,
   Button,
@@ -16,6 +17,7 @@ import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { FilterBar } from '@/shared/ui/FilterBar'
+import { RowActions } from '@/shared/ui/RowActions'
 import { SearchField } from '@/shared/ui/SearchField'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import { TableSkeleton } from '@/shared/ui/TableSkeleton'
@@ -132,15 +134,20 @@ export function RoutesSection() {
                     />
                   </TableCell>
                   <TableCell align="right">
-                    <Button
-                      size="small"
-                      onClick={() => {
-                        setCreando(false)
-                        setAbierta(row)
-                      }}
-                    >
-                      {t('common.open')}
-                    </Button>
+                    <RowActions
+                      actions={[
+                        {
+                          id: 'open',
+                          icon: <ChevronRightRoundedIcon fontSize="small" />,
+                          label: `${t('common.open')}: ${row.code}`,
+                          tone: 'neutral',
+                          onClick: () => {
+                            setCreando(false)
+                            setAbierta(row)
+                          },
+                        },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

@@ -1,3 +1,4 @@
+import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded'
 import RequestQuoteRoundedIcon from '@mui/icons-material/RequestQuoteRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import {
@@ -19,6 +20,7 @@ import type { MessageKey } from '@/shared/i18n/messages'
 import { formatMoney } from '@/shared/lib/format'
 import { FilterBar } from '@/shared/ui/FilterBar'
 import { PageHeader } from '@/shared/ui/PageHeader'
+import { RowActions } from '@/shared/ui/RowActions'
 import { SearchField } from '@/shared/ui/SearchField'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import { TablePager } from '@/shared/ui/TablePager'
@@ -225,15 +227,20 @@ export function QuotesPage() {
                       />
                     </TableCell>
                     <TableCell align="right">
-                      <Button
-                        size="small"
-                        onClick={() => {
-                          setCreando(false)
-                          setAbierta(quote)
-                        }}
-                      >
-                        {t('common.open')}
-                      </Button>
+                      <RowActions
+                        actions={[
+                          {
+                            id: 'open',
+                            icon: <ChevronRightRoundedIcon fontSize="small" />,
+                            label: `${t('common.open')}: ${quote.quote_number}`,
+                            tone: 'neutral',
+                            onClick: () => {
+                              setCreando(false)
+                              setAbierta(quote)
+                            },
+                          },
+                        ]}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}

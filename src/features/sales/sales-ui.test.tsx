@@ -410,11 +410,24 @@ describe('las comisiones', () => {
   })
 })
 
-/** El botón con ese nombre dentro de una fila concreta. */
+/**
+ * El botón de una fila, por el comienzo de su nombre accesible.
+ *
+ * Las acciones de tabla son ICONOS, así que no tienen texto: el nombre vive en
+ * `aria-label` y arrastra además el identificador de la fila —«Dar por
+ * visitada: Bodega Sin Entrada»— para que un lector de pantalla no oiga
+ * «Abrir» veinte veces sin saber de cuál. Se busca por prefijo por eso.
+ */
 function botonDe(row: HTMLElement, name: string): HTMLElement {
-  const encontrado = Array.from(row.querySelectorAll('button')).find(
-    (boton) => boton.textContent?.trim() === name,
-  )
+  const encontrado = accionesDe(row).find(([etiqueta]) => etiqueta.startsWith(name))
   if (!encontrado) throw new Error(`No hay un botón «${name}» en esa fila`)
-  return encontrado
+  return encontrado[1]
+}
+
+/** Las acciones de una fila como pares [nombre accesible, botón]. */
+function accionesDe(row: HTMLElement): Array<[string, HTMLElement]> {
+  return Array.from(row.querySelectorAll('button')).map((boton) => [
+    boton.getAttribute('aria-label') ?? '',
+    boton,
+  ])
 }

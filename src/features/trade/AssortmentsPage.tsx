@@ -1,3 +1,4 @@
+import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded'
 import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import {
@@ -17,6 +18,7 @@ import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { FilterBar } from '@/shared/ui/FilterBar'
 import { PageHeader } from '@/shared/ui/PageHeader'
+import { RowActions } from '@/shared/ui/RowActions'
 import { SearchField } from '@/shared/ui/SearchField'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import { TableSkeleton } from '@/shared/ui/TableSkeleton'
@@ -181,15 +183,20 @@ export function AssortmentsPage() {
                       />
                     </TableCell>
                     <TableCell align="right">
-                      <Button
-                        size="small"
-                        onClick={() => {
-                          setCreando(false)
-                          setAbierto(row)
-                        }}
-                      >
-                        {t('common.open')}
-                      </Button>
+                      <RowActions
+                        actions={[
+                          {
+                            id: 'open',
+                            icon: <ChevronRightRoundedIcon fontSize="small" />,
+                            label: `${t('common.open')}: ${row.code}`,
+                            tone: 'neutral',
+                            onClick: () => {
+                              setCreando(false)
+                              setAbierto(row)
+                            },
+                          },
+                        ]}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}

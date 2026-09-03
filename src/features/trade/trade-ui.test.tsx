@@ -246,10 +246,18 @@ describe('los surtidos', () => {
   })
 })
 
-/** El botón con ese nombre dentro de una fila concreta. */
+/**
+ * El botón de una fila, por el comienzo de su nombre accesible.
+ *
+ * Las acciones de tabla son ICONOS y no tienen texto: el nombre vive en
+ * `aria-label`, y lleva pegado el identificador de la fila —«Abrir:
+ * COT-2026-001»— para que un lector de pantalla sepa de cuál. De ahí el
+ * prefijo.
+ */
 function within_(row: HTMLElement, name: string): HTMLElement {
-  const botones = Array.from(row.querySelectorAll('button'))
-  const encontrado = botones.find((boton) => boton.textContent?.trim() === name)
+  const encontrado = Array.from(row.querySelectorAll('button')).find((boton) =>
+    (boton.getAttribute('aria-label') ?? '').startsWith(name),
+  )
   if (!encontrado) throw new Error(`No hay un botón «${name}» en esa fila`)
   return encontrado
 }

@@ -173,7 +173,9 @@ describe('el registro de un cobro', () => {
     const user = userEvent.setup()
     pintar(fake)
     await screen.findByText('F001-100')
-    await user.click(screen.getAllByRole('button', { name: 'Registrar cobro' })[0]!)
+    // La acción es un ICONO: su nombre accesible lleva pegado el documento
+    // —«Registrar cobro: F001-1001»— para que no suene igual en veinte filas.
+    await user.click(screen.getAllByRole('button', { name: /^Registrar cobro:/ })[0]!)
     // El cajón está abierto cuando ya se puede marcar qué documento cancela.
     await screen.findByRole('checkbox', { name: 'F001-100' })
     return user

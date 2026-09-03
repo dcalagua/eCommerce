@@ -1,4 +1,8 @@
+import CancelRoundedIcon from '@mui/icons-material/CancelRounded'
+import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded'
 import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
+import TaskAltRoundedIcon from '@mui/icons-material/TaskAltRounded'
+import UndoRoundedIcon from '@mui/icons-material/UndoRounded'
 import {
   Alert,
   Box,
@@ -12,11 +16,12 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { FilterBar } from '@/shared/ui/FilterBar'
+import { RowActions, type RowActionTone } from '@/shared/ui/RowActions'
 import { SearchField } from '@/shared/ui/SearchField'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import { TableSkeleton } from '@/shared/ui/TableSkeleton'
@@ -25,6 +30,24 @@ import { PlanDrawer } from './PlanDrawer'
 import { FulfillmentError } from './errors'
 import { usePlans, useSetPlanStatus } from './routing-hooks'
 import { nextPlanStatuses, type Plan, type PlanStatus } from './routing-types'
+
+/**
+ * Cómo se ve cada transición de la hoja.
+ *
+ * El tono lo pone lo que la acción HACE: despachar y cerrar avanzan el reparto
+ * y van en el acento; cancelar tumba la hoja y va en rojo; volver a borrador
+ * solo deshace y es neutro.
+ */
+function accionVisual(status: PlanStatus): { icon: ReactNode; tone: RowActionTone } {
+  if (status === 'dispatched') {
+    return { icon: <LocalShippingRoundedIcon fontSize="small" />, tone: 'accent' }
+  }
+  if (status === 'closed') return { icon: <TaskAltRoundedIcon fontSize="small" />, tone: 'accent' }
+  if (status === 'cancelled') {
+    return { icon: <CancelRoundedIcon fontSize="small" />, tone: 'danger' }
+  }
+  return { icon: <UndoRoundedIcon fontSize="small" />, tone: 'neutral' }
+}
 
 /**
  * Reparto propio: hojas de ruta y evidencia de entrega.
@@ -160,27 +183,29 @@ export function RoutingSection() {
                     />
                   </TableCell>
                   <TableCell align="right">
-                    <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                      {nextPlanStatuses(plan.status).map((status) => (
-                        <Button
-                          key={status}
-                          size="small"
-                          disabled={!canWrite || setStatus.isPending}
-                          onClick={() => void avanzar(plan.id, status)}
-                        >
-                          {t(`fulfillment.plan.action.${status}` as MessageKey)}
-                        </Button>
-                      ))}
-                      <Button
-                        size="small"
-                        onClick={() => {
-                          setCreando(false)
-                          setAbierta(plan)
-                        }}
-                      >
-                        {t('common.open')}
-                      </Button>
-                    </Stack>
+                    <RowActions
+                      actions={[
+                        ...nextPlanStatuses(plan.status).map((status) => ({
+                          id: status,
+                          ...accionVisual(status),
+                          label:
+                            `${t(`fulfillment.plan.action.${status}` as MessageKey)}: ` +
+                            `${plan.code}`,
+                          disabled: !canWrite || setStatus.isPending,
+                          onClick: () => void avanzar(plan.id, status),
+                        })),
+                        {
+                          id: 'open',
+                          icon: <ChevronRightRoundedIcon fontSize="small" />,
+                          label: `${t('common.open')}: ${plan.code}`,
+                          tone: 'neutral' as const,
+                          onClick: () => {
+                            setCreando(false)
+                            setAbierta(plan)
+                          },
+                        },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

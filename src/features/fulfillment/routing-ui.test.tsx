@@ -180,13 +180,29 @@ function pintar(fake: FakeSupabase) {
   )
 }
 
-/** El botón con ese nombre dentro de una fila concreta. */
+/**
+ * El botón de una fila, por el comienzo de su nombre accesible.
+ *
+ * Las acciones de tabla son ICONOS y no tienen texto: el nombre vive en
+ * `aria-label` con el identificador de la fila detrás —«Despachar: HR-0002»—
+ * para que un lector de pantalla sepa sobre cuál actúa. De ahí el prefijo.
+ */
 function botonDe(row: HTMLElement, name: string): HTMLElement {
-  const encontrado = Array.from(row.querySelectorAll('button')).find(
-    (boton) => boton.textContent?.trim() === name,
+  const encontrado = accionesDe(row).find((boton) =>
+    (boton.getAttribute('aria-label') ?? '').startsWith(name),
   )
   if (!encontrado) throw new Error(`No hay un botón «${name}» en esa fila`)
   return encontrado
+}
+
+/** Todos los botones de acción de una fila. */
+function accionesDe(row: HTMLElement): HTMLElement[] {
+  return Array.from(row.querySelectorAll('button'))
+}
+
+/** Los nombres accesibles de las acciones de una fila. */
+function nombresDe(row: HTMLElement): string[] {
+  return accionesDe(row).map((boton) => boton.getAttribute('aria-label') ?? '')
 }
 
 function filaCon(texto: string): HTMLElement {
@@ -211,9 +227,8 @@ describe('las hojas de ruta', () => {
     const armado = filaCon('HR-001')
 
     // De `closed` no se sale: la hoja ya tiene evidencias colgando y esas son
-    // inmutables.
-    expect(cerrada.textContent).not.toContain('Despachar')
-    expect(cerrada.textContent).not.toContain('Cerrar')
+    // inmutables. Lo único que le queda es abrirla.
+    expect(nombresDe(cerrada)).toEqual(['Abrir: HR-000'])
     expect(botonDe(armado, 'Despachar')).toBeEnabled()
   })
 

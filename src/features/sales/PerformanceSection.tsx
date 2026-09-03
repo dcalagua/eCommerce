@@ -1,5 +1,8 @@
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import FlagRoundedIcon from '@mui/icons-material/FlagRounded'
 import PaidRoundedIcon from '@mui/icons-material/PaidRounded'
+import UndoRoundedIcon from '@mui/icons-material/UndoRounded'
 import {
   Alert,
   Button,
@@ -17,6 +20,7 @@ import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { formatMoney } from '@/shared/lib/format'
+import { RowActions, type RowAction } from '@/shared/ui/RowActions'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import { TableSkeleton } from '@/shared/ui/TableSkeleton'
 import { EmptyState, ErrorState } from '@/shared/ui/states'
@@ -24,6 +28,16 @@ import { GoalDrawer } from './GoalDrawer'
 import { SalesError } from './errors'
 import { useAdvanceCommission, useCommissions, useGoals } from './hooks'
 import { nextCommissionStatuses, type CommissionStatus, type Goal } from './types'
+
+/**
+ * El icono dice a DÓNDE lleva la acción, no de dónde viene: visto bueno para
+ * aprobar, moneda para pagar, y la flecha de vuelta para devolver a borrador.
+ */
+function iconoDeComision(status: CommissionStatus) {
+  if (status === 'approved') return <CheckCircleRoundedIcon fontSize="small" />
+  if (status === 'paid') return <PaidRoundedIcon fontSize="small" />
+  return <UndoRoundedIcon fontSize="small" />
+}
 
 /**
  * Metas y comisiones.
@@ -151,15 +165,20 @@ export function PerformanceSection() {
                       {objetivo(goal)}
                     </TableCell>
                     <TableCell align="right">
-                      <Button
-                        size="small"
-                        onClick={() => {
-                          setCreando(false)
-                          setAbierta(goal)
-                        }}
-                      >
-                        {t('common.edit')}
-                      </Button>
+                      <RowActions
+                        actions={[
+                          {
+                            id: 'edit',
+                            icon: <EditRoundedIcon fontSize="small" />,
+                            label: `${t('common.edit')}: ${goal.rep_name ?? t('sales.goals.territoryOwner')}`,
+                            tone: 'neutral',
+                            onClick: () => {
+                              setCreando(false)
+                              setAbierta(goal)
+                            },
+                          },
+                        ]}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -220,18 +239,18 @@ export function PerformanceSection() {
                       />
                     </TableCell>
                     <TableCell align="right">
-                      <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                        {nextCommissionStatuses(row.status).map((status) => (
-                          <Button
-                            key={status}
-                            size="small"
-                            disabled={!canWrite || advance.isPending}
-                            onClick={() => void avanzar(row.id, status)}
-                          >
-                            {t(`sales.commission.action.${status}` as MessageKey)}
-                          </Button>
-                        ))}
-                      </Stack>
+                      <RowActions
+                        actions={nextCommissionStatuses(row.status).map(
+                          (status): RowAction => ({
+                            id: status,
+                            icon: iconoDeComision(status),
+                            label: `${t(`sales.commission.action.${status}` as MessageKey)}: ${row.rep_name ?? ''}`,
+                            tone: status === 'draft' ? 'neutral' : 'accent',
+                            disabled: !canWrite || advance.isPending,
+                            onClick: () => void avanzar(row.id, status),
+                          }),
+                        )}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}

@@ -407,28 +407,33 @@ export function NetworkSection() {
                         : ''}
                     </TableCell>
                     <TableCell align="right">
-                      <Button
-                        size="small"
-                        disabled={!canWrite}
-                        onClick={() => setZoneDrawer({ open: true, zone })}
-                      >
-                        {t('common.edit')}
-                      </Button>
-                      <Button
-                        size="small"
-                        color="error"
-                        disabled={!canWrite}
-                        onClick={async () => {
-                          try {
-                            await removeZone.mutateAsync(zone.id)
-                            notify(t('fulfillment.zones.deleted'), 'success')
-                          } catch (error) {
-                            report(error)
-                          }
-                        }}
-                      >
-                        {t('common.delete')}
-                      </Button>
+                      <RowActions
+                        actions={[
+                          {
+                            id: '0',
+                            icon: <EditRoundedIcon fontSize="small" />,
+                            label: `${t('common.edit')}: ${zone.name}`,
+                            tone: 'neutral',
+                            disabled: !canWrite,
+                            onClick: () => setZoneDrawer({ open: true, zone }),
+                          },
+                          {
+                            id: '1',
+                            icon: <DeleteRoundedIcon fontSize="small" />,
+                            label: `${t('common.delete')}: ${zone.name}`,
+                            tone: 'danger',
+                            disabled: !canWrite,
+                            onClick: async () => {
+                              try {
+                                await removeZone.mutateAsync(zone.id)
+                                notify(t('fulfillment.zones.deleted'), 'success')
+                              } catch (error) {
+                                report(error)
+                              }
+                            },
+                          },
+                        ]}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -475,49 +480,58 @@ export function NetworkSection() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {rateList.map((rate) => (
-                  <TableRow key={rate.id} hover>
-                    <TableCell>
-                      {methodList.find((m) => m.id === rate.delivery_method_id)?.display_name ??
-                        rate.delivery_method_id}
-                    </TableCell>
-                    <TableCell>
-                      {rate.zone_id === null
-                        ? t('fulfillment.field.allZones')
-                        : (zoneList.find((z) => z.id === rate.zone_id)?.name ?? rate.zone_id)}
-                    </TableCell>
-                    <TableCell align="right">
-                      {rate.currency} {rate.base_amount}
-                    </TableCell>
-                    <TableCell align="right">
-                      {rate.free_over_subtotal === null ? '—' : rate.free_over_subtotal}
-                    </TableCell>
-                    <TableCell align="right">
-                      <Button
-                        size="small"
-                        disabled={!canWrite}
-                        onClick={() => setRateDrawer({ open: true, rate })}
-                      >
-                        {t('common.edit')}
-                      </Button>
-                      <Button
-                        size="small"
-                        color="error"
-                        disabled={!canWrite}
-                        onClick={async () => {
-                          try {
-                            await removeRate.mutateAsync(rate.id)
-                            notify(t('fulfillment.rates.deleted'), 'success')
-                          } catch (error) {
-                            report(error)
-                          }
-                        }}
-                      >
-                        {t('common.delete')}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {rateList.map((rate) => {
+                  // La tarifa no tiene nombre propio: se la nombra por su
+                  // método, que es como la busca quien la va a tocar.
+                  const metodo =
+                    methodList.find((m) => m.id === rate.delivery_method_id)?.display_name ??
+                    rate.delivery_method_id
+                  return (
+                    <TableRow key={rate.id} hover>
+                      <TableCell>{metodo}</TableCell>
+                      <TableCell>
+                        {rate.zone_id === null
+                          ? t('fulfillment.field.allZones')
+                          : (zoneList.find((z) => z.id === rate.zone_id)?.name ?? rate.zone_id)}
+                      </TableCell>
+                      <TableCell align="right">
+                        {rate.currency} {rate.base_amount}
+                      </TableCell>
+                      <TableCell align="right">
+                        {rate.free_over_subtotal === null ? '—' : rate.free_over_subtotal}
+                      </TableCell>
+                      <TableCell align="right">
+                        <RowActions
+                          actions={[
+                            {
+                              id: '0',
+                              icon: <EditRoundedIcon fontSize="small" />,
+                              label: `${t('common.edit')}: ${metodo}`,
+                              tone: 'neutral',
+                              disabled: !canWrite,
+                              onClick: () => setRateDrawer({ open: true, rate }),
+                            },
+                            {
+                              id: '1',
+                              icon: <DeleteRoundedIcon fontSize="small" />,
+                              label: `${t('common.delete')}: ${metodo}`,
+                              tone: 'danger',
+                              disabled: !canWrite,
+                              onClick: async () => {
+                                try {
+                                  await removeRate.mutateAsync(rate.id)
+                                  notify(t('fulfillment.rates.deleted'), 'success')
+                                } catch (error) {
+                                  report(error)
+                                }
+                              },
+                            },
+                          ]}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           )}

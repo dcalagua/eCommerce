@@ -1,3 +1,4 @@
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import MapRoundedIcon from '@mui/icons-material/MapRounded'
 import {
   Alert,
@@ -16,6 +17,7 @@ import { useMemo, useState } from 'react'
 import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { FilterBar } from '@/shared/ui/FilterBar'
+import { RowActions } from '@/shared/ui/RowActions'
 import { SearchField } from '@/shared/ui/SearchField'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import { TableSkeleton } from '@/shared/ui/TableSkeleton'
@@ -151,15 +153,20 @@ export function TerritoriesSection() {
                     />
                   </TableCell>
                   <TableCell align="right">
-                    <Button
-                      size="small"
-                      onClick={() => {
-                        setCreando(false)
-                        setAbierto(row)
-                      }}
-                    >
-                      {t('common.edit')}
-                    </Button>
+                    <RowActions
+                      actions={[
+                        {
+                          id: 'edit',
+                          icon: <EditRoundedIcon fontSize="small" />,
+                          label: `${t('common.edit')}: ${row.name}`,
+                          tone: 'neutral',
+                          onClick: () => {
+                            setCreando(false)
+                            setAbierto(row)
+                          },
+                        },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
