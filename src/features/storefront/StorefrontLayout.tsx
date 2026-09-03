@@ -1,4 +1,6 @@
+import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded'
 import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded'
+import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
 import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
 import {
@@ -20,6 +22,7 @@ import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/states'
 import { SkipToContentLink, CONTENT_ANCHOR } from '@/shared/ui/SkipToContentLink'
 import { AppearanceProvider } from '@/theme/AppearanceProvider'
+import { useAppearance } from '@/theme/appearance-context'
 import { R, TS } from '@/theme/tokens'
 import { StorefrontNotFoundError } from './api'
 import { notFoundMeta } from './seo'
@@ -30,10 +33,11 @@ import { CartDrawer } from './cart/CartDrawer'
 import { CartProvider } from './cart/CartProvider'
 import { useCart } from './cart/cart-context'
 import {
+  OFERTAS_QUERY,
+  useCatalogPages,
   usePublicCategories,
   usePublicStore,
   useStoreNavigation,
-  useStorePromotions,
   type StorefrontOutlet,
 } from './hooks'
 import { useFavorites } from './useFavorites'
@@ -294,6 +298,7 @@ function StoreHeader({ store, storeSlug }: { store: PublicStore; storeSlug: stri
               entrar a lo tuyo y ver el carrito; cada enlace que se le anade
               compite con esos tres y ninguno de ellos vende. Se leen una vez,
               casi siempre buscandolas, y su sitio de siempre es el pie. */}
+          <ThemeButton />
           <FavoritesButton storeSlug={storeSlug} storeId={store.store_id} />
           <AccountButton storeSlug={storeSlug} />
           <CartButton />
@@ -341,16 +346,19 @@ function StoreHeader({ store, storeSlug }: { store: PublicStore; storeSlug: stri
  */
 function StoreCategories({ storeSlug, storeId }: { storeSlug: string; storeId: string }) {
   const { data } = usePublicCategories(storeId)
-  // Misma clave de TanStack que ya usa la portada: la barra puede saber si hay
-  // campañas sin que eso cueste una peticion mas.
-  const { data: promociones } = useStorePromotions(storeSlug)
+  /**
+   * ¿Hay algo rebajado ahora mismo?
+   *
+   * La barra necesita saberlo para decidir si enseña «Ofertas», que lleva al
+   * catálogo filtrado. Es EXACTAMENTE la consulta que hace la portada para su
+   * banda de ofertas —mismos filtros, mismo orden, mismo límite—, así que
+   * comparte clave de TanStack y en la portada no cuesta ni una petición más.
+   */
+  const ofertas = useCatalogPages(storeSlug, OFERTAS_QUERY)
+  const hayRebajas = (ofertas.data?.pages[0]?.items.length ?? 0) > 0
   if (!data || data.length === 0) return null
   return (
-    <StoreCategoryNav
-      storeSlug={storeSlug}
-      categories={data}
-      showOffers={(promociones ?? []).length > 0}
-    />
+    <StoreCategoryNav storeSlug={storeSlug} categories={data} showOffers={hayRebajas} />
   )
 }
 
@@ -463,6 +471,9 @@ const ACTION_TONES = {
   favorite: { bg: 'var(--red-soft)', fg: 'var(--red)' },
   account: { bg: 'var(--blue-soft)', fg: 'var(--blue)' },
   cart: { bg: 'var(--accent-soft)', fg: 'var(--accent-deep)' },
+  // Neutro a propósito: es una preferencia, no un destino. Darle color la
+  // pondría a competir con las tres acciones que sí venden.
+  neutral: { bg: 'var(--neutral-soft)', fg: 'var(--muted)' },
 } as const
 
 function HeaderAction({
@@ -472,6 +483,7 @@ function HeaderAction({
   tone,
   to,
   onClick,
+  iconOnly = false,
 }: {
   icon: ReactNode
   label: string
@@ -480,6 +492,8 @@ function HeaderAction({
   /** Enlace o botón: uno de los dos, nunca los dos. */
   to?: string
   onClick?: () => void
+  /** Sin texto ni en escritorio: para lo que es utilidad y no destino. */
+  iconOnly?: boolean
 }) {
   const { bg, fg } = ACTION_TONES[tone]
 
@@ -535,10 +549,43 @@ function HeaderAction({
           {icon}
         </Box>
       </Badge>
-      <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-        {label}
-      </Box>
+      {!iconOnly && (
+        <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+          {label}
+        </Box>
+      )}
     </Button>
+  )
+}
+
+/**
+ * Claro u oscuro, también para el comprador.
+ *
+ * Estaba solo en el backoffice, y quien mira la vitrina de noche es justo quien
+ * más lo necesita. El acento sigue siendo del tenant: esto cambia el MODO, no
+ * la paleta —contrato §4.4, el comprador nunca repinta la marca de la tienda—.
+ *
+ * Va sin texto y en gris, al contrario que Favoritos, Tu cuenta y Carrito. La
+ * cabecera tiene tres trabajos —buscar, entrar a lo tuyo y ver el carrito— y
+ * una cuarta pastilla con etiqueta competiría con los tres sin vender nada. El
+ * nombre viaja en `aria-label`, así que quien usa lector de pantalla lo oye
+ * igual.
+ */
+function ThemeButton() {
+  const { t } = useI18n()
+  const { appearance, toggleMode } = useAppearance()
+  const oscuro = appearance.mode === 'dark'
+
+  return (
+    <HeaderAction
+      onClick={toggleMode}
+      icon={oscuro ? <LightModeRoundedIcon /> : <DarkModeRoundedIcon />}
+      // Dice a DÓNDE va, no dónde está: es un interruptor, y lo útil de leer
+      // antes de pulsarlo es qué va a pasar.
+      label={oscuro ? t('common.theme.light') : t('common.theme.dark')}
+      tone="neutral"
+      iconOnly
+    />
   )
 }
 
