@@ -115,6 +115,7 @@ function toRow(scope: PromotionScopeIds, values: PromotionFormValues) {
     code: values.code.trim(),
     name: values.name.trim(),
     description: nullable(values.description),
+    image_url: values.imageUrl,
     kind: values.kind,
     status: values.status,
     priority: values.priority,

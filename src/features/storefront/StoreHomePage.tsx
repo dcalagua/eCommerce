@@ -11,9 +11,11 @@ import { EmptyState, ErrorState } from '@/shared/ui/states'
 import { TS } from '@/theme/tokens'
 import { BackToTop } from './components/BackToTop'
 import { BrandRow } from './components/BrandRow'
+import { BrandTrustStrip } from './components/BrandTrustStrip'
 import { CategoryBar } from './components/CategoryBar'
 import { ProductRow } from './components/ProductRow'
 import { PromoCarousel } from './components/PromoCarousel'
+import { StoreServicesStrip } from './components/StoreServicesStrip'
 import { ContentBlocks } from './components/ContentBlocks'
 import { ProductGrid, ProductGridSkeleton } from './components/ProductGrid'
 import { ProductQuickView } from './components/ProductQuickView'
@@ -412,6 +414,11 @@ export function StoreHomePage() {
           portada se quedaba sin encabezado de nivel 1 en cuanto el comercio
           publicaba una portada — y quien navega por encabezados perdía la
           única referencia de dónde empieza el documento. */}
+      {/* Las cuatro dudas que tiene alguien ANTES de mirar el primer precio:
+          cuándo llega, si es seguro pagar, quién le asesora y si puede
+          recogerlo. En el pie se leen después de decidir, o sea nunca. */}
+      {catalogo ? null : <StoreServicesStrip />}
+
       {catalogo ? null : (
       <ContentBlocks
         blocks={blocks}
@@ -659,6 +666,11 @@ export function StoreHomePage() {
         </Box>
       </Stack>
       ) : null}
+
+      {/* Prueba social al cierre: quien duda de una botica en linea deja de
+          dudar cuando reconoce los nombres que ya compra en la farmacia de la
+          esquina. Va abajo porque es ahi donde se decide comprar o cerrar. */}
+      {catalogo ? null : <BrandTrustStrip brands={brandOptions} storeSlug={storeSlug} />}
 
       {/* El producto abierto vive en `?p=`: el boton de atras cierra el
           dialogo y el enlace se puede pegar en un chat. */}

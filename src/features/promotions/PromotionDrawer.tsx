@@ -13,6 +13,8 @@ import {
   Typography,
 } from '@mui/material'
 import { useEffect, useState } from 'react'
+import { StoreAssetField } from '@/features/admin/settings/StoreAssetField'
+import { useAssetUrls } from '@/features/admin/settings/useStoreSettings'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { FormDrawer } from '@/shared/ui/FormDrawer'
@@ -46,6 +48,7 @@ const EMPTY: PromotionFormValues = {
   code: '',
   name: '',
   description: '',
+  imageUrl: null,
   kind: 'percentage',
   status: 'draft',
   priority: 100,
@@ -81,6 +84,7 @@ function fromPromotion(promotion: Promotion): PromotionFormValues {
     code: promotion.code,
     name: promotion.name,
     description: promotion.description ?? '',
+    imageUrl: promotion.image_url,
     kind: promotion.kind,
     status: promotion.status,
     priority: promotion.priority,
@@ -143,6 +147,9 @@ export function PromotionDrawer({
   const { notify } = useFeedback()
   const [values, setValues] = useState<PromotionFormValues>(EMPTY)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  // La vista previa de la foto: el bucket es privado, asi que la ruta guardada
+  // no se puede pintar tal cual — hay que firmarla.
+  const imageUrls = useAssetUrls([values.imageUrl])
 
   const save = useSavePromotion(scope)
   const scopes = useScopes(promotion?.id ?? null)
@@ -290,6 +297,24 @@ export function PromotionDrawer({
           size="small"
           fullWidth
         />
+        {/* La foto de la campaña.
+            Desde que la portada lee las promociones vigentes sola, la imagen
+            tiene que viajar con la campaña: se crea la oferta, se le pone su
+            foto y aparece. Antes había que escribir además un bloque de
+            contenido con la imagen, y acordarse de borrarlo al caducar. */}
+        <StoreAssetField
+          kind="content"
+          ratio="16 / 9"
+          label={t('promotions.field.image')}
+          help={t('promotions.field.imageHelp')}
+          value={values.imageUrl}
+          previewUrl={values.imageUrl ? (imageUrls[values.imageUrl] ?? null) : null}
+          disabled={save.isPending}
+          organizationId={scope?.organizationId ?? ''}
+          storeId={scope?.storeId ?? ''}
+          onChange={(next: string | null) => set('imageUrl', next)}
+        />
+
         <TextField
           label={t('promotions.field.description')}
           value={values.description}

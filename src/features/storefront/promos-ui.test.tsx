@@ -34,6 +34,7 @@ function promo(over: Partial<StorePromotion> & { id: string; name: string }): St
     freeQuantity: null,
     minSubtotal: null,
     endsAt: new Date(Date.now() + 30 * 86_400_000).toISOString(),
+    imageUrl: null,
     categorySlug: null,
     brandCode: null,
     ...over,

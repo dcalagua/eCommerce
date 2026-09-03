@@ -97,6 +97,8 @@ export const promotionSchema = z.object({
   code: z.string(),
   name: z.string(),
   description: z.string().nullable().default(null),
+  /** Foto de la campaña. Una oferta sin imagen es un cartel de texto. */
+  image_url: z.string().nullable().default(null),
   kind: z.enum(PROMOTION_KINDS),
   status: z.enum(PROMOTION_STATUSES),
   effective_status: z.enum(EFFECTIVE_STATUSES),
@@ -253,6 +255,8 @@ export interface PromotionFormValues {
   code: string
   name: string
   description: string
+  /** Ruta del bucket de la tienda o URL https. `null` = sin foto. */
+  imageUrl: string | null
   kind: PromotionKind
   status: PromotionStatus
   priority: number

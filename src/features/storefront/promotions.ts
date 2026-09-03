@@ -29,6 +29,7 @@ const promotionSchema = z.object({
   min_subtotal: z.coerce.number().nullable().default(null),
   ends_at: z.string().nullable().default(null),
   priority: z.coerce.number().nullable().default(0),
+  image_url: z.string().nullable().default(null),
   category_slug: z.string().nullable().default(null),
   brand_code: z.string().nullable().default(null),
 })
@@ -49,6 +50,8 @@ export interface StorePromotion {
   readonly freeQuantity: number | null
   readonly minSubtotal: number | null
   readonly endsAt: string | null
+  /** Foto de la campaña: ruta del bucket de la tienda o URL https externa. */
+  readonly imageUrl: string | null
   /** A dónde lleva el botón: la categoría o la marca a la que alcanza. */
   readonly categorySlug: string | null
   readonly brandCode: string | null
@@ -90,6 +93,7 @@ export async function fetchStorePromotions(
     freeQuantity: promotion.free_quantity,
     minSubtotal: promotion.min_subtotal,
     endsAt: promotion.ends_at,
+    imageUrl: promotion.image_url,
     categorySlug: promotion.category_slug,
     brandCode: promotion.brand_code,
   }))

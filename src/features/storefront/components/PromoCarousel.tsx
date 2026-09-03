@@ -218,6 +218,30 @@ function PromoSlide({
         direction={{ xs: 'column', sm: 'row' }}
         sx={{ gap: 2.5, p: { xs: 2.25, md: 3 }, alignItems: { xs: 'flex-start', sm: 'center' } }}
       >
+        {/* La foto de la campaña, cuando la tiene.
+            Una oferta sin imagen es un cartel de texto: se lee, no se mira, y
+            en una portada llena de fotos de producto pierde siempre. Va
+            primero porque es lo que para el ojo; el medallón sigue detrás para
+            quien ya se paró y quiere el dato. */}
+        {promo.imageUrl ? (
+          <Box
+            component="img"
+            src={promo.imageUrl}
+            alt=""
+            aria-hidden
+            loading="lazy"
+            decoding="async"
+            sx={{
+              width: { xs: '100%', sm: 132 },
+              height: { xs: 140, sm: 96 },
+              flexShrink: 0,
+              objectFit: 'contain',
+              borderRadius: 'var(--sf-radius-sm)',
+              bgcolor: 'var(--sf-media-bg)',
+              p: 0.5,
+            }}
+          />
+        ) : null}
         <Box
           aria-hidden
           sx={{
