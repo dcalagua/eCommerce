@@ -1,7 +1,14 @@
 // @vitest-environment node
 import type { PGlite } from '@electric-sql/pglite'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { createTestDatabase, expectFailure, TENANT_A } from './harness'
+import {
+  asRole,
+  claimsFor,
+  createTestDatabase,
+  expectFailure,
+  TENANT_A,
+  TENANT_B,
+} from './harness'
 
 /**
  * Recomendación de pedido y forecast, contra Postgres real (fases 14 y 15).
@@ -131,6 +138,53 @@ describe('el sugerido', () => {
 
     const filas = await svc(`select * from ebim.suggest_order($1, $2, 30)`, [STORE, customer])
     // Sugerir sobre lo que se anuló es sugerir sobre algo que nunca se vendió.
+    expect(filas).toEqual([])
+  })
+})
+
+/**
+ * La PUERTA del sugerido, no su calculo.
+ *
+ * El calculo estaba bien y probado desde el primer dia; lo que faltaba era
+ * poder llamarlo. `ebim.suggest_order` vive en el esquema `ebim` y el navegador
+ * llama por PostgREST, que solo publica `public`: «Generar sugerido» devolvia
+ * «No se pudo completar la operacion» con cualquier cliente y cualquier
+ * periodo. Estos tests llaman por donde llama el backoffice.
+ */
+describe('la puerta publica del sugerido', () => {
+  it('existe en `public` y devuelve lo mismo que la de dentro', async () => {
+    const { customer, account } = await clienteConCuenta('CLI-P1')
+    const p = await producto('SKU-P1')
+    await pedido(account, 'EC-P1-1', p, 6)
+
+    const porLaPuerta = await svc(`select * from public.suggest_order($1, $2, 30)`, [STORE, customer])
+    const porDentro = await svc(`select * from ebim.suggest_order($1, $2, 30)`, [STORE, customer])
+
+    expect(porLaPuerta).toEqual(porDentro)
+    expect(Number(porLaPuerta[0]?.suggested_quantity)).toBe(6)
+  })
+
+  it('`anon` no puede ejecutarla: un sugerido es historial de un cliente', async () => {
+    const message = await expectFailure(() =>
+      asRole(db, 'anon', null, () =>
+        svc(`select * from public.suggest_order($1, $2, 30)`, [STORE, STORE]),
+      ),
+    )
+    expect(message).toContain('permission denied')
+  })
+
+  it('la RLS sigue mandando: quien llama solo ve el historial de su tienda', async () => {
+    const { customer, account } = await clienteConCuenta('CLI-P2')
+    const p = await producto('SKU-P2')
+    await pedido(account, 'EC-P2-1', p, 12)
+
+    // Miembro de OTRO tenant, preguntando por la tienda y el cliente ajenos.
+    const filas = await asRole(db, 'authenticated', claimsFor(TENANT_B), () =>
+      svc(`select * from public.suggest_order($1, $2, 30)`, [STORE, customer]),
+    )
+
+    // Ni error ni filas: la funcion es `security invoker`, asi que las policies
+    // de `orders` y `business_accounts` no le dejan ver nada.
     expect(filas).toEqual([])
   })
 })
