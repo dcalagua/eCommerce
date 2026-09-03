@@ -278,13 +278,15 @@ export const PUBLIC_DELIVERY_METHODS_VIEW = 'public_delivery_methods'
 export const RETURN_EVIDENCE_BUCKET = 'return-evidence'
 
 // --- Recorrido B2B: reparto y evidencia de entrega (migración 20260902160000)
-// Sin `satisfies` por la misma razón que el resto de este bloque. La red es
-// `supabase/tests/fulfillment-routing.test.ts`.
-export const DELIVERY_VEHICLES_TABLE = 'delivery_vehicles'
-export const DELIVERY_PLANS_TABLE = 'delivery_plans'
-export const DELIVERY_PLAN_STOPS_TABLE = 'delivery_plan_stops'
-export const PROOF_OF_DELIVERY_TABLE = 'proof_of_delivery'
-export const POD_EVIDENCE_TABLE = 'pod_evidence'
+// CON `satisfies`, al revés que el bloque de arriba: la migración 160000 sí está
+// aplicada en el proyecto enlazado, así que `database.types.ts` conoce estas
+// cinco tablas y el typecheck se pone rojo aquí —y no en la primera consulta en
+// producción— si alguna se renombra.
+export const DELIVERY_VEHICLES_TABLE = 'delivery_vehicles' satisfies TableName
+export const DELIVERY_PLANS_TABLE = 'delivery_plans' satisfies TableName
+export const DELIVERY_PLAN_STOPS_TABLE = 'delivery_plan_stops' satisfies TableName
+export const PROOF_OF_DELIVERY_TABLE = 'proof_of_delivery' satisfies TableName
+export const POD_EVIDENCE_TABLE = 'pod_evidence' satisfies TableName
 
 // --- Analitica, auditoria y operacion (P13-SaaS, migraciones 160000-160500) -
 // Sin `satisfies` por la misma razón que las anteriores: `database.types.ts` se
