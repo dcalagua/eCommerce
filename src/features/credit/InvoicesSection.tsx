@@ -130,8 +130,13 @@ export function InvoicesSection() {
                   <TableCell align="right" sx={{ fontWeight: 800 }}>
                     {formatMoney(Number(invoice.gross_total), invoice.currency, locale)}
                   </TableCell>
-                  <TableCell>
-                    <Stack spacing={0.25}>
+                  {/* Ancho tope: sin el, un motivo de rechazo largo estira la
+                      columna y estruja las de importes, que son las que se
+                      comparan de un vistazo. */}
+                  <TableCell sx={{ maxWidth: 260 }}>
+                    {/* `flex-start`: en columna, un Stack estira a sus hijos a
+                        todo el ancho, y el chip pasaba de etiqueta a barra. */}
+                    <Stack spacing={0.25} sx={{ alignItems: 'flex-start' }}>
                       <StatusChip
                         tone={tono(invoice.status)}
                         label={t(`credit.invoiceStatus.${invoice.status}` as MessageKey)}
