@@ -13,6 +13,7 @@ import RequestQuoteRoundedIcon from '@mui/icons-material/RequestQuoteRounded'
 import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
 import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
 import PriceChangeRoundedIcon from '@mui/icons-material/PriceChangeRounded'
+import QueryStatsRoundedIcon from '@mui/icons-material/QueryStatsRounded'
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
@@ -95,6 +96,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'nav.sales',
     icon: <BadgeRoundedIcon fontSize="small" />,
     capability: 'sales.force',
+  },
+  {
+    to: '/app/planning',
+    label: 'nav.planning',
+    icon: <QueryStatsRoundedIcon fontSize="small" />,
+    capability: 'planning.demand',
   },
   {
     to: '/app/quotes',

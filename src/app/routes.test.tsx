@@ -91,6 +91,7 @@ describe('rutas base', () => {
       '/app/orders',
       '/app/payments',
       '/app/pim',
+      '/app/planning',
       '/app/pricing',
       '/app/products',
       '/app/promotions',

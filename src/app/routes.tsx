@@ -65,6 +65,9 @@ const QuotesPage = lazyPage(() =>
 const AssortmentsPage = lazyPage(() =>
   import('@/features/trade/AssortmentsPage').then((m) => ({ default: m.AssortmentsPage })),
 )
+const PlanningPage = lazyPage(() =>
+  import('@/features/planning/PlanningPage').then((m) => ({ default: m.PlanningPage })),
+)
 const OrdersPage = lazyPage(() =>
   import('@/features/orders/OrdersPage').then((m) => ({ default: m.OrdersPage })),
 )
@@ -191,6 +194,7 @@ export const routes: RouteObject[] = [
           // solo contrata una de las dos.
           { path: 'quotes', element: gated('trade.quotes', <QuotesPage />) },
           { path: 'assortments', element: gated('trade.assortments', <AssortmentsPage />) },
+          { path: 'planning', element: gated('planning.demand', <PlanningPage />) },
           { path: 'orders', element: gated('orders', <OrdersPage />) },
           // P09: cobros, medios y conciliacion. Gateado por la capacidad
           // `payments`: sin el addon la tienda sigue vendiendo con el pago

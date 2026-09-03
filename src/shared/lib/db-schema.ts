@@ -71,7 +71,13 @@ export const ASSORTMENTS_TABLE = 'assortments' satisfies TableName
 export const ASSORTMENT_ITEMS_TABLE = 'assortment_items' satisfies TableName
 export const ASSORTMENT_ASSIGNMENTS_TABLE = 'assortment_assignments' satisfies TableName
 
+export const ORDER_SUGGESTIONS_TABLE = 'order_suggestions' satisfies TableName
+export const ORDER_SUGGESTION_ITEMS_TABLE = 'order_suggestion_items' satisfies TableName
+export const DEMAND_FORECASTS_TABLE = 'demand_forecasts' satisfies TableName
+
 export const CUSTOMER_AGING_RPC = 'customer_aging'
+/** `ebim.suggest_order` — devuelve FILAS con su motivo; no crea nada. */
+export const SUGGEST_ORDER_RPC = 'suggest_order'
 
 // --- Capacidades y entitlements (P02-SaaS, migración 160000) ---------------
 // SIN `satisfies`: `database.types.ts` se genera contra el proyecto Supabase
