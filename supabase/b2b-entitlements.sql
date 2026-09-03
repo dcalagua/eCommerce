@@ -34,9 +34,12 @@ select 'd0000000-0000-4000-8000-000000000001'::uuid,
     ('ecommerce.invoicing'),
     ('ecommerce.trade.quotes'),
     ('ecommerce.trade.assortments'),
-    ('ecommerce.trade.promotions'),
     ('ecommerce.fulfillment.routing'),
     ('ecommerce.planning.demand')
+    -- NO va `ecommerce.trade.promotions`: la fase 16 no creo una capacidad
+    -- nueva, reutiliza `promotions`, que la sociedad ya tenia. Un entitlement
+    -- sin capacidad detras no lo lee nadie y dice que se contrato algo que no
+    -- existe, que es peor que no estar.
   ) as t(code)
 on conflict (organization_id, company_id, entitlement_code)
 do update set is_active = true, updated_at = now();
