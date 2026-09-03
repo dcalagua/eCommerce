@@ -615,6 +615,12 @@ function CampaignBlock({
         width: dense ? '100%' : { xs: '100%', sm: 300, md: 360 },
         height: dense ? 150 : { xs: 200, sm: 'auto' },
         minHeight: dense ? 150 : 240,
+        // Y su TECHO. Con el alto en `auto` y solo un mínimo, una foto vertical
+        // se pintaba a su proporción natural —360 px de ancho por lo que
+        // hiciera falta de alto— y estiraba la tarjeta hasta dejar el texto
+        // flotando en el centro de un rectángulo enorme. El comercio sube la
+        // foto que tiene; el marco lo pone la vitrina.
+        maxHeight: dense ? 150 : 320,
         // A lo ancho la foto es el producto y se ve ENTERA; en el mural es una
         // ilustración de cabecera y ahí recortar mantiene las tres tarjetas
         // iguales. Recortar el producto en la pieza grande esconde justo lo que
@@ -883,6 +889,9 @@ function RichTextBlock({ block }: { block: ContentBlock }) {
   )
 }
 
+/** Cuantas puertas de categoria caben a lo ancho sin apretarse. */
+const PUERTAS_A_LO_ANCHO = 4
+
 function CategoryCollectionBlock({
   block,
   storeSlug,
@@ -909,21 +918,52 @@ function CategoryCollectionBlock({
           color que baila en cada recarga no orienta, marea. Y no le quita el
           acento al comercio: estos seis tintes son señalización, mientras que el
           acento sigue siendo el único color de ACCIÓN. */}
-      <Box
-        sx={{
-          display: 'grid',
-          gap: { xs: 1.25, md: 2 },
-          gridTemplateColumns: {
-            xs: 'repeat(2, minmax(0, 1fr))',
-            sm: 'repeat(3, minmax(0, 1fr))',
-            md: `repeat(${Math.min(Math.max(categories.length, 2), 4)}, minmax(0, 1fr))`,
-          },
-        }}
-      >
-        {categories.map((category) => (
-          <CategoryDoor key={category.category_id} category={category} storeSlug={storeSlug} />
-        ))}
-      </Box>
+      {/* Rejilla mientras quepan, carrusel en cuanto no quepan.
+
+          No es un capricho de dos modos: con cuatro familias o menos, la
+          rejilla las enseña TODAS de una vez, y esconder tras una flecha algo
+          que cabe entero es esconderlo por nada. Pasadas las cuatro, la
+          rejilla las apretaba en filas de sobras desiguales —dos arriba y una
+          sola abajo— y ahi la fila que se desplaza es lo unico que mantiene
+          todas las puertas del mismo tamaño.
+
+          Es la misma regla que sigue `ScrollRow` con sus flechas: aparece
+          cuando hay algo a lo que ir. */}
+      {categories.length <= PUERTAS_A_LO_ANCHO ? (
+        <Box
+          sx={{
+            display: 'grid',
+            gap: { xs: 1.25, md: 2 },
+            gridTemplateColumns: {
+              xs: 'repeat(2, minmax(0, 1fr))',
+              sm: 'repeat(3, minmax(0, 1fr))',
+              md: `repeat(${Math.min(Math.max(categories.length, 2), 4)}, minmax(0, 1fr))`,
+            },
+          }}
+        >
+          {categories.map((category) => (
+            <CategoryDoor key={category.category_id} category={category} storeSlug={storeSlug} />
+          ))}
+        </Box>
+      ) : (
+        <ScrollRow gap={2} ariaLabel={block.title ?? undefined}>
+          {categories.map((category) => (
+            <Box
+              key={category.category_id}
+              sx={{
+                flex: '0 0 auto',
+                // Ancho fijo, igual que las tarjetas de producto: dejarlas
+                // crecer deja la ultima cortada de forma distinta en cada
+                // pantalla.
+                width: { xs: '68%', sm: '42%', md: 260 },
+                scrollSnapAlign: 'start',
+              }}
+            >
+              <CategoryDoor category={category} storeSlug={storeSlug} />
+            </Box>
+          ))}
+        </ScrollRow>
+      )}
     </Stack>
   )
 }
@@ -955,19 +995,25 @@ function CategoryDoor({
       component={Link}
       to={`/s/${storeSlug}?c=${encodeURIComponent(category.slug)}`}
       sx={{
+        position: 'relative',
+        overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
         gap: 1,
-        p: { xs: 1.75, md: 2.25 },
-        minHeight: { xs: 124, md: 150 },
+        p: { xs: 2, md: 2.5 },
+        minHeight: { xs: 132, md: 168 },
         borderRadius: 'var(--sf-radius)',
         textDecoration: 'none',
-        bgcolor: tinte.bg,
+        // Degradado del propio tinte en vez de un plano: una fila de rectángulos
+        // planos de color se lee como una tabla pintada, no como puertas.
+        background: `linear-gradient(150deg, ${tinte.bg} 0%, color-mix(in srgb, ${tinte.fg} 12%, ${tinte.bg}) 100%)`,
         border: `1px solid ${tinte.line}`,
         color: tinte.fg,
+        boxShadow: 'var(--sf-shadow)',
         transition: 'transform .18s ease, box-shadow .18s ease',
         '@media (hover: hover)': {
           '&:hover': { transform: 'translateY(-2px)', boxShadow: 'var(--sf-shadow-hover)' },
+          '&:hover .sf-cat-flecha': { transform: 'translateX(3px)' },
         },
         '@media (prefers-reduced-motion: reduce)': {
           transition: 'none',
@@ -975,25 +1021,45 @@ function CategoryDoor({
         },
       }}
     >
+      {/* Marca de agua: el mismo icono, enorme y casi transparente en la
+          esquina. Da cuerpo al azulejo sin meter una foto que habría que
+          mantener por categoría. */}
       <Box
         aria-hidden
         sx={{
-          width: 38,
-          height: 38,
+          position: 'absolute',
+          right: -14,
+          bottom: -18,
+          opacity: 0.16,
+          color: tinte.fg,
+          pointerEvents: 'none',
+        }}
+      >
+        <Icono sx={{ fontSize: 104 }} />
+      </Box>
+
+      <Box
+        aria-hidden
+        sx={{
+          position: 'relative',
+          width: 42,
+          height: 42,
           display: 'grid',
           placeItems: 'center',
           borderRadius: '50%',
           bgcolor: 'var(--card)',
           color: tinte.fg,
+          boxShadow: `0 6px 16px -10px ${tinte.fg}`,
         }}
       >
-        <Icono sx={{ fontSize: 21 }} />
+        <Icono sx={{ fontSize: 22 }} />
       </Box>
 
       <Typography
         sx={{
+          position: 'relative',
           mt: 'auto',
-          fontSize: { xs: 15, md: 17 },
+          fontSize: { xs: 16, md: 18 },
           fontWeight: 800,
           letterSpacing: '-0.02em',
           lineHeight: 1.25,
@@ -1002,9 +1068,34 @@ function CategoryDoor({
         {category.name}
       </Typography>
 
-      <Typography sx={{ fontSize: TS.label, fontWeight: 800, opacity: 0.85 }}>
-        {`${t('store.categories.see')} →`}
-      </Typography>
+      <Stack
+        direction="row"
+        sx={{
+          position: 'relative',
+          alignSelf: 'flex-start',
+          alignItems: 'center',
+          gap: 0.5,
+          px: 1.25,
+          py: 0.375,
+          borderRadius: 'var(--sf-pill)',
+          bgcolor: 'var(--card)',
+          fontSize: TS.label,
+          fontWeight: 800,
+        }}
+      >
+        {t('store.categories.see')}
+        <Box
+          className="sf-cat-flecha"
+          component="span"
+          aria-hidden
+          sx={{
+            transition: 'transform .18s ease',
+            '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
+          }}
+        >
+          →
+        </Box>
+      </Stack>
     </Box>
   )
 }
