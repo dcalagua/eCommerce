@@ -19,6 +19,7 @@ import { slugify } from '@/shared/lib/slug'
 import { FormDrawer } from '@/shared/ui/FormDrawer'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import { CatalogError } from './api/errors'
+import { CategoryPicker } from './CategoryPicker'
 import { ProductImagesPanel } from './ProductImagesPanel'
 import { BundlePanel } from './pim/BundlePanel'
 import { ProductAttributesPanel } from './pim/ProductAttributesPanel'
@@ -150,6 +151,10 @@ export function ProductDrawer({
   const busy = isSubmitting || save.isPending
   const kind = watch('kind')
 
+  // El árbol se arma una vez por lista de categorías, no en cada tecla del
+  // formulario: son decenas de filas y el cajón repinta con cada carácter.
+  const arbol = useMemo(() => categoryTree(categories), [categories])
+
   const tabs = useMemo(() => {
     const items: Array<{ id: string; label: string }> = [
       { id: 'general', label: t('catalog.tab.general') },
@@ -275,26 +280,19 @@ export function ProductDrawer({
             {...register('description')}
           />
 
-          <TextField
-            select
+          {/* Con RUTA y agrupado por su raíz: en una lista de cuarenta, dos
+              «Cuidado» sueltos no se distinguen, y saber de qué madre cuelga
+              cada uno es justo lo que evita clasificar mal el producto. */}
+          <CategoryPicker
             label={t('catalog.field.category')}
-            fullWidth
-            disabled={!canWrite}
+            nodes={arbol}
             value={watch('category_id')}
+            onChange={(next) => setValue('category_id', next, { shouldValidate: true })}
+            noneLabel={t('common.none')}
+            disabled={!canWrite}
             error={Boolean(errors.category_id)}
             helperText={fieldError('category_id')}
-            {...register('category_id')}
-          >
-            <MenuItem value="">{t('common.none')}</MenuItem>
-            {/* Con RUTA y con sangría: en una lista de treinta, dos «Cuidado»
-                sueltos no se distinguen, y saber de qué madre cuelga cada uno
-                es justo lo que evita clasificar mal el producto. */}
-            {categoryTree(categories).map((node) => (
-              <MenuItem key={node.category.id} value={node.category.id}>
-                <span style={{ paddingLeft: node.depth * 14 }}>{node.category.name}</span>
-              </MenuItem>
-            ))}
-          </TextField>
+          />
 
           {advanced && (
             <>

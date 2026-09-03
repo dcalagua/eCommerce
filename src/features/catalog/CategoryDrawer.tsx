@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Alert, Box, Button, FormControlLabel, MenuItem, Stack, Switch, TextField } from '@mui/material'
+import { Alert, Box, Button, FormControlLabel, Stack, Switch, TextField } from '@mui/material'
 import { useEffect, useState, type ChangeEvent } from 'react'
 import { useForm } from 'react-hook-form'
 import { slugify } from '@/shared/lib/slug'
@@ -8,6 +8,7 @@ import type { MessageKey } from '@/shared/i18n/messages'
 import { FormDrawer } from '@/shared/ui/FormDrawer'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import { CatalogError } from './api/errors'
+import { CategoryPicker } from './CategoryPicker'
 import {
   categoryDescendants,
   categoryFormSchema,
@@ -160,22 +161,15 @@ export function CategoryDrawer({
             {...register('slug', { onChange: () => setSlugEdited(true) })}
           />
 
-          <TextField
-            select
+          <CategoryPicker
             label={t('catalog.categories.parent')}
-            fullWidth
-            disabled={!canWrite}
+            nodes={parents}
             value={watch('parent_id')}
-            onChange={(event) => setValue('parent_id', event.target.value)}
+            onChange={(next) => setValue('parent_id', next)}
+            noneLabel={t('catalog.categories.parentNone')}
+            disabled={!canWrite}
             helperText={t('catalog.categories.parentHelp')}
-          >
-            <MenuItem value="">{t('catalog.categories.parentNone')}</MenuItem>
-            {parents.map((node) => (
-              <MenuItem key={node.category.id} value={node.category.id}>
-                {node.path}
-              </MenuItem>
-            ))}
-          </TextField>
+          />
 
           <FormControlLabel
             control={
