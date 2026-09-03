@@ -104,33 +104,43 @@ export function SimulatorSection() {
 
       <Card sx={{ p: 2 }}>
         <Stack spacing={1.5}>
-          <Autocomplete
-            options={search.data ?? []}
-            value={product}
-            onChange={(_, next) => {
-              setProduct(next)
-              setVariantId('')
-              setResult(null)
-            }}
-            onInputChange={(_, next) => setTerm(next)}
-            getOptionLabel={(option) => label.get(option.id) ?? option.sku}
-            isOptionEqualToValue={(option, value) => option.id === value.id}
-            loading={search.isFetching}
-            noOptionsText={t('pricing.noResults')}
-            renderInput={(params) => (
-              <TextField {...params} label={t('pricing.field.product')} size="small" />
-            )}
-          />
+          {/*
+            Tres filas, y el corte no es estético: es la pregunta del simulador
+            partida en sus tres partes —QUÉ se cotiza, PARA QUIÉN, y CUÁNTO—.
+            Antes iba todo en una: cuatro desplegables a `fullWidth` se repartían
+            el ancho contra «Cantidad», que acababa en unos 40 px con la etiqueta
+            recortada en «C…» y el botón pegado encima.
+          */}
 
+          {/* QUÉ se cotiza. La variante viaja con su producto, no suelta. */}
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+            <Autocomplete
+              sx={{ flex: 1, minWidth: 0 }}
+              options={search.data ?? []}
+              value={product}
+              onChange={(_, next) => {
+                setProduct(next)
+                setVariantId('')
+                setResult(null)
+              }}
+              onInputChange={(_, next) => setTerm(next)}
+              getOptionLabel={(option) => label.get(option.id) ?? option.sku}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              loading={search.isFetching}
+              noOptionsText={t('pricing.noResults')}
+              renderInput={(params) => (
+                <TextField {...params} label={t('pricing.field.product')} size="small" />
+              )}
+            />
+
             <TextField
               select
               size="small"
-              fullWidth
               label={t('pricing.field.variant')}
               value={variantId}
               disabled={(variants.data ?? []).length === 0}
               onChange={(event) => setVariantId(event.target.value)}
+              sx={{ width: { xs: '100%', sm: 260 }, flexShrink: 0 }}
             >
               <MenuItem value="">{t('pricing.field.noVariant')}</MenuItem>
               {(variants.data ?? []).map((variant) => (
@@ -139,7 +149,10 @@ export function SimulatorSection() {
                 </MenuItem>
               ))}
             </TextField>
+          </Stack>
 
+          {/* PARA QUIÉN se cotiza: los tres ejes con los que el motor decide. */}
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
             <TextField
               select
               size="small"
@@ -191,13 +204,21 @@ export function SimulatorSection() {
                 </MenuItem>
               ))}
             </TextField>
+          </Stack>
 
+          {/* CUÁNTO, y la pregunta. `flexShrink: 0` y ancho fijo: «Cantidad» es
+              un número de tres cifras y no tiene por qué competir con nada. */}
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1.5}
+            sx={{ alignItems: { sm: 'center' } }}
+          >
             <TextField
               size="small"
               label={t('pricing.field.quantity')}
               value={quantity}
               onChange={(event) => setQuantity(event.target.value)}
-              sx={{ maxWidth: { sm: 140 } }}
+              sx={{ width: { xs: '100%', sm: 120 }, flexShrink: 0 }}
             />
 
             <Button variant="contained" onClick={() => void simulate()} disabled={run.isPending}>
