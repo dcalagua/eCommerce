@@ -4,6 +4,7 @@ import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded'
 import MonitorHeartRoundedIcon from '@mui/icons-material/MonitorHeartRounded'
 import HubRoundedIcon from '@mui/icons-material/HubRounded'
 import HealthAndSafetyRoundedIcon from '@mui/icons-material/HealthAndSafetyRounded'
+import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded'
 import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded'
 import ArticleRoundedIcon from '@mui/icons-material/ArticleRounded'
 import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
@@ -85,6 +86,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'nav.customers',
     icon: <PeopleAltRoundedIcon fontSize="small" />,
     capability: 'customers',
+  },
+  {
+    to: '/app/sales',
+    label: 'nav.sales',
+    icon: <BadgeRoundedIcon fontSize="small" />,
+    capability: 'sales.force',
   },
   {
     to: '/app/orders',

@@ -73,7 +73,8 @@ describe('rutas base', () => {
     // anade Analitica y Operacion, y P14-SaaS anade Integraciones: panel,
     // analitica, productos, categorias, clientes, contenido, entregas,
     // integraciones, inventario, operacion, PIM, pagos, precios, pedidos,
-    // promociones, configuracion y diagnostico.
+    // promociones, configuracion y diagnostico. El recorrido B2B anade
+    // Fuerza de ventas.
     expect(paths(admin?.children ?? [], '/app').sort()).toEqual([
       '/app',
       '/app/analytics',
@@ -91,6 +92,7 @@ describe('rutas base', () => {
       '/app/pricing',
       '/app/products',
       '/app/promotions',
+      '/app/sales',
       '/app/settings',
     ])
     // P06 anade la confirmacion, P05-SaaS el area de cuenta del comprador B2B,

@@ -45,6 +45,34 @@ export const ORDER_EVENTS_TABLE = 'order_status_events' satisfies TableName
 export const CURRENCIES_TABLE = 'currencies' satisfies TableName
 export const TAX_CATEGORIES_TABLE = 'tax_categories' satisfies TableName
 
+// --- Recorrido B2B: la operacion comercial (migraciones 20260902100000+) -----
+// `satisfies TableName` en todas: si una migracion se renombra o no se aplica,
+// el typecheck se pone rojo aqui y no en la primera consulta en produccion.
+export const SALES_REPS_TABLE = 'sales_reps' satisfies TableName
+export const SALES_REP_CUSTOMERS_TABLE = 'sales_rep_customers' satisfies TableName
+export const SALES_TERRITORIES_TABLE = 'sales_territories' satisfies TableName
+export const SALES_REP_TERRITORIES_TABLE = 'sales_rep_territories' satisfies TableName
+export const SALES_ROUTES_TABLE = 'sales_routes' satisfies TableName
+export const SALES_ROUTE_STOPS_TABLE = 'sales_route_stops' satisfies TableName
+export const SALES_VISITS_TABLE = 'sales_visits' satisfies TableName
+export const SALES_GOALS_TABLE = 'sales_goals' satisfies TableName
+export const COMMISSION_RULES_TABLE = 'commission_rules' satisfies TableName
+export const COMMISSION_STATEMENTS_TABLE = 'commission_statements' satisfies TableName
+
+export const AR_DOCUMENTS_TABLE = 'ar_documents' satisfies TableName
+export const AR_RECEIPTS_TABLE = 'ar_receipts' satisfies TableName
+export const AR_APPLICATIONS_TABLE = 'ar_applications' satisfies TableName
+export const INVOICES_TABLE = 'invoices' satisfies TableName
+export const INVOICE_ITEMS_TABLE = 'invoice_items' satisfies TableName
+
+export const QUOTES_TABLE = 'quotes' satisfies TableName
+export const QUOTE_ITEMS_TABLE = 'quote_items' satisfies TableName
+export const ASSORTMENTS_TABLE = 'assortments' satisfies TableName
+export const ASSORTMENT_ITEMS_TABLE = 'assortment_items' satisfies TableName
+export const ASSORTMENT_ASSIGNMENTS_TABLE = 'assortment_assignments' satisfies TableName
+
+export const CUSTOMER_AGING_RPC = 'customer_aging'
+
 // --- Capacidades y entitlements (P02-SaaS, migración 160000) ---------------
 // SIN `satisfies`: `database.types.ts` se genera contra el proyecto Supabase
 // ENLAZADO y la migración 160000 todavía no está aplicada allí (esta fase no

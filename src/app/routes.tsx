@@ -53,6 +53,9 @@ const InventoryPage = lazyPage(() =>
 const CustomersPage = lazyPage(() =>
   import('@/features/customers/CustomersPage').then((m) => ({ default: m.CustomersPage })),
 )
+const SalesPage = lazyPage(() =>
+  import('@/features/sales/SalesPage').then((m) => ({ default: m.SalesPage })),
+)
 const OrdersPage = lazyPage(() =>
   import('@/features/orders/OrdersPage').then((m) => ({ default: m.OrdersPage })),
 )
@@ -168,6 +171,7 @@ export const routes: RouteObject[] = [
           // contratado necesita saber a quién le vendió. Lo vendible es la
           // CUENTA B2B, y su pestaña se gatea dentro de la pantalla.
           { path: 'customers', element: gated('customers', <CustomersPage />) },
+          { path: 'sales', element: gated('sales.force', <SalesPage />) },
           { path: 'orders', element: gated('orders', <OrdersPage />) },
           // P09: cobros, medios y conciliacion. Gateado por la capacidad
           // `payments`: sin el addon la tienda sigue vendiendo con el pago
