@@ -160,7 +160,14 @@ export function LoopingRow<T>({
 
   function alBajar(evento: ReactPointerEvent<HTMLDivElement>) {
     const nodo = pista.current
-    if (!nodo || evento.pointerType !== 'mouse') return
+    if (!nodo) return
+
+    // El recorrido se pone a cero para CUALQUIER puntero, tambien el que sale
+    // por la puerta de al lado. Si no, un arrastre de raton dejaba el contador
+    // alto y el siguiente toque con el dedo se lo comia la guarda de abajo.
+    arrastre.current.recorrido = 0
+    if (evento.pointerType !== 'mouse') return
+
     arrastre.current = {
       activo: true,
       desdeX: evento.clientX,
@@ -168,7 +175,13 @@ export function LoopingRow<T>({
       recorrido: 0,
     }
     setArrastrando(true)
-    nodo.setPointerCapture(evento.pointerId)
+    // OJO: aqui NO se captura el puntero. Con la captura puesta, el navegador
+    // dirige el `click` al elemento que capturo —esta pista— en vez de al que
+    // esta debajo, asi que el enlace de dentro no lo recibia NUNCA y con raton
+    // no se podia entrar a ninguna categoria, marca ni producto de estas filas.
+    // Con el dedo si funcionaba, porque el tactil sale antes por el filtro de
+    // arriba: eso es lo que hacia que el fallo pareciera cosa del navegador.
+    // Se captura al empezar el arrastre de verdad, en `alMover`.
   }
 
   function alMover(evento: ReactPointerEvent<HTMLDivElement>) {
@@ -178,6 +191,13 @@ export function LoopingRow<T>({
 
     const desplazado = evento.clientX - estado.desdeX
     estado.recorrido = Math.max(estado.recorrido, Math.abs(desplazado))
+
+    // Ahora si: pasado el umbral esto ya es un arrastre y no un clic, asi que
+    // conviene retener el puntero aunque se salga de la fila. Antes de este
+    // punto no se captura, para no robarle el `click` al enlace de debajo.
+    if (estado.recorrido > UMBRAL_ARRASTRE_PX && !nodo.hasPointerCapture(evento.pointerId)) {
+      nodo.setPointerCapture(evento.pointerId)
+    }
 
     const mitad = nodo.scrollWidth / 2
     let siguiente = estado.desdeScroll - desplazado
