@@ -83,7 +83,8 @@ AS $function$
   auto_root_categories as (
     select 'category'::public.content_item_kind as item_kind,
            null::uuid as product_id, null::uuid as variant_id, pc.category_id,
-           row_number() over (order by pc.position, pc.name)::int as position
+           row_number() over (order by pc.position, pc.name)::int as position,
+           null::text as media_url, null::text as media_alt, null::text as href
     from public.public_categories pc
     where p_block.category_id is null
       and p_block.block_type = 'category_collection'
