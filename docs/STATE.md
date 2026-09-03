@@ -25,7 +25,31 @@ el maestro comercial; el P00-SaaS fue el análisis de plataforma.
   - Informe de fase: `claude_b2b_upgrade/.claude-b2b-state/phase-reports/00_ANALISIS_GAP.md`.
   - Línea base de gates al iniciar el recorrido: `typecheck`, `lint`, `build` y `test`
     (**133 archivos, 2735 tests**) **todos en verde**. No hay deuda previa.
-- **Siguiente: P00-B2B — Maestro Comercial** (extiende `customers`, no crea dominio nuevo).
+- **Fases 01–16 (backend) — TERMINADAS** el 2026-09-02. 13 migraciones aplicadas a DEV, 35 tablas
+  nuevas con RLS *default deny*, 10 capacidades y 4 fronteras (`sales`, `credit`, `trade`,
+  `planning`). Auditoría en [`docs/B2B_FINAL_AUDIT.md`](B2B_FINAL_AUDIT.md).
+- **Pantallas del recorrido B2B — TERMINADAS** el 2026-09-02. Ocho módulos de backoffice sobre ese
+  backend, cada uno con su verificación y su commit:
+
+  | Pantalla | Ruta | Capacidad |
+  |---|---|---|
+  | Fuerza de ventas | `/app/sales` · pestaña *Vendedores* | `sales.force` |
+  | Territorios y rutas | `/app/sales` · pestañas *Territorios* y *Rutas* | `sales.territory` |
+  | Visitas | `/app/sales` · pestaña *Visitas* | `sales.performance` |
+  | Metas y comisiones | `/app/sales` · pestaña *Metas y comisiones* | `sales.performance` |
+  | Cobranza y comprobantes | `/app/credit` | `credit.management` + `invoicing` |
+  | Cotizaciones | `/app/quotes` | `trade.quotes` |
+  | Surtidos | `/app/assortments` | `trade.assortments` |
+  | Reparto y evidencia | `/app/fulfillment` · pestaña *Reparto* | `fulfillment.routing` |
+  | Sugerido y previsión | `/app/planning` | `planning.demand` |
+
+  Cada pestaña lleva **su propio gate**, no el de la ruta: son addons que se contratan por separado.
+  Gates al cerrar: `typecheck`, `lint`, `build` y `test` (**149 archivos, 2878 tests**) en verde.
+- **Deuda declarada, no resuelta** (viene de la auditoría de backend, y las pantallas no la tapan):
+  D2 el gancho de bloqueo por mora, D3 la emisión del comprobante hacia el outbox —la pestaña de
+  comprobantes lo dice en pantalla— y D5 el ejecutor de programaciones.
+- **Sin push.** Los commits del recorrido son locales: `git push` no puede autenticarse desde este
+  shell («Cannot prompt because user interactivity has been disabled»).
 
 ## Recuperación de la ejecución interrumpida (2026-08-30)
 
