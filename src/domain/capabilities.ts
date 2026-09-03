@@ -95,6 +95,16 @@ export type CapabilityState = 'implemented' | 'partial' | 'declared'
 
 export interface Capability {
   readonly id: CapabilityId
+  /**
+   * Nombre en castellano, para las pantallas.
+   *
+   * El `id` NO se traduce: es la clave que empareja con `entitlement_code`
+   * en el hub y con la frontera del codigo. Ensenarlo como unico nombre
+   * obligaba a leer ingles tecnico para saber que es cada modulo, asi que
+   * ahora manda este y el `id` queda debajo, en pequeno, para quien tenga que
+   * cruzarlo con el catalogo de addons.
+   */
+  readonly name: string
   /** Frontera de `boundaries.ts` que la implementa. */
   readonly boundary: BoundaryId
   /** `null` = baseline: viene con el producto y no se vende aparte. */
@@ -118,6 +128,7 @@ export const ENTITLEMENT_PREFIX = 'ecommerce.'
 export const CAPABILITIES: readonly Capability[] = [
   {
     id: 'catalog',
+    name: 'Catálogo',
     boundary: 'catalog',
     entitlement: null,
     state: 'implemented',
@@ -125,6 +136,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'storefront',
+    name: 'Tienda pública',
     boundary: 'content',
     entitlement: null,
     state: 'implemented',
@@ -132,6 +144,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'checkout',
+    name: 'Compra y pago',
     boundary: 'checkout',
     entitlement: null,
     state: 'implemented',
@@ -139,6 +152,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'orders',
+    name: 'Pedidos',
     boundary: 'orders',
     entitlement: null,
     // BASELINE, y sigue siéndolo tras P08-SaaS. Los cuatro ejes de estado, la
@@ -158,6 +172,7 @@ export const CAPABILITIES: readonly Capability[] = [
     // que el operador pueda dar de alta el addon en el hub sin esperar al
     // código; el ADR 008 escribe el disparador de cada una de las tres.
     id: 'orders.advanced',
+    name: 'Pedidos avanzados',
     boundary: 'orders',
     entitlement: `${ENTITLEMENT_PREFIX}orders.advanced`,
     // Recorrido B2B, fase 05: deja de estar `declared`. Lo que la llena no es
@@ -169,6 +184,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'analytics.basic',
+    name: 'Indicadores básicos',
     boundary: 'analytics',
     entitlement: null,
     state: 'implemented',
@@ -176,6 +192,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'customers',
+    name: 'Clientes',
     boundary: 'customers',
     // BASELINE (P05-SaaS). Guardar a quién le vendiste viene con el producto:
     // cobrar aparte por poder anotar el correo del comprador no sería un
@@ -187,6 +204,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'catalog.advanced',
+    name: 'Catálogo avanzado',
     boundary: 'catalog',
     entitlement: `${ENTITLEMENT_PREFIX}catalog.advanced`,
     // La primera vendible que deja de ser `declared` (P03-SaaS): tiene esquema,
@@ -197,6 +215,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'pricing.lists',
+    name: 'Listas de precios',
     boundary: 'pricing',
     entitlement: `${ENTITLEMENT_PREFIX}pricing.lists`,
     // La segunda vendible que deja de ser `declared` (P04-SaaS): tiene esquema,
@@ -208,6 +227,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'customers.b2b',
+    name: 'Cuentas de empresa',
     boundary: 'customers',
     entitlement: `${ENTITLEMENT_PREFIX}customers.b2b`,
     // La tercera vendible que deja de ser `declared` (P05-SaaS): cuentas con
@@ -219,6 +239,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'inventory.multiwarehouse',
+    name: 'Inventario multialmacén',
     boundary: 'inventory',
     entitlement: `${ENTITLEMENT_PREFIX}inventory.multiwarehouse`,
     // La cuarta vendible que deja de ser `declared` (P06-SaaS): almacenes,
@@ -231,6 +252,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'payments',
+    name: 'Cobros en línea',
     boundary: 'payments',
     entitlement: `${ENTITLEMENT_PREFIX}payments`,
     // P09-SaaS: el dominio existe entero —intento, intentos de llamada, cobro,
@@ -242,6 +264,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'promotions',
+    name: 'Promociones',
     boundary: 'promotions',
     entitlement: `${ENTITLEMENT_PREFIX}promotions`,
     state: 'implemented',
@@ -250,6 +273,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'sales.force',
+    name: 'Fuerza de ventas',
     boundary: 'sales',
     entitlement: `${ENTITLEMENT_PREFIX}sales.force`,
     // Recorrido B2B, fase 02. La primera pieza de la operación comercial de
@@ -264,6 +288,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'sales.territory',
+    name: 'Territorios de venta',
     boundary: 'sales',
     entitlement: `${ENTITLEMENT_PREFIX}sales.territory`,
     // Fase 03. El territorio es COMERCIAL y por eso es una tabla propia:
@@ -275,6 +300,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'credit.management',
+    name: 'Gestión de crédito',
     boundary: 'credit',
     entitlement: `${ENTITLEMENT_PREFIX}credit.management`,
     // Fase 04. El saldo lo mantiene la base con un trigger y no quien inserta:
@@ -287,6 +313,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'trade.quotes',
+    name: 'Cotizaciones',
     boundary: 'trade',
     entitlement: `${ENTITLEMENT_PREFIX}trade.quotes`,
     // Fase 06. Guarda lo que el motor de precios devolvio, con su fecha; no
@@ -298,6 +325,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'trade.assortments',
+    name: 'Surtidos por cliente',
     boundary: 'trade',
     entitlement: `${ENTITLEMENT_PREFIX}trade.assortments`,
     // Fase 08. Calca `price_list_assignments`, que resuelve el mismo problema
@@ -309,6 +337,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'fulfillment.routing',
+    name: 'Enrutado de entregas',
     boundary: 'fulfillment',
     entitlement: `${ENTITLEMENT_PREFIX}fulfillment.routing`,
     // Fases 10 y 11. Extiende el despacho que ya existe: la parada apunta al
@@ -320,6 +349,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'sales.performance',
+    name: 'Desempeño comercial',
     boundary: 'sales',
     entitlement: `${ENTITLEMENT_PREFIX}sales.performance`,
     // Fases 12 y 13. La liquidacion pagada es INMUTABLE: es dinero de terceros,
@@ -332,6 +362,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'planning.demand',
+    name: 'Planificación de demanda',
     boundary: 'planning',
     entitlement: `${ENTITLEMENT_PREFIX}planning.demand`,
     // Fases 14 y 15. La sugerencia devuelve filas con su motivo y no crea
@@ -343,6 +374,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'invoicing',
+    name: 'Facturación',
     boundary: 'credit',
     entitlement: `${ENTITLEMENT_PREFIX}invoicing`,
     // Fase 07. Implementa el puerto `InvoicingProvider`, que ya estaba escrito
@@ -355,6 +387,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'content.cms',
+    name: 'Gestor de contenido',
     boundary: 'content',
     entitlement: `${ENTITLEMENT_PREFIX}content.cms`,
     // La sexta vendible que deja de ser `declared` (P11-SaaS): páginas, bloques
@@ -368,6 +401,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'content.white_label',
+    name: 'Marca blanca',
     boundary: 'content',
     entitlement: `${ENTITLEMENT_PREFIX}content.white_label`,
     // Estaba `implemented` desde P02 con un solo interruptor (`white_label`).
@@ -381,6 +415,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'fulfillment',
+    name: 'Entregas y devoluciones',
     boundary: 'fulfillment',
     entitlement: `${ENTITLEMENT_PREFIX}fulfillment`,
     // La séptima vendible que deja de ser `declared` (P12-SaaS). Sin ella el
@@ -395,6 +430,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'analytics.advanced',
+    name: 'Analítica avanzada',
     boundary: 'analytics',
     entitlement: `${ENTITLEMENT_PREFIX}analytics.advanced`,
     // La séptima vendible que deja de ser `declared` (P13-SaaS): embudo de los
@@ -414,6 +450,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'integrations.enterprise',
+    name: 'Integraciones corporativas',
     boundary: 'integrations',
     entitlement: `${ENTITLEMENT_PREFIX}integrations.enterprise`,
     // P14-SaaS. Deja de ser `partial`: hasta aquí existía el transporte —outbox,

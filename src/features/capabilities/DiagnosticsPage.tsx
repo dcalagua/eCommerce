@@ -189,7 +189,15 @@ function CapabilitiesSection({ context }: { context: PlatformContext }) {
                 return (
                   <TableRow key={item.id}>
                     <TableCell>
-                      <Typography component="code" sx={{ fontSize: 12, fontWeight: 700 }}>
+                      {/* Manda el nombre en castellano; el `id` va debajo y en
+                          pequeño porque sigue haciendo falta —es la clave que se
+                          cruza con el catálogo de addons del hub—, pero leerlo no
+                          puede ser el precio de entender la fila. */}
+                      <Typography sx={{ fontSize: 13, fontWeight: 700 }}>{item.name}</Typography>
+                      <Typography
+                        component="code"
+                        sx={{ display: 'block', fontSize: 11, color: 'var(--muted)' }}
+                      >
                         {item.id}
                       </Typography>
                       <Typography sx={{ color: 'var(--muted)', fontSize: 12 }}>
@@ -224,7 +232,7 @@ function CapabilitiesSection({ context }: { context: PlatformContext }) {
                           size="small"
                           checked={context.flags[item.id] !== false}
                           disabled={!canManage || !contracted || toggle.isPending}
-                          inputProps={{ 'aria-label': `${t('diagnostics.table.flag')} ${item.id}` }}
+                          inputProps={{ 'aria-label': `${t('diagnostics.table.flag')} ${item.name}` }}
                           onChange={(event) =>
                             toggle.mutate({ flagKey: item.id, enabled: event.target.checked })
                           }
