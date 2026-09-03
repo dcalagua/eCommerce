@@ -121,7 +121,7 @@ type QueryResult = { data: Row[] | null; error: { message: string } | null; coun
 
 type Mutation =
   | { kind: 'select' }
-  | { kind: 'insert'; payload: Row }
+  | { kind: 'insert'; payload: Row | Row[] }
   | { kind: 'upsert'; payload: Row; onConflict: string[] }
   | { kind: 'update'; patch: Row }
   | { kind: 'delete' }
@@ -168,7 +168,12 @@ class FakeQuery implements PromiseLike<QueryResult> {
     return this
   }
 
-  insert(payload: Row): this {
+  /**
+   * `insert` de una fila o de un LOTE. El lote no es un lujo: la aplicación de
+   * un cobro inserta todas sus imputaciones de una vez, y tratar el array como
+   * una sola fila daba por buena una escritura que en Postgres son varias.
+   */
+  insert(payload: Row | Row[]): this {
     this.mutation = { kind: 'insert', payload }
     return this
   }
@@ -243,6 +248,21 @@ class FakeQuery implements PromiseLike<QueryResult> {
   }
 
   /**
+   * `gt`: lo usa cobranza para quedarse con lo que de verdad falta por cobrar
+   * (`balance > 0`). Compara NUMERICAMENTE cuando el umbral es un numero,
+   * porque el importe viaja como texto y `'1000.00' > 0` en cadenas no
+   * significa nada; un filtro que no filtra daria por buena una pestaña «solo
+   * pendiente» que enseña tambien lo ya pagado.
+   */
+  gt(column: string, value: string | number): this {
+    this.rows =
+      typeof value === 'number'
+        ? this.rows.filter((row) => Number(row[column] ?? 0) > value)
+        : this.rows.filter((row) => String(row[column] ?? '') > value)
+    return this
+  }
+
+  /**
    * `or=` de PostgREST, en la forma que usa la app: `col.ilike.%texto%`
    * separado por comas. Se implementa de verdad (y no como un no-op) porque el
    * buscador de la vitrina es una de las cosas que estos tests comprueban; un
@@ -306,9 +326,12 @@ class FakeQuery implements PromiseLike<QueryResult> {
     const table = this.state.tables[this.table] ?? (this.state.tables[this.table] = [])
 
     if (this.mutation.kind === 'insert') {
-      const row = { id: fakeId(), ...this.mutation.payload }
-      table.push(row)
-      this.rows = [row]
+      const payloads = Array.isArray(this.mutation.payload)
+        ? this.mutation.payload
+        : [this.mutation.payload]
+      const nuevas = payloads.map((payload) => ({ id: fakeId(), ...payload }))
+      table.push(...nuevas)
+      this.rows = nuevas
     } else if (this.mutation.kind === 'upsert') {
       const { payload, onConflict } = this.mutation
       const existing = table.find((row) =>

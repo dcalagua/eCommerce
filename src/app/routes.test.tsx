@@ -74,12 +74,13 @@ describe('rutas base', () => {
     // analitica, productos, categorias, clientes, contenido, entregas,
     // integraciones, inventario, operacion, PIM, pagos, precios, pedidos,
     // promociones, configuracion y diagnostico. El recorrido B2B anade
-    // Fuerza de ventas.
+    // Fuerza de ventas y Cobranza.
     expect(paths(admin?.children ?? [], '/app').sort()).toEqual([
       '/app',
       '/app/analytics',
       '/app/categories',
       '/app/content',
+      '/app/credit',
       '/app/customers',
       '/app/diagnostics',
       '/app/fulfillment',

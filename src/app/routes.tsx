@@ -56,6 +56,9 @@ const CustomersPage = lazyPage(() =>
 const SalesPage = lazyPage(() =>
   import('@/features/sales/SalesPage').then((m) => ({ default: m.SalesPage })),
 )
+const CreditPage = lazyPage(() =>
+  import('@/features/credit/CreditPage').then((m) => ({ default: m.CreditPage })),
+)
 const OrdersPage = lazyPage(() =>
   import('@/features/orders/OrdersPage').then((m) => ({ default: m.OrdersPage })),
 )
@@ -172,6 +175,11 @@ export const routes: RouteObject[] = [
           // CUENTA B2B, y su pestaña se gatea dentro de la pantalla.
           { path: 'customers', element: gated('customers', <CustomersPage />) },
           { path: 'sales', element: gated('sales.force', <SalesPage />) },
+          // La cobranza va gateada por `credit.management`; la pestaña de
+          // comprobantes lleva su propio gate sobre `invoicing` dentro de la
+          // pantalla, porque son dos addons distintos: se puede llevar la
+          // cuenta de lo que se debe sin emitir comprobante electrónico.
+          { path: 'credit', element: gated('credit.management', <CreditPage />) },
           { path: 'orders', element: gated('orders', <OrdersPage />) },
           // P09: cobros, medios y conciliacion. Gateado por la capacidad
           // `payments`: sin el addon la tienda sigue vendiendo con el pago

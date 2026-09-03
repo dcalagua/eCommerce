@@ -1,3 +1,4 @@
+import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded'
 import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded'
 import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
 import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded'
@@ -92,6 +93,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'nav.sales',
     icon: <BadgeRoundedIcon fontSize="small" />,
     capability: 'sales.force',
+  },
+  {
+    to: '/app/credit',
+    label: 'nav.credit',
+    icon: <AccountBalanceRoundedIcon fontSize="small" />,
+    capability: 'credit.management',
   },
   {
     to: '/app/orders',
