@@ -67,10 +67,48 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         flexDirection: 'column',
       }}
     >
-      <Box sx={{ px: 0.5, mb: 3 }}>
+      {/* La marca no se mueve: es el ancla de la que cuelga todo lo demas. */}
+      <Box sx={{ px: 0.5, mb: 3, flexShrink: 0 }}>
         <BrandLockup variant="white" size={30} />
       </Box>
-      <Stack spacing={0.5}>
+
+      {/*
+        La LISTA es la que hace scroll, no el panel entero.
+
+        `minHeight: 0` no es decoracion: un hijo de un contenedor flex se niega
+        por defecto a encogerse por debajo del alto de su contenido, asi que sin
+        el, `overflowY` no llega a activarse nunca y la lista simplemente se sale
+        por abajo. Es lo que pasaba al llegar a diecinueve modulos: «Configuracion»
+        quedaba cortada contra el borde y no habia forma de alcanzarla.
+
+        `overscrollBehavior: contain` evita que al llegar al final del menu el
+        gesto siga y arrastre la pagina de detras.
+      */}
+      <Stack
+        spacing={0.5}
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          overscrollBehavior: 'contain',
+          // El anillo de foco y el borde del activo no se recortan contra el
+          // area de scroll.
+          mx: -0.5,
+          px: 0.5,
+          py: 0.25,
+          // Barra discreta sobre el verde: visible cuando hace falta, sin
+          // meter un carril gris del navegador en medio de la marca.
+          scrollbarWidth: 'thin',
+          scrollbarColor: 'rgba(255,255,255,.28) transparent',
+          '&::-webkit-scrollbar': { width: 6 },
+          '&::-webkit-scrollbar-track': { background: 'transparent' },
+          '&::-webkit-scrollbar-thumb': {
+            background: 'rgba(255,255,255,.24)',
+            borderRadius: 3,
+          },
+          '&:hover::-webkit-scrollbar-thumb': { background: 'rgba(255,255,255,.36)' },
+        }}
+      >
         {items.map((item) => (
           <NavLink
             key={item.to}
@@ -103,7 +141,10 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       {/* El nombre del espacio, siempre visible: con un usuario que administra
           más de una cuenta, saber en cuál estás no es un adorno (gmao-038). */}
       {tenant && (
-        <Box sx={{ mt: 'auto', pt: 3, px: 0.5 }}>
+        // Ya no necesita `mt: auto`: la lista se queda con el hueco libre y esto
+        // se apoya en el borde de abajo. Y `flexShrink: 0` para que no lo
+        // aplaste una lista larga, que es justo lo que hacia antes.
+        <Box sx={{ pt: 2.5, px: 0.5, flexShrink: 0 }}>
           <Typography
             sx={{
               fontSize: 10.5,
