@@ -16,14 +16,14 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useCustomerOptions } from '@/features/customers/hooks'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
+import { EntityPicker, type PickerOption } from '@/shared/ui/EntityPicker'
 import { FieldRow, FormDrawer } from '@/shared/ui/FormDrawer'
 import { RowActions } from '@/shared/ui/RowActions'
-import { SearchField } from '@/shared/ui/SearchField'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import type { SalesScope } from './api'
 import { SalesError } from './errors'
@@ -89,6 +89,11 @@ export function RouteDrawer({
     term: customerSearch,
     enabled: open && customerSearch.trim().length >= 2,
   })
+
+  const opcionesCliente = useMemo<PickerOption[]>(
+    () => (customers.data ?? []).map((c) => ({ id: c.id, primary: c.name, secondary: c.code })),
+    [customers.data],
+  )
 
   const {
     control,
@@ -386,41 +391,17 @@ export function RouteDrawer({
 
               {canWrite && (
                 <Stack spacing={1.5} sx={{ mt: 2 }}>
-                  <SearchField
-                    value={customerSearch}
-                    onChange={setCustomerSearch}
+                  <EntityPicker
+                    label={t('sales.field.customerName')}
                     placeholder={t('sales.routes.searchCustomer')}
-                    ariaLabel={t('sales.routes.searchCustomer')}
+                    term={customerSearch}
+                    onTermChange={setCustomerSearch}
+                    options={opcionesCliente}
+                    loading={customers.isFetching}
+                    alreadyIn={yaEstan}
+                    clearOnPick
+                    onPick={(option) => void añadirParada(option.id)}
                   />
-                  <Stack spacing={0.5}>
-                    {(customers.data ?? []).map((option) => (
-                      <Stack
-                        key={option.id}
-                        direction="row"
-                        spacing={1}
-                        alignItems="center"
-                        justifyContent="space-between"
-                      >
-                        <Box sx={{ minWidth: 0 }}>
-                          <Typography noWrap sx={{ fontWeight: 700, fontSize: 13 }}>
-                            {option.name}
-                          </Typography>
-                          <Typography sx={{ fontSize: 11, color: 'var(--muted)' }}>
-                            {option.code}
-                          </Typography>
-                        </Box>
-                        <Button
-                          size="small"
-                          disabled={yaEstan.has(option.id) || addStop.isPending}
-                          onClick={() => void añadirParada(option.id)}
-                        >
-                          {yaEstan.has(option.id)
-                            ? t('sales.portfolio.already')
-                            : t('sales.portfolio.add')}
-                        </Button>
-                      </Stack>
-                    ))}
-                  </Stack>
                 </Stack>
               )}
             </Box>

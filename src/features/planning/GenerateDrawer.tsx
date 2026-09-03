@@ -12,12 +12,12 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useCustomerOptions } from '@/features/customers/hooks'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
+import { EntityPicker, type PickerOption } from '@/shared/ui/EntityPicker'
 import { FormDrawer } from '@/shared/ui/FormDrawer'
-import { SearchField } from '@/shared/ui/SearchField'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import type { PlanningScope } from './api'
 import { PlanningError } from './errors'
@@ -55,8 +55,9 @@ export function GenerateDrawer({
   const { notify } = useFeedback()
   const [serverError, setServerError] = useState<MessageKey | null>(null)
   const [customerSearch, setCustomerSearch] = useState('')
-  const [customerId, setCustomerId] = useState('')
-  const [customerName, setCustomerName] = useState('')
+  // El cliente elegido se guarda ENTERO, no solo su id: el desplegable tiene
+  // que seguir enseñando su nombre aunque la siguiente búsqueda ya no lo traiga.
+  const [elegido, setElegido] = useState<PickerOption | null>(null)
   const [days, setDays] = useState('30')
   const [lineas, setLineas] = useState<SuggestedLine[] | null>(null)
 
@@ -68,23 +69,27 @@ export function GenerateDrawer({
     enabled: open && customerSearch.trim().length >= 2,
   })
 
+  const opciones = useMemo<PickerOption[]>(
+    () => (customers.data ?? []).map((c) => ({ id: c.id, primary: c.name, secondary: c.code })),
+    [customers.data],
+  )
+
   useEffect(() => {
     if (!open) return
     setCustomerSearch('')
-    setCustomerId('')
-    setCustomerName('')
+    setElegido(null)
     setDays('30')
     setLineas(null)
     setServerError(null)
   }, [open])
 
   async function calcular() {
-    if (!scope || !customerId) return
+    if (!scope || !elegido) return
     setServerError(null)
     try {
       const filas = await preview.mutateAsync({
         storeId: scope.storeId,
-        customerId,
+        customerId: elegido.id,
         days: Number(days),
       })
       setLineas(filas)
@@ -94,10 +99,10 @@ export function GenerateDrawer({
   }
 
   async function guardar() {
-    if (!scope || !customerId || !lineas) return
+    if (!scope || !elegido || !lineas) return
     setServerError(null)
     try {
-      await save.mutateAsync({ scope, customerId, lines: lineas })
+      await save.mutateAsync({ scope, customerId: elegido.id, lines: lineas })
       notify(t('planning.toast.saved'), 'success')
       onClose()
     } catch (error) {
@@ -133,50 +138,21 @@ export function GenerateDrawer({
       <Stack spacing={2.5}>
         {serverError && <Alert severity="error">{t(serverError)}</Alert>}
 
-        <Stack spacing={1}>
-          <SearchField
-            value={customerSearch}
-            onChange={setCustomerSearch}
-            placeholder={t('planning.generate.searchCustomer')}
-            ariaLabel={t('planning.generate.searchCustomer')}
-          />
-          <Stack spacing={0.5}>
-            {(customers.data ?? []).map((option) => (
-              <Stack
-                key={option.id}
-                direction="row"
-                spacing={1}
-                alignItems="center"
-                justifyContent="space-between"
-              >
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography noWrap sx={{ fontWeight: 700, fontSize: 13 }}>
-                    {option.name}
-                  </Typography>
-                  <Typography sx={{ fontSize: 11, color: 'var(--muted)' }}>
-                    {option.code}
-                  </Typography>
-                </Box>
-                <Button
-                  size="small"
-                  variant={customerId === option.id ? 'contained' : 'text'}
-                  onClick={() => {
-                    setCustomerId(option.id)
-                    setCustomerName(option.name)
-                    // Cambiar de cliente invalida lo calculado: enseñar las
-                    // líneas del anterior junto al nombre del nuevo sería una
-                    // pantalla que miente.
-                    setLineas(null)
-                  }}
-                >
-                  {customerId === option.id
-                    ? t('trade.quotes.chosen')
-                    : t('trade.quotes.choose')}
-                </Button>
-              </Stack>
-            ))}
-          </Stack>
-        </Stack>
+        <EntityPicker
+          label={t('planning.field.customer')}
+          placeholder={t('planning.generate.searchCustomer')}
+          term={customerSearch}
+          onTermChange={setCustomerSearch}
+          options={opciones}
+          loading={customers.isFetching}
+          value={elegido}
+          onPick={(option) => {
+            setElegido(option)
+            // Cambiar de cliente invalida lo calculado: enseñar las líneas del
+            // anterior junto al nombre del nuevo sería una pantalla que miente.
+            setLineas(null)
+          }}
+        />
 
         <Stack direction="row" spacing={1.5} alignItems="flex-start">
           <TextField
@@ -200,19 +176,13 @@ export function GenerateDrawer({
 
           <Button
             variant="outlined"
-            disabled={!customerId || preview.isPending}
+            disabled={!elegido || preview.isPending}
             onClick={() => void calcular()}
             sx={{ mt: 1 }}
           >
             {preview.isPending ? t('planning.generate.calculating') : t('planning.generate.calculate')}
           </Button>
         </Stack>
-
-        {customerId !== '' && (
-          <Typography sx={{ color: 'var(--muted)', fontSize: 13 }}>
-            {`${t('planning.field.customer')}: ${customerName}`}
-          </Typography>
-        )}
 
         {lineas !== null && lineas.length === 0 && (
           <Alert severity="info">{t('planning.generate.nothing')}</Alert>

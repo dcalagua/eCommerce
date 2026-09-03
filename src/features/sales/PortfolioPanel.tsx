@@ -2,8 +2,6 @@ import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded'
 import {
   Alert,
-  Box,
-  Button,
   Stack,
   Switch,
   FormControlLabel,
@@ -14,12 +12,12 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useCustomerOptions } from '@/features/customers/hooks'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
+import { EntityPicker, type PickerOption } from '@/shared/ui/EntityPicker'
 import { RowActions } from '@/shared/ui/RowActions'
-import { SearchField } from '@/shared/ui/SearchField'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import { TableSkeleton } from '@/shared/ui/TableSkeleton'
 import { useFeedback } from '@/shared/ui/feedback-context'
@@ -65,6 +63,11 @@ export function PortfolioPanel({
   const remove = useRemoveFromPortfolio()
 
   const options = useCustomerOptions({ term: search, enabled: search.trim().length >= 2 })
+
+  const opciones = useMemo<PickerOption[]>(
+    () => (options.data ?? []).map((c) => ({ id: c.id, primary: c.name, secondary: c.code })),
+    [options.data],
+  )
 
   const rows = portfolio.data ?? []
   const yaEstan = new Set(rows.map((row) => row.customer_id))
@@ -153,11 +156,16 @@ export function PortfolioPanel({
 
       {canWrite && (
         <Stack spacing={1.5}>
-          <SearchField
-            value={search}
-            onChange={setSearch}
+          <EntityPicker
+            label={t('sales.field.customerName')}
             placeholder={t('sales.portfolio.search')}
-            ariaLabel={t('sales.portfolio.search')}
+            term={search}
+            onTermChange={setSearch}
+            options={opciones}
+            loading={options.isFetching}
+            alreadyIn={yaEstan}
+            clearOnPick
+            onPick={(option) => void añadir(option.id)}
           />
 
           <FormControlLabel
@@ -166,36 +174,6 @@ export function PortfolioPanel({
             }
             label={t('sales.portfolio.asPrimary')}
           />
-
-          {(options.data ?? []).length > 0 && (
-            <Stack spacing={0.5}>
-              {(options.data ?? []).map((option) => (
-                <Stack
-                  key={option.id}
-                  direction="row"
-                  spacing={1}
-                  alignItems="center"
-                  justifyContent="space-between"
-                >
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography noWrap sx={{ fontWeight: 700, fontSize: 13 }}>
-                      {option.name}
-                    </Typography>
-                    <Typography sx={{ fontSize: 11, color: 'var(--muted)' }}>
-                      {option.code}
-                    </Typography>
-                  </Box>
-                  <Button
-                    size="small"
-                    disabled={yaEstan.has(option.id) || assign.isPending}
-                    onClick={() => void añadir(option.id)}
-                  >
-                    {yaEstan.has(option.id) ? t('sales.portfolio.already') : t('sales.portfolio.add')}
-                  </Button>
-                </Stack>
-              ))}
-            </Stack>
-          )}
         </Stack>
       )}
     </Stack>

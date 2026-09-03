@@ -1,12 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Alert, Box, Button, MenuItem, Stack, TextField, Typography } from '@mui/material'
-import { useEffect, useState } from 'react'
+import { Alert, Box, Button, MenuItem, Stack, TextField } from '@mui/material'
+import { useEffect, useMemo, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useCustomerOptions } from '@/features/customers/hooks'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
+import { EntityPicker, type PickerOption } from '@/shared/ui/EntityPicker'
 import { FieldRow, FormDrawer } from '@/shared/ui/FormDrawer'
-import { SearchField } from '@/shared/ui/SearchField'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import type { SalesScope } from './api'
 import { SalesError } from './errors'
@@ -36,6 +36,9 @@ export function VisitDrawer({
   const { notify } = useFeedback()
   const [serverError, setServerError] = useState<MessageKey | null>(null)
   const [customerSearch, setCustomerSearch] = useState('')
+  // El cliente elegido se guarda ENTERO, no solo su id: el desplegable tiene
+  // que seguir enseñando su nombre aunque la siguiente búsqueda ya no lo traiga.
+  const [elegido, setElegido] = useState<PickerOption | null>(null)
 
   const reps = useSalesReps()
   const routes = useRoutes()
@@ -46,12 +49,16 @@ export function VisitDrawer({
     enabled: open && customerSearch.trim().length >= 2,
   })
 
+  const opcionesCliente = useMemo<PickerOption[]>(
+    () => (customers.data ?? []).map((c) => ({ id: c.id, primary: c.name, secondary: c.code })),
+    [customers.data],
+  )
+
   const {
     control,
     register,
     handleSubmit,
     reset,
-    watch,
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<VisitFormValues>({
@@ -63,10 +70,9 @@ export function VisitDrawer({
     if (!open) return
     reset(emptyVisitForm())
     setCustomerSearch('')
+    setElegido(null)
     setServerError(null)
   }, [open, reset])
-
-  const customerId = watch('customer_id')
 
   async function submit(values: VisitFormValues) {
     if (!scope) return
@@ -176,49 +182,25 @@ export function VisitDrawer({
           />
 
           <Box>
+            {/* El id viaja en un campo oculto: el formulario lo valida como un
+                campo más, y el desplegable solo decide cuál se escribe. */}
             <input type="hidden" {...register('customer_id')} />
-            <Stack spacing={1}>
-              <SearchField
-                value={customerSearch}
-                onChange={setCustomerSearch}
-                placeholder={t('sales.routes.searchCustomer')}
-                ariaLabel={t('sales.routes.searchCustomer')}
-              />
-              {errors.customer_id && (
-                <Typography sx={{ color: 'var(--red)', fontSize: 12 }}>
-                  {t(errors.customer_id.message as MessageKey)}
-                </Typography>
-              )}
-              <Stack spacing={0.5}>
-                {(customers.data ?? []).map((option) => (
-                  <Stack
-                    key={option.id}
-                    direction="row"
-                    spacing={1}
-                    alignItems="center"
-                    justifyContent="space-between"
-                  >
-                    <Box sx={{ minWidth: 0 }}>
-                      <Typography noWrap sx={{ fontWeight: 700, fontSize: 13 }}>
-                        {option.name}
-                      </Typography>
-                      <Typography sx={{ fontSize: 11, color: 'var(--muted)' }}>
-                        {option.code}
-                      </Typography>
-                    </Box>
-                    <Button
-                      size="small"
-                      variant={customerId === option.id ? 'contained' : 'text'}
-                      onClick={() => setValue('customer_id', option.id, { shouldValidate: true })}
-                    >
-                      {customerId === option.id
-                        ? t('trade.quotes.chosen')
-                        : t('trade.quotes.choose')}
-                    </Button>
-                  </Stack>
-                ))}
-              </Stack>
-            </Stack>
+            <EntityPicker
+              label={t('sales.field.customerName')}
+              term={customerSearch}
+              onTermChange={setCustomerSearch}
+              options={opcionesCliente}
+              loading={customers.isFetching}
+              value={elegido}
+              onPick={(option) => {
+                setElegido(option)
+                setValue('customer_id', option.id, { shouldValidate: true })
+              }}
+              error={Boolean(errors.customer_id)}
+              helperText={
+                errors.customer_id ? t(errors.customer_id.message as MessageKey) : undefined
+              }
+            />
           </Box>
 
           <TextField

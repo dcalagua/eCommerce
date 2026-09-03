@@ -3,7 +3,6 @@ import {
   Box,
   Button,
   FormControlLabel,
-  MenuItem,
   Stack,
   Switch,
   Tab,
@@ -11,12 +10,12 @@ import {
   TextField,
 } from '@mui/material'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
+import { EntityPicker, type PickerOption } from '@/shared/ui/EntityPicker'
 import { FormDrawer } from '@/shared/ui/FormDrawer'
-import { SearchField } from '@/shared/ui/SearchField'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import { ApprovalRulesPanel } from './ApprovalRulesPanel'
 import { AccountUsersPanel } from './AccountUsersPanel'
@@ -62,6 +61,9 @@ export function BusinessAccountDrawer({
   const [serverError, setServerError] = useState<MessageKey | null>(null)
   const [customerSearch, setCustomerSearch] = useState('')
   const [customerId, setCustomerId] = useState('')
+  // El elegido se guarda entero: el desplegable tiene que seguir enseñando su
+  // nombre aunque la siguiente búsqueda ya no lo traiga.
+  const [clienteElegido, setClienteElegido] = useState<PickerOption | null>(null)
 
   const save = useSaveBusinessAccount()
   const customers = useCustomerOptions({
@@ -69,6 +71,11 @@ export function BusinessAccountDrawer({
     kind: 'company',
     enabled: open && !account,
   })
+
+  const opcionesCliente = useMemo<PickerOption[]>(
+    () => (customers.data ?? []).map((c) => ({ id: c.id, primary: c.name, secondary: c.code })),
+    [customers.data],
+  )
 
   const {
     register,
@@ -164,36 +171,29 @@ export function BusinessAccountDrawer({
             <Stack spacing={2.5}>
               {serverError && <Alert severity="error">{t(serverError)}</Alert>}
 
+              {/* Un solo control donde antes había dos: se escribía en el
+                  buscador y se elegía en un desplegable de al lado, que es
+                  pedir dos gestos para una sola decisión. */}
               {!account && (
-                <Stack spacing={1}>
-                  <SearchField
-                    value={customerSearch}
-                    onChange={setCustomerSearch}
-                    placeholder={t('customers.accounts.findCustomer')}
-                  />
-                  <TextField
-                    select
-                    label={t('customers.field.customer')}
-                    fullWidth
-                    disabled={!canWrite}
-                    value={customerId}
-                    onChange={(event) => {
-                      setCustomerId(event.target.value)
-                      const picked = (customers.data ?? []).find((c) => c.id === event.target.value)
-                      if (picked) {
-                        setValue('name', picked.name)
-                        setValue('code', toCustomerCode(picked.code))
-                      }
-                    }}
-                    helperText={t('customers.field.customerHint')}
-                  >
-                    {(customers.data ?? []).map((customer) => (
-                      <MenuItem key={customer.id} value={customer.id}>
-                        {customer.code} · {customer.name}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Stack>
+                <EntityPicker
+                  label={t('customers.field.customer')}
+                  placeholder={t('customers.accounts.findCustomer')}
+                  term={customerSearch}
+                  onTermChange={setCustomerSearch}
+                  options={opcionesCliente}
+                  loading={customers.isFetching}
+                  value={clienteElegido}
+                  disabled={!canWrite}
+                  helperText={t('customers.field.customerHint')}
+                  onPick={(option) => {
+                    setClienteElegido(option)
+                    setCustomerId(option.id)
+                    // La cuenta hereda nombre y código del cliente: se rellenan
+                    // al elegir para no teclear dos veces lo mismo.
+                    setValue('name', option.primary)
+                    setValue('code', toCustomerCode(option.secondary ?? ''))
+                  }}
+                />
               )}
 
               <TextField

@@ -202,8 +202,10 @@ describe('generar un sugerido', () => {
     await user.click(screen.getByRole('button', { name: 'Generar sugerido' }))
     await screen.findByText('Primero se ve, después se guarda.')
 
-    await user.type(screen.getByRole('searchbox'), 'Bodega')
-    await user.click(await screen.findByRole('button', { name: 'Elegir' }))
+    // El buscador es un autocompletado: se escribe y se elige del desplegable,
+    // que es un `option`. Antes volcaba los 28 clientes dentro del cajón.
+    await user.type(screen.getByRole('combobox', { name: /Cliente/ }), 'Bodega')
+    await user.click(await screen.findByRole('option', { name: /Bodega Central/ }))
     await user.click(screen.getByRole('button', { name: 'Calcular' }))
 
     // La propuesta está a la vista con su motivo…

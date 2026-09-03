@@ -13,15 +13,15 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useCustomerOptions } from '@/features/customers/hooks'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { formatMoney } from '@/shared/lib/format'
+import { EntityPicker, type PickerOption } from '@/shared/ui/EntityPicker'
 import { FieldRow, FormDrawer } from '@/shared/ui/FormDrawer'
 import { RowActions } from '@/shared/ui/RowActions'
-import { SearchField } from '@/shared/ui/SearchField'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import type { TradeScope } from './api'
@@ -88,6 +88,11 @@ export function QuoteDrawer({
   const [serverError, setServerError] = useState<MessageKey | null>(null)
   const [customerSearch, setCustomerSearch] = useState('')
   const [productSearch, setProductSearch] = useState('')
+  // Cliente y producto elegidos se guardan ENTEROS, no solo su id: el
+  // desplegable tiene que seguir enseñando su nombre aunque la siguiente
+  // búsqueda ya no lo traiga.
+  const [clienteElegido, setClienteElegido] = useState<PickerOption | null>(null)
+  const [productoElegido, setProductoElegido] = useState<PickerOption | null>(null)
   const [cantidad, setCantidad] = useState('1')
   const [precio, setPrecio] = useState('')
 
@@ -109,11 +114,19 @@ export function QuoteDrawer({
     productSearch,
   )
 
+  const opcionesCliente = useMemo<PickerOption[]>(
+    () => (customers.data ?? []).map((c) => ({ id: c.id, primary: c.name, secondary: c.code })),
+    [customers.data],
+  )
+  const opcionesProducto = useMemo<PickerOption[]>(
+    () => (products.data ?? []).map((p) => ({ id: p.id, primary: p.name, secondary: p.sku })),
+    [products.data],
+  )
+
   const {
     register,
     handleSubmit,
     reset,
-    watch,
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<QuoteFormValues>({
@@ -137,12 +150,13 @@ export function QuoteDrawer({
     )
     setCustomerSearch('')
     setProductSearch('')
+    setClienteElegido(null)
+    setProductoElegido(null)
     setCantidad('1')
     setPrecio('')
     setServerError(null)
   }, [open, quote, currency, reset])
 
-  const customerId = watch('customer_id')
   const lineas = items.data ?? []
 
   async function submit(values: QuoteFormValues) {
@@ -181,6 +195,7 @@ export function QuoteDrawer({
         position: lineas.length,
       })
       setProductSearch('')
+      setProductoElegido(null)
       setCantidad('1')
       setPrecio('')
     } catch (error) {
@@ -297,50 +312,23 @@ export function QuoteDrawer({
                   slotProps={{ inputLabel: { shrink: true } }}
                 />
               ) : (
-                <Stack spacing={1}>
-                  <SearchField
-                    value={customerSearch}
-                    onChange={setCustomerSearch}
-                    placeholder={t('trade.quotes.searchCustomer')}
-                    ariaLabel={t('trade.quotes.searchCustomer')}
-                  />
-                  {errors.customer_id && (
-                    <Typography sx={{ color: 'var(--red)', fontSize: 12 }}>
-                      {t(errors.customer_id.message as MessageKey)}
-                    </Typography>
-                  )}
-                  <Stack spacing={0.5}>
-                    {(customers.data ?? []).map((option) => (
-                      <Stack
-                        key={option.id}
-                        direction="row"
-                        spacing={1}
-                        alignItems="center"
-                        justifyContent="space-between"
-                      >
-                        <Box sx={{ minWidth: 0 }}>
-                          <Typography noWrap sx={{ fontWeight: 700, fontSize: 13 }}>
-                            {option.name}
-                          </Typography>
-                          <Typography sx={{ fontSize: 11, color: 'var(--muted)' }}>
-                            {option.code}
-                          </Typography>
-                        </Box>
-                        <Button
-                          size="small"
-                          variant={customerId === option.id ? 'contained' : 'text'}
-                          onClick={() =>
-                            setValue('customer_id', option.id, { shouldValidate: true })
-                          }
-                        >
-                          {customerId === option.id
-                            ? t('trade.quotes.chosen')
-                            : t('trade.quotes.choose')}
-                        </Button>
-                      </Stack>
-                    ))}
-                  </Stack>
-                </Stack>
+                <EntityPicker
+                  label={t('trade.field.customer')}
+                  placeholder={t('trade.quotes.searchCustomer')}
+                  term={customerSearch}
+                  onTermChange={setCustomerSearch}
+                  options={opcionesCliente}
+                  loading={customers.isFetching}
+                  value={clienteElegido}
+                  onPick={(option) => {
+                    setClienteElegido(option)
+                    setValue('customer_id', option.id, { shouldValidate: true })
+                  }}
+                  error={Boolean(errors.customer_id)}
+                  helperText={
+                    errors.customer_id ? t(errors.customer_id.message as MessageKey) : undefined
+                  }
+                />
               )}
           </Box>
 
@@ -454,45 +442,34 @@ export function QuoteDrawer({
                     {/* El buscador se queda con lo que sobre: es el campo que
                         de verdad necesita ancho para leer nombres largos. */}
                     <Box sx={{ flex: 1, minWidth: 0, width: '100%' }}>
-                      <SearchField
-                        value={productSearch}
-                        onChange={setProductSearch}
+                      <EntityPicker
+                        label={t('trade.field.product')}
                         placeholder={t('trade.quotes.searchProduct')}
-                        ariaLabel={t('trade.quotes.searchProduct')}
+                        term={productSearch}
+                        onTermChange={setProductSearch}
+                        options={opcionesProducto}
+                        loading={products.isFetching}
+                        value={productoElegido}
+                        onPick={setProductoElegido}
                       />
                     </Box>
+                    <Button
+                      variant="outlined"
+                      // El botón se apaga hasta que haya producto y hasta que
+                      // cantidad y precio valgan: añadir una línea sin precio
+                      // crearía un renglón a cero que alguien tendría que
+                      // descubrir leyendo el total.
+                      disabled={
+                        !productoElegido || !cantidadValida || !precioValido || addItem.isPending
+                      }
+                      onClick={() => {
+                        if (productoElegido) void añadirLinea(productoElegido.id)
+                      }}
+                      sx={{ flexShrink: 0 }}
+                    >
+                      {t('trade.quotes.addToQuote')}
+                    </Button>
                   </FieldRow>
-
-                  <Stack spacing={0.5}>
-                    {(products.data ?? []).map((option) => (
-                      <Stack
-                        key={option.id}
-                        direction="row"
-                        spacing={1}
-                        alignItems="center"
-                        justifyContent="space-between"
-                      >
-                        <Box sx={{ minWidth: 0 }}>
-                          <Typography noWrap sx={{ fontWeight: 700, fontSize: 13 }}>
-                            {option.name}
-                          </Typography>
-                          <Typography sx={{ fontSize: 11, color: 'var(--muted)' }}>
-                            {option.sku}
-                          </Typography>
-                        </Box>
-                        <Button
-                          size="small"
-                          // El botón se apaga hasta que cantidad y precio valgan:
-                          // añadir una línea sin precio crearía un renglón a cero
-                          // que alguien tendría que descubrir leyendo el total.
-                          disabled={!cantidadValida || !precioValido || addItem.isPending}
-                          onClick={() => void añadirLinea(option.id)}
-                        >
-                          {t('trade.quotes.addToQuote')}
-                        </Button>
-                      </Stack>
-                    ))}
-                  </Stack>
                 </Stack>
               )}
 

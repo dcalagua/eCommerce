@@ -16,12 +16,12 @@ import {
   Typography,
 } from '@mui/material'
 import { Controller, useForm } from 'react-hook-form'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
+import { EntityPicker, type PickerOption } from '@/shared/ui/EntityPicker'
 import { FieldRow, FormDrawer } from '@/shared/ui/FormDrawer'
 import { RowActions } from '@/shared/ui/RowActions'
-import { SearchField } from '@/shared/ui/SearchField'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import type { TradeScope } from './api'
 import { TradeError } from './errors'
@@ -76,6 +76,11 @@ export function AssortmentDrawer({
   const products = useTradeProductSearch(
     open && productSearch.trim().length >= 2 ? (scope?.storeId ?? null) : null,
     productSearch,
+  )
+
+  const opcionesProducto = useMemo<PickerOption[]>(
+    () => (products.data ?? []).map((p) => ({ id: p.id, primary: p.name, secondary: p.sku })),
+    [products.data],
   )
 
   const {
@@ -278,41 +283,17 @@ export function AssortmentDrawer({
 
               {canWrite && (
                 <Stack spacing={1.5} sx={{ mt: 2 }}>
-                  <SearchField
-                    value={productSearch}
-                    onChange={setProductSearch}
+                  <EntityPicker
+                    label={t('trade.field.product')}
                     placeholder={t('trade.assortments.searchProduct')}
-                    ariaLabel={t('trade.assortments.searchProduct')}
+                    term={productSearch}
+                    onTermChange={setProductSearch}
+                    options={opcionesProducto}
+                    loading={products.isFetching}
+                    alreadyIn={yaEstan}
+                    clearOnPick
+                    onPick={(option) => void añadir(option.id)}
                   />
-                  <Stack spacing={0.5}>
-                    {(products.data ?? []).map((option) => (
-                      <Stack
-                        key={option.id}
-                        direction="row"
-                        spacing={1}
-                        alignItems="center"
-                        justifyContent="space-between"
-                      >
-                        <Box sx={{ minWidth: 0 }}>
-                          <Typography noWrap sx={{ fontWeight: 700, fontSize: 13 }}>
-                            {option.name}
-                          </Typography>
-                          <Typography sx={{ fontSize: 11, color: 'var(--muted)' }}>
-                            {option.sku}
-                          </Typography>
-                        </Box>
-                        <Button
-                          size="small"
-                          disabled={yaEstan.has(option.id) || addItem.isPending}
-                          onClick={() => void añadir(option.id)}
-                        >
-                          {yaEstan.has(option.id)
-                            ? t('trade.assortments.already')
-                            : t('trade.assortments.addItem')}
-                        </Button>
-                      </Stack>
-                    ))}
-                  </Stack>
                 </Stack>
               )}
             </Box>
