@@ -4,7 +4,7 @@ import { useI18n } from '@/shared/i18n/i18n-context'
 import { TS } from '@/theme/tokens'
 import { initials } from '../branding'
 import { tintFor } from '../tint'
-import { ScrollRow } from './ScrollRow'
+import { LoopingRow } from './LoopingRow'
 import { SectionHeading } from './SectionHeading'
 
 export interface BrandOption {
@@ -46,10 +46,25 @@ export function BrandRow({
       // Destino del enlace «Marcas». `scroll-margin` por la cabecera pegajosa.
       id="marcas"
       aria-label={t('store.brands.title')}
-      sx={{ gap: 1, scrollMarginTop: 96 }}
+      sx={{
+        gap: 1.25,
+        scrollMarginTop: 96,
+        // La mitad de abajo de la portada se habia quedado en «listas sueltas
+        // sobre blanco» mientras la de arriba ya tenia bandas con fondo. Un
+        // panel tenido —el mismo tinte flojo que usan las secciones del CMS—
+        // le da a las marcas el peso que de verdad tienen: en una botica se
+        // entra por marca tanto como por familia.
+        p: { xs: 1.75, md: 2.5 },
+        borderRadius: 'var(--sf-radius)',
+        border: '1px solid var(--sf-line)',
+        background:
+          'linear-gradient(180deg, color-mix(in srgb, var(--accent2) 8%, transparent) 0%, transparent 100%)',
+      }}
     >
       <SectionHeading
         title={t('store.brands.title')}
+        eyebrow={t('store.brands.eyebrow')}
+        subtitle={t('store.brands.subtitle')}
         action={
           seeAllHref ? (
             <Button
@@ -72,14 +87,22 @@ export function BrandRow({
         }
       />
 
-      <ScrollRow ariaLabel={t('store.brands.title')} gap={1}>
-        {brands.map((brand) => {
+      {/* Gira sola, como las puertas de categoria. Un catalogo con cuarenta
+          laboratorios enseñaba seis y las otras treinta y cuatro solo existian
+          para quien se molestara en empujar la fila. */}
+      <LoopingRow
+        items={brands}
+        keyOf={(brand) => brand.code}
+        itemWidth={190}
+        gap={1}
+        ariaLabel={t('store.brands.title')}
+        render={(brand, duplicada) => {
           const activa = selected === brand.code
           const tinte = tintFor(brand.name)
           return (
             <Box
-              key={brand.code}
               component="button"
+              {...(duplicada ? { tabIndex: -1 } : {})}
               type="button"
               aria-pressed={activa}
               onClick={() => onSelect(activa ? null : brand.code)}
@@ -92,7 +115,9 @@ export function BrandRow({
                 gap: 1.25,
                 px: 1.5,
                 py: 1.25,
-                width: 190,
+                // El ancho lo fija el hueco de `LoopingRow`, del que depende
+                // la mitad exacta que hace el bucle.
+                width: '100%',
                 borderRadius: 'var(--sf-radius)',
                 // Elegida: manda el acento del comercio, que es el color de lo
                 // que esta ACTIVO. Sin elegir: su propio tinte, para que la
@@ -173,8 +198,8 @@ export function BrandRow({
               </Box>
             </Box>
           )
-        })}
-      </ScrollRow>
+        }}
+      />
     </Stack>
   )
 }

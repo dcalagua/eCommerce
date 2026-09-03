@@ -40,12 +40,19 @@ export function PromoCarousel({
   const { t } = useI18n()
   const [actual, setActual] = useState(0)
   const [parado, setParado] = useState(false)
+  // Hacia donde va, para que la lamina entre por el lado del que viene. Una
+  // transicion que siempre entra por la derecha contradice a «anterior»: se
+  // pulsa para volver y el movimiento dice que se avanza.
+  const [sentido, setSentido] = useState(1)
   const contenedor = useRef<HTMLDivElement | null>(null)
 
   const total = promotions.length
   const ir = useCallback(
-    (indice: number) => setActual(((indice % total) + total) % total),
-    [total],
+    (indice: number) => {
+      setSentido(indice < actual ? -1 : 1)
+      setActual(((indice % total) + total) % total)
+    },
+    [total, actual],
   )
 
   useEffect(() => {
@@ -53,7 +60,10 @@ export function PromoCarousel({
     if (total <= 1 || parado) return
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
 
-    const id = window.setInterval(() => setActual((i) => (i + 1) % total), INTERVALO_MS)
+    const id = window.setInterval(() => {
+      setSentido(1)
+      setActual((i) => (i + 1) % total)
+    }, INTERVALO_MS)
     return () => window.clearInterval(id)
   }, [total, parado])
 
@@ -115,14 +125,37 @@ export function PromoCarousel({
         }
       />
 
-      <Box sx={{ position: 'relative' }}>
+      {/* Los fotogramas viven aquí, no en la lámina: son dos nombres fijos y
+          no una animación distinta por render. */}
+      <Box
+        sx={{
+          position: 'relative',
+          '@keyframes sfPromoDesdeDerecha': {
+            from: { opacity: 0, transform: 'translateX(28px)' },
+            to: { opacity: 1, transform: 'translateX(0)' },
+          },
+          '@keyframes sfPromoDesdeIzquierda': {
+            from: { opacity: 0, transform: 'translateX(-28px)' },
+            to: { opacity: 1, transform: 'translateX(0)' },
+          },
+        }}
+      >
         {promotions.map((item, indice) => (
           <Box
             key={item.id}
             aria-hidden={indice === actual ? undefined : true}
             sx={
               indice === actual
-                ? {}
+                ? {
+                    // La lámina que entra ES la que acaba de recibir esta
+                    // clase, y por eso la animación se dispara sola: el
+                    // elemento no la tenía en el render anterior. Sin cambiar
+                    // de elemento no habría transición que ver.
+                    animation: `${
+                      sentido < 0 ? 'sfPromoDesdeIzquierda' : 'sfPromoDesdeDerecha'
+                    } .42s cubic-bezier(.22,.61,.36,1) both`,
+                    '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+                  }
                 : // Fuera de la vista pero en el DOM: así el alto no salta al
                   // pasar de una lámina corta a una larga.
                   { position: 'absolute', inset: 0, visibility: 'hidden', pointerEvents: 'none' }
@@ -198,78 +231,151 @@ function PromoSlide({
         p: 0,
         overflow: 'hidden',
         display: 'flex',
-        flexDirection: 'column',
         borderRadius: 'var(--sf-radius)',
         border: '1px solid var(--sf-line)',
         boxShadow: 'var(--sf-shadow)',
         bgcolor: 'var(--card)',
       }}
     >
-      <Box
-        aria-hidden
-        sx={{
-          height: 4,
-          background:
-            'linear-gradient(90deg, var(--accent-deep) 0%, color-mix(in srgb, var(--accent) 55%, transparent) 100%)',
-        }}
-      />
-
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
-        sx={{ gap: 2.5, p: { xs: 2.25, md: 3 }, alignItems: { xs: 'flex-start', sm: 'center' } }}
+        sx={{ width: '100%', alignItems: 'stretch', minWidth: 0 }}
       >
-        {/* La foto de la campaña, cuando la tiene.
-            Una oferta sin imagen es un cartel de texto: se lee, no se mira, y
-            en una portada llena de fotos de producto pierde siempre. Va
-            primero porque es lo que para el ojo; el medallón sigue detrás para
-            quien ya se paró y quiere el dato. */}
-        {promo.imageUrl ? (
-          <Box
-            component="img"
-            src={promo.imageUrl}
-            alt=""
-            aria-hidden
-            loading="lazy"
-            decoding="async"
-            sx={{
-              width: { xs: '100%', sm: 132 },
-              height: { xs: 140, sm: 96 },
-              flexShrink: 0,
-              objectFit: 'contain',
-              borderRadius: 'var(--sf-radius-sm)',
-              bgcolor: 'var(--sf-media-bg)',
-              p: 0.5,
-            }}
-          />
-        ) : null}
+        {/* La CARA de la oferta, a sangre y recortando.
+            Antes era una miniatura de 132×96 con `contain` sobre un gris: la
+            foto salía con dos franjas vacías a los lados y el resto de la
+            tarjeta era un descampado blanco entre el medallón, el texto y un
+            botón pegado al borde derecho. Una oferta que ocupa el ancho de la
+            página y no enseña nada en 200 px no se mira.
+
+            `cover` y no `contain` porque esto NO es la foto de un producto —ahí
+            recortar borra el envase, y por eso la ficha usa `contain`—: es la
+            imagen de una campaña, y de una campaña lo que se quiere es que
+            llene. */}
         <Box
-          aria-hidden
           sx={{
-            minWidth: 64,
-            height: 64,
-            px: badge ? 1.5 : 0,
-            display: 'grid',
-            placeItems: 'center',
+            position: 'relative',
             flexShrink: 0,
-            borderRadius: 'var(--sf-radius-sm)',
-            bgcolor: 'color-mix(in srgb, var(--accent) 16%, var(--card))',
-            border: '1px solid color-mix(in srgb, var(--accent) 32%, transparent)',
-            color: 'var(--accent-deep)',
+            overflow: 'hidden',
+            width: { xs: '100%', sm: 236, md: 268 },
+            // Alto FIJO, no mínimo.
+            //
+            // Con `minHeight` la caja no tenía altura definida, así que el
+            // `height: 100%` de la foto se resolvía a `auto` y la imagen se
+            // pintaba a su proporción natural: una foto vertical estiraba la
+            // tarjeta a 340 px y el texto se quedaba flotando en el centro de
+            // un rectángulo enorme. El marco lo pone la tarjeta y la foto se
+            // recorta dentro, que es justo para lo que está el `cover`.
+            height: { xs: 168, sm: 184 },
+            bgcolor: 'var(--sf-media-bg)',
           }}
         >
-          {badge ? (
-            <Typography sx={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.03em', whiteSpace: 'nowrap' }}>
-              {badge}
-            </Typography>
+          {promo.imageUrl ? (
+            <Box
+              component="img"
+              src={promo.imageUrl}
+              alt=""
+              aria-hidden
+              loading="lazy"
+              decoding="async"
+              sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
           ) : (
-            <LocalOfferRoundedIcon sx={{ fontSize: 28 }} />
+            // Sin foto no se deja el hueco: el medallón se hace grande y ocupa
+            // ese sitio. Una campaña sin imagen tiene que seguir pareciendo una
+            // tarjeta y no una tarjeta rota.
+            <Stack
+              aria-hidden
+              sx={{
+                height: '100%',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 0.5,
+                color: 'var(--accent-deep)',
+                background:
+                  'linear-gradient(150deg, color-mix(in srgb, var(--accent) 16%, var(--card)) 0%, color-mix(in srgb, var(--accent2) 12%, var(--card)) 100%)',
+              }}
+            >
+              <LocalOfferRoundedIcon sx={{ fontSize: 40, opacity: 0.6 }} />
+              {badge ? (
+                <Typography sx={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.03em' }}>
+                  {badge}
+                </Typography>
+              ) : null}
+            </Stack>
           )}
+
+          {/* El cuánto, SOBRE la foto y no en una casilla aparte.
+              Es el mismo distintivo que llevan las tarjetas de producto
+              rebajado: el comprador ya sabe leerlo, y colocarlo encima de la
+              imagen ahorra la tercera columna que dejaba el hueco del medio. */}
+          {promo.imageUrl && badge ? (
+            <Box
+              sx={{
+                position: 'absolute',
+                left: 12,
+                bottom: 12,
+                px: 1.5,
+                py: 0.5,
+                borderRadius: 'var(--sf-pill)',
+                bgcolor: 'var(--accent-deep)',
+                color: '#FFFFFF',
+                fontSize: 20,
+                fontWeight: 900,
+                letterSpacing: '-0.02em',
+                lineHeight: 1.2,
+                boxShadow: 'var(--sf-shadow-hover)',
+              }}
+            >
+              {badge}
+            </Box>
+          ) : null}
         </Box>
 
-        <Stack sx={{ gap: 0.75, flex: 1, minWidth: 0 }}>
+        <Stack
+          sx={{
+            flex: 1,
+            minWidth: 0,
+            gap: 0.75,
+            p: { xs: 2, md: 2.75 },
+            justifyContent: 'center',
+          }}
+        >
+          {/* Hasta cuándo, ARRIBA y en versalitas.
+              Es lo que decide si se entra ahora o luego, y abajo entre dos
+              líneas grises no lo leía nadie. En rojo del acento solo cuando
+              queda poco: si urge siempre, no urge nunca. */}
+          {vigencia ? (
+            <Typography
+              sx={{
+                fontSize: TS.label,
+                fontWeight: 800,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                color: vigencia.urgente ? 'var(--accent-deep)' : 'var(--muted)',
+              }}
+            >
+              {vigencia.texto}
+            </Typography>
+          ) : null}
+
+          {/* Dos líneas como mucho, igual que la descripción: el comercio
+              escribe el nombre de la campaña y uno largo —«Semana Mamá y Bebé:
+              20 % en fórmulas infantiles»— estiraba la tarjeta y, con ella, el
+              alto del carrusel entero. Lo que no cabe en dos líneas no es un
+              titular, es un párrafo. */}
           <Typography
             component="h3"
-            sx={{ fontSize: { xs: 21, md: 24 }, fontWeight: 800, letterSpacing: '-0.02em' }}
+            sx={{
+              fontSize: { xs: 20, md: 25 },
+              fontWeight: 800,
+              letterSpacing: '-0.025em',
+              lineHeight: 1.15,
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}
           >
             {promo.name}
           </Typography>
@@ -279,7 +385,7 @@ function PromoSlide({
               sx={{
                 fontSize: TS.body,
                 color: 'var(--muted)',
-                maxWidth: '58ch',
+                maxWidth: '62ch',
                 display: '-webkit-box',
                 WebkitLineClamp: 2,
                 WebkitBoxOrient: 'vertical',
@@ -290,29 +396,33 @@ function PromoSlide({
             </Typography>
           ) : null}
 
-          <Stack direction="row" sx={{ gap: 0.75, alignItems: 'center', flexWrap: 'wrap' }}>
-            {vigencia ? (
-              <Typography
-                sx={{
-                  fontSize: TS.label,
-                  fontWeight: 800,
-                  color: vigencia.urgente ? 'var(--accent-deep)' : 'var(--muted)',
-                  ...(vigencia.urgente
-                    ? {
-                        px: 1,
-                        py: 0.25,
-                        borderRadius: 'var(--sf-pill)',
-                        bgcolor: 'color-mix(in srgb, var(--accent) 14%, transparent)',
-                      }
-                    : {}),
-                }}
-              >
-                {vigencia.texto}
-              </Typography>
-            ) : null}
+          {/* El botón DEBAJO del texto y no al final de la fila: pegado al
+              borde derecho quedaba a media pantalla de lo que lo justifica, y
+              entre medias no había nada. */}
+          <Stack
+            direction="row"
+            sx={{ gap: 1.5, alignItems: 'center', flexWrap: 'wrap', mt: 0.75 }}
+          >
+            <Button
+              component={Link}
+              to={destino}
+              variant="contained"
+              sx={{
+                flexShrink: 0,
+                fontWeight: 700,
+                textTransform: 'none',
+                borderRadius: 'var(--sf-pill)',
+                px: 2.5,
+                py: 1,
+                boxShadow: 'none',
+                '&:hover': { boxShadow: 'none' },
+              }}
+            >
+              {t('store.promos.see')}
+            </Button>
 
             {promo.minSubtotal ? (
-              <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
+              <Typography sx={{ fontSize: TS.label, fontWeight: 700, color: 'var(--muted)' }}>
                 {t('store.content.offer.minSubtotal').replace(
                   '{amount}',
                   moneyCorto(promo.minSubtotal, currency, locale),
@@ -321,24 +431,6 @@ function PromoSlide({
             ) : null}
           </Stack>
         </Stack>
-
-        <Button
-          component={Link}
-          to={destino}
-          variant="contained"
-          sx={{
-            flexShrink: 0,
-            fontWeight: 700,
-            textTransform: 'none',
-            borderRadius: 'var(--sf-pill)',
-            px: 2.5,
-            py: 1,
-            boxShadow: 'none',
-            '&:hover': { boxShadow: 'none' },
-          }}
-        >
-          {t('store.promos.see')}
-        </Button>
       </Stack>
     </Card>
   )
