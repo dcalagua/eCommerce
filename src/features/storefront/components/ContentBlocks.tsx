@@ -1029,14 +1029,43 @@ function CategoryMarquee({
 
   const quieto = encima || arrastrando || foco
 
-  // Solo hacia delante: la deriva nunca resta, y el desplazamiento nativo no
-  // baja de cero. El envoltorio hacia atras lo hace el arrastre, que si puede
-  // pedir posiciones negativas.
-  const normaliza = useCallback(() => {
+  // ## La posicion NO puede vivir en `scrollLeft`
+  //
+  // A 26 px/s son 0,43 px por fotograma, y el navegador devuelve `scrollLeft`
+  // REDONDEADO: se le suma medio pixel, se lee cero, se le vuelve a sumar
+  // medio pixel sobre cero. La fila no se movia ni un pixel nunca, y no habia
+  // error que mirar porque la aritmetica era correcta —lo que mentia era el
+  // sitio donde se guardaba el resultado—.
+  //
+  // Asi que la verdad es esta referencia en coma flotante y `scrollLeft` pasa
+  // a ser solo su reflejo.
+  const posicion = useRef(0)
+
+  const aplica = useCallback(() => {
     const nodo = pista.current
     if (!nodo) return
     const mitad = nodo.scrollWidth / 2
-    if (mitad > 0 && nodo.scrollLeft >= mitad) nodo.scrollLeft -= mitad
+    if (mitad > 0) {
+      while (posicion.current >= mitad) posicion.current -= mitad
+      while (posicion.current < 0) posicion.current += mitad
+    }
+    nodo.scrollLeft = posicion.current
+  }, [])
+
+  // La rueda y el dedo mueven la fila por su cuenta y hay que enterarse. Se
+  // distinguen por el tamaño del desajuste: lo que escribimos nosotros vuelve
+  // redondeado y difiere en menos de un pixel; lo que mueve una persona salta
+  // mucho mas.
+  const alDesplazar = useCallback(() => {
+    const nodo = pista.current
+    if (!nodo) return
+    if (Math.abs(nodo.scrollLeft - posicion.current) <= 1.5) return
+    posicion.current = nodo.scrollLeft
+    const mitad = nodo.scrollWidth / 2
+    if (mitad > 0 && posicion.current >= mitad) {
+      posicion.current -= mitad
+      nodo.scrollLeft = posicion.current
+    }
   }, [])
 
   useEffect(() => {
@@ -1046,19 +1075,18 @@ function CategoryMarquee({
     let peticion = 0
     let anterior = performance.now()
     const paso = (ahora: number) => {
-      const nodo = pista.current
-      if (nodo) {
+      if (pista.current) {
         // Por tiempo, no por fotograma: a 120 Hz el mismo incremento por
         // fotograma correria al doble de velocidad.
-        nodo.scrollLeft += (DERIVA_PX_S * (ahora - anterior)) / 1000
-        normaliza()
+        posicion.current += (DERIVA_PX_S * (ahora - anterior)) / 1000
+        aplica()
       }
       anterior = ahora
       peticion = requestAnimationFrame(paso)
     }
     peticion = requestAnimationFrame(paso)
     return () => cancelAnimationFrame(peticion)
-  }, [quieto, normaliza])
+  }, [quieto, aplica])
 
   function alBajar(evento: ReactPointerEvent<HTMLDivElement>) {
     const nodo = pista.current
@@ -1066,7 +1094,7 @@ function CategoryMarquee({
     arrastre.current = {
       activo: true,
       desdeX: evento.clientX,
-      desdeScroll: nodo.scrollLeft,
+      desdeScroll: posicion.current,
       recorrido: 0,
     }
     setArrastrando(true)
@@ -1095,6 +1123,7 @@ function CategoryMarquee({
         estado.desdeScroll -= mitad
       }
     }
+    posicion.current = siguiente
     nodo.scrollLeft = siguiente
   }
 
@@ -1134,7 +1163,7 @@ function CategoryMarquee({
       onPointerMove={alMover}
       onPointerUp={alSoltar}
       onPointerCancel={alSoltar}
-      onScroll={normaliza}
+      onScroll={alDesplazar}
       onDragStart={(evento) => evento.preventDefault()}
       onClickCapture={(evento) => {
         if (arrastre.current.recorrido > UMBRAL_ARRASTRE_PX) {
