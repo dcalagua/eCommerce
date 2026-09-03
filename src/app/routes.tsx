@@ -59,6 +59,12 @@ const SalesPage = lazyPage(() =>
 const CreditPage = lazyPage(() =>
   import('@/features/credit/CreditPage').then((m) => ({ default: m.CreditPage })),
 )
+const QuotesPage = lazyPage(() =>
+  import('@/features/trade/QuotesPage').then((m) => ({ default: m.QuotesPage })),
+)
+const AssortmentsPage = lazyPage(() =>
+  import('@/features/trade/AssortmentsPage').then((m) => ({ default: m.AssortmentsPage })),
+)
 const OrdersPage = lazyPage(() =>
   import('@/features/orders/OrdersPage').then((m) => ({ default: m.OrdersPage })),
 )
@@ -180,6 +186,11 @@ export const routes: RouteObject[] = [
           // pantalla, porque son dos addons distintos: se puede llevar la
           // cuenta de lo que se debe sin emitir comprobante electrónico.
           { path: 'credit', element: gated('credit.management', <CreditPage />) },
+          // Cotizaciones y surtidos son DOS rutas y no dos pestañas de una: son
+          // dos addons distintos, y meterlas juntas dejaría fuera al tenant que
+          // solo contrata una de las dos.
+          { path: 'quotes', element: gated('trade.quotes', <QuotesPage />) },
+          { path: 'assortments', element: gated('trade.assortments', <AssortmentsPage />) },
           { path: 'orders', element: gated('orders', <OrdersPage />) },
           // P09: cobros, medios y conciliacion. Gateado por la capacidad
           // `payments`: sin el addon la tienda sigue vendiendo con el pago

@@ -8,6 +8,8 @@ import HealthAndSafetyRoundedIcon from '@mui/icons-material/HealthAndSafetyRound
 import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded'
 import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded'
 import ArticleRoundedIcon from '@mui/icons-material/ArticleRounded'
+import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded'
+import RequestQuoteRoundedIcon from '@mui/icons-material/RequestQuoteRounded'
 import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
 import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
 import PriceChangeRoundedIcon from '@mui/icons-material/PriceChangeRounded'
@@ -93,6 +95,18 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'nav.sales',
     icon: <BadgeRoundedIcon fontSize="small" />,
     capability: 'sales.force',
+  },
+  {
+    to: '/app/quotes',
+    label: 'nav.quotes',
+    icon: <RequestQuoteRoundedIcon fontSize="small" />,
+    capability: 'trade.quotes',
+  },
+  {
+    to: '/app/assortments',
+    label: 'nav.assortments',
+    icon: <FactCheckRoundedIcon fontSize="small" />,
+    capability: 'trade.assortments',
   },
   {
     to: '/app/credit',

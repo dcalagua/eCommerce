@@ -78,6 +78,7 @@ describe('rutas base', () => {
     expect(paths(admin?.children ?? [], '/app').sort()).toEqual([
       '/app',
       '/app/analytics',
+      '/app/assortments',
       '/app/categories',
       '/app/content',
       '/app/credit',
@@ -93,6 +94,7 @@ describe('rutas base', () => {
       '/app/pricing',
       '/app/products',
       '/app/promotions',
+      '/app/quotes',
       '/app/sales',
       '/app/settings',
     ])
