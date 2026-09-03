@@ -264,13 +264,16 @@ beforeEach(() => {
 })
 
 describe('Entregas — la pantalla', () => {
-  it('es UNA pantalla con tres pestañas centradas, no tres entradas de menú', async () => {
+  it('es UNA pantalla con cuatro pestañas centradas, no cuatro entradas de menú', async () => {
     renderFulfillment(backend())
     const tabs = await screen.findAllByRole('tab')
-    // Las tres de la sección, más las de estado del listado.
-    expect(tabs.slice(0, 3).map((tab) => tab.textContent)).toEqual([
+    // Las cuatro de la sección, más las de estado del listado. «Reparto» es la
+    // del recorrido B2B: se lista siempre y su contenido lo gatea
+    // `fulfillment.routing`, que es un addon aparte.
+    expect(tabs.slice(0, 4).map((tab) => tab.textContent)).toEqual([
       'Preparación',
       'Devoluciones',
+      'Reparto',
       'Red de entrega',
     ])
   })

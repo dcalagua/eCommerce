@@ -8,9 +8,11 @@ import { PageHeader } from '@/shared/ui/PageHeader'
 import { SectionTabs } from '@/shared/ui/SectionTabs'
 import { TableSkeleton } from '@/shared/ui/TableSkeleton'
 import { EmptyState } from '@/shared/ui/states'
+import { CapabilityGate } from '@/features/capabilities/CapabilityGate'
 import { NetworkSection } from './NetworkSection'
 import { QueueSection } from './QueueSection'
 import { ReturnsSection } from './ReturnsSection'
+import { RoutingSection } from './RoutingSection'
 
 /**
  * Entregas: qué hay que despachar, qué vuelve y cómo se llega.
@@ -36,6 +38,18 @@ export function FulfillmentPage() {
     () => [
       { id: 'entregas', label: t('fulfillment.tab.queue'), content: <QueueSection /> },
       { id: 'devoluciones', label: t('fulfillment.tab.returns'), content: <ReturnsSection /> },
+      // Reparto PROPIO: la flota del distribuidor, no la del transportista. Va
+      // gateado por `fulfillment.routing`, que es un addon aparte: un comercio
+      // que despacha por courier no necesita hojas de ruta ni firma en puerta.
+      {
+        id: 'reparto',
+        label: t('fulfillment.tab.routing'),
+        content: (
+          <CapabilityGate capability="fulfillment.routing">
+            <RoutingSection />
+          </CapabilityGate>
+        ),
+      },
       { id: 'red', label: t('fulfillment.tab.network'), content: <NetworkSection /> },
     ],
     [t],

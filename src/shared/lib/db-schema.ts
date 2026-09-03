@@ -271,6 +271,15 @@ export const PUBLIC_DELIVERY_METHODS_VIEW = 'public_delivery_methods'
 // dueño: se accede con URL firmada que caduca (P12).
 export const RETURN_EVIDENCE_BUCKET = 'return-evidence'
 
+// --- Recorrido B2B: reparto y evidencia de entrega (migración 20260902160000)
+// Sin `satisfies` por la misma razón que el resto de este bloque. La red es
+// `supabase/tests/fulfillment-routing.test.ts`.
+export const DELIVERY_VEHICLES_TABLE = 'delivery_vehicles'
+export const DELIVERY_PLANS_TABLE = 'delivery_plans'
+export const DELIVERY_PLAN_STOPS_TABLE = 'delivery_plan_stops'
+export const PROOF_OF_DELIVERY_TABLE = 'proof_of_delivery'
+export const POD_EVIDENCE_TABLE = 'pod_evidence'
+
 // --- Analitica, auditoria y operacion (P13-SaaS, migraciones 160000-160500) -
 // Sin `satisfies` por la misma razón que las anteriores: `database.types.ts` se
 // genera contra el proyecto ENLAZADO y estas migraciones todavía no están

@@ -79,6 +79,10 @@ export function mapFulfillmentCode(code: string): MessageKey {
       return 'fulfillment.error.closed'
     case 'EVIDENCIA_RUTA_INVALIDA':
       return 'fulfillment.error.evidencePath'
+    // Recorrido B2B, fase 09. Una prueba de entrega no se edita ni se borra:
+    // se corrige con una entrega nueva.
+    case 'EVIDENCIA_INMUTABLE':
+      return 'fulfillment.error.podImmutable'
     case 'IDEMPOTENCIA_INVALIDA':
       return 'fulfillment.error.idempotency'
     case 'CONFIG_INCOMPLETA':
