@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '@/test/render'
 import {
   COMPANY_A,
@@ -112,6 +112,15 @@ function backend(options: { entitlements?: string[] } = {}): FakeSupabase {
     },
   })
 }
+
+/**
+ * El `#hash` de `SectionTabs` sobrevive entre tests: jsdom comparte una sola
+ * `window`. Sin limpiarlo, un test que abre «Comprobantes» deja al siguiente
+ * arrancando en esa pestaña.
+ */
+beforeEach(() => {
+  window.location.hash = ''
+})
 
 function pintar(fake: FakeSupabase) {
   holder.client = fake

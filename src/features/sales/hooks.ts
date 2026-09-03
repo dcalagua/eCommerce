@@ -1,13 +1,37 @@
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
 import {
+  addRouteStop,
+  advanceCommission,
   assignCustomer,
+  checkInVisit,
+  closeVisit,
   deactivateSalesRep,
+  fetchCommissions,
+  fetchGoals,
   fetchPortfolio,
+  fetchRouteStops,
+  fetchRoutes,
   fetchSalesReps,
+  fetchTerritories,
+  fetchVisits,
   removeFromPortfolio,
+  removeRouteStop,
+  saveGoal,
+  saveRoute,
   saveSalesRep,
+  saveTerritory,
+  saveVisit,
 } from './api'
-import type { PortfolioRow, SalesRep } from './types'
+import type {
+  Commission,
+  Goal,
+  PortfolioRow,
+  Route,
+  RouteStop,
+  SalesRep,
+  Territory,
+  Visit,
+} from './types'
 
 /**
  * Estado de la fuerza de ventas en el cliente.
@@ -64,4 +88,96 @@ export function useAssignCustomer() {
 export function useRemoveFromPortfolio() {
   const invalidate = useInvalidateSales()
   return useMutation({ mutationFn: removeFromPortfolio, onSuccess: invalidate })
+}
+
+// ---------------------------------------------------------------------------
+// Territorios, rutas, visitas, metas y comisiones
+// ---------------------------------------------------------------------------
+
+export const territoriesKey = () => [...SALES_KEY, 'territories'] as const
+export const routesKey = () => [...SALES_KEY, 'routes'] as const
+export const routeStopsKey = (routeId: string | null) =>
+  [...SALES_KEY, 'route-stops', routeId ?? 'none'] as const
+export const visitsKey = () => [...SALES_KEY, 'visits'] as const
+export const goalsKey = () => [...SALES_KEY, 'goals'] as const
+export const commissionsKey = () => [...SALES_KEY, 'commissions'] as const
+
+export function useTerritories(): UseQueryResult<Territory[]> {
+  return useQuery({
+    queryKey: territoriesKey(),
+    queryFn: fetchTerritories,
+    // Otro maestro: lo consultan rutas y metas, no solo su propia pestaña.
+    staleTime: 60_000,
+    retry: false,
+  })
+}
+
+export function useRoutes(): UseQueryResult<Route[]> {
+  return useQuery({ queryKey: routesKey(), queryFn: fetchRoutes, retry: false })
+}
+
+export function useRouteStops(routeId: string | null): UseQueryResult<RouteStop[]> {
+  return useQuery({
+    queryKey: routeStopsKey(routeId),
+    queryFn: () => fetchRouteStops(routeId),
+    enabled: routeId !== null,
+    retry: false,
+  })
+}
+
+export function useVisits(): UseQueryResult<Visit[]> {
+  return useQuery({ queryKey: visitsKey(), queryFn: fetchVisits, retry: false })
+}
+
+export function useGoals(): UseQueryResult<Goal[]> {
+  return useQuery({ queryKey: goalsKey(), queryFn: fetchGoals, retry: false })
+}
+
+export function useCommissions(): UseQueryResult<Commission[]> {
+  return useQuery({ queryKey: commissionsKey(), queryFn: fetchCommissions, retry: false })
+}
+
+export function useSaveTerritory() {
+  const invalidate = useInvalidateSales()
+  return useMutation({ mutationFn: saveTerritory, onSuccess: invalidate })
+}
+
+export function useSaveRoute() {
+  const invalidate = useInvalidateSales()
+  return useMutation({ mutationFn: saveRoute, onSuccess: invalidate })
+}
+
+export function useAddRouteStop() {
+  const invalidate = useInvalidateSales()
+  return useMutation({ mutationFn: addRouteStop, onSuccess: invalidate })
+}
+
+export function useRemoveRouteStop() {
+  const invalidate = useInvalidateSales()
+  return useMutation({ mutationFn: removeRouteStop, onSuccess: invalidate })
+}
+
+export function useSaveVisit() {
+  const invalidate = useInvalidateSales()
+  return useMutation({ mutationFn: saveVisit, onSuccess: invalidate })
+}
+
+export function useCheckInVisit() {
+  const invalidate = useInvalidateSales()
+  return useMutation({ mutationFn: checkInVisit, onSuccess: invalidate })
+}
+
+export function useCloseVisit() {
+  const invalidate = useInvalidateSales()
+  return useMutation({ mutationFn: closeVisit, onSuccess: invalidate })
+}
+
+export function useSaveGoal() {
+  const invalidate = useInvalidateSales()
+  return useMutation({ mutationFn: saveGoal, onSuccess: invalidate })
+}
+
+export function useAdvanceCommission() {
+  const invalidate = useInvalidateSales()
+  return useMutation({ mutationFn: advanceCommission, onSuccess: invalidate })
 }

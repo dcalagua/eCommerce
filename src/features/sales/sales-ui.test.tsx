@@ -1,6 +1,6 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '@/test/render'
 import {
   COMPANY_A,
@@ -46,7 +46,20 @@ const MEDIO = '88888888-8888-4888-8888-888888888802'
 const ABAJO = '88888888-8888-4888-8888-888888888803'
 const SUELTO = '88888888-8888-4888-8888-888888888804'
 
+const TERRITORIO_A = '88888888-8888-4888-8888-888888888811'
+const TERRITORIO_B = '88888888-8888-4888-8888-888888888812'
+const VISITA_SIN_ENTRADA = '88888888-8888-4888-8888-888888888821'
+const VISITA_CON_ENTRADA = '88888888-8888-4888-8888-888888888822'
+const LIQUIDACION_PAGADA = '88888888-8888-4888-8888-888888888831'
+const LIQUIDACION_BORRADOR = '88888888-8888-4888-8888-888888888832'
+
 const FUERZA = ['ecommerce.sales.force']
+/** Las tres capacidades: la ruta y las dos que gatean pestañas. */
+const TODO = [
+  'ecommerce.sales.force',
+  'ecommerce.sales.territory',
+  'ecommerce.sales.performance',
+]
 
 function rep(id: string, code: string, name: string, manager: string | null, extras = {}) {
   return {
@@ -94,12 +107,115 @@ function backend(options: { entitlements?: string[] } = {}): FakeSupabase {
       ],
       sales_rep_customers: [],
       customers: [],
+      sales_territories: [
+        {
+          id: TERRITORIO_A,
+          organization_id: ORG,
+          company_id: COMPANY_A,
+          parent_id: null,
+          code: 'NORTE',
+          name: 'Norte',
+          is_active: true,
+        },
+        {
+          id: TERRITORIO_B,
+          organization_id: ORG,
+          company_id: COMPANY_A,
+          parent_id: TERRITORIO_A,
+          code: 'NORTE-1',
+          name: 'Norte Alto',
+          is_active: true,
+        },
+      ],
+      sales_routes: [],
+      sales_route_stops: [],
+      sales_visits: [
+        {
+          id: VISITA_SIN_ENTRADA,
+          organization_id: ORG,
+          company_id: COMPANY_A,
+          sales_rep_id: JEFE,
+          customer_id: TERRITORIO_A,
+          route_id: null,
+          planned_at: '2026-09-02T09:00:00.000Z',
+          checked_in_at: null,
+          checked_out_at: null,
+          outcome: 'planned',
+          order_id: null,
+          notes: null,
+          customers: { name: 'Bodega Sin Entrada' },
+          sales_reps: { full_name: 'Marta Jefa' },
+        },
+        {
+          id: VISITA_CON_ENTRADA,
+          organization_id: ORG,
+          company_id: COMPANY_A,
+          sales_rep_id: JEFE,
+          customer_id: TERRITORIO_B,
+          route_id: null,
+          planned_at: '2026-09-02T11:00:00.000Z',
+          checked_in_at: '2026-09-02T11:12:00.000Z',
+          checked_out_at: null,
+          outcome: 'planned',
+          order_id: null,
+          notes: null,
+          customers: { name: 'Bodega Con Entrada' },
+          sales_reps: { full_name: 'Marta Jefa' },
+        },
+      ],
+      sales_goals: [],
+      commission_statements: [
+        {
+          id: LIQUIDACION_BORRADOR,
+          organization_id: ORG,
+          company_id: COMPANY_A,
+          sales_rep_id: JEFE,
+          rule_id: null,
+          period_start: '2026-08-01',
+          period_end: '2026-08-31',
+          currency: 'PEN',
+          base_amount: '10000.00',
+          rate: '0.0300',
+          amount: '300.00',
+          status: 'draft',
+          approved_at: null,
+          paid_at: null,
+          sales_reps: { full_name: 'Marta Jefa' },
+        },
+        {
+          id: LIQUIDACION_PAGADA,
+          organization_id: ORG,
+          company_id: COMPANY_A,
+          sales_rep_id: MEDIO,
+          rule_id: null,
+          period_start: '2026-07-01',
+          period_end: '2026-07-31',
+          currency: 'PEN',
+          base_amount: '8000.00',
+          rate: '0.0250',
+          amount: '200.00',
+          status: 'paid',
+          approved_at: '2026-08-01T00:00:00.000Z',
+          paid_at: '2026-08-05T00:00:00.000Z',
+          sales_reps: { full_name: 'Luis Medio' },
+        },
+      ],
     },
     rpc: {
       effective_capabilities: () => makePlatformContext({ entitlements, source: 'hub' }),
     },
   })
 }
+
+/**
+ * El `#hash` de `SectionTabs` sobrevive entre tests: jsdom comparte una sola
+ * `window`. Sin limpiarlo, un test que abre «Territorios» deja al siguiente
+ * arrancando en esa pestaña, y el siguiente falla buscando algo que está en
+ * otra — un fallo que no dice nada de la aplicación.
+ */
+beforeEach(() => {
+  window.location.hash = ''
+})
 
 function pintar(fake: FakeSupabase) {
   holder.client = fake
@@ -198,3 +314,107 @@ describe('la baja', () => {
     expect(filas.find((f) => f.id === SUELTO)?.status).toBe('disabled')
   })
 })
+
+/** Abre una pestaña de la página por su nombre. */
+async function irA(user: ReturnType<typeof userEvent.setup>, nombre: string) {
+  await user.click(await screen.findByRole('tab', { name: nombre }))
+}
+
+describe('las pestañas del recorrido B2B', () => {
+  it('van gateadas por SU capacidad, que no es la de la ruta', async () => {
+    const user = userEvent.setup()
+    // Con `sales.force` a secas se entra a la página pero no a territorios.
+    pintar(backend({ entitlements: FUERZA }))
+    await screen.findAllByText('Marta Jefa')
+
+    await irA(user, 'Territorios')
+
+    // Se lee qué addon falta, no una tabla vacía que parecería un fallo.
+    expect(await screen.findByText('sales.territory')).toBeInTheDocument()
+    expect(screen.queryByText('Norte Alto')).not.toBeInTheDocument()
+  })
+
+  it('con la capacidad contratada, los territorios se listan', async () => {
+    const user = userEvent.setup()
+    pintar(backend({ entitlements: TODO }))
+    await screen.findAllByText('Marta Jefa')
+
+    await irA(user, 'Territorios')
+
+    expect(await screen.findByText('Norte')).toBeInTheDocument()
+    expect(screen.getByText('Norte Alto')).toBeInTheDocument()
+  })
+})
+
+describe('las visitas', () => {
+  it('no dejan dar por visitada una visita SIN entrada registrada', async () => {
+    const user = userEvent.setup()
+    pintar(backend({ entitlements: TODO }))
+    await screen.findAllByText('Marta Jefa')
+
+    await irA(user, 'Visitas')
+    await screen.findByText('Bodega Sin Entrada')
+
+    const filas = screen.getAllByRole('row')
+    const sinEntrada = filas.find((row) => row.textContent?.includes('Bodega Sin Entrada'))!
+    const conEntrada = filas.find((row) => row.textContent?.includes('Bodega Con Entrada'))!
+
+    // `sales_visits_completed_needs_checkin` lo rechazaría; el botón lo dice
+    // antes. Sin marca de entrada, «visitado» no lo respalda nada.
+    expect(botonDe(sinEntrada, 'Dar por visitada')).toBeDisabled()
+    expect(botonDe(conEntrada, 'Dar por visitada')).toBeEnabled()
+  })
+
+  it('registrar la entrada NO machaca la hora prevista', async () => {
+    const user = userEvent.setup()
+    const fake = backend({ entitlements: TODO })
+    pintar(fake)
+    await screen.findAllByText('Marta Jefa')
+
+    await irA(user, 'Visitas')
+    await screen.findByText('Bodega Sin Entrada')
+
+    const filas = screen.getAllByRole('row')
+    const sinEntrada = filas.find((row) => row.textContent?.includes('Bodega Sin Entrada'))!
+    await user.click(botonDe(sinEntrada, 'Registrar entrada'))
+
+    const visitas = (fake.state.tables.sales_visits ?? []) as Array<{
+      id: string
+      planned_at: string
+      checked_in_at: string | null
+    }>
+    const tocada = visitas.find((v) => v.id === VISITA_SIN_ENTRADA)!
+    expect(tocada.checked_in_at).not.toBeNull()
+    // La agenda intacta: es la única prueba de si la visita se hizo a su hora.
+    expect(tocada.planned_at).toBe('2026-09-02T09:00:00.000Z')
+  })
+})
+
+describe('las comisiones', () => {
+  it('una liquidación PAGADA no ofrece ningún avance', async () => {
+    const user = userEvent.setup()
+    pintar(backend({ entitlements: TODO }))
+    await screen.findAllByText('Marta Jefa')
+
+    await irA(user, 'Metas y comisiones')
+    await screen.findByText('Pagada')
+
+    const filas = screen.getAllByRole('row')
+    const pagada = filas.find((row) => row.textContent?.includes('Luis Medio'))!
+    const borrador = filas.find((row) => row.textContent?.includes('Marta Jefa'))!
+
+    // `commission_statement_guard` cierra `paid`: reabrirla sería dinero que ya
+    // salió y una cifra que dice que no.
+    expect(pagada.querySelectorAll('button')).toHaveLength(0)
+    expect(botonDe(borrador, 'Aprobar')).toBeEnabled()
+  })
+})
+
+/** El botón con ese nombre dentro de una fila concreta. */
+function botonDe(row: HTMLElement, name: string): HTMLElement {
+  const encontrado = Array.from(row.querySelectorAll('button')).find(
+    (boton) => boton.textContent?.trim() === name,
+  )
+  if (!encontrado) throw new Error(`No hay un botón «${name}» en esa fila`)
+  return encontrado
+}
