@@ -4,7 +4,6 @@ import {
   Box,
   Button,
   FormControlLabel,
-  Grid,
   MenuItem,
   Stack,
   Switch,
@@ -14,7 +13,7 @@ import { useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
-import { FormDrawer } from '@/shared/ui/FormDrawer'
+import { FieldRow, FormDrawer } from '@/shared/ui/FormDrawer'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import type { SalesScope } from './api'
 import { SalesError } from './errors'
@@ -124,79 +123,73 @@ export function TerritoryDrawer({
         <Stack spacing={2.5}>
           {serverError && <Alert severity="error">{t(serverError)}</Alert>}
 
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label={t('sales.field.code')}
-                required
-                disabled={!canWrite}
-                error={Boolean(errors.code)}
-                helperText={
-                  errors.code ? t(errors.code.message as MessageKey) : t('sales.field.codeHint')
-                }
-                slotProps={{ inputLabel: { shrink: true } }}
-                {...register('code')}
-              />
-            </Grid>
-            <Grid item xs={12} sm={8}>
-              <TextField
-                fullWidth
-                label={t('sales.field.name')}
-                required
-                disabled={!canWrite}
-                error={Boolean(errors.name)}
-                helperText={errors.name ? t(errors.name.message as MessageKey) : undefined}
-                slotProps={{ inputLabel: { shrink: true } }}
-                {...register('name')}
-              />
-            </Grid>
+          <FieldRow>
+            {/* El código son unas pocas letras: ancho fijo y sin encoger, para
+                que el nombre se quede con el resto de la fila. */}
+            <TextField
+              label={t('sales.field.code')}
+              required
+              disabled={!canWrite}
+              error={Boolean(errors.code)}
+              helperText={
+                errors.code ? t(errors.code.message as MessageKey) : t('sales.field.codeHint')
+              }
+              slotProps={{ inputLabel: { shrink: true } }}
+              sx={{ width: { xs: '100%', sm: 160 }, flexShrink: 0 }}
+              {...register('code')}
+            />
+            <TextField
+              fullWidth
+              label={t('sales.field.name')}
+              required
+              disabled={!canWrite}
+              error={Boolean(errors.name)}
+              helperText={errors.name ? t(errors.name.message as MessageKey) : undefined}
+              slotProps={{ inputLabel: { shrink: true } }}
+              {...register('name')}
+            />
+          </FieldRow>
 
-            <Grid item xs={12}>
-              <Controller
-                control={control}
-                name="parent_id"
-                render={({ field }) => (
-                  <TextField
-                    select
-                    fullWidth
-                    label={t('sales.field.parent')}
+          <Controller
+            control={control}
+            name="parent_id"
+            render={({ field }) => (
+              <TextField
+                select
+                fullWidth
+                label={t('sales.field.parent')}
+                disabled={!canWrite}
+                helperText={t('sales.field.parentHint')}
+                slotProps={{ inputLabel: { shrink: true } }}
+                value={field.value}
+                onChange={field.onChange}
+              >
+                <MenuItem value="">{t('sales.field.noParent')}</MenuItem>
+                {padres.map((option) => (
+                  <MenuItem key={option.id} value={option.id}>
+                    {`${option.code} · ${option.name}`}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
+          />
+
+          <Controller
+            control={control}
+            name="is_active"
+            render={({ field }) => (
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={field.value}
                     disabled={!canWrite}
-                    helperText={t('sales.field.parentHint')}
-                    slotProps={{ inputLabel: { shrink: true } }}
-                    value={field.value}
-                    onChange={field.onChange}
-                  >
-                    <MenuItem value="">{t('sales.field.noParent')}</MenuItem>
-                    {padres.map((option) => (
-                      <MenuItem key={option.id} value={option.id}>
-                        {`${option.code} · ${option.name}`}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                )}
-              />
-            </Grid>
-
-            <Grid item xs={12}>
-              <Controller
-                control={control}
-                name="is_active"
-                render={({ field }) => (
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={field.value}
-                        disabled={!canWrite}
-                        onChange={(event) => field.onChange(event.target.checked)}
-                      />
-                    }
-                    label={t('sales.field.isActive')}
+                    onChange={(event) => field.onChange(event.target.checked)}
                   />
-                )}
+                }
+                label={t('sales.field.isActive')}
               />
-            </Grid>
-          </Grid>
+            )}
+          />
         </Stack>
       </Box>
     </FormDrawer>

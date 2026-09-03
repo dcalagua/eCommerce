@@ -5,7 +5,6 @@ import {
   Box,
   Button,
   FormControlLabel,
-  Grid,
   MenuItem,
   Stack,
   Switch,
@@ -22,7 +21,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { useCustomerOptions } from '@/features/customers/hooks'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
-import { FormDrawer } from '@/shared/ui/FormDrawer'
+import { FieldRow, FormDrawer } from '@/shared/ui/FormDrawer'
 import { RowActions } from '@/shared/ui/RowActions'
 import { SearchField } from '@/shared/ui/SearchField'
 import { useFeedback } from '@/shared/ui/feedback-context'
@@ -189,161 +188,153 @@ export function RouteDrawer({
         <Stack spacing={2.5}>
           {serverError && <Alert severity="error">{t(serverError)}</Alert>}
 
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label={t('sales.field.code')}
-                required
-                disabled={!canWrite}
-                error={Boolean(errors.code)}
-                helperText={
-                  errors.code ? t(errors.code.message as MessageKey) : t('sales.field.codeHint')
-                }
-                slotProps={{ inputLabel: { shrink: true } }}
-                {...register('code')}
-              />
-            </Grid>
-            <Grid item xs={12} sm={8}>
-              <TextField
-                fullWidth
-                label={t('sales.field.name')}
-                required
-                disabled={!canWrite}
-                error={Boolean(errors.name)}
-                helperText={errors.name ? t(errors.name.message as MessageKey) : undefined}
-                slotProps={{ inputLabel: { shrink: true } }}
-                {...register('name')}
-              />
-            </Grid>
+          <FieldRow>
+            {/* El código son unas pocas letras: ancho fijo y sin encoger, para
+                que el nombre se quede con el resto de la fila. */}
+            <TextField
+              label={t('sales.field.code')}
+              required
+              disabled={!canWrite}
+              error={Boolean(errors.code)}
+              helperText={
+                errors.code ? t(errors.code.message as MessageKey) : t('sales.field.codeHint')
+              }
+              slotProps={{ inputLabel: { shrink: true } }}
+              sx={{ width: { xs: '100%', sm: 160 }, flexShrink: 0 }}
+              {...register('code')}
+            />
+            <TextField
+              fullWidth
+              label={t('sales.field.name')}
+              required
+              disabled={!canWrite}
+              error={Boolean(errors.name)}
+              helperText={errors.name ? t(errors.name.message as MessageKey) : undefined}
+              slotProps={{ inputLabel: { shrink: true } }}
+              {...register('name')}
+            />
+          </FieldRow>
 
-            <Grid item xs={12} sm={6}>
-              <Controller
-                control={control}
-                name="sales_rep_id"
-                render={({ field }) => (
-                  <TextField
-                    select
-                    fullWidth
-                    required
-                    label={t('sales.field.rep')}
-                    disabled={!canWrite}
-                    error={Boolean(errors.sales_rep_id)}
-                    helperText={
-                      errors.sales_rep_id
-                        ? t(errors.sales_rep_id.message as MessageKey)
-                        : t('sales.field.repHint')
-                    }
-                    slotProps={{ inputLabel: { shrink: true } }}
-                    value={field.value}
-                    onChange={field.onChange}
-                  >
-                    {(reps.data ?? [])
-                      .filter((rep) => rep.status !== 'disabled')
-                      .map((rep) => (
-                        <MenuItem key={rep.id} value={rep.id}>
-                          {`${rep.employee_code} · ${rep.full_name}`}
-                        </MenuItem>
-                      ))}
-                  </TextField>
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                control={control}
-                name="territory_id"
-                render={({ field }) => (
-                  <TextField
-                    select
-                    fullWidth
-                    label={t('sales.field.territory')}
-                    disabled={!canWrite}
-                    helperText={t('sales.field.territoryHint')}
-                    slotProps={{ inputLabel: { shrink: true } }}
-                    value={field.value}
-                    onChange={field.onChange}
-                  >
-                    <MenuItem value="">{t('common.none')}</MenuItem>
-                    {(territories.data ?? []).map((territory) => (
-                      <MenuItem key={territory.id} value={territory.id}>
-                        {`${territory.code} · ${territory.name}`}
+          <FieldRow>
+            <Controller
+              control={control}
+              name="sales_rep_id"
+              render={({ field }) => (
+                <TextField
+                  select
+                  fullWidth
+                  required
+                  label={t('sales.field.rep')}
+                  disabled={!canWrite}
+                  error={Boolean(errors.sales_rep_id)}
+                  helperText={
+                    errors.sales_rep_id
+                      ? t(errors.sales_rep_id.message as MessageKey)
+                      : t('sales.field.repHint')
+                  }
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  value={field.value}
+                  onChange={field.onChange}
+                >
+                  {(reps.data ?? [])
+                    .filter((rep) => rep.status !== 'disabled')
+                    .map((rep) => (
+                      <MenuItem key={rep.id} value={rep.id}>
+                        {`${rep.employee_code} · ${rep.full_name}`}
                       </MenuItem>
                     ))}
-                  </TextField>
-                )}
-              />
-            </Grid>
+                </TextField>
+              )}
+            />
+            <Controller
+              control={control}
+              name="territory_id"
+              render={({ field }) => (
+                <TextField
+                  select
+                  fullWidth
+                  label={t('sales.field.territory')}
+                  disabled={!canWrite}
+                  helperText={t('sales.field.territoryHint')}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  value={field.value}
+                  onChange={field.onChange}
+                >
+                  <MenuItem value="">{t('common.none')}</MenuItem>
+                  {(territories.data ?? []).map((territory) => (
+                    <MenuItem key={territory.id} value={territory.id}>
+                      {`${territory.code} · ${territory.name}`}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            />
+          </FieldRow>
 
-            <Grid item xs={12} sm={6}>
-              <Controller
-                control={control}
-                name="weekday"
-                render={({ field }) => (
-                  <TextField
-                    select
-                    fullWidth
-                    label={t('sales.field.weekday')}
-                    disabled={!canWrite}
-                    slotProps={{ inputLabel: { shrink: true } }}
-                    value={field.value}
-                    onChange={field.onChange}
-                  >
-                    {WEEKDAYS.map((day) => (
-                      <MenuItem key={day} value={String(day)}>
-                        {t(`sales.weekday.${day}` as MessageKey)}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                control={control}
-                name="frequency_weeks"
-                render={({ field }) => (
-                  <TextField
-                    select
-                    fullWidth
-                    label={t('sales.field.frequency')}
-                    disabled={!canWrite}
-                    helperText={t('sales.field.frequencyHint')}
-                    slotProps={{ inputLabel: { shrink: true } }}
-                    value={field.value}
-                    onChange={field.onChange}
-                  >
-                    {[1, 2, 3, 4].map((weeks) => (
-                      <MenuItem key={weeks} value={String(weeks)}>
-                        {weeks === 1
-                          ? t('sales.frequency.weekly')
-                          : t('sales.frequency.every').replace('{n}', String(weeks))}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                )}
-              />
-            </Grid>
+          <FieldRow>
+            <Controller
+              control={control}
+              name="weekday"
+              render={({ field }) => (
+                <TextField
+                  select
+                  fullWidth
+                  label={t('sales.field.weekday')}
+                  disabled={!canWrite}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  value={field.value}
+                  onChange={field.onChange}
+                >
+                  {WEEKDAYS.map((day) => (
+                    <MenuItem key={day} value={String(day)}>
+                      {t(`sales.weekday.${day}` as MessageKey)}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            />
+            <Controller
+              control={control}
+              name="frequency_weeks"
+              render={({ field }) => (
+                <TextField
+                  select
+                  fullWidth
+                  label={t('sales.field.frequency')}
+                  disabled={!canWrite}
+                  helperText={t('sales.field.frequencyHint')}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  value={field.value}
+                  onChange={field.onChange}
+                >
+                  {[1, 2, 3, 4].map((weeks) => (
+                    <MenuItem key={weeks} value={String(weeks)}>
+                      {weeks === 1
+                        ? t('sales.frequency.weekly')
+                        : t('sales.frequency.every').replace('{n}', String(weeks))}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            />
+          </FieldRow>
 
-            <Grid item xs={12}>
-              <Controller
-                control={control}
-                name="is_active"
-                render={({ field }) => (
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={field.value}
-                        disabled={!canWrite}
-                        onChange={(event) => field.onChange(event.target.checked)}
-                      />
-                    }
-                    label={t('sales.field.isActive')}
+          <Controller
+            control={control}
+            name="is_active"
+            render={({ field }) => (
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={field.value}
+                    disabled={!canWrite}
+                    onChange={(event) => field.onChange(event.target.checked)}
                   />
-                )}
+                }
+                label={t('sales.field.isActive')}
               />
-            </Grid>
-          </Grid>
+            )}
+          />
 
           {/* Las paradas solo cuando la ruta ya existe: sin id no hay a qué
               colgarlas. */}

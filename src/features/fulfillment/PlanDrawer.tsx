@@ -4,7 +4,6 @@ import {
   Alert,
   Box,
   Button,
-  Grid,
   MenuItem,
   Stack,
   Table,
@@ -19,7 +18,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
-import { FormDrawer } from '@/shared/ui/FormDrawer'
+import { FieldRow, FormDrawer } from '@/shared/ui/FormDrawer'
 import { RowActions } from '@/shared/ui/RowActions'
 import { StatusChip } from '@/shared/ui/StatusChip'
 import { useFeedback } from '@/shared/ui/feedback-context'
@@ -201,66 +200,62 @@ export function PlanDrawer({
 
           {plan && !editable && <Alert severity="info">{t('fulfillment.routing.dispatched')}</Alert>}
 
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label={t('fulfillment.field.planCode')}
-                required
-                disabled={!puedeEditar}
-                error={Boolean(errors.code)}
-                helperText={errors.code ? t(errors.code.message as MessageKey) : undefined}
-                slotProps={{ inputLabel: { shrink: true } }}
-                {...register('code')}
-              />
-            </Grid>
-            <Grid item xs={12} sm={3}>
-              <TextField
-                fullWidth
-                type="date"
-                label={t('fulfillment.field.planDate')}
-                disabled={!puedeEditar}
-                slotProps={{ inputLabel: { shrink: true } }}
-                {...register('plan_date')}
-              />
-            </Grid>
-            <Grid item xs={12} sm={5}>
-              <Controller
-                control={control}
-                name="vehicle_id"
-                render={({ field }) => (
-                  <TextField
-                    select
-                    fullWidth
-                    label={t('fulfillment.field.vehicle')}
-                    disabled={!puedeEditar}
-                    slotProps={{ inputLabel: { shrink: true } }}
-                    value={field.value}
-                    onChange={field.onChange}
-                  >
-                    <MenuItem value="">{t('common.none')}</MenuItem>
-                    {(vehicles.data ?? [])
-                      .filter((vehicle) => vehicle.is_active)
-                      .map((vehicle) => (
-                        <MenuItem key={vehicle.id} value={vehicle.id}>
-                          {vehicle.plate ? `${vehicle.code} · ${vehicle.plate}` : vehicle.code}
-                        </MenuItem>
-                      ))}
-                  </TextField>
-                )}
-              />
-            </Grid>
+          <FieldRow>
+            {/* Codigo corto a la izquierda y la fecha con su mitad: el input
+                nativo de fecha no baja de unos 140 px sin recortarse. */}
+            <TextField
+              label={t('fulfillment.field.planCode')}
+              required
+              disabled={!puedeEditar}
+              error={Boolean(errors.code)}
+              helperText={errors.code ? t(errors.code.message as MessageKey) : undefined}
+              slotProps={{ inputLabel: { shrink: true } }}
+              sx={{ width: { xs: '100%', sm: 180 }, flexShrink: 0 }}
+              {...register('code')}
+            />
+            <TextField
+              fullWidth
+              type="date"
+              label={t('fulfillment.field.planDate')}
+              disabled={!puedeEditar}
+              slotProps={{ inputLabel: { shrink: true } }}
+              {...register('plan_date')}
+            />
+          </FieldRow>
 
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label={t('fulfillment.field.driver')}
-                disabled={!puedeEditar}
-                slotProps={{ inputLabel: { shrink: true } }}
-                {...register('driver_name')}
-              />
-            </Grid>
-          </Grid>
+          <FieldRow>
+            <Controller
+              control={control}
+              name="vehicle_id"
+              render={({ field }) => (
+                <TextField
+                  select
+                  fullWidth
+                  label={t('fulfillment.field.vehicle')}
+                  disabled={!puedeEditar}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  value={field.value}
+                  onChange={field.onChange}
+                >
+                  <MenuItem value="">{t('common.none')}</MenuItem>
+                  {(vehicles.data ?? [])
+                    .filter((vehicle) => vehicle.is_active)
+                    .map((vehicle) => (
+                      <MenuItem key={vehicle.id} value={vehicle.id}>
+                        {vehicle.plate ? `${vehicle.code} · ${vehicle.plate}` : vehicle.code}
+                      </MenuItem>
+                    ))}
+                </TextField>
+              )}
+            />
+            <TextField
+              fullWidth
+              label={t('fulfillment.field.driver')}
+              disabled={!puedeEditar}
+              slotProps={{ inputLabel: { shrink: true } }}
+              {...register('driver_name')}
+            />
+          </FieldRow>
 
           {plan && (
             <Box>

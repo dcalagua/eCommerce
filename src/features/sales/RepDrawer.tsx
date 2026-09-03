@@ -1,10 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Alert, Box, Button, Grid, MenuItem, Stack, Tab, Tabs, TextField } from '@mui/material'
+import { Alert, Box, Button, MenuItem, Stack, Tab, Tabs, TextField } from '@mui/material'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
-import { FormDrawer } from '@/shared/ui/FormDrawer'
+import { FieldRow, FormDrawer } from '@/shared/ui/FormDrawer'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import type { SalesScope } from './api'
 import { SalesError } from './errors'
@@ -142,119 +142,112 @@ export function RepDrawer({
             <Stack spacing={2.5}>
               {serverError && <Alert severity="error">{t(serverError)}</Alert>}
 
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={4}>
-                  <TextField
-                    fullWidth
-                    label={t('sales.field.code')}
-                    required
-                    disabled={!canWrite}
-                    error={Boolean(errors.employee_code)}
-                    helperText={fieldError('employee_code') ?? t('sales.field.codeHint')}
-                    slotProps={{ inputLabel: { shrink: true } }}
-                    {...register('employee_code')}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={8}>
-                  <TextField
-                    fullWidth
-                    label={t('sales.field.name')}
-                    required
-                    disabled={!canWrite}
-                    error={Boolean(errors.full_name)}
-                    helperText={fieldError('full_name')}
-                    slotProps={{ inputLabel: { shrink: true } }}
-                    {...register('full_name')}
-                  />
-                </Grid>
+              <FieldRow>
+                {/* El código es un puñado de caracteres: ancho fijo y sin
+                    encoger, para que el nombre se quede con lo que sobra. */}
+                <TextField
+                  label={t('sales.field.code')}
+                  required
+                  disabled={!canWrite}
+                  error={Boolean(errors.employee_code)}
+                  helperText={fieldError('employee_code') ?? t('sales.field.codeHint')}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  sx={{ width: { xs: '100%', sm: 160 }, flexShrink: 0 }}
+                  {...register('employee_code')}
+                />
+                <TextField
+                  fullWidth
+                  label={t('sales.field.name')}
+                  required
+                  disabled={!canWrite}
+                  error={Boolean(errors.full_name)}
+                  helperText={fieldError('full_name')}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  {...register('full_name')}
+                />
+              </FieldRow>
 
-                <Grid item xs={12} sm={7}>
-                  <TextField
-                    fullWidth
-                    type="email"
-                    label={t('sales.field.email')}
-                    disabled={!canWrite}
-                    error={Boolean(errors.email)}
-                    helperText={fieldError('email') ?? t('sales.field.emailHint')}
-                    slotProps={{ inputLabel: { shrink: true } }}
-                    {...register('email')}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={5}>
-                  <TextField
-                    fullWidth
-                    label={t('sales.field.phone')}
-                    disabled={!canWrite}
-                    error={Boolean(errors.phone)}
-                    helperText={fieldError('phone')}
-                    slotProps={{ inputLabel: { shrink: true } }}
-                    {...register('phone')}
-                  />
-                </Grid>
+              <FieldRow>
+                <TextField
+                  fullWidth
+                  type="email"
+                  label={t('sales.field.email')}
+                  disabled={!canWrite}
+                  error={Boolean(errors.email)}
+                  helperText={fieldError('email') ?? t('sales.field.emailHint')}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  {...register('email')}
+                />
+                <TextField
+                  fullWidth
+                  label={t('sales.field.phone')}
+                  disabled={!canWrite}
+                  error={Boolean(errors.phone)}
+                  helperText={fieldError('phone')}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  {...register('phone')}
+                />
+              </FieldRow>
 
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    select
-                    fullWidth
-                    label={t('sales.field.manager')}
-                    disabled={!canWrite}
-                    defaultValue={rep?.manager_id ?? ''}
-                    helperText={t('sales.field.managerHint')}
-                    slotProps={{ inputLabel: { shrink: true } }}
-                    {...register('manager_id')}
-                  >
-                    <MenuItem value="">{t('sales.field.noManager')}</MenuItem>
-                    {jefes.map((option) => (
-                      <MenuItem key={option.id} value={option.id}>
-                        {`${option.employee_code} · ${option.full_name}`}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Grid>
+              {/* El jefe va solo en su fila: las opciones son «código · nombre
+                  completo» y a media fila se cortan justo por el nombre. */}
+              <TextField
+                select
+                fullWidth
+                label={t('sales.field.manager')}
+                disabled={!canWrite}
+                defaultValue={rep?.manager_id ?? ''}
+                helperText={t('sales.field.managerHint')}
+                slotProps={{ inputLabel: { shrink: true } }}
+                {...register('manager_id')}
+              >
+                <MenuItem value="">{t('sales.field.noManager')}</MenuItem>
+                {jefes.map((option) => (
+                  <MenuItem key={option.id} value={option.id}>
+                    {`${option.employee_code} · ${option.full_name}`}
+                  </MenuItem>
+                ))}
+              </TextField>
 
-                <Grid item xs={12} sm={3}>
-                  <TextField
-                    select
-                    fullWidth
-                    label={t('common.status')}
-                    disabled={!canWrite}
-                    defaultValue={rep?.status ?? 'active'}
-                    slotProps={{ inputLabel: { shrink: true } }}
-                    {...register('status')}
-                  >
-                    {MEMBER_STATUSES.map((value) => (
-                      <MenuItem key={value} value={value}>
-                        {t(`sales.status.${value}` as MessageKey)}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Grid>
+              {/* Estado y fecha a mitad y mitad: el input nativo de fecha no
+                  baja de ~140 px y a un cuarto de fila se recortaba. */}
+              <FieldRow>
+                <TextField
+                  select
+                  fullWidth
+                  label={t('common.status')}
+                  disabled={!canWrite}
+                  defaultValue={rep?.status ?? 'active'}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  {...register('status')}
+                >
+                  {MEMBER_STATUSES.map((value) => (
+                    <MenuItem key={value} value={value}>
+                      {t(`sales.status.${value}` as MessageKey)}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  fullWidth
+                  type="date"
+                  label={t('sales.field.hiredAt')}
+                  disabled={!canWrite}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  {...register('hired_at')}
+                />
+              </FieldRow>
 
-                <Grid item xs={12} sm={3}>
-                  <TextField
-                    fullWidth
-                    type="date"
-                    label={t('sales.field.hiredAt')}
-                    disabled={!canWrite}
-                    slotProps={{ inputLabel: { shrink: true } }}
-                    {...register('hired_at')}
-                  />
-                </Grid>
-
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    multiline
-                    minRows={2}
-                    label={t('sales.field.notes')}
-                    disabled={!canWrite}
-                    error={Boolean(errors.notes)}
-                    helperText={fieldError('notes')}
-                    slotProps={{ inputLabel: { shrink: true } }}
-                    {...register('notes')}
-                  />
-                </Grid>
-              </Grid>
+              <TextField
+                fullWidth
+                multiline
+                minRows={2}
+                label={t('sales.field.notes')}
+                disabled={!canWrite}
+                error={Boolean(errors.notes)}
+                helperText={fieldError('notes')}
+                slotProps={{ inputLabel: { shrink: true } }}
+                {...register('notes')}
+              />
             </Stack>
           </Box>
         )}

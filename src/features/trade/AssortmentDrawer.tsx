@@ -5,7 +5,6 @@ import {
   Box,
   Button,
   FormControlLabel,
-  Grid,
   Stack,
   Switch,
   Table,
@@ -20,7 +19,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { useEffect, useState } from 'react'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
-import { FormDrawer } from '@/shared/ui/FormDrawer'
+import { FieldRow, FormDrawer } from '@/shared/ui/FormDrawer'
 import { RowActions } from '@/shared/ui/RowActions'
 import { SearchField } from '@/shared/ui/SearchField'
 import { useFeedback } from '@/shared/ui/feedback-context'
@@ -171,77 +170,73 @@ export function AssortmentDrawer({
         <Stack spacing={2.5}>
           {serverError && <Alert severity="error">{t(serverError)}</Alert>}
 
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label={t('trade.field.code')}
-                required
-                disabled={!canWrite}
-                error={Boolean(errors.code)}
-                helperText={
-                  errors.code ? t(errors.code.message as MessageKey) : t('trade.field.codeHint')
+          <FieldRow>
+            {/* Un codigo de surtido son dos palabras cortas: a ancho fijo, para
+                que el nombre —que si es largo— se quede con el resto. */}
+            <TextField
+              label={t('trade.field.code')}
+              required
+              disabled={!canWrite}
+              error={Boolean(errors.code)}
+              helperText={
+                errors.code ? t(errors.code.message as MessageKey) : t('trade.field.codeHint')
+              }
+              slotProps={{ inputLabel: { shrink: true } }}
+              sx={{ width: { xs: '100%', sm: 190 }, flexShrink: 0 }}
+              {...register('code')}
+            />
+            <TextField
+              fullWidth
+              label={t('trade.field.name')}
+              required
+              disabled={!canWrite}
+              error={Boolean(errors.name)}
+              helperText={errors.name ? t(errors.name.message as MessageKey) : undefined}
+              slotProps={{ inputLabel: { shrink: true } }}
+              {...register('name')}
+            />
+          </FieldRow>
+
+          <Box>
+            <Controller
+              control={control}
+              name="is_allow_list"
+              render={({ field }) => (
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={field.value}
+                      disabled={!canWrite}
+                      onChange={(event) => field.onChange(event.target.checked)}
+                    />
+                  }
+                  label={t('trade.field.isAllowList')}
+                />
+              )}
+            />
+            {/* Qué significa AHORA mismo, en palabras. La casilla sola obliga
+                a acordarse de qué lado es cuál. */}
+            <Typography sx={{ color: 'var(--muted)', fontSize: 13 }}>
+              {esBlanca ? t('trade.list.allowHelp') : t('trade.list.blockHelp')}
+            </Typography>
+          </Box>
+
+          <Controller
+            control={control}
+            name="is_active"
+            render={({ field }) => (
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={field.value}
+                    disabled={!canWrite}
+                    onChange={(event) => field.onChange(event.target.checked)}
+                  />
                 }
-                slotProps={{ inputLabel: { shrink: true } }}
-                {...register('code')}
+                label={t('trade.field.isActive')}
               />
-            </Grid>
-            <Grid item xs={12} sm={8}>
-              <TextField
-                fullWidth
-                label={t('trade.field.name')}
-                required
-                disabled={!canWrite}
-                error={Boolean(errors.name)}
-                helperText={errors.name ? t(errors.name.message as MessageKey) : undefined}
-                slotProps={{ inputLabel: { shrink: true } }}
-                {...register('name')}
-              />
-            </Grid>
-
-            <Grid item xs={12}>
-              <Controller
-                control={control}
-                name="is_allow_list"
-                render={({ field }) => (
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={field.value}
-                        disabled={!canWrite}
-                        onChange={(event) => field.onChange(event.target.checked)}
-                      />
-                    }
-                    label={t('trade.field.isAllowList')}
-                  />
-                )}
-              />
-              {/* Qué significa AHORA mismo, en palabras. La casilla sola obliga
-                  a acordarse de qué lado es cuál. */}
-              <Typography sx={{ color: 'var(--muted)', fontSize: 13 }}>
-                {esBlanca ? t('trade.list.allowHelp') : t('trade.list.blockHelp')}
-              </Typography>
-            </Grid>
-
-            <Grid item xs={12}>
-              <Controller
-                control={control}
-                name="is_active"
-                render={({ field }) => (
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={field.value}
-                        disabled={!canWrite}
-                        onChange={(event) => field.onChange(event.target.checked)}
-                      />
-                    }
-                    label={t('trade.field.isActive')}
-                  />
-                )}
-              />
-            </Grid>
-          </Grid>
+            )}
+          />
 
           {assortment && (
             <Box>

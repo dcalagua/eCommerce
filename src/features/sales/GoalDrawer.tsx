@@ -1,10 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Alert, Box, Button, Grid, MenuItem, Stack, TextField, Typography } from '@mui/material'
+import { Alert, Box, Button, MenuItem, Stack, TextField, Typography } from '@mui/material'
 import { useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
-import { FormDrawer } from '@/shared/ui/FormDrawer'
+import { FieldRow, FormDrawer } from '@/shared/ui/FormDrawer'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import type { SalesScope } from './api'
 import { SalesError } from './errors'
@@ -134,145 +134,137 @@ export function GoalDrawer({
             {t('sales.goals.ownerHint')}
           </Typography>
 
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                control={control}
-                name="sales_rep_id"
-                render={({ field }) => (
-                  <TextField
-                    select
-                    fullWidth
-                    label={t('sales.field.rep')}
-                    // Elegir uno apaga el otro: la base rechaza los dos llenos,
-                    // y apagarlo lo dice antes de intentarlo.
-                    disabled={!canWrite || territoryId !== ''}
-                    error={Boolean(errors.sales_rep_id)}
-                    helperText={
-                      errors.sales_rep_id ? t(errors.sales_rep_id.message as MessageKey) : undefined
-                    }
-                    slotProps={{ inputLabel: { shrink: true } }}
-                    value={field.value}
-                    onChange={field.onChange}
-                  >
-                    <MenuItem value="">{t('common.none')}</MenuItem>
-                    {(reps.data ?? []).map((rep) => (
-                      <MenuItem key={rep.id} value={rep.id}>
-                        {`${rep.employee_code} · ${rep.full_name}`}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Controller
-                control={control}
-                name="territory_id"
-                render={({ field }) => (
-                  <TextField
-                    select
-                    fullWidth
-                    label={t('sales.field.territory')}
-                    disabled={!canWrite || repId !== ''}
-                    slotProps={{ inputLabel: { shrink: true } }}
-                    value={field.value}
-                    onChange={field.onChange}
-                  >
-                    <MenuItem value="">{t('common.none')}</MenuItem>
-                    {(territories.data ?? []).map((territory) => (
-                      <MenuItem key={territory.id} value={territory.id}>
-                        {`${territory.code} · ${territory.name}`}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                )}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={metric === 'amount' ? 4 : 6}>
-              <Controller
-                control={control}
-                name="metric"
-                render={({ field }) => (
-                  <TextField
-                    select
-                    fullWidth
-                    label={t('sales.field.metric')}
-                    disabled={!canWrite}
-                    slotProps={{ inputLabel: { shrink: true } }}
-                    value={field.value}
-                    onChange={field.onChange}
-                  >
-                    {GOAL_METRICS.map((option) => (
-                      <MenuItem key={option} value={option}>
-                        {t(`sales.metric.${option}` as MessageKey)}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                )}
-              />
-            </Grid>
-
-            {/* La moneda solo cuando la métrica es importe. */}
-            {metric === 'amount' && (
-              <Grid item xs={12} sm={3}>
+          <FieldRow>
+            <Controller
+              control={control}
+              name="sales_rep_id"
+              render={({ field }) => (
                 <TextField
+                  select
                   fullWidth
-                  label={t('sales.field.currency')}
-                  disabled={!canWrite}
-                  error={Boolean(errors.currency)}
+                  label={t('sales.field.rep')}
+                  // Elegir uno apaga el otro: la base rechaza los dos llenos,
+                  // y apagarlo lo dice antes de intentarlo.
+                  disabled={!canWrite || territoryId !== ''}
+                  error={Boolean(errors.sales_rep_id)}
                   helperText={
-                    errors.currency ? t(errors.currency.message as MessageKey) : undefined
+                    errors.sales_rep_id ? t(errors.sales_rep_id.message as MessageKey) : undefined
                   }
                   slotProps={{ inputLabel: { shrink: true } }}
-                  {...register('currency')}
-                />
-              </Grid>
+                  value={field.value}
+                  onChange={field.onChange}
+                >
+                  <MenuItem value="">{t('common.none')}</MenuItem>
+                  {(reps.data ?? []).map((rep) => (
+                    <MenuItem key={rep.id} value={rep.id}>
+                      {`${rep.employee_code} · ${rep.full_name}`}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            />
+            <Controller
+              control={control}
+              name="territory_id"
+              render={({ field }) => (
+                <TextField
+                  select
+                  fullWidth
+                  label={t('sales.field.territory')}
+                  disabled={!canWrite || repId !== ''}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  value={field.value}
+                  onChange={field.onChange}
+                >
+                  <MenuItem value="">{t('common.none')}</MenuItem>
+                  {(territories.data ?? []).map((territory) => (
+                    <MenuItem key={territory.id} value={territory.id}>
+                      {`${territory.code} · ${territory.name}`}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            />
+          </FieldRow>
+
+          <FieldRow>
+            <Controller
+              control={control}
+              name="metric"
+              render={({ field }) => (
+                <TextField
+                  select
+                  fullWidth
+                  label={t('sales.field.metric')}
+                  disabled={!canWrite}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  value={field.value}
+                  onChange={field.onChange}
+                >
+                  {GOAL_METRICS.map((option) => (
+                    <MenuItem key={option} value={option}>
+                      {t(`sales.metric.${option}` as MessageKey)}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            />
+
+            {/* La moneda solo cuando la métrica es importe. Va a ancho fijo:
+                son tres letras, y así métrica y objetivo se reparten solos lo
+                que sobra tanto si aparece como si no. */}
+            {metric === 'amount' && (
+              <TextField
+                label={t('sales.field.currency')}
+                disabled={!canWrite}
+                error={Boolean(errors.currency)}
+                helperText={errors.currency ? t(errors.currency.message as MessageKey) : undefined}
+                slotProps={{ inputLabel: { shrink: true } }}
+                sx={{ width: { xs: '100%', sm: 140 }, flexShrink: 0 }}
+                {...register('currency')}
+              />
             )}
 
-            <Grid item xs={12} sm={metric === 'amount' ? 5 : 6}>
-              <TextField
-                fullWidth
-                label={t('sales.field.target')}
-                required
-                disabled={!canWrite}
-                error={Boolean(errors.target_value)}
-                helperText={
-                  errors.target_value
-                    ? t(errors.target_value.message as MessageKey)
-                    : t('sales.field.targetHint')
-                }
-                slotProps={{ inputLabel: { shrink: true } }}
-                {...register('target_value')}
-              />
-            </Grid>
+            <TextField
+              fullWidth
+              label={t('sales.field.target')}
+              required
+              disabled={!canWrite}
+              error={Boolean(errors.target_value)}
+              helperText={
+                errors.target_value
+                  ? t(errors.target_value.message as MessageKey)
+                  : t('sales.field.targetHint')
+              }
+              slotProps={{ inputLabel: { shrink: true } }}
+              {...register('target_value')}
+            />
+          </FieldRow>
 
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                type="date"
-                label={t('sales.field.periodStart')}
-                disabled={!canWrite}
-                slotProps={{ inputLabel: { shrink: true } }}
-                {...register('period_start')}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                type="date"
-                label={t('sales.field.periodEnd')}
-                disabled={!canWrite}
-                error={Boolean(errors.period_end)}
-                helperText={
-                  errors.period_end ? t(errors.period_end.message as MessageKey) : undefined
-                }
-                slotProps={{ inputLabel: { shrink: true } }}
-                {...register('period_end')}
-              />
-            </Grid>
-          </Grid>
+          {/* Las dos fechas a mitad y mitad: el input nativo de fecha no baja
+              de ~140 px y a menos de media fila se recortaba. */}
+          <FieldRow>
+            <TextField
+              fullWidth
+              type="date"
+              label={t('sales.field.periodStart')}
+              disabled={!canWrite}
+              slotProps={{ inputLabel: { shrink: true } }}
+              {...register('period_start')}
+            />
+            <TextField
+              fullWidth
+              type="date"
+              label={t('sales.field.periodEnd')}
+              disabled={!canWrite}
+              error={Boolean(errors.period_end)}
+              helperText={
+                errors.period_end ? t(errors.period_end.message as MessageKey) : undefined
+              }
+              slotProps={{ inputLabel: { shrink: true } }}
+              {...register('period_end')}
+            />
+          </FieldRow>
         </Stack>
       </Box>
     </FormDrawer>

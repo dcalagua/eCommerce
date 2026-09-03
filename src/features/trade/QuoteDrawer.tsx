@@ -4,7 +4,6 @@ import {
   Alert,
   Box,
   Button,
-  Grid,
   Stack,
   Table,
   TableBody,
@@ -20,7 +19,7 @@ import { useCustomerOptions } from '@/features/customers/hooks'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { formatMoney } from '@/shared/lib/format'
-import { FormDrawer } from '@/shared/ui/FormDrawer'
+import { FieldRow, FormDrawer } from '@/shared/ui/FormDrawer'
 import { RowActions } from '@/shared/ui/RowActions'
 import { SearchField } from '@/shared/ui/SearchField'
 import { StatusChip } from '@/shared/ui/StatusChip'
@@ -234,58 +233,58 @@ export function QuoteDrawer({
               campos apagados sin explicación. */}
           {quote && !editable && <Alert severity="info">{t('trade.quotes.closed')}</Alert>}
 
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={5}>
-              <TextField
-                fullWidth
-                label={t('trade.field.number')}
-                required
-                disabled={!puedeEditar}
-                error={Boolean(errors.quote_number)}
-                helperText={
-                  errors.quote_number ? t(errors.quote_number.message as MessageKey) : undefined
-                }
-                slotProps={{ inputLabel: { shrink: true } }}
-                {...register('quote_number')}
-              />
-            </Grid>
-            <Grid item xs={12} sm={3}>
-              <TextField
-                fullWidth
-                label={t('trade.field.currency')}
-                required
-                disabled={!puedeEditar}
-                error={Boolean(errors.currency)}
-                slotProps={{ inputLabel: { shrink: true } }}
-                {...register('currency')}
-              />
-            </Grid>
-            <Grid item xs={12} sm={2}>
-              <TextField
-                fullWidth
-                type="date"
-                label={t('trade.field.issuedAt')}
-                disabled={!puedeEditar}
-                slotProps={{ inputLabel: { shrink: true } }}
-                {...register('issued_at')}
-              />
-            </Grid>
-            <Grid item xs={12} sm={2}>
-              <TextField
-                fullWidth
-                type="date"
-                label={t('trade.field.validUntil')}
-                disabled={!puedeEditar}
-                error={Boolean(errors.valid_until)}
-                helperText={
-                  errors.valid_until ? t(errors.valid_until.message as MessageKey) : undefined
-                }
-                slotProps={{ inputLabel: { shrink: true } }}
-                {...register('valid_until')}
-              />
-            </Grid>
+          <FieldRow>
+            <TextField
+              fullWidth
+              label={t('trade.field.number')}
+              required
+              disabled={!puedeEditar}
+              error={Boolean(errors.quote_number)}
+              helperText={
+                errors.quote_number ? t(errors.quote_number.message as MessageKey) : undefined
+              }
+              slotProps={{ inputLabel: { shrink: true } }}
+              {...register('quote_number')}
+            />
+            {/* Tres letras: ancho fijo y sin encoger. Dejarla crecer hasta la
+                mitad del cajón le da a «PEN» la importancia del número. */}
+            <TextField
+              label={t('trade.field.currency')}
+              required
+              disabled={!puedeEditar}
+              error={Boolean(errors.currency)}
+              slotProps={{ inputLabel: { shrink: true } }}
+              sx={{ width: { xs: '100%', sm: 130 }, flexShrink: 0 }}
+              {...register('currency')}
+            />
+          </FieldRow>
 
-            <Grid item xs={12}>
+          {/* Las dos fechas a mitad y mitad. Antes iban a 2/12 cada una y el
+              input nativo de fecha no baja de ~140 px: se salía del panel. */}
+          <FieldRow>
+            <TextField
+              fullWidth
+              type="date"
+              label={t('trade.field.issuedAt')}
+              disabled={!puedeEditar}
+              slotProps={{ inputLabel: { shrink: true } }}
+              {...register('issued_at')}
+            />
+            <TextField
+              fullWidth
+              type="date"
+              label={t('trade.field.validUntil')}
+              disabled={!puedeEditar}
+              error={Boolean(errors.valid_until)}
+              helperText={
+                errors.valid_until ? t(errors.valid_until.message as MessageKey) : undefined
+              }
+              slotProps={{ inputLabel: { shrink: true } }}
+              {...register('valid_until')}
+            />
+          </FieldRow>
+
+          <Box>
               {/* El cliente se busca en el servidor y se fija con el mismo
                   buscador que usa `features/customers`; no se escribe otro. */}
               <input type="hidden" {...register('customer_id')} />
@@ -343,20 +342,17 @@ export function QuoteDrawer({
                   </Stack>
                 </Stack>
               )}
-            </Grid>
+          </Box>
 
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                multiline
-                minRows={2}
-                label={t('trade.field.notes')}
-                disabled={!puedeEditar}
-                slotProps={{ inputLabel: { shrink: true } }}
-                {...register('notes')}
-              />
-            </Grid>
-          </Grid>
+          <TextField
+            fullWidth
+            multiline
+            minRows={2}
+            label={t('trade.field.notes')}
+            disabled={!puedeEditar}
+            slotProps={{ inputLabel: { shrink: true } }}
+            {...register('notes')}
+          />
 
           {/* Las líneas solo existen cuando la cotización ya tiene id: sin él no
               hay a qué colgarlas. */}
@@ -431,43 +427,41 @@ export function QuoteDrawer({
                   <Typography sx={{ fontWeight: 700, fontSize: 13 }}>
                     {t('trade.quotes.addLine')}
                   </Typography>
-                  <Grid container spacing={1}>
-                    <Grid item xs={6} sm={3}>
-                      <TextField
-                        fullWidth
-                        size="small"
-                        label={t('trade.field.quantity')}
-                        value={cantidad}
-                        onChange={(event) => setCantidad(event.target.value)}
-                        error={cantidad !== '' && !cantidadValida}
-                        slotProps={{ inputLabel: { shrink: true } }}
-                      />
-                    </Grid>
-                    <Grid item xs={6} sm={3}>
-                      <TextField
-                        fullWidth
-                        size="small"
-                        label={t('trade.field.unitPrice')}
-                        value={precio}
-                        onChange={(event) => setPrecio(event.target.value)}
-                        error={precio !== '' && !precioValido}
-                        helperText={
-                          cantidadValida && precioValido
-                            ? `= ${formatMoney(Number(lineTotal(cantidad, precio)), quote.currency, locale)}`
-                            : undefined
-                        }
-                        slotProps={{ inputLabel: { shrink: true } }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
+                  <FieldRow>
+                    <TextField
+                      size="small"
+                      label={t('trade.field.quantity')}
+                      value={cantidad}
+                      onChange={(event) => setCantidad(event.target.value)}
+                      error={cantidad !== '' && !cantidadValida}
+                      slotProps={{ inputLabel: { shrink: true } }}
+                      sx={{ width: { xs: '100%', sm: 120 }, flexShrink: 0 }}
+                    />
+                    <TextField
+                      size="small"
+                      label={t('trade.field.unitPrice')}
+                      value={precio}
+                      onChange={(event) => setPrecio(event.target.value)}
+                      error={precio !== '' && !precioValido}
+                      helperText={
+                        cantidadValida && precioValido
+                          ? `= ${formatMoney(Number(lineTotal(cantidad, precio)), quote.currency, locale)}`
+                          : undefined
+                      }
+                      slotProps={{ inputLabel: { shrink: true } }}
+                      sx={{ width: { xs: '100%', sm: 170 }, flexShrink: 0 }}
+                    />
+                    {/* El buscador se queda con lo que sobre: es el campo que
+                        de verdad necesita ancho para leer nombres largos. */}
+                    <Box sx={{ flex: 1, minWidth: 0, width: '100%' }}>
                       <SearchField
                         value={productSearch}
                         onChange={setProductSearch}
                         placeholder={t('trade.quotes.searchProduct')}
                         ariaLabel={t('trade.quotes.searchProduct')}
                       />
-                    </Grid>
-                  </Grid>
+                    </Box>
+                  </FieldRow>
 
                   <Stack spacing={0.5}>
                     {(products.data ?? []).map((option) => (

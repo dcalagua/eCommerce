@@ -4,7 +4,6 @@ import {
   Box,
   Button,
   Checkbox,
-  Grid,
   Stack,
   Table,
   TableBody,
@@ -19,7 +18,7 @@ import { useForm } from 'react-hook-form'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { formatMoney } from '@/shared/lib/format'
-import { FormDrawer } from '@/shared/ui/FormDrawer'
+import { FieldRow, FormDrawer } from '@/shared/ui/FormDrawer'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import type { CreditScope } from './api'
 import { CreditError } from './errors'
@@ -183,70 +182,68 @@ export function ReceiptDrawer({
         <Stack spacing={2.5}>
           {serverError && <Alert severity="error">{t(serverError)}</Alert>}
 
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={5}>
-              <TextField
-                fullWidth
-                label={t('credit.field.receiptNumber')}
-                required
-                disabled={!canWrite}
-                error={Boolean(errors.receipt_number)}
-                helperText={
-                  errors.receipt_number ? t(errors.receipt_number.message as MessageKey) : undefined
-                }
-                slotProps={{ inputLabel: { shrink: true } }}
-                {...register('receipt_number')}
-              />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label={t('credit.field.amount')}
-                required
-                disabled={!canWrite}
-                error={Boolean(errors.amount) || sePasa}
-                helperText={
-                  sePasa
-                    ? t('credit.error.overpay')
-                    : errors.amount
-                      ? t(errors.amount.message as MessageKey)
-                      : t('credit.field.amountHint')
-                }
-                slotProps={{ inputLabel: { shrink: true } }}
-                {...register('amount')}
-              />
-            </Grid>
-            <Grid item xs={12} sm={3}>
-              <TextField
-                fullWidth
-                type="date"
-                label={t('credit.field.receivedAt')}
-                disabled={!canWrite}
-                slotProps={{ inputLabel: { shrink: true } }}
-                {...register('received_at')}
-              />
-            </Grid>
+          <FieldRow>
+            <TextField
+              fullWidth
+              label={t('credit.field.receiptNumber')}
+              required
+              disabled={!canWrite}
+              error={Boolean(errors.receipt_number)}
+              helperText={
+                errors.receipt_number ? t(errors.receipt_number.message as MessageKey) : undefined
+              }
+              slotProps={{ inputLabel: { shrink: true } }}
+              {...register('receipt_number')}
+            />
+            {/* El importe es el dato que se comprueba contra la deuda marcada:
+                ancho fijo para que no baile cuando aparece el aviso de que se
+                pasa. */}
+            <TextField
+              label={t('credit.field.amount')}
+              required
+              disabled={!canWrite}
+              error={Boolean(errors.amount) || sePasa}
+              helperText={
+                sePasa
+                  ? t('credit.error.overpay')
+                  : errors.amount
+                    ? t(errors.amount.message as MessageKey)
+                    : t('credit.field.amountHint')
+              }
+              slotProps={{ inputLabel: { shrink: true } }}
+              sx={{ width: { xs: '100%', sm: 200 }, flexShrink: 0 }}
+              {...register('amount')}
+            />
+          </FieldRow>
 
-            <Grid item xs={12} sm={5}>
-              <TextField
-                fullWidth
-                label={t('credit.field.method')}
-                disabled={!canWrite}
-                slotProps={{ inputLabel: { shrink: true } }}
-                {...register('method')}
-              />
-            </Grid>
-            <Grid item xs={12} sm={7}>
-              <TextField
-                fullWidth
-                label={t('credit.field.reference')}
-                disabled={!canWrite}
-                helperText={t('credit.field.referenceHint')}
-                slotProps={{ inputLabel: { shrink: true } }}
-                {...register('reference')}
-              />
-            </Grid>
-          </Grid>
+          <FieldRow>
+            <TextField
+              fullWidth
+              type="date"
+              label={t('credit.field.receivedAt')}
+              disabled={!canWrite}
+              slotProps={{ inputLabel: { shrink: true } }}
+              {...register('received_at')}
+            />
+            <TextField
+              fullWidth
+              label={t('credit.field.method')}
+              disabled={!canWrite}
+              slotProps={{ inputLabel: { shrink: true } }}
+              {...register('method')}
+            />
+          </FieldRow>
+
+          {/* La referencia va sola: un numero de operacion o de cheque es
+              largo y a media fila se lee a trozos. */}
+          <TextField
+            fullWidth
+            label={t('credit.field.reference')}
+            disabled={!canWrite}
+            helperText={t('credit.field.referenceHint')}
+            slotProps={{ inputLabel: { shrink: true } }}
+            {...register('reference')}
+          />
 
           <Box>
             <Typography sx={{ fontWeight: 800, mb: 1 }}>{t('credit.receipt.apply')}</Typography>

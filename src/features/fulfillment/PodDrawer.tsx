@@ -1,10 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Alert, Box, Button, Grid, MenuItem, Stack, TextField } from '@mui/material'
+import { Alert, Box, Button, MenuItem, Stack, TextField } from '@mui/material'
 import { useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
-import { FormDrawer } from '@/shared/ui/FormDrawer'
+import { FieldRow, FormDrawer } from '@/shared/ui/FormDrawer'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import { FulfillmentError } from './errors'
 import type { RoutingScope } from './routing-api'
@@ -117,74 +117,70 @@ export function PodDrawer({
           {/* No hay vuelta atrás, y se dice ANTES de firmar. */}
           <Alert severity="warning">{t('fulfillment.pod.immutableWarning')}</Alert>
 
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <Controller
-                control={control}
-                name="outcome"
-                render={({ field }) => (
-                  <TextField
-                    select
-                    fullWidth
-                    label={t('fulfillment.field.outcome')}
-                    disabled={!canWrite}
-                    slotProps={{ inputLabel: { shrink: true } }}
-                    value={field.value}
-                    onChange={field.onChange}
-                  >
-                    {POD_OUTCOMES.map((option) => (
-                      <MenuItem key={option} value={option}>
-                        {t(`fulfillment.outcome.${option}` as MessageKey)}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                )}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={7}>
+          {/* El resultado va solo y arriba: es la decision de la que dependen
+              los demas campos. */}
+          <Controller
+            control={control}
+            name="outcome"
+            render={({ field }) => (
               <TextField
+                select
                 fullWidth
-                label={t('fulfillment.field.receivedBy')}
-                disabled={!canWrite}
-                helperText={t('fulfillment.field.receivedByHint')}
-                slotProps={{ inputLabel: { shrink: true } }}
-                {...register('received_by')}
-              />
-            </Grid>
-            <Grid item xs={12} sm={5}>
-              <TextField
-                fullWidth
-                label={t('fulfillment.field.documentId')}
+                label={t('fulfillment.field.outcome')}
                 disabled={!canWrite}
                 slotProps={{ inputLabel: { shrink: true } }}
-                {...register('document_id')}
-              />
-            </Grid>
-
-            {/* El motivo solo cuando NO se entregó: en una entrega correcta
-                sería una casilla que invita a rellenar ruido. */}
-            {outcome !== 'delivered' && (
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  multiline
-                  minRows={2}
-                  required
-                  label={t('fulfillment.field.reason')}
-                  disabled={!canWrite}
-                  error={Boolean(errors.reason)}
-                  helperText={
-                    errors.reason
-                      ? t(errors.reason.message as MessageKey)
-                      : t('fulfillment.field.reasonHint')
-                  }
-                  slotProps={{ inputLabel: { shrink: true } }}
-                  {...register('reason')}
-                />
-              </Grid>
+                value={field.value}
+                onChange={field.onChange}
+              >
+                {POD_OUTCOMES.map((option) => (
+                  <MenuItem key={option} value={option}>
+                    {t(`fulfillment.outcome.${option}` as MessageKey)}
+                  </MenuItem>
+                ))}
+              </TextField>
             )}
-          </Grid>
+          />
+
+          <FieldRow>
+            <TextField
+              fullWidth
+              label={t('fulfillment.field.receivedBy')}
+              disabled={!canWrite}
+              helperText={t('fulfillment.field.receivedByHint')}
+              slotProps={{ inputLabel: { shrink: true } }}
+              {...register('received_by')}
+            />
+            {/* Un DNI son ocho digitos: no necesita mas, y asi el nombre de
+                quien firma se queda con el ancho que si le hace falta. */}
+            <TextField
+              label={t('fulfillment.field.documentId')}
+              disabled={!canWrite}
+              slotProps={{ inputLabel: { shrink: true } }}
+              sx={{ width: { xs: '100%', sm: 160 }, flexShrink: 0 }}
+              {...register('document_id')}
+            />
+          </FieldRow>
+
+          {/* El motivo solo cuando NO se entregó: en una entrega correcta
+              sería una casilla que invita a rellenar ruido. */}
+          {outcome !== 'delivered' && (
+            <TextField
+              fullWidth
+              multiline
+              minRows={2}
+              required
+              label={t('fulfillment.field.reason')}
+              disabled={!canWrite}
+              error={Boolean(errors.reason)}
+              helperText={
+                errors.reason
+                  ? t(errors.reason.message as MessageKey)
+                  : t('fulfillment.field.reasonHint')
+              }
+              slotProps={{ inputLabel: { shrink: true } }}
+              {...register('reason')}
+            />
+          )}
         </Stack>
       </Box>
     </FormDrawer>

@@ -14,6 +14,37 @@ import { T } from '@/theme/tokens'
  * La barra de acciones es `sticky` al pie (regla de suite para formularios
  * largos): Guardar no se pierde al hacer scroll.
  */
+/**
+ * Una fila de campos dentro de un `FormDrawer`: en columna en móvil, en fila
+ * desde `sm`.
+ *
+ * ## Por qué esto y no `Grid container`
+ *
+ * El `Grid` de MUI implementa el `spacing` con **márgenes negativos** en el
+ * contenedor (`margin-left: -16px`) y padding en los hijos. Dentro de un panel
+ * que ya tiene su gutter (`px: 3`), ese margen negativo se COME el gutter: los
+ * campos quedan pegados al borde izquierdo y el último se sale por la derecha.
+ * Pasó en los diez cajones del recorrido B2B y se veía en cuanto se abría uno.
+ *
+ * `Stack` no tiene ese problema —el `spacing` es `gap`, no margen negativo— y
+ * además es lo que ya usaba el resto del backoffice. Dos idiomas de maquetación
+ * para lo mismo era la razón de fondo de que el fallo pasara desapercibido.
+ *
+ * `alignItems: flex-start` para que un campo con texto de ayuda no estire al de
+ * al lado: se alinean por arriba, que es donde está la etiqueta que se lee.
+ */
+export function FieldRow({ children }: { children: ReactNode }) {
+  return (
+    <Stack
+      direction={{ xs: 'column', sm: 'row' }}
+      spacing={2}
+      sx={{ alignItems: { sm: 'flex-start' } }}
+    >
+      {children}
+    </Stack>
+  )
+}
+
 export function FormDrawer({
   open,
   title,
