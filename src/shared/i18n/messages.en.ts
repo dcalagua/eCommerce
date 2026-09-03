@@ -157,6 +157,8 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'store.availability.inStock': 'In stock',
     'store.availability.outOfStock': 'Out of stock',
     'store.product.description': 'Description',
+    'store.product.readMore': 'Read the full description',
+    'store.product.readLess': 'Show less',
     'store.product.noDescription': 'This product has no description yet.',
     'store.product.related': 'You may also like',
     'store.product.back': 'Back to catalog',
@@ -457,6 +459,15 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'catalog.products.emptySearch': 'No product matches your search',
     'catalog.products.unauthorized':
       'Your role can read the catalog but not change it. Ask your administrator for catalog permission.',
+    'catalog.stock.warehouse': 'Receiving warehouse',
+    'catalog.stock.warehouseHelp': 'Where that quantity lands. After this, move it from Inventory.',
+    'catalog.stock.initialHelp':
+      'Opening stock: with warehouses, the storefront reads Inventory, not this field.',
+    'catalog.stock.managedHelp':
+      'Availability is driven by Inventory. Changing this does not change what a shopper sees.',
+    'catalog.stock.initialReason': 'Product created',
+    'catalog.stock.seedFailed':
+      'The product was created, but its opening stock could not be loaded. Load it from Inventory.',
     'catalog.status.draft': 'Draft',
     'catalog.status.published': 'Published',
     'catalog.status.archived': 'Archived',
@@ -3052,5 +3063,4 @@ export const en: Readonly<Record<MessageKey, string>> = {
   'store.product.availabilityLabel': 'Availability',
   'store.product.chooseOptions': 'Choose options',
   'store.product.buyGroup': 'Buy',
-  'store.product.noData': 'No information available',
 }

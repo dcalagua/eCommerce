@@ -13,6 +13,11 @@ import {
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import { useForm } from 'react-hook-form'
 import { useCapabilities } from '@/features/capabilities/capabilities-context'
+import {
+  useAdjustInventory,
+  useStoreWarehouses,
+  useWarehouses,
+} from '@/features/inventory/hooks'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { slugify } from '@/shared/lib/slug'
@@ -99,15 +104,46 @@ export function ProductDrawer({
   const { t } = useI18n()
   const { notify } = useFeedback()
   const save = useSaveProduct()
+  const entrada = useAdjustInventory()
   const { has } = useCapabilities()
   const advanced = has('catalog.advanced')
 
   const [serverError, setServerError] = useState<MessageKey | null>(null)
   const [slugEdited, setSlugEdited] = useState(false)
   const [tab, setTab] = useState('general')
+  const [almacenInicial, setAlmacenInicial] = useState('')
 
   const brands = useBrands(open && advanced)
   const families = useFamilies(open && advanced)
+
+  /*
+   * La existencia inicial, y por qué está aquí y no solo en Inventario.
+   *
+   * Con almacenes configurados, `ebim.atp` deja de mirar `products.stock` y
+   * pasa a sumar `inventory_levels`. Un producto recién creado no tiene
+   * ninguna fila ahí, así que nace con cero disponible y la vitrina lo pinta
+   * «Sin stock» por mucho que el campo de arriba diga cuarenta. Quien lo da de
+   * alta rellena el único campo que el formulario le ofrece y se encuentra un
+   * producto que no se puede comprar, sin nada que se lo explique.
+   *
+   * Así que el alta pregunta EN QUÉ ALMACÉN entra, que es la pregunta real en
+   * cuanto hay más de uno, y escribe la entrada al guardar.
+   */
+  const multialmacen = has('inventory.multiwarehouse')
+  const enlaces = useStoreWarehouses(open && multialmacen ? storeId : null)
+  const almacenes = useWarehouses(open && multialmacen)
+
+  // Los que de verdad sirven a esta tienda, en orden de prioridad: es el mismo
+  // criterio de `ebim.serving_warehouses`, así que el primero es el natural.
+  const almacenesServidores = useMemo(() => {
+    const porId = new Map((almacenes.data ?? []).map((w) => [w.id, w]))
+    return (enlaces.data ?? [])
+      .filter((enlace) => enlace.is_active)
+      .map((enlace) => porId.get(enlace.warehouse_id))
+      .filter((w): w is NonNullable<typeof w> => Boolean(w?.is_active))
+  }, [enlaces.data, almacenes.data])
+
+  const pideExistencia = product === null && almacenesServidores.length > 0
 
   const {
     register,
@@ -129,12 +165,45 @@ export function ProductDrawer({
     setSlugEdited(Boolean(product))
     setServerError(null)
     setTab('general')
+    setAlmacenInicial('')
   }, [open, product, reset])
+
+  // El de mayor prioridad viene ya elegido: en una tienda con un solo almacén
+  // preguntar sería un trámite, y con varios el primero es el que sirve antes.
+  useEffect(() => {
+    if (!almacenInicial && almacenesServidores.length > 0) {
+      setAlmacenInicial(almacenesServidores[0]!.id)
+    }
+  }, [almacenesServidores, almacenInicial])
 
   async function onSubmit(values: ProductFormValues) {
     setServerError(null)
     try {
-      await save.mutateAsync({ productId: product?.id ?? null, storeId, values })
+      const creado = await save.mutateAsync({ productId: product?.id ?? null, storeId, values })
+
+      // La entrada va DESPUÉS y en su propio comando: `inventory_levels` no
+      // tiene GRANT de escritura, se mueve con una función que anota el
+      // movimiento en la misma transacción. Si esto falla, el producto YA
+      // existe —visible y corregible desde Inventario—; al revés quedaría una
+      // entrada de almacén sin producto al que pertenecer.
+      const cantidad = Number(values.stock)
+      if (pideExistencia && almacenInicial && cantidad > 0) {
+        try {
+          await entrada.mutateAsync({
+            warehouse_id: almacenInicial,
+            product_id: creado.id,
+            variant_id: null,
+            quantity: cantidad,
+            kind: 'receipt',
+            reason: t('catalog.stock.initialReason'),
+          })
+        } catch {
+          notify(t('catalog.toast.saved'))
+          setServerError('catalog.stock.seedFailed')
+          return
+        }
+      }
+
       notify(t('catalog.toast.saved'))
       onClose()
     } catch (error) {
@@ -375,16 +444,45 @@ export function ProductDrawer({
               disabled={!canWrite || kind !== 'simple'}
               error={Boolean(errors.stock)}
               helperText={
-                kind === 'simple'
-                  ? fieldError('stock')
-                  : kind === 'variant'
+                kind !== 'simple'
+                  ? kind === 'variant'
                     ? t('pim.variants.help')
                     : t('pim.bundle.help')
+                  : // Con almacenes, este número solo vale como carga inicial:
+                    // a partir de ahí la disponibilidad la manda Inventario, y
+                    // callarlo es lo que hace que alguien lo rellene y no pase
+                    // nada en la vitrina.
+                    (fieldError('stock') ??
+                      (pideExistencia
+                        ? t('catalog.stock.initialHelp')
+                        : almacenesServidores.length > 0
+                          ? t('catalog.stock.managedHelp')
+                          : undefined))
               }
               inputProps={{ inputMode: 'numeric' }}
               {...register('stock')}
             />
           </Stack>
+
+          {/* En qué almacén entra. Solo al dar de alta: después, la existencia
+              se mueve desde Inventario con su movimiento y su motivo. */}
+          {pideExistencia && kind === 'simple' && (
+            <TextField
+              select
+              label={t('catalog.stock.warehouse')}
+              fullWidth
+              disabled={!canWrite}
+              value={almacenInicial}
+              onChange={(event) => setAlmacenInicial(event.target.value)}
+              helperText={t('catalog.stock.warehouseHelp')}
+            >
+              {almacenesServidores.map((almacen) => (
+                <MenuItem key={almacen.id} value={almacen.id}>
+                  {almacen.code} · {almacen.name}
+                </MenuItem>
+              ))}
+            </TextField>
+          )}
 
           <TextField
             select

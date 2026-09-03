@@ -161,6 +161,8 @@ export const es = {
     'store.availability.outOfStock': 'Sin stock',
     'store.product.description': 'Descripción',
     'store.product.noDescription': 'Este producto todavía no tiene descripción.',
+    'store.product.readMore': 'Leer la descripción completa',
+    'store.product.readLess': 'Ver menos',
     'store.product.related': 'También te puede interesar',
     'store.product.back': 'Volver al catálogo',
     'store.product.notFound': 'No encontramos ese producto',
@@ -463,6 +465,16 @@ export const es = {
     'catalog.products.emptySearch': 'Ningún producto coincide con tu búsqueda',
     'catalog.products.unauthorized':
       'Tu rol puede consultar el catálogo, pero no modificarlo. Pide permiso de catálogo a tu administrador.',
+    // Existencia inicial al dar de alta un producto, cuando hay almacenes.
+    'catalog.stock.warehouse': 'Almacén de entrada',
+    'catalog.stock.warehouseHelp': 'Dónde entra esa cantidad. Después se mueve desde Inventario.',
+    'catalog.stock.initialHelp':
+      'Entrada inicial: con almacenes, la vitrina lee Inventario y no este campo.',
+    'catalog.stock.managedHelp':
+      'La disponibilidad la lleva Inventario. Cambiar esto no cambia lo que ve el comprador.',
+    'catalog.stock.initialReason': 'Alta de producto',
+    'catalog.stock.seedFailed':
+      'El producto se creó, pero la existencia inicial no se pudo cargar. Cárgala desde Inventario.',
     'catalog.status.draft': 'Borrador',
     'catalog.status.published': 'Publicado',
     'catalog.status.archived': 'Archivado',
@@ -3061,5 +3073,4 @@ export const es = {
   'store.product.availabilityLabel': 'Disponibilidad',
   'store.product.chooseOptions': 'Elegir opciones',
   'store.product.buyGroup': 'Comprar',
-  'store.product.noData': 'Sin informacion disponible',
 } as const

@@ -8,6 +8,7 @@ import {
   STORE_A,
   USER,
   createFakeSupabase,
+  makePlatformContext,
   makeSession,
   type FakeSupabase,
 } from '@/test/supabaseMock'
@@ -69,6 +70,51 @@ function backend(role: 'admin' | 'viewer' = 'admin', products = defaultProducts(
       'catalog-product': (body) => ({ id: String(body.product_id ?? PRODUCT_ID), status: 'draft' }),
     },
   })
+}
+
+const WAREHOUSE_ID = '66666666-6666-4666-8666-666666666666'
+
+/**
+ * El mismo tenant, pero con un almacen sirviendo a la tienda y el addon de
+ * multialmacen contratado: es el momento en que la vitrina deja de leer
+ * `products.stock` y pasa a sumar `inventory_levels`.
+ */
+function conAlmacenes(): FakeSupabase {
+  const fake = backend()
+  fake.state.tables.warehouses = [
+    {
+      id: WAREHOUSE_ID,
+      organization_id: ORG,
+      company_id: COMPANY_A,
+      code: 'ALM-1',
+      name: 'Almacen central',
+      kind: 'warehouse',
+      source: 'local',
+      stale_after: null,
+      stale_policy: 'unknown',
+      allows_backorder: false,
+      priority: 1,
+      is_active: true,
+      is_default: true,
+      city: null,
+      country: null,
+    },
+  ]
+  fake.state.tables.store_warehouses = [
+    {
+      id: '66666666-6666-4666-8666-666666666667',
+      organization_id: ORG,
+      company_id: COMPANY_A,
+      store_id: STORE_A,
+      warehouse_id: WAREHOUSE_ID,
+      priority: 1,
+      is_active: true,
+    },
+  ]
+  fake.state.rpc.effective_capabilities = () =>
+    makePlatformContext({ entitlements: ['ecommerce.inventory.multiwarehouse'], source: 'hub' })
+  fake.state.rpc.adjust_inventory = () => ({ ok: true })
+  return fake
 }
 
 function defaultProducts() {
@@ -212,6 +258,69 @@ describe('ProductsPage — alta y edicion', () => {
     for (const field of TENANT_FIELDS) {
       expect(invocation?.body).not.toHaveProperty(field)
     }
+  })
+
+  /**
+   * El fallo que esto fija: con almacenes, `ebim.atp` deja de mirar
+   * `products.stock` y suma `inventory_levels`. Un producto recien creado no
+   * tenia ninguna fila ahi, asi que nacia con cero disponible y la vitrina lo
+   * pintaba «Sin stock» aunque el campo dijera cuarenta. Quien lo daba de alta
+   * rellenaba el unico campo que el formulario ofrecia y se encontraba un
+   * producto que no se podia comprar, sin nada que se lo explicara.
+   */
+  it('con almacenes, el alta carga la existencia inicial en el almacen elegido', async () => {
+    const user = userEvent.setup()
+    const fake = conAlmacenes()
+    renderPage(fake)
+
+    await user.click(await screen.findByRole('button', { name: 'Nuevo producto' }))
+    const drawer = await screen.findByRole('dialog')
+
+    await user.type(within(drawer).getByLabelText('Nombre'), 'Mesa nueva')
+    await user.type(within(drawer).getByLabelText('SKU'), 'MES-002')
+    await user.type(within(drawer).getByLabelText('Precio'), '349.50')
+    await user.clear(within(drawer).getByLabelText('Stock'))
+    await user.type(within(drawer).getByLabelText('Stock'), '12')
+
+    // El de MAYOR prioridad viene ya elegido: en una tienda con uno solo,
+    // preguntar seria un tramite.
+    expect(within(drawer).getByLabelText('Almacén de entrada')).toHaveTextContent('ALM-1')
+
+    await user.click(within(drawer).getByRole('button', { name: 'Guardar' }))
+
+    await waitFor(() =>
+      expect(fake.state.rpcCalls.some((call) => call.name === 'adjust_inventory')).toBe(true),
+    )
+    const entrada = fake.state.rpcCalls.find((call) => call.name === 'adjust_inventory')
+    expect(entrada?.args).toMatchObject({
+      p_warehouse_id: WAREHOUSE_ID,
+      p_product_id: PRODUCT_ID,
+      p_quantity: 12,
+      // `receipt` y no `adjustment`: es una entrada de mercaderia, y el
+      // movimiento tiene que decir por que subio la existencia.
+      p_kind: 'receipt',
+    })
+  })
+
+  it('sin almacenes NO se toca inventario: manda `products.stock`, como antes', async () => {
+    const user = userEvent.setup()
+    const fake = backend()
+    renderPage(fake)
+
+    await user.click(await screen.findByRole('button', { name: 'Nuevo producto' }))
+    const drawer = await screen.findByRole('dialog')
+
+    await user.type(within(drawer).getByLabelText('Nombre'), 'Mesa nueva')
+    await user.type(within(drawer).getByLabelText('SKU'), 'MES-003')
+    await user.type(within(drawer).getByLabelText('Precio'), '349.50')
+
+    // Ni siquiera se pregunta: sin almacenes la pregunta no tiene sentido.
+    expect(within(drawer).queryByLabelText('Almacén de entrada')).not.toBeInTheDocument()
+
+    await user.click(within(drawer).getByRole('button', { name: 'Guardar' }))
+
+    await waitFor(() => expect(fake.state.invocations).toHaveLength(1))
+    expect(fake.state.rpcCalls.some((call) => call.name === 'adjust_inventory')).toBe(false)
   })
 
   it('el slug se sugiere desde el nombre y viaja en minusculas con guiones', async () => {
