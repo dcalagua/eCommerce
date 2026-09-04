@@ -42,6 +42,10 @@ const LIST_ID = '77777777-7777-4777-8777-777777777701'
 const OTHER_LIST_ID = '77777777-7777-4777-8777-777777777702'
 const SEGMENT_ID = '77777777-7777-4777-8777-777777777703'
 const EVENT_ID = '77777777-7777-4777-8777-777777777704'
+const PRODUCT_A = '77777777-7777-4777-8777-7777777777a1'
+const PRODUCT_B = '77777777-7777-4777-8777-7777777777a2'
+const ITEM_A = '77777777-7777-4777-8777-7777777777b1'
+const ITEM_B = '77777777-7777-4777-8777-7777777777b2'
 
 const PRICING = ['ecommerce.pricing.lists']
 
@@ -95,7 +99,35 @@ function backend(options: { entitlements?: string[] } = {}): FakeSupabase {
           notes: null,
         },
       ],
-      price_list_items: [],
+      price_list_items: [
+        {
+          id: ITEM_A,
+          organization_id: ORG,
+          company_id: COMPANY_A,
+          store_id: STORE_A,
+          price_list_id: LIST_ID,
+          product_id: PRODUCT_A,
+          variant_id: null,
+          uom_id: null,
+          min_quantity: '1.000000',
+          unit_price: '80.00',
+          // Con «antes»: es el renglón que sale en la banda de ofertas.
+          compare_at_price: '100.00',
+        },
+        {
+          id: ITEM_B,
+          organization_id: ORG,
+          company_id: COMPANY_A,
+          store_id: STORE_A,
+          price_list_id: LIST_ID,
+          product_id: PRODUCT_B,
+          variant_id: null,
+          uom_id: null,
+          min_quantity: '1.000000',
+          unit_price: '25.00',
+          compare_at_price: null,
+        },
+      ],
       price_list_assignments: [],
       customer_segments: [
         {
@@ -124,7 +156,26 @@ function backend(options: { entitlements?: string[] } = {}): FakeSupabase {
         },
       ],
       channels: [],
-      products: [],
+      products: [
+        {
+          id: PRODUCT_A,
+          organization_id: ORG,
+          company_id: COMPANY_A,
+          store_id: STORE_A,
+          sku: 'JAR-500',
+          name: 'Jarabe para la tos 500 ml',
+          kind: 'simple',
+        },
+        {
+          id: PRODUCT_B,
+          organization_id: ORG,
+          company_id: COMPANY_A,
+          store_id: STORE_A,
+          sku: 'VIT-C',
+          name: 'Vitamina C 1 g',
+          kind: 'simple',
+        },
+      ],
       product_variants: [],
       product_uoms: [],
       units_of_measure: [],
@@ -249,6 +300,82 @@ describe('Precios — la pantalla', () => {
     await user.click(screen.getByRole('tab', { name: 'Diagnóstico' }))
     expect(await screen.findByText('10.00 → 8.00')).toBeInTheDocument()
     expect(screen.getByText('duenio@negocio.com')).toBeInTheDocument()
+  })
+})
+
+/**
+ * Los renglones de una lista.
+ *
+ * Las tres cosas que esta tabla no podía hacer y que sí hacen falta para
+ * gobernar la banda de ofertas de la vitrina: saber QUÉ producto es cada
+ * renglón, encontrarlo entre cientos, y corregirlo sin borrarlo.
+ */
+describe('Precios — los renglones de una lista', () => {
+  async function abrirPrecios(user: ReturnType<typeof userEvent.setup>) {
+    renderPricing(backend())
+    await user.click(await screen.findByRole('button', { name: 'Editar: Mayorista' }))
+    await user.click(await screen.findByRole('tab', { name: 'Precios' }))
+  }
+
+  it('cada renglón dice qué producto es, no su identificador', async () => {
+    const user = userEvent.setup()
+    await abrirPrecios(user)
+
+    // El nombre sale del catálogo de la tienda, no de los resultados del
+    // buscador de arriba: sin eso la tabla era una lista de uuid recortados.
+    expect(await screen.findByText('JAR-500 · Jarabe para la tos 500 ml')).toBeInTheDocument()
+    expect(screen.getByText('VIT-C · Vitamina C 1 g')).toBeInTheDocument()
+  })
+
+  it('el buscador de la tabla encuentra un renglón sin pasar página por página', async () => {
+    const user = userEvent.setup()
+    await abrirPrecios(user)
+    expect(await screen.findByText('JAR-500 · Jarabe para la tos 500 ml')).toBeInTheDocument()
+
+    await user.type(screen.getByLabelText('Buscar en la lista por SKU o nombre'), 'VIT-C')
+
+    expect(screen.queryByText('JAR-500 · Jarabe para la tos 500 ml')).not.toBeInTheDocument()
+    expect(screen.getByText('VIT-C · Vitamina C 1 g')).toBeInTheDocument()
+  })
+
+  it('el interruptor deja ver de una vez lo que está saliendo rebajado', async () => {
+    const user = userEvent.setup()
+    await abrirPrecios(user)
+    expect(await screen.findByText('VIT-C · Vitamina C 1 g')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('checkbox', { name: 'Solo con precio tachado' }))
+
+    expect(screen.getByText('JAR-500 · Jarabe para la tos 500 ml')).toBeInTheDocument()
+    expect(screen.queryByText('VIT-C · Vitamina C 1 g')).not.toBeInTheDocument()
+  })
+
+  it('quitar el precio tachado ACTUALIZA el renglón, no lo duplica', async () => {
+    const user = userEvent.setup()
+    const fake = backend()
+    holder.client = fake
+    renderWithProviders(
+      <TenantProvider>
+        <CapabilitiesProvider>
+          <CapabilityGate capability="pricing.lists">
+            <PricingPage />
+          </CapabilityGate>
+        </CapabilitiesProvider>
+      </TenantProvider>,
+      { session: fake.state.session },
+    )
+    await user.click(await screen.findByRole('button', { name: 'Editar: Mayorista' }))
+    await user.click(await screen.findByRole('tab', { name: 'Precios' }))
+    expect(await screen.findByText('JAR-500 · Jarabe para la tos 500 ml')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Editar 80.00' }))
+    await user.clear(screen.getByLabelText('Precio tachado'))
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    // Sigue habiendo DOS renglones: el camino viejo era borrar y volver a
+    // crear, y ahí es donde se perdía el precio si algo fallaba en medio.
+    const filas = fake.state.tables.price_list_items as { id: string; compare_at_price: unknown }[]
+    expect(filas).toHaveLength(2)
+    expect(filas.find((fila) => fila.id === ITEM_A)?.compare_at_price).toBeNull()
   })
 })
 

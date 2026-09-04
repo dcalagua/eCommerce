@@ -2,13 +2,16 @@ import { usePagedRows } from '@/shared/ui/usePagedRows'
 import { TablePager } from '@/shared/ui/TablePager'
 import { RowActions } from '@/shared/ui/RowActions'
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import {
   Alert,
   Autocomplete,
   Box,
   Button,
+  FormControlLabel,
   MenuItem,
   Stack,
+  Switch,
   Table,
   TableBody,
   TableCell,
@@ -44,7 +47,7 @@ import {
   type CsvIssue,
   type ResolvedPriceRow,
 } from './importCsv'
-import type { PriceList, PricedProduct } from './types'
+import type { PriceList, PriceListItem, PricedProduct } from './types'
 
 /**
  * Los precios de una lista.
@@ -81,6 +84,19 @@ export function PriceItemsPanel({ list, canWrite }: { list: PriceList; canWrite:
   const [compareAt, setCompareAt] = useState('')
   const [formError, setFormError] = useState<MessageKey | null>(null)
 
+  /**
+   * El renglón que se está corrigiendo, si es que hay alguno.
+   *
+   * El formulario es UNO: el de arriba da de alta y también corrige. Un segundo
+   * formulario para editar sería el mismo campo dos veces con dos validaciones
+   * que se van separando, y ya se sabe cómo acaba eso.
+   */
+  const [editando, setEditando] = useState<PriceListItem | null>(null)
+
+  /** Qué se busca dentro de la lista, y si solo interesan los rebajados. */
+  const [filtro, setFiltro] = useState('')
+  const [soloRebajados, setSoloRebajados] = useState(false)
+
   const scope = useMemo(
     () =>
       tenant && activeCompanyId && activeStore
@@ -93,14 +109,63 @@ export function PriceItemsPanel({ list, canWrite }: { list: PriceList; canWrite:
     [tenant, activeCompanyId, activeStore],
   )
 
+  /**
+   * El catálogo de la tienda, para poder LEER la tabla.
+   *
+   * La columna de producto salía con el identificador recortado —`a3f91c02`—
+   * salvo que ese producto estuviera en ese momento entre los veinte resultados
+   * del buscador de arriba. Con una lista de quinientos renglones eso no es una
+   * tabla, es una lista de identificadores: no se puede encontrar un producto
+   * para corregirlo ni para quitarle el precio tachado.
+   *
+   * Es la MISMA consulta que ya usa la importación (`catalogKey`), así que abrir
+   * las dos cosas en la misma pantalla no pide el catálogo dos veces.
+   */
+  const catalogo = usePricingCatalog(activeStore?.id ?? null, true)
+
   const productLabel = useMemo(() => {
     const names = new Map<string, string>()
+    for (const row of catalogo.data?.products ?? []) names.set(row.id, `${row.sku} · ${row.name}`)
     for (const row of search.data ?? []) names.set(row.id, `${row.sku} · ${row.name}`)
     if (product) names.set(product.id, `${product.sku} · ${product.name}`)
     return names
-  }, [search.data, product])
+  }, [catalogo.data, search.data, product])
 
   const DECIMAL = /^\d{1,10}(\.\d{1,6})?$/
+
+  /** Deja el formulario como recién abierto. */
+  function limpiar() {
+    setEditando(null)
+    setProduct(null)
+    setVariantId('')
+    setUomId('')
+    setMinQuantity('1')
+    setUnitPrice('')
+    setCompareAt('')
+    setFormError(null)
+  }
+
+  /**
+   * Trae un renglón al formulario para corregirlo.
+   *
+   * Antes esto no existía y la tabla solo sabía BORRAR: quitarle el precio
+   * tachado a un producto —o corregir un precio— obligaba a borrar el renglón y
+   * volver a crearlo con los mismos datos, y si te equivocabas en el camino te
+   * quedabas sin el precio. La API ya aceptaba `id` para actualizar; lo que
+   * faltaba era la puerta.
+   */
+  function editar(item: PriceListItem) {
+    setEditando(item)
+    setProduct((catalogo.data?.products ?? []).find((row) => row.id === item.product_id) ?? null)
+    setVariantId(item.variant_id ?? '')
+    setUomId(item.uom_id ?? '')
+    // `1.000000` en la base es `1` en el formulario: lo que se enseña para
+    // corregir tiene que ser lo que uno escribiría.
+    setMinQuantity(String(Number(item.min_quantity)))
+    setUnitPrice(item.unit_price)
+    setCompareAt(item.compare_at_price ?? '')
+    setFormError(null)
+  }
 
   async function addItem() {
     if (!scope || !product) {
@@ -119,6 +184,7 @@ export function PriceItemsPanel({ list, canWrite }: { list: PriceList; canWrite:
     setFormError(null)
     try {
       await save.mutateAsync({
+        ...(editando ? { id: editando.id } : {}),
         scope,
         listId: list.id,
         values: {
@@ -130,20 +196,45 @@ export function PriceItemsPanel({ list, canWrite }: { list: PriceList; canWrite:
           compareAtPrice: compareAt || null,
         },
       })
-      notify(t('pricing.toast.saved'))
-      setUnitPrice('')
-      setCompareAt('')
-      setMinQuantity('1')
+      if (editando) {
+        notify(t('pricing.toast.updated'))
+        limpiar()
+      } else {
+        notify(t('pricing.toast.saved'))
+        setUnitPrice('')
+        setCompareAt('')
+        setMinQuantity('1')
+      }
     } catch (error) {
       setFormError(error instanceof PricingError ? error.key : 'pricing.error.generic')
     }
   }
 
+  /**
+   * Lo que se enseña de la lista.
+   *
+   * Se filtra por la ETIQUETA del producto —`SKU · nombre`— porque es lo que se
+   * ve en la tabla: buscar por algo que no está escrito en pantalla es adivinar.
+   *
+   * El interruptor de «solo con precio tachado» está para el trabajo concreto
+   * que hoy no se podía hacer: ver de una vez qué productos están saliendo en la
+   * banda de ofertas de la vitrina, que son exactamente los que tienen ese
+   * campo puesto.
+   */
+  const filtrados = useMemo(() => {
+    const aguja = filtro.trim().toLowerCase()
+    return (items.data ?? []).filter((item) => {
+      if (soloRebajados && !item.compare_at_price) return false
+      if (!aguja) return true
+      return (productLabel.get(item.product_id) ?? item.product_id).toLowerCase().includes(aguja)
+    })
+  }, [items.data, filtro, soloRebajados, productLabel])
+
   // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
   // aligerar la consulta. Va ANTES de la primera guarda con retorno,
   // porque un hook detras de un `return` cambia de orden entre renders.
   // Ver `usePagedRows`.
-  const pager = usePagedRows((items.data ?? []))
+  const pager = usePagedRows(filtrados)
 
   return (
     <Stack spacing={2}>
@@ -152,10 +243,25 @@ export function PriceItemsPanel({ list, canWrite }: { list: PriceList; canWrite:
       {canWrite && (
         <Stack spacing={1.5}>
           {formError && <Alert severity="error">{t(formError)}</Alert>}
+          {editando && (
+            <Alert
+              severity="info"
+              action={
+                <Button size="small" onClick={limpiar}>
+                  {t('common.cancel')}
+                </Button>
+              }
+            >
+              {t('pricing.items.editing')}
+            </Alert>
+          )}
 
           <Autocomplete
             options={search.data ?? []}
             value={product}
+            // Editando, el producto queda fijo: cambiarlo no corrige este
+            // renglón, crea otro distinto contra la clave única de la tabla.
+            disabled={Boolean(editando)}
             onChange={(_, next) => {
               setProduct(next)
               setVariantId('')
@@ -233,7 +339,7 @@ export function PriceItemsPanel({ list, canWrite }: { list: PriceList; canWrite:
               onChange={(event) => setCompareAt(event.target.value)}
             />
             <Button variant="contained" onClick={() => void addItem()} disabled={save.isPending}>
-              {t('common.add')}
+              {editando ? t('common.save') : t('common.add')}
             </Button>
           </Stack>
         </Stack>
@@ -241,12 +347,53 @@ export function PriceItemsPanel({ list, canWrite }: { list: PriceList; canWrite:
 
       <ImportPanel list={list} canWrite={canWrite} />
 
+      {/* El buscador de la TABLA, que no es el del formulario: aquel elige un
+          producto del catálogo para darlo de alta, este encuentra un renglón
+          que ya está en la lista. Sin él, corregir un precio en una lista de
+          quinientos renglones era pasar página por página. */}
+      {(items.data ?? []).length > 0 && (
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1.5}
+          sx={{ alignItems: { sm: 'center' } }}
+        >
+          <TextField
+            size="small"
+            fullWidth
+            label={t('pricing.items.filter')}
+            value={filtro}
+            onChange={(event) => setFiltro(event.target.value)}
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={soloRebajados}
+                onChange={(event) => setSoloRebajados(event.target.checked)}
+              />
+            }
+            label={t('pricing.items.onlyDiscounted')}
+          />
+          <Typography sx={{ fontSize: 13, color: 'var(--muted)', whiteSpace: 'nowrap' }}>
+            {t('pricing.items.count')
+              .replace('{shown}', String(filtrados.length))
+              .replace('{total}', String((items.data ?? []).length))}
+          </Typography>
+        </Stack>
+      )}
+
       {items.isError && <ErrorState error={items.error} onRetry={() => void items.refetch()} />}
       {!items.isPending && !items.isError && (items.data ?? []).length === 0 && (
         <EmptyState title={t('pricing.items.empty')} description={t('pricing.items.emptyBody')} />
       )}
 
-      {(items.data ?? []).length > 0 && (
+      {(items.data ?? []).length > 0 && filtrados.length === 0 && (
+        <EmptyState
+          title={t('pricing.items.noMatch')}
+          description={t('pricing.items.noMatchBody')}
+        />
+      )}
+
+      {filtrados.length > 0 && (
         <Table size="small">
           <TableHead>
             <TableRow>
@@ -273,6 +420,13 @@ export function PriceItemsPanel({ list, canWrite }: { list: PriceList; canWrite:
                 <TableCell align="right">
                   <RowActions
                     actions={[
+                      {
+                        id: 'edit',
+                        icon: <EditRoundedIcon fontSize="small" />,
+                        label: `${t('common.edit')} ${item.unit_price}`,
+                        disabled: !canWrite,
+                        onClick: () => editar(item),
+                      },
                       {
                         id: 'delete',
                         icon: <DeleteRoundedIcon fontSize="small" />,
@@ -351,7 +505,11 @@ function ImportPanel({ list, canWrite }: { list: PriceList; canWrite: boolean })
       listId: list.id,
       rows: pending.rows,
     })
-    notify(`${t('pricing.import.done')} (${written})`)
+    notify(
+      `${t('pricing.import.done')} — ${t('pricing.import.result')
+        .replace('{inserted}', String(written.inserted))
+        .replace('{updated}', String(written.updated))}`,
+    )
     setPending(null)
   }
 

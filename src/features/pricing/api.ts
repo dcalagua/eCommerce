@@ -232,33 +232,103 @@ export async function deletePriceItem(id: string): Promise<void> {
 }
 
 /**
- * Carga masiva. Un solo `upsert` con `on_conflict` sobre la clave natural del
- * renglón: reimportar la misma hoja con precios corregidos ACTUALIZA en vez de
- * fallar por duplicado, que es lo que de verdad hace quien corrige una lista.
+ * La CLAVE NATURAL de un renglón dentro de su lista.
+ *
+ * Es la misma que vigilan los dos índices únicos de `price_list_items`: lista,
+ * producto (o variante), presentación y cantidad mínima. `min_quantity` pasa
+ * por `Number` porque la base lo devuelve como `1.000000` y el CSV lo trae
+ * como `1`: comparadas como texto, esas dos son claves distintas y el renglón
+ * se duplicaría contra un índice que dice que no puede.
+ */
+function claveDeRenglon(row: {
+  product_id: string
+  variant_id: string | null
+  uom_id: string | null
+  min_quantity: string
+}): string {
+  return [row.product_id, row.variant_id ?? '', row.uom_id ?? '', Number(row.min_quantity)].join('|')
+}
+
+/**
+ * Carga masiva: da de alta lo que no está y ACTUALIZA lo que ya está.
+ *
+ * Antes era un `insert` a secas —el comentario decía `upsert`, el código no lo
+ * hacía— y por eso reimportar la misma hoja con tres precios corregidos moría
+ * con un error de duplicado contra el índice único. Corregir una lista en bloque
+ * es justo lo que se hace con un CSV, así que fallar ahí es fallar en el caso
+ * principal.
+ *
+ * No se usa `upsert` de PostgREST porque su `on_conflict` infiere el índice por
+ * una LISTA DE COLUMNAS, y los de esta tabla son parciales y con expresión
+ * (`coalesce(uom_id, product_id)`, `where variant_id is null`): no hay lista de
+ * columnas que los nombre. Así que la partida se hace aquí: una consulta para
+ * saber qué existe ya, un `insert` con todas las altas y un `update` por cada
+ * renglón que cambia.
+ *
+ * Los `update` van de uno en uno porque cada renglón lleva valores distintos y
+ * no hay forma de expresar eso en una sola escritura de PostgREST. Es la parte
+ * cara —una hoja que corrige 300 precios hace 300 llamadas— y se acepta a
+ * sabiendas: la alternativa era borrar y volver a insertar, que deja la lista
+ * de precios vacía si la segunda mitad falla.
  */
 export async function importPriceItems(input: {
   scope: StoreScope
   listId: string
   rows: readonly ResolvedPriceRow[]
-}): Promise<number> {
-  if (input.rows.length === 0) return 0
+}): Promise<{ inserted: number; updated: number }> {
+  if (input.rows.length === 0) return { inserted: 0, updated: 0 }
 
-  const payload = input.rows.map((row) => ({
-    organization_id: input.scope.organizationId,
-    company_id: input.scope.companyId,
-    store_id: input.scope.storeId,
-    price_list_id: input.listId,
-    product_id: row.productId,
-    variant_id: row.variantId,
-    uom_id: row.uomId,
-    min_quantity: row.minQuantity,
-    unit_price: row.unitPrice,
-    compare_at_price: row.compareAtPrice,
-  }))
+  const supabase = client()
+  const existentes = new Map(
+    (await fetchPriceItems(input.listId)).map((item) => [claveDeRenglon(item), item.id]),
+  )
 
-  const { error } = await client().from(PRICE_LIST_ITEMS_TABLE).insert(payload)
-  if (error) throw pricingErrorFromDb(error)
-  return payload.length
+  const altas: Record<string, unknown>[] = []
+  const cambios: { id: string; fields: Record<string, unknown> }[] = []
+
+  for (const row of input.rows) {
+    const fields = {
+      product_id: row.productId,
+      variant_id: row.variantId,
+      uom_id: row.uomId,
+      min_quantity: row.minQuantity,
+      unit_price: row.unitPrice,
+      compare_at_price: row.compareAtPrice,
+    }
+    const id = existentes.get(
+      claveDeRenglon({
+        product_id: row.productId,
+        variant_id: row.variantId,
+        uom_id: row.uomId,
+        min_quantity: row.minQuantity,
+      }),
+    )
+    if (id) cambios.push({ id, fields })
+    else {
+      altas.push({
+        organization_id: input.scope.organizationId,
+        company_id: input.scope.companyId,
+        store_id: input.scope.storeId,
+        price_list_id: input.listId,
+        ...fields,
+      })
+    }
+  }
+
+  if (altas.length > 0) {
+    const { error } = await supabase.from(PRICE_LIST_ITEMS_TABLE).insert(altas)
+    if (error) throw pricingErrorFromDb(error)
+  }
+
+  for (const cambio of cambios) {
+    const { error } = await supabase
+      .from(PRICE_LIST_ITEMS_TABLE)
+      .update(cambio.fields)
+      .eq('id', cambio.id)
+    if (error) throw pricingErrorFromDb(error)
+  }
+
+  return { inserted: altas.length, updated: cambios.length }
 }
 
 // ---------------------------------------------------------------------------
