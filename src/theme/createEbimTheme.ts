@@ -139,7 +139,42 @@ export function createEbimTheme({
           },
         },
       },
+      /**
+       * La etiqueta SIEMPRE arriba, en toda la suite.
+       *
+       * ## Qué arregla
+       *
+       * MUI decide si la etiqueta flota mirando si el campo está enfocado o
+       * «relleno», y ese «relleno» lo actualiza el propio `<input>` al recibir
+       * un evento de cambio. Cuando el valor lo escribe el código —el `slug`
+       * que se genera solo del nombre, el SKU sugerido de una variante, el
+       * código de un cliente— React Hook Form lo mete directo en el nodo del
+       * DOM sin ese evento: el campo tiene texto, MUI cree que está vacío, y la
+       * etiqueta se queda encima del valor. Se leen los dos superpuestos y no
+       * se entiende ninguno.
+       *
+       * ## Por qué en el tema y no campo por campo
+       *
+       * Porque ya se estaba haciendo campo por campo: **69 veces en 22
+       * archivos** hay un `shrink: true` escrito a mano, incluso con una
+       * constante `SHRINK` copiada en dos sitios. O sea que la casa ya había
+       * decidido que la etiqueta va arriba; lo que fallaba era acordarse en
+       * cada formulario nuevo. Puesto aquí, el que se olvide no rompe nada.
+       *
+       * Los 69 de antes siguen siendo válidos —dicen lo mismo que el tema— y no
+       * se tocan: son 22 archivos, varios en obra ahora mismo, y borrarlos no
+       * cambia ni un píxel.
+       *
+       * `notched` va de la mano y no es opcional: la etiqueta flotante se pinta
+       * SOBRE el borde del campo, y el hueco en ese borde lo abre el
+       * `OutlinedInput`. Con una sola de las dos cosas, el texto queda cruzado
+       * por la línea del recuadro.
+       */
+      MuiTextField: {
+        defaultProps: { slotProps: { inputLabel: { shrink: true } } },
+      },
       MuiOutlinedInput: {
+        defaultProps: { notched: true },
         styleOverrides: {
           root: {
             borderRadius: R.md,
