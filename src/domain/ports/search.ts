@@ -57,6 +57,14 @@ export interface SearchFilters {
    */
   readonly attributes?: Readonly<Record<string, readonly string[]>>
   readonly availability?: 'all' | 'in-stock'
+  /**
+   * Solo lo que tiene precio anterior MAYOR que el actual.
+   *
+   * Un sí/no y no un rango: «en oferta» no admite grados. Lo resuelve la base
+   * sobre el precio YA resuelto por lista, que es el único sitio donde ese
+   * cálculo es cierto para todas las tiendas.
+   */
+  readonly discounted?: boolean
   readonly priceMin?: MoneyAmount | null
   readonly priceMax?: MoneyAmount | null
 }

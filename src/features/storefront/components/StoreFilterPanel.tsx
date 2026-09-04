@@ -57,9 +57,11 @@ export function StoreFilterPanel({
   selectedBrand,
   selectedCategory,
   inStockOnly,
+  discountedOnly,
   onBrand,
   onCategory,
   onInStock,
+  onDiscounted,
   onClear,
 }: {
   brands: readonly FacetOption[]
@@ -67,13 +69,24 @@ export function StoreFilterPanel({
   selectedBrand: string | null
   selectedCategory: string | null
   inStockOnly: boolean
+  /**
+   * Solo lo rebajado.
+   *
+   * Va con «solo disponibles» y no con las marcas a proposito: las dos son
+   * ESTADOS del producto —cambian solos, los produce un dato— y no atributos de
+   * identidad. «En oferta» como categoria obligaria a mover productos de
+   * familia cada semana, y ademas depende de quien mira: con listas por
+   * segmento, un mayorista y un visitante anonimo no ven las mismas rebajas.
+   */
+  discountedOnly: boolean
   onBrand: (code: string | null) => void
   onCategory: (slug: string | null) => void
   onInStock: (only: boolean) => void
+  onDiscounted: (only: boolean) => void
   onClear: () => void
 }) {
   const { t } = useI18n()
-  const dirty = Boolean(selectedBrand || selectedCategory || inStockOnly)
+  const dirty = Boolean(selectedBrand || selectedCategory || inStockOnly || discountedOnly)
 
   return (
     <Card
@@ -100,6 +113,26 @@ export function StoreFilterPanel({
           </Button>
         )}
       </Stack>
+
+      {/* Lo rebajado, primero: es con lo que entra quien viene a por ofertas, y
+          hasta ahora no habia forma de pedirlo — el enlace «Ofertas» llevaba al
+          carrusel de campanas, que es otra cosa, y el «Ver todo» de la banda
+          soltaba al visitante en el catalogo entero justo perdiendo la oferta
+          que acababa de mirar. */}
+      <FormControlLabel
+        control={
+          <Switch
+            size="small"
+            checked={discountedOnly}
+            onChange={(event) => onDiscounted(event.target.checked)}
+          />
+        }
+        label={
+          <Typography sx={{ fontSize: TS.body, fontWeight: 700 }}>
+            {t('store.filter.discounted')}
+          </Typography>
+        }
+      />
 
       <FormControlLabel
         sx={{ mb: 1 }}

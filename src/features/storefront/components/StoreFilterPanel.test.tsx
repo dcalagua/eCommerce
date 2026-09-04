@@ -18,6 +18,7 @@ function render(props: Partial<Parameters<typeof StoreFilterPanel>[0]> = {}) {
   const onBrand = vi.fn()
   const onCategory = vi.fn()
   const onInStock = vi.fn()
+  const onDiscounted = vi.fn()
   const onClear = vi.fn()
   renderWithProviders(
     <StoreFilterPanel
@@ -26,14 +27,16 @@ function render(props: Partial<Parameters<typeof StoreFilterPanel>[0]> = {}) {
       selectedBrand={null}
       selectedCategory={null}
       inStockOnly={false}
+      discountedOnly={false}
       onBrand={onBrand}
       onCategory={onCategory}
       onInStock={onInStock}
+      onDiscounted={onDiscounted}
       onClear={onClear}
       {...props}
     />,
   )
-  return { onBrand, onCategory, onInStock, onClear }
+  return { onBrand, onCategory, onInStock, onDiscounted, onClear }
 }
 
 describe('contadores', () => {
@@ -84,6 +87,32 @@ describe('elección', () => {
 
     await user.click(await screen.findByRole('checkbox', { name: /Mesas/ }))
     expect(onCategory).toHaveBeenCalledWith('mesas')
+  })
+})
+
+/**
+ * «En oferta» vive con «disponible» y no con las marcas a propósito.
+ *
+ * Las dos son ESTADOS del producto —cambian solos, los produce un dato— y no
+ * atributos de identidad. Una categoría «Ofertas» obligaría a mover productos
+ * de familia cada semana, y además depende de quién mira: con listas por
+ * segmento, un mayorista y un visitante anónimo no ven las mismas rebajas.
+ */
+describe('rebajado', () => {
+  it('«solo en oferta» es un interruptor de estado, no una marca ni una categoría', async () => {
+    const user = userEvent.setup()
+    const { onDiscounted } = render()
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Solo en oferta' }))
+
+    expect(onDiscounted).toHaveBeenCalledWith(true)
+  })
+
+  it('puesto, cuenta como filtro: el botón de quitarlos aparece', async () => {
+    render({ discountedOnly: true })
+
+    await screen.findByText('Nordica')
+    expect(screen.getByRole('button', { name: 'Quitar filtros' })).toBeInTheDocument()
   })
 })
 
