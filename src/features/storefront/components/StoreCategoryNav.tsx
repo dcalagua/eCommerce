@@ -8,24 +8,40 @@ import { iconoDe } from '../categoryIcon'
 import { tintFor } from '../tint'
 import type { PublicCategory } from '../types'
 
+/**
+ * Una categoría con lo que cuelga de ella, hasta el fondo.
+ *
+ * Era `children: PublicCategory[]` —un solo nivel— y por eso el panel enseñaba
+ * las hijas de la familia y PERDÍA a las nietas: «Dispositivos y materiales
+ * médicos» cuelga de «Hematológicos» y no aparecía por ninguna parte, ni como
+ * hija ni como hermana. Una rama que no se pinta es una rama a la que no se
+ * puede llegar.
+ */
 interface Nodo {
   readonly category: PublicCategory
-  readonly children: readonly PublicCategory[]
+  readonly children: readonly Nodo[]
 }
 
 /**
- * Las familias de primer nivel, con lo que cuelga de cada una.
+ * El árbol de categorías, con su jerarquía entera.
  *
  * Se arma sobre las categorías que la vitrina ya tiene cargadas: una pasada por
- * el array, ninguna consulta más. `public_categories` solo trae las alcanzables
- * —activas y con todos sus ancestros activos—, así que lo que llega se enseña.
+ * el array por nivel, ninguna consulta más. `public_categories` solo trae las
+ * alcanzables —activas y con todos sus ancestros activos—, así que lo que llega
+ * se enseña.
+ *
+ * Recursiva y sin tope de profundidad porque el tope no es del componente: lo
+ * pone el comercio al componer sus categorías. Un `if` de dos niveles aquí es
+ * exactamente lo que hacía desaparecer la tercera.
  */
+function ramas(categories: readonly PublicCategory[], parentId: string | null): Nodo[] {
+  return categories
+    .filter((category) => category.parent_id === parentId)
+    .map((category) => ({ category, children: ramas(categories, category.category_id) }))
+}
+
 function arbol(categories: readonly PublicCategory[]): Nodo[] {
-  const raices = categories.filter((category) => category.parent_id === null)
-  return raices.map((category) => ({
-    category,
-    children: categories.filter((hija) => hija.parent_id === category.category_id),
-  }))
+  return ramas(categories, null)
 }
 
 /**
@@ -198,11 +214,17 @@ export function StoreCategoryNav({
               las familias, «Ofertas» parecería una categoría más del catálogo, y
               no lo es: es un corte transversal.
 
-              «Ofertas» solo aparece si hay campañas vivas. Un enlace que lleva a
-              una sección que no está en la página es peor que no tenerlo, y esa
-              consulta es la MISMA que ya hizo la portada — misma clave de
-              TanStack, cero peticiones nuevas. */}
-          {showOffers ? <PuertaFija to={`/s/${storeSlug}#ofertas`} label={t('store.nav.offers')} /> : null}
+              «Ofertas» lleva al CATÁLOGO filtrado por lo rebajado, no al ancla
+              del carrusel de campañas. Quien pulsa «Ofertas» quiere la lista de
+              lo que está más barato, y el carrusel son seis campañas que ya se
+              ven en la portada: llevarle allí era enseñarle otra cosa con el
+              mismo nombre. Solo aparece si hay algo rebajado —un enlace a una
+              lista vacía es peor que no tenerlo— y esa consulta es la MISMA que
+              hace la portada para su banda: misma clave de TanStack, cero
+              peticiones nuevas. */}
+          {showOffers ? (
+            <PuertaFija to={`/s/${storeSlug}?ver=todo&oferta=1`} label={t('store.nav.offers')} />
+          ) : null}
           <PuertaFija to={`/s/${storeSlug}?ver=todo#marcas`} label={t('store.nav.brands')} />
         </Stack>
       </Container>
@@ -253,38 +275,111 @@ export function StoreCategoryNav({
                 </Box>
               </Stack>
 
+              {/* Columnas de texto y no una rejilla.
+                  Una rejilla reparte CELDAS del mismo alto, y aquí cada rama
+                  mide lo que mide —una hija sin nietas ocupa una línea; una con
+                  tres, cuatro—: con celdas, las ramas cortas dejaban huecos y la
+                  lectura saltaba. Con columnas, cada rama viaja entera
+                  (`break-inside: avoid`) y el panel se lee de arriba abajo. */}
               <Box
+                component="ul"
                 sx={{
-                  display: 'grid',
-                  gap: 0.5,
+                  m: 0,
+                  p: 0,
+                  listStyle: 'none',
+                  columnCount: { md: 3, lg: 4 },
                   columnGap: 3,
-                  gridTemplateColumns: {
-                    md: 'repeat(3, minmax(0, 1fr))',
-                    lg: 'repeat(4, minmax(0, 1fr))',
-                  },
                 }}
               >
-                {children.map((hija) => (
-                  <Box
-                    key={hija.category_id}
-                    component={Link}
-                    to={`/s/${storeSlug}?c=${encodeURIComponent(hija.slug)}`}
-                    sx={{
-                      py: 0.5,
-                      fontSize: 13.5,
-                      color: 'var(--text)',
-                      textDecoration: 'none',
-                      '&:hover': { color: 'var(--accent-deep)', textDecoration: 'underline' },
-                    }}
-                  >
-                    {hija.name}
-                  </Box>
+                {children.map((rama) => (
+                  <RamaDeCategorias key={rama.category.category_id} rama={rama} storeSlug={storeSlug} />
                 ))}
               </Box>
             </Container>
           </Box>
         ) : null,
       )}
+    </Box>
+  )
+}
+
+/**
+ * Una rama del panel: la subcategoría y, debajo, lo que cuelga de ella.
+ *
+ * ## Por qué la jerarquía se PINTA y no se aplana
+ *
+ * En una lista plana, «Dispositivos y materiales médicos» y «Hematológicos» se
+ * leen como hermanas, y no lo son: la primera está DENTRO de la segunda. Quien
+ * navega así no se hace una idea del catálogo, se hace una idea equivocada — y
+ * al abrir la madre encuentra cosas que la lista decía que estaban al lado.
+ *
+ * La madre va en negrita solo cuando tiene descendencia: sin eso, el peso de la
+ * tipografía dejaría de significar «esto contiene más» y pasaría a ser adorno.
+ * La línea vertical hace el resto sin gastar sangría: en un panel de cuatro
+ * columnas, indentar dos niveles se come el ancho útil.
+ *
+ * Se llama a sí misma porque la profundidad la decide el comercio, no este
+ * archivo.
+ */
+function RamaDeCategorias({
+  rama,
+  storeSlug,
+  nivel = 0,
+}: {
+  rama: Nodo
+  storeSlug: string
+  nivel?: number
+}) {
+  const tieneHijas = rama.children.length > 0
+
+  return (
+    <Box
+      component="li"
+      sx={{
+        // La rama entera en la misma columna: partir «Hematológicos» de sus
+        // hijas por un salto de columna es peor que no enseñarlas.
+        breakInside: 'avoid',
+        ...(nivel === 0 ? { mb: tieneHijas ? 1.25 : 0 } : {}),
+      }}
+    >
+      <Box
+        component={Link}
+        to={`/s/${storeSlug}?c=${encodeURIComponent(rama.category.slug)}`}
+        sx={{
+          display: 'block',
+          py: 0.5,
+          fontSize: nivel === 0 ? 13.5 : 13,
+          fontWeight: nivel === 0 && tieneHijas ? 800 : 400,
+          color: nivel === 0 ? 'var(--text)' : 'var(--muted)',
+          textDecoration: 'none',
+          '&:hover': { color: 'var(--accent-deep)', textDecoration: 'underline' },
+        }}
+      >
+        {rama.category.name}
+      </Box>
+
+      {tieneHijas ? (
+        <Box
+          component="ul"
+          sx={{
+            m: 0,
+            mb: 0.5,
+            p: 0,
+            pl: 1.25,
+            listStyle: 'none',
+            borderLeft: '1px solid var(--sf-line)',
+          }}
+        >
+          {rama.children.map((hija) => (
+            <RamaDeCategorias
+              key={hija.category.category_id}
+              rama={hija}
+              storeSlug={storeSlug}
+              nivel={nivel + 1}
+            />
+          ))}
+        </Box>
+      ) : null}
     </Box>
   )
 }

@@ -1,11 +1,7 @@
-import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
-import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
 import OpenInFullRoundedIcon from '@mui/icons-material/OpenInFullRounded'
-import SellRoundedIcon from '@mui/icons-material/SellRounded'
 import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
 import {
-  Box,
   Button,
   Card,
   Chip,
@@ -15,7 +11,7 @@ import {
   Stack,
   Typography,
 } from '@mui/material'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
@@ -307,52 +303,22 @@ export function ProductQuickView({
                 </Stack>
               </Card>
 
-              {/* Descripción a la izquierda y datos a la derecha, en un panel
-                  aparte: lo que se lee cuando ya casi se ha decidido. */}
+              {/* La descripción, sola y a todo el ancho del panel.
+                  Compartía sitio con una columna de marca, categoría y
+                  disponibilidad —los tres datos que ya están arriba, en la
+                  tarjeta del precio— y esa columna se dimensionaba a
+                  `max-content`: con una categoría larga como «Accesorios Para
+                  Alimentación Infantil» se quedaba con 370 px y dejaba el texto
+                  en una tira de dos palabras por línea. Se leía peor que si no
+                  estuviera. */}
               <Card sx={{ p: { xs: 2, md: 2.5 }, bgcolor: 'var(--neutral-soft)' }}>
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gap: { xs: 2, md: 3 },
-                    gridTemplateColumns: { xs: '1fr', sm: 'minmax(0, 1fr) max-content' },
-                  }}
+                <Typography
+                  component="h3"
+                  sx={{ fontSize: TS.cardTitle, fontWeight: 800, mb: 0.75 }}
                 >
-                  <Box>
-                    <Typography
-                      component="h3"
-                      sx={{ fontSize: TS.cardTitle, fontWeight: 800, mb: 0.75 }}
-                    >
-                      {t('store.product.description')}
-                    </Typography>
-                    {/* Tope de medida: pasada de ~65 caracteres, la linea
-                        obliga a buscar el principio de la siguiente con la
-                        vista, y eso cansa antes de la tercera. */}
-                    <Typography
-                      sx={{
-                        fontSize: TS.body,
-                        color: 'var(--muted)',
-                        lineHeight: 1.6,
-                        whiteSpace: 'pre-line',
-                        maxWidth: '62ch',
-                      }}
-                    >
-                      {item.description?.trim() || t('store.product.noDescription')}
-                    </Typography>
-                  </Box>
-
-                  <Stack sx={{ gap: 1.25 }}>
-                    <FactRow icon={<SellRoundedIcon />} value={item.brand_name} />
-                    <FactRow icon={<CategoryRoundedIcon />} value={item.category_name} />
-                    <FactRow
-                      icon={<Inventory2RoundedIcon />}
-                      value={
-                        available
-                          ? t('store.availability.inStock')
-                          : t('store.availability.outOfStock')
-                      }
-                    />
-                  </Stack>
-                </Box>
+                  {t('store.product.description')}
+                </Typography>
+                <ProductDescription text={item.description?.trim() ?? ''} />
               </Card>
             </Stack>
           </Stack>
@@ -363,38 +329,76 @@ export function ProductQuickView({
 }
 
 /**
- * Un dato con su icono.
+ * A partir de cuántos caracteres la descripción se pliega.
  *
- * Lo que no se sabe se dice —«Sin información disponible»— en vez de esconder
- * la fila: una lista a la que le faltan filas según el producto no se puede
- * recorrer con la vista, porque cada producto la tiene en otro sitio. El icono
- * va `aria-hidden`: el texto ya lo dice todo y anunciarlo sería leerlo dos veces.
+ * Es un umbral de TEXTO y no de píxeles medidos: medir el alto real obliga a
+ * pintar, leer el DOM y volver a pintar, y el resultado cambia con el ancho del
+ * diálogo, con la fuente del tenant y con el zoom. Unos 340 caracteres son las
+ * seis líneas que se enseñan plegadas en el ancho de este panel; pasarse en una
+ * línea no rompe nada, y a cambio la decisión es la misma en todas las pantallas.
  */
-function FactRow({ icon, value }: { icon: ReactNode; value: string | null }) {
+const DESCRIPCION_LARGA = 340
+
+/** Cuántas líneas se ven mientras está plegada. */
+const LINEAS_PLEGADA = 6
+
+/**
+ * La descripción del producto, que puede venir de dos palabras o de dos folios.
+ *
+ * Las dos formas tienen que caber en la MISMA vista rápida:
+ *
+ *  · **Corta** — se pinta entera y sin más. Ningún botón que abrir, ningún
+ *    hueco reservado por si acaso.
+ *  · **Larga** — se pliega a seis líneas con un «leer la descripción completa».
+ *    La vista rápida existe para decidir sin salir del catálogo; si dos folios
+ *    de ficha técnica empujan el precio y el botón de comprar fuera de la
+ *    pantalla, deja de ser rápida y hay que desplazarse hacia arriba para
+ *    comprar, que es justo lo que se venía a evitar.
+ *
+ * El botón dice qué va a hacer —no «leer más» a secas— porque en una vista con
+ * otro botón que lleva a la ficha entera, «más» no distingue entre desplegar
+ * aquí y cambiar de página.
+ */
+function ProductDescription({ text }: { text: string }) {
   const { t } = useI18n()
+  const [desplegada, setDesplegada] = useState(false)
+  const larga = text.length > DESCRIPCION_LARGA
 
   return (
-    <Stack direction="row" sx={{ gap: 1, alignItems: 'flex-start' }}>
-      <Box
-        aria-hidden
-        sx={{
-          color: 'var(--muted)',
-          display: 'flex',
-          mt: '1px',
-          '& .MuiSvgIcon-root': { fontSize: 18 },
-        }}
-      >
-        {icon}
-      </Box>
+    <Stack sx={{ gap: 0.75, alignItems: 'flex-start' }}>
       <Typography
         sx={{
           fontSize: TS.body,
-          color: value ? 'var(--text)' : 'var(--muted)',
-          fontWeight: value ? 600 : 400,
+          color: 'var(--muted)',
+          lineHeight: 1.6,
+          whiteSpace: 'pre-line',
+          // Tope de medida: pasada de ~65 caracteres, la línea obliga a buscar
+          // el principio de la siguiente con la vista, y eso cansa antes de la
+          // tercera. Ahora hay ancho de sobra, así que el tope lo pone esto y
+          // no la columna de al lado.
+          maxWidth: '68ch',
+          ...(larga && !desplegada
+            ? {
+                display: '-webkit-box',
+                WebkitLineClamp: LINEAS_PLEGADA,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }
+            : {}),
         }}
       >
-        {value ?? t('store.product.noData')}
+        {text || t('store.product.noDescription')}
       </Typography>
+
+      {larga ? (
+        <Button
+          size="small"
+          onClick={() => setDesplegada((abierta) => !abierta)}
+          sx={{ textTransform: 'none', fontWeight: 700, px: 0.5 }}
+        >
+          {desplegada ? t('store.product.readLess') : t('store.product.readMore')}
+        </Button>
+      ) : null}
     </Stack>
   )
 }

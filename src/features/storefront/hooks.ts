@@ -363,6 +363,24 @@ export const searchPagesKey = (storeSlug: string, query: SearchQuery) =>
  * `getNextPageParam` se apoya en el `total` que devuelve la propia función de
  * la base: no hace falta pedir una página de más para saber si hay siguiente.
  */
+/**
+ * Lo REBAJADO de la tienda: una sola consulta para los dos que la necesitan.
+ *
+ * La portada la usa para su banda de ofertas y la barra de navegación para
+ * decidir si enseña la puerta «Ofertas». Es una constante y no dos objetos
+ * iguales escritos en dos sitios porque la clave de TanStack se calcula de los
+ * VALORES: dos literales que se separen un día —un límite distinto, otro
+ * orden— dejan de compartir caché y pasan a ser dos peticiones que devuelven
+ * lo mismo.
+ */
+export const OFERTAS_QUERY: SearchQuery = {
+  term: '',
+  filters: { discounted: true },
+  sort: 'relevance',
+  limit: 12,
+  offset: 0,
+}
+
 export function useCatalogPages(
   storeSlug: string | undefined,
   query: SearchQuery,

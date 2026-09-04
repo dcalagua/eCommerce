@@ -122,6 +122,43 @@ describe('el carrusel de ofertas vigentes', () => {
     )
   })
 
+  /**
+   * La foto manda, y el descuento va ENCIMA de ella.
+   *
+   * La tarjeta era una miniatura con franjas grises, un medallón en su propia
+   * casilla, dos líneas de texto y un botón pegado al borde derecho: el ancho
+   * entero de la página para un descampado blanco en el medio. Con la imagen a
+   * sangre y el porcentaje sobre ella —el mismo distintivo que ya llevan las
+   * tarjetas de producto rebajado— desaparece la columna que dejaba el hueco.
+   */
+  it('con foto, el descuento va sobre la imagen y no en una casilla aparte', () => {
+    pintar([
+      promo({
+        id: '1',
+        name: 'Semana dermocosmetica',
+        categorySlug: 'piel',
+        imageUrl: 'https://ejemplo.test/dermo.jpg',
+      }),
+    ])
+
+    const lamina = laminaVisible().closest('div[class*="MuiCard"]') as HTMLElement
+    const foto = within(lamina).getByRole('presentation', { hidden: true })
+    expect(foto).toHaveAttribute('src', 'https://ejemplo.test/dermo.jpg')
+    // Un solo «-20 %», dentro del marco de la foto: si saliera dos veces
+    // estaríamos pintando el medallón viejo además del nuevo.
+    const distintivo = within(lamina).getByText('-20 %')
+    expect(distintivo).toBeInTheDocument()
+    expect(foto.parentElement).toContainElement(distintivo)
+  })
+
+  it('sin foto, el descuento ocupa ese sitio: la tarjeta no se queda coja', () => {
+    pintar([promo({ id: '1', name: 'Semana dermocosmetica', categorySlug: 'piel' })])
+
+    const lamina = laminaVisible().closest('div[class*="MuiCard"]') as HTMLElement
+    expect(within(lamina).queryByRole('presentation', { hidden: true })).not.toBeInTheDocument()
+    expect(within(lamina).getByText('-20 %')).toBeInTheDocument()
+  })
+
   it('pasa sola al cabo de unos segundos', async () => {
     vi.useFakeTimers()
     pintar()

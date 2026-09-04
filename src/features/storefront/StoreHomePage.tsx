@@ -3,6 +3,7 @@ import { visuallyHidden } from '@mui/utils'
 import { useEffect, useMemo, useRef } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import type { SearchQuery, SearchSort } from '@/domain'
+import type { PublicProduct } from './types'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
 import { BrandLoader } from '@/shared/ui/BrandLoader'
@@ -14,6 +15,7 @@ import { BrandRow } from './components/BrandRow'
 import { BrandTrustStrip } from './components/BrandTrustStrip'
 import { CategoryBar } from './components/CategoryBar'
 import { ProductRow } from './components/ProductRow'
+import { OffersFeaturedBand } from './components/OffersFeaturedBand'
 import { PromoCarousel } from './components/PromoCarousel'
 import { StoreServicesStrip } from './components/StoreServicesStrip'
 import { ContentBlocks } from './components/ContentBlocks'
@@ -21,9 +23,12 @@ import { ProductGrid, ProductGridSkeleton } from './components/ProductGrid'
 import { ProductQuickView } from './components/ProductQuickView'
 import { useFavorites } from './useFavorites'
 import { StoreFilterPanel } from './components/StoreFilterPanel'
+import { StoreFeaturedHero } from './components/StoreFeaturedHero'
 import { StoreHero } from './components/StoreHero'
+import { StoreLandingSkeleton } from './components/StoreLandingSkeleton'
 import { StoreSortMenu } from './components/StoreSortMenu'
 import {
+  OFERTAS_QUERY,
   useCatalogPages,
   useContentAssets,
   usePrefetchProduct,
@@ -73,6 +78,15 @@ export function StoreHomePage() {
   const categorySlug = params.get('c')
   const brand = params.get('b')
   const availability = params.get('d') === '1' ? 'in-stock' : 'all'
+  /**
+   * Solo lo rebajado (`?oferta=1`).
+   *
+   * En la URL como el resto de filtros: una lista de ofertas se comparte por
+   * WhatsApp, y si el filtro viviera en memoria el enlace llevaria al catalogo
+   * entero. El buscador ya sabia filtrar rebajados —lo usa la portada para su
+   * banda—; lo que faltaba era poder pedirlo desde la vitrina.
+   */
+  const soloOferta = params.get('oferta') === '1'
   const sortParam = params.get('sort')
   const sort: SearchSort = (SORTS as readonly string[]).includes(sortParam ?? '')
     ? (sortParam as SearchSort)
@@ -113,15 +127,18 @@ export function StoreHomePage() {
         category: categorySlug,
         brands: brand ? [brand] : [],
         availability,
+        ...(soloOferta ? { discounted: true } : {}),
       },
       sort,
       limit: PAGE_SIZE,
       offset: 0,
     }),
-    [search, categorySlug, brand, availability, sort],
+    [search, categorySlug, brand, availability, soloOferta, sort],
   )
 
-  const filtered = Boolean(search.trim() || categorySlug || brand || availability === 'in-stock')
+  const filtered = Boolean(
+    search.trim() || categorySlug || brand || availability === 'in-stock' || soloOferta,
+  )
 
   /**
    * Portada o catálogo.
@@ -167,21 +184,72 @@ export function StoreHomePage() {
     [pages, store.store_id],
   )
   const thumbnails = useSignedThumbnails(products.map((product) => product.primary_image_path))
+
+  /**
+   * Lo que abre la tienda: los productos REBAJADOS.
+   *
+   * Un lema sobre un degradado no dice qué se compra ni cuánto cuesta. Se piden
+   * aparte —no se filtra la primera página del catálogo— porque con 568
+   * productos y 60 rebajados, esperar a que la casualidad ponga uno entre los
+   * primeros veinticuatro es dejar la portada al azar.
+   *
+   * Ocho como máximo: cuatro para el hero y el resto para la fila de ofertas.
+   */
+  /**
+   * Lo rebajado, por la misma puerta que el resto del catálogo.
+   *
+   * Se pidió una vez leyendo `public_products` directamente y estaba mal: desde
+   * P11 la vitrina no lee las tablas del catálogo, pregunta a la búsqueda —que
+   * es quien resuelve precio de lista, disponibilidad y permisos—. Un test lo
+   * vigila, y con razón.
+   */
+  const ofertasPages = useCatalogPages(catalogo ? undefined : storeSlug, OFERTAS_QUERY)
+  const ofertas = useMemo(
+    () =>
+      (ofertasPages.data?.pages[0]?.items ?? []).map((hit) =>
+        hitToPublicProduct(hit, store.store_id),
+      ),
+    [ofertasPages.data, store.store_id],
+  )
+  const rebajadosThumbs = useSignedThumbnails(ofertas.map((p) => p.primary_image_path))
   const prefetchProduct = usePrefetchProduct(store.store_id)
 
   /**
-   * La segunda fila no repite la primera.
+   * Ningún producto sale dos veces en la portada.
    *
-   * «Novedades» y «Lo más vendido» son dos consultas distintas, pero en una
-   * tienda pequeña devuelven casi lo mismo — y una portada que enseña el mismo
-   * producto dos veces con dos títulos distintos parece rota. Si al quitar lo
-   * repetido no queda nada, la fila entera desaparece: mejor una fila menos que
-   * una fila que miente.
+   * Cinco secciones tiran de tres consultas —lo rebajado, lo reciente y la
+   * primera página del catálogo—, y en una tienda pequeña las tres devuelven
+   * casi lo mismo: el mismo frasco aparecía en el hero, en «Ofertas de la
+   * semana», en «Productos destacados» y en «Novedades». Eso no se lee como
+   * cuatro secciones, se lee como una tienda con cuatro productos.
+   *
+   * Se reparten por ORDEN DE PRIORIDAD, que es el orden en que se leen: el
+   * hero coge primero, y cada sección siguiente se queda con lo que nadie ha
+   * usado. Si a una no le queda nada, desaparece — mejor una sección menos que
+   * una sección que repite.
    */
-  const destacados = useMemo(() => {
-    const yaVistos = new Set(novedades.map((p) => p.product_id))
-    return products.filter((p) => !yaVistos.has(p.product_id)).slice(0, 12)
-  }, [products, novedades])
+  const secciones = useMemo(() => {
+    const usados = new Set<string>()
+    const tomar = (lista: readonly PublicProduct[], cuantos: number) => {
+      const elegidos: PublicProduct[] = []
+      for (const producto of lista) {
+        if (elegidos.length >= cuantos) break
+        if (usados.has(producto.product_id)) continue
+        usados.add(producto.product_id)
+        elegidos.push(producto)
+      }
+      return elegidos
+    }
+
+    const rebajados = ofertas
+    return {
+      hero: tomar(rebajados, 4),
+      ofertas: tomar(rebajados, 3),
+      destacados: tomar(products, 12),
+      novedades: tomar(novedades, 12),
+      masVendido: tomar(products, 12),
+    }
+  }, [ofertas, products, novedades])
 
   const blocks = content.data?.cms ? (content.data.blocks ?? []) : []
   const hasCmsHero = blocks.some((block) => block.type === 'hero')
@@ -361,12 +429,39 @@ export function StoreHomePage() {
     ),
   )
 
+  /**
+   * La portada no se pinta a medias.
+   *
+   * Al recargar se veía primero el hero de RESERVA —el lema del comercio, que
+   * no necesita datos— y un segundo después el hero real con la oferta. Dos
+   * portadas seguidas en la misma carga se leen como un fallo, y encima invitan
+   * a pulsar algo que se va a mover.
+   *
+   * Con el esqueleto hay UNA carga que se ve y termina en la portada de verdad.
+   * En el catálogo no aplica: allí la rejilla tiene su propio esqueleto y el
+   * panel de filtros ya se puede usar mientras llegan los productos.
+   */
+  const cargandoPortada =
+    !catalogo && (results.isPending || ofertasPages.isPending || content.isPending)
+
   return (
     <Stack sx={{ gap: { xs: 2, md: 3 } }}>
+      {cargandoPortada ? <StoreLandingSkeleton /> : null}
       {/* El hero y lo que compuso el comercio son la PORTADA. Al pedir «Ver
           todo» estorban: quien va al catálogo tiene que volver a pasar por
           delante de todo lo que ya vio para llegar a la rejilla. */}
-      {catalogo || cmsTraePortada ? null : <StoreHero store={store} />}
+      {/* La portada abre con una oferta concreta si el catálogo tiene alguna;
+          con el lema del comercio si no. Un degradado con una frase se ve
+          bonito y no vende: no dice qué se compra ni a qué precio. */}
+      {catalogo || cargandoPortada ? null : secciones.hero.length > 0 ? (
+        <StoreFeaturedHero
+          products={secciones.hero}
+          storeSlug={storeSlug}
+          thumbnails={rebajadosThumbs}
+        />
+      ) : cmsTraePortada ? null : (
+        <StoreHero store={store} />
+      )}
 
       {/* El `<h1>` cuando la cubierta es un carrusel.
           Un carrusel son imágenes: no tiene texto que pueda ser el encabezado
@@ -384,7 +479,7 @@ export function StoreHomePage() {
       {/* Cabecera del catálogo: de dónde se viene, qué se está mirando y cómo
           se vuelve. Sin esto, «Ver todo» dejaba una rejilla sin título y sin
           camino de vuelta que no fuera el botón de atrás del navegador. */}
-      {catalogo ? (
+      {cargandoPortada ? null : catalogo ? (
         <Stack sx={{ gap: 0.5 }}>
           <MuiLink
             component={Link}
@@ -417,9 +512,22 @@ export function StoreHomePage() {
       {/* Las cuatro dudas que tiene alguien ANTES de mirar el primer precio:
           cuándo llega, si es seguro pagar, quién le asesora y si puede
           recogerlo. En el pie se leen después de decidir, o sea nunca. */}
-      {catalogo ? null : <StoreServicesStrip />}
+      {catalogo || cargandoPortada ? null : <StoreServicesStrip />}
 
-      {catalogo ? null : (
+      {catalogo || cargandoPortada ? null : (
+        <OffersFeaturedBand
+          offers={secciones.ofertas}
+          featured={secciones.destacados}
+          storeSlug={storeSlug}
+          offersThumbs={rebajadosThumbs}
+          featuredThumbs={thumbnails}
+          favorites={favorites.ids}
+          onToggleFavorite={(productId) => void favorites.toggle(productId)}
+          onQuickView={(slug) => update('p', slug)}
+        />
+      )}
+
+      {catalogo || cargandoPortada ? null : (
       <ContentBlocks
         blocks={blocks}
         storeSlug={storeSlug}
@@ -446,7 +554,7 @@ export function StoreHomePage() {
           vistazo y se encienden y apagan. En la PORTADA son puertas, y una
           puerta tiene que decir a dónde lleva —de ahí el icono, que separa una
           familia de otra antes de leerla— y cuánto hay detrás. */}
-      {catalogo ? (
+      {cargandoPortada ? null : catalogo ? (
         <Stack sx={{ gap: 1 }}>
           {/* Las migas: sin ellas, quien abre «Desodorantes» desde el buscador
               no sabe que esta dentro de «Cuidado personal» ni como subir. */}
@@ -500,7 +608,7 @@ export function StoreHomePage() {
           marca tanto como por familia. Solo en la portada sin filtrar — con un
           filtro puesto, la faceta se queda en la marca elegida y la fila
           dejaría de ser una puerta para ser un espejo. */}
-      {catalogo ? null : (
+      {catalogo || cargandoPortada ? null : (
         <BrandRow
           brands={brandOptions}
           selected={brand}
@@ -511,11 +619,13 @@ export function StoreHomePage() {
 
       {/* Lo nuevo y lo de siempre, en filas cortas con su puerta al catálogo.
           Una fila se recorre de un vistazo; una rejilla infinita, no. */}
-      {catalogo ? null : (
+      {catalogo || cargandoPortada ? null : (
         <>
           <ProductRow
             title={t('store.row.new')}
-            products={novedades}
+            eyebrow={t('store.row.newEyebrow')}
+            subtitle={t('store.row.newSubtitle')}
+            products={secciones.novedades}
             loading={novedadesPages.isPending}
             storeSlug={storeSlug}
             thumbnails={novedadesThumbs}
@@ -532,7 +642,9 @@ export function StoreHomePage() {
           {cmsTraeProductos ? null : (
           <ProductRow
             title={t('store.row.featured')}
-            products={destacados}
+            eyebrow={t('store.row.featuredEyebrow')}
+            subtitle={t('store.row.featuredSubtitle')}
+            products={secciones.masVendido}
             loading={results.isPending}
             storeSlug={storeSlug}
             thumbnails={thumbnails}
@@ -558,7 +670,7 @@ export function StoreHomePage() {
         </Card>
       )}
 
-      {catalogo ? (
+      {cargandoPortada ? null : catalogo ? (
       <Stack direction={{ xs: 'column', md: 'row' }} sx={{ gap: { xs: 2, md: 3 }, alignItems: 'flex-start' }}>
         <Box sx={{ width: { xs: '100%', md: 280 }, flexShrink: 0 }}>
           <StoreFilterPanel
@@ -567,10 +679,14 @@ export function StoreHomePage() {
             selectedBrand={brand}
             selectedCategory={categorySlug}
             inStockOnly={availability === 'in-stock'}
+            discountedOnly={soloOferta}
             onBrand={(code) => update('b', code)}
             onCategory={(slug) => update('c', slug)}
             onInStock={(only) => update('d', only ? '1' : null)}
-            onClear={() => setParams(new URLSearchParams())}
+            onDiscounted={(only) => update('oferta', only ? '1' : null)}
+            // Quitar los filtros deja el CATALOGO, no la portada: quien pulsa
+            // «limpiar» quiere verlo todo, no volver a la primera pantalla.
+            onClear={() => setParams(new URLSearchParams({ ver: 'todo' }))}
           />
         </Box>
 
@@ -670,7 +786,7 @@ export function StoreHomePage() {
       {/* Prueba social al cierre: quien duda de una botica en linea deja de
           dudar cuando reconoce los nombres que ya compra en la farmacia de la
           esquina. Va abajo porque es ahi donde se decide comprar o cerrar. */}
-      {catalogo ? null : <BrandTrustStrip brands={brandOptions} storeSlug={storeSlug} />}
+      {catalogo || cargandoPortada ? null : <BrandTrustStrip brands={brandOptions} storeSlug={storeSlug} />}
 
       {/* El producto abierto vive en `?p=`: el boton de atras cierra el
           dialogo y el enlace se puede pegar en un chat. */}
