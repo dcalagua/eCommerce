@@ -2,10 +2,12 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import MonitorHeartRoundedIcon from '@mui/icons-material/MonitorHeartRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import { Badge, Box, Drawer, IconButton, Stack, Tooltip, Typography } from '@mui/material'
+import { useLocation } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { AppIcon } from '@/shared/ui/AppIcon'
 import { T } from '@/theme/tokens'
 import { WatchList } from './WatchList'
+import { sortByModuleFirst, watchModuleFromPath } from './modules'
 import { useWatch } from './useWatch'
 
 const TITLE_ID = 'ebim-watch-title'
@@ -46,7 +48,17 @@ export function WatchButton({ onOpen }: { onOpen: () => void }) {
 
 export function WatchDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useI18n()
+  const location = useLocation()
   const watch = useWatch(open)
+
+  // Abrirlo desde Cobranza y tener que buscar el aviso de cobranza es trabajo
+  // que puede hacer la pantalla. Se ORDENA, no se filtra: el panel sigue siendo
+  // la vista de toda la tienda.
+  const modulo = watchModuleFromPath(location.pathname)
+  const vista =
+    watch.data && modulo
+      ? { ...watch, data: { ...watch.data, items: sortByModuleFirst(watch.data.items, modulo) } }
+      : watch
 
   return (
     <Drawer
@@ -98,7 +110,7 @@ export function WatchDrawer({ open, onClose }: { open: boolean; onClose: () => v
       </Stack>
 
       <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', px: 2, py: 2 }}>
-        <WatchList query={watch} onNavigate={onClose} />
+        <WatchList query={vista} onNavigate={onClose} />
       </Box>
     </Drawer>
   )

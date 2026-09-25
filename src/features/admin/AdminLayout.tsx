@@ -35,6 +35,7 @@ import { NotificationBell } from '@/features/notifications/NotificationBell'
 import { CopilotButton, CopilotDrawer } from '@/features/ai/copilot/CopilotDrawer'
 import { CopilotProvider } from '@/features/ai/copilot/CopilotProvider'
 import { WatchButton, WatchDrawer } from '@/features/watch/WatchDrawer'
+import { WatchModuleNote } from '@/features/watch/WatchModuleNote'
 import { AppIcon } from '@/shared/ui/AppIcon'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { AppBreadcrumbs } from '@/shared/ui/AppBreadcrumbs'
@@ -452,6 +453,9 @@ function AdminChrome() {
 
         <Box component="main" sx={{ flex: 1, p: { xs: 2, md: 4 } }}>
           <ErrorBoundary>
+            {/* «Aquí hay dos avisos»: la línea del módulo abierto, que lleva al
+                panel en vez de repetir sus cifras. */}
+            <WatchModuleNote onOpen={() => setWatchOpen(true)} />
             <Outlet />
           </ErrorBoundary>
         </Box>

@@ -30,6 +30,7 @@ vi.mock('@/shared/lib/supabase', () => ({
 const { TenantProvider } = await import('@/features/tenant/TenantProvider')
 const { WatchButton, WatchDrawer } = await import('./WatchDrawer')
 const { WatchSection } = await import('./WatchSection')
+const { WatchModuleNote } = await import('./WatchModuleNote')
 
 const impagos = {
   key: 'orders.unpaid',
@@ -125,6 +126,18 @@ function render(result = findings()) {
     { session: makeSession(), route: '/app' },
   )
   return client
+}
+
+function pintarNota(result = findings(), route = '/app/orders') {
+  holder.client = backend(result)
+  const onOpen = vi.fn()
+  renderWithProviders(
+    <TenantProvider>
+      <WatchModuleNote onOpen={onOpen} />
+    </TenantProvider>,
+    { session: makeSession(), route },
+  )
+  return onOpen
 }
 
 async function abrir() {
@@ -298,6 +311,42 @@ describe('centro de vigilancia', () => {
       { session: makeSession(), route: '/app' },
     )
     await waitFor(() => expect(container.querySelector('h2')).toBeNull())
+  })
+
+  /**
+   * El panel sigue siendo la vista de TODA la tienda; lo que cambia es el
+   * orden, para no tener que buscar el aviso del módulo donde ya estás.
+   */
+  it('abierto desde un módulo, sus avisos salen primero', async () => {
+    holder.client = backend()
+    renderWithProviders(
+      <TenantProvider>
+        <Panel />
+      </TenantProvider>,
+      { session: makeSession(), route: '/app/inventory' },
+    )
+    const dialog = await abrir()
+
+    const titulos = within(dialog)
+      .getAllByText(/Pedidos sin cobrar|Bajo punto de pedido/)
+      .map((n) => n.textContent)
+    expect(titulos).toEqual(['Bajo punto de pedido', 'Pedidos sin cobrar'])
+  })
+
+  it('la cabecera del módulo dice cuántos avisos hay y abre el panel', async () => {
+    const onOpen = pintarNota()
+    expect(await screen.findByText('Hay 1 aviso abierto en este módulo')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: /Ver en el centro de vigilancia/ }))
+    expect(onOpen).toHaveBeenCalledTimes(1)
+  })
+
+  it('la cabecera no dice nada donde no hay avisos de ese módulo', async () => {
+    pintarNota(findings(), '/app/settings')
+    await waitFor(() => expect(screen.queryByText(/aviso abierto en este módulo/)).not.toBeInTheDocument())
+
+    pintarNota(findings({ items: [] }), '/app/orders')
+    await waitFor(() => expect(screen.queryByText(/aviso abierto en este módulo/)).not.toBeInTheDocument())
   })
 
   it('sin nada crítico lo dice, en vez de enseñar una lista vacía', async () => {
