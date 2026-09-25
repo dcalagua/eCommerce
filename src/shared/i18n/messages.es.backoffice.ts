@@ -2205,6 +2205,8 @@ export const esBackoffice = {
   'copilot.days': '{n} días',
   'watch.title': 'Centro de vigilancia',
   'watch.subtitle': 'Lo que está en rojo ahora mismo, de todos los módulos',
+  'watch.criticalCount': '{n} críticas',
+  'watch.deterministic': 'Calculado por el sistema · no consume IA',
   'watch.open.panel': 'Abrir el centro de vigilancia',
   'watch.open.panelWith': 'Centro de vigilancia: {n} avisos',
   'watch.open': 'Ir a resolverlo',

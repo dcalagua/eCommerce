@@ -29,6 +29,7 @@ vi.mock('@/shared/lib/supabase', () => ({
 
 const { TenantProvider } = await import('@/features/tenant/TenantProvider')
 const { WatchButton, WatchDrawer } = await import('./WatchDrawer')
+const { WatchSection } = await import('./WatchSection')
 
 const impagos = {
   key: 'orders.unpaid',
@@ -136,12 +137,13 @@ describe('centro de vigilancia', () => {
     const dialog = await abrir()
 
     expect(within(dialog).getByText('Pedidos sin cobrar')).toBeInTheDocument()
+    // Cuerpo y ejemplos van en el mismo párrafo, como en el Crew de la suite.
     expect(
-      within(dialog).getByText('13 pedidos llevan más de 3 días sin pago. El más antiguo, 9 días.'),
+      within(dialog).getByText(/13 pedidos llevan más de 3 días sin pago. El más antiguo, 9 días./),
     ).toBeInTheDocument()
     expect(within(dialog).getByText('Crítica')).toBeInTheDocument()
     expect(within(dialog).getByText('Pedidos')).toBeInTheDocument()
-    expect(within(dialog).getByText('EC-000012')).toBeInTheDocument()
+    expect(within(dialog).getByText(/EC-000012/)).toBeInTheDocument()
 
     expect(within(dialog).getByText('Bajo punto de pedido')).toBeInTheDocument()
     expect(within(dialog).getByText('Advertencia')).toBeInTheDocument()
@@ -180,6 +182,31 @@ describe('centro de vigilancia', () => {
     await waitFor(() =>
       expect(client.state.rpcCalls.some((call) => call.name === 'watch_restore')).toBe(true),
     )
+  })
+
+  it('el bloque del Resumen enseña las MISMAS tarjetas que el cajón', async () => {
+    holder.client = backend()
+    renderWithProviders(
+      <TenantProvider>
+        <WatchSection />
+      </TenantProvider>,
+      { session: makeSession(), route: '/app' },
+    )
+    expect(await screen.findByText('Pedidos sin cobrar')).toBeInTheDocument()
+    expect(screen.getByText('1 críticas')).toBeInTheDocument()
+    expect(screen.getByText('Calculado por el sistema · no consume IA')).toBeInTheDocument()
+  })
+
+  /** Un bloque que casi siempre dice «todo bien» enseña a ignorarlo. */
+  it('el bloque del Resumen no ocupa sitio cuando no hay nada que mirar', async () => {
+    holder.client = backend(findings({ items: [] }))
+    const { container } = renderWithProviders(
+      <TenantProvider>
+        <WatchSection />
+      </TenantProvider>,
+      { session: makeSession(), route: '/app' },
+    )
+    await waitFor(() => expect(container.querySelector('h2')).toBeNull())
   })
 
   it('sin nada crítico lo dice, en vez de enseñar una lista vacía', async () => {

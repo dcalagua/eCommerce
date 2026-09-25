@@ -5529,6 +5529,8 @@ export const en: Readonly<Record<MessageKey, string>> = {
   'copilot.days': '{n} days',
   'watch.title': 'Watch centre',
   'watch.subtitle': 'What is in the red right now, across every module',
+  'watch.criticalCount': '{n} critical',
+  'watch.deterministic': 'Calculated by the system · uses no AI',
   'watch.open.panel': 'Open the watch centre',
   'watch.open.panelWith': 'Watch centre: {n} alerts',
   'watch.open': 'Go and fix it',

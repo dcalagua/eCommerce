@@ -25,6 +25,7 @@ import { PageHeader } from '@/shared/ui/PageHeader'
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/states'
 import { C, SH, T } from '@/theme/tokens'
 import { BarList, type BarRow } from './BarList'
+import { WatchSection } from '@/features/watch/WatchSection'
 import { AiAnalystPanel } from './dashboard/AiAnalystPanel'
 import { InsightBanner, type Insight } from './dashboard/InsightBanner'
 import { RecentOrders } from './dashboard/RecentOrders'
@@ -463,6 +464,11 @@ export function DashboardPage() {
       <PageHeader icon={<SpaceDashboardRoundedIcon />} title={t('admin.dashboard.title')} subtitle={subtitle} />
       <Stack spacing={2.5}>
         <InsightBanner insights={insights} />
+
+        {/* Centro de vigilancia: lo que está en rojo AHORA, de todos los
+            módulos. Va antes del Analista IA porque no cuesta una consulta y
+            no espera a que nadie pulse nada. */}
+        <WatchSection />
 
         {/* Analista IA (fase 02): COMPLEMENTA los avisos y KPIs deterministas,
             no los sustituye. Se oculta solo para roles sin la funcionalidad
