@@ -1,3 +1,4 @@
+import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import MonitorHeartRoundedIcon from '@mui/icons-material/MonitorHeartRounded'
@@ -39,10 +40,13 @@ export function WatchCard({
   finding,
   onNavigate,
   muted = false,
+  why = null,
 }: {
   finding: WatchFinding
   onNavigate?: () => void
   muted?: boolean
+  /** Por qué va aquí, según el análisis de IA. Sin análisis, no hay línea. */
+  why?: string | null
 }) {
   const { t } = useI18n()
   const dismiss = useDismissWatch()
@@ -94,6 +98,13 @@ export function WatchCard({
         {body}
         {finding.samples.length > 0 && ` · ${finding.samples.map((sample) => sample.label).join(', ')}`}
       </Typography>
+
+      {why && (
+        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'flex-start', mt: 0.75 }}>
+          <AutoAwesomeRoundedIcon sx={{ fontSize: 13, color: 'var(--accent-deep)', mt: '2px' }} />
+          <Typography sx={{ fontSize: 12.5, color: 'var(--accent-deep)', lineHeight: 1.45 }}>{why}</Typography>
+        </Stack>
+      )}
 
       <Stack direction="row" spacing={0.25} sx={{ justifyContent: 'flex-end', mt: 0.75 }}>
         {muted ? (

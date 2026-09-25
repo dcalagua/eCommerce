@@ -65,14 +65,25 @@ function findings(overrides: Record<string, unknown> = {}) {
   }
 }
 
-function backend(result = findings()): FakeSupabase {
+function backend(result = findings(), analysis?: unknown): FakeSupabase {
   return createFakeSupabase({
     session: makeSession(),
     rpc: {
       watch_findings: () => result,
       watch_dismiss: () => ({ key: 'orders.unpaid', expires_at: '2026-10-02T10:00:00.000Z' }),
       watch_restore: () => null,
+      ai_entitlement: () => ({
+        enabled: true,
+        status: 'active',
+        plan: 'active',
+        period: '202609',
+        used: 1,
+        quota: 500,
+        remaining: 499,
+        features: { insights: true },
+      }),
     },
+    functions: analysis ? { 'watch-assistant': () => analysis } : {},
     tables: {
       tenants: [{ organization_id: ORG, slug: 'casa', name: 'Casa Nórdica', status: 'active' }],
       tenant_members: [
@@ -193,8 +204,80 @@ describe('centro de vigilancia', () => {
       { session: makeSession(), route: '/app' },
     )
     expect(await screen.findByText('Pedidos sin cobrar')).toBeInTheDocument()
-    expect(screen.getByText('1 críticas')).toBeInTheDocument()
+    // El contador de la suite y la leyenda de que esto NO gasta IA.
+    expect(screen.getByLabelText('Centro de vigilancia: 2 avisos')).toHaveTextContent('2')
     expect(screen.getByText('Calculado por el sistema · no consume IA')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Ejecutar análisis/ })).toBeEnabled()
+  })
+
+  it('con más de cuatro avisos, el resto queda tras «Ver N más»', async () => {
+    const muchos = ['a', 'b', 'c', 'd', 'e'].map((suffix, i) => ({
+      ...bajoMinimo,
+      key: i === 0 ? 'orders.unpaid' : i === 1 ? 'orders.paid_unshipped' : i === 2 ? 'fulfillment.overdue' : i === 3 ? 'credit.overdue' : 'catalog.unpublished',
+      fingerprint: suffix,
+    }))
+    holder.client = backend(findings({ items: muchos }))
+    renderWithProviders(
+      <TenantProvider>
+        <WatchSection />
+      </TenantProvider>,
+      { session: makeSession(), route: '/app' },
+    )
+    expect(await screen.findByRole('button', { name: 'Ver 1 más' })).toBeInTheDocument()
+    expect(screen.queryByText('Catálogo sin publicar')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ver 1 más' }))
+    expect(screen.getByText('Catálogo sin publicar')).toBeInTheDocument()
+  })
+
+  /**
+   * El análisis NO cambia los hechos: reordena las mismas tarjetas y añade una
+   * línea de por qué. Las cifras siguen siendo las que calculó la base.
+   */
+  it('«Ejecutar análisis» reordena las tarjetas y explica cada una', async () => {
+    holder.client = backend(findings(), {
+      data: {
+        headline: 'Primero el cobro parado; el inventario puede esperar a mañana.',
+        order: ['inventory.below_reorder', 'orders.unpaid'],
+        reasons: [
+          { key: 'inventory.below_reorder', why: 'Se queda sin existencia antes del fin de semana.' },
+          { key: 'orders.unpaid', why: 'Es dinero facturado que no ha entrado.' },
+        ],
+      },
+      motivo: null,
+      interaction_id: null,
+    })
+    renderWithProviders(
+      <TenantProvider>
+        <WatchSection />
+      </TenantProvider>,
+      { session: makeSession(), route: '/app' },
+    )
+    await screen.findByText('Pedidos sin cobrar')
+    await userEvent.click(screen.getByRole('button', { name: /Ejecutar análisis/ }))
+
+    expect(await screen.findByText('Es dinero facturado que no ha entrado.')).toBeInTheDocument()
+    expect(
+      screen.getByText('Primero el cobro parado; el inventario puede esperar a mañana.'),
+    ).toBeInTheDocument()
+    // El orden del modelo manda: el inventario pasa delante.
+    const titulos = screen.getAllByText(/Pedidos sin cobrar|Bajo punto de pedido/).map((n) => n.textContent)
+    expect(titulos).toEqual(['Bajo punto de pedido', 'Pedidos sin cobrar'])
+  })
+
+  it('si el análisis no se puede hacer, la lista determinista se queda igual', async () => {
+    holder.client = backend(findings(), { data: null, motivo: 'sin_cuota', interaction_id: null })
+    renderWithProviders(
+      <TenantProvider>
+        <WatchSection />
+      </TenantProvider>,
+      { session: makeSession(), route: '/app' },
+    )
+    await screen.findByText('Pedidos sin cobrar')
+    await userEvent.click(screen.getByRole('button', { name: /Ejecutar análisis/ }))
+
+    expect(await screen.findByText('Pedidos sin cobrar')).toBeInTheDocument()
+    expect(screen.getByText('Bajo punto de pedido')).toBeInTheDocument()
   })
 
   /** Un bloque que casi siempre dice «todo bien» enseña a ignorarlo. */

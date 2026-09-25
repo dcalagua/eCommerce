@@ -99,6 +99,11 @@ verify_jwt = true
 [functions.dashboard-insights]
 verify_jwt = true
 
+# Analisis del centro de vigilancia. Lee los MISMOS avisos que el panel con el
+# JWT del usuario y solo los ordena; gasta cuota de `insights`.
+[functions.watch-assistant]
+verify_jwt = true
+
 # Asistente IA de pedidos (fase 04). Roles de la funcionalidad `orders` con su
 # sesion: lee datasets reducidos con el JWT del usuario (RLS), solo lectura.
 [functions.orders-assistant]

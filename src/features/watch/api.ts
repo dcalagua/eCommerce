@@ -1,11 +1,14 @@
 import { z } from 'zod'
+import { parseAiResult, type AiResult } from '@/features/ai/result'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { UiError } from '@/shared/lib/appError'
 import {
+  WATCH_ASSISTANT_FUNCTION,
   WATCH_DISMISS_RPC,
   WATCH_FINDINGS_RPC,
   WATCH_RESTORE_RPC,
 } from '@/shared/lib/db-schema'
+import { codeFromInvokeError } from '@/shared/lib/edgeError'
 import { tryGetSupabaseClient } from '@/shared/lib/supabase'
 
 /**
@@ -116,4 +119,34 @@ export async function restoreWatchFinding(input: {
     p_store_id: input.storeId,
   })
   if (error) throw new WatchError('watch.restoreError', error.code ?? 'ERROR_INTERNO')
+}
+
+// ---------------------------------------------------------------------------
+// «Ejecutar análisis»: la IA solo ORDENA y explica lo que la base encontró
+// ---------------------------------------------------------------------------
+
+const analysisSchema = z.object({
+  headline: z.string().min(1).max(200),
+  order: z.array(z.string().max(60)).min(1).max(20),
+  reasons: z.array(z.object({ key: z.string().max(60), why: z.string().min(1).max(200) })).max(20),
+})
+
+export type WatchAnalysis = z.infer<typeof analysisSchema>
+
+/**
+ * No lanza cuando no hay análisis: la ausencia viene con su motivo tipado (sin
+ * contratar, sin cuota, proveedor caído). El panel determinista se queda como
+ * estaba, que es justo lo que tiene que pasar.
+ */
+export async function analyzeWatch(input: {
+  storeId: string | null
+  locale: 'es' | 'en'
+}): Promise<AiResult<WatchAnalysis>> {
+  const supabase = tryGetSupabaseClient()
+  if (!supabase) throw new WatchError('auth.notConfigured', 'CONFIG_INCOMPLETA')
+  const { data, error } = await supabase.functions.invoke<{ data: unknown }>(WATCH_ASSISTANT_FUNCTION, {
+    body: { store_id: input.storeId, locale: input.locale },
+  })
+  if (error) throw new WatchError('watch.error', await codeFromInvokeError(error))
+  return parseAiResult(analysisSchema, data?.data)
 }

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTenant } from '@/features/tenant/tenant-context'
 import {
+  analyzeWatch,
   dismissWatchFinding,
   fetchWatchFindings,
   restoreWatchFinding,
@@ -53,5 +54,20 @@ export function useRestoreWatch() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: watchKey(activeCompanyId ?? null, storeId) })
     },
+  })
+}
+
+/**
+ * «Ejecutar análisis»: una consulta de IA por pulsación, nunca automática.
+ *
+ * El resultado no se guarda en caché de consulta porque no es un dato del
+ * servidor: es la opinión de una llamada concreta sobre la lista de ese
+ * momento.
+ */
+export function useWatchAnalysis() {
+  const { activeStore } = useTenant()
+  const storeId = activeStore?.id ?? null
+  return useMutation({
+    mutationFn: (input: { locale: 'es' | 'en' }) => analyzeWatch({ storeId, locale: input.locale }),
   })
 }
