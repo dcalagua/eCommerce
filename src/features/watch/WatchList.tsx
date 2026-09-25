@@ -53,42 +53,56 @@ export function WatchCard({
   const restore = useRestoreWatch()
   const { title, body } = textOf(finding, t)
   const critica = finding.severity === 'critica'
-  const color = critica ? 'var(--danger)' : 'var(--warning)'
+  const color = critica ? 'var(--red)' : 'var(--amber)'
+  const tinte = critica ? 'var(--red-soft)' : 'var(--amber-soft)'
 
   return (
     <Box
       sx={{
         position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
         borderRadius: 'var(--radius)',
         border: '1px solid var(--border)',
-        borderLeft: `3px solid ${color}`,
+        borderLeft: `4px solid ${color}`,
         bgcolor: 'var(--card)',
-        px: 1.75,
-        py: 1.5,
+        px: 1.5,
+        py: 1.25,
         opacity: muted ? 0.6 : 1,
       }}
     >
-      <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', mb: 0.75 }}>
-        <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-          <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: color }} aria-hidden />
-          <Typography sx={{ fontSize: 12, fontWeight: 700, color }}>
-            {t(`watch.severity.${finding.severity}` as MessageKey)}
-          </Typography>
-        </Stack>
-        <Stack direction="row" spacing={0.4} sx={{ alignItems: 'center', color: 'var(--muted)' }}>
-          <PlaceRoundedIcon sx={{ fontSize: 13 }} />
-          <Typography sx={{ fontSize: 12 }}>
+      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', mb: 0.6 }}>
+        {/* La severidad como píldora teñida: se distingue de un vistazo en una
+            rejilla, que es donde de verdad se compara. */}
+        <Box
+          sx={{
+            px: 0.75,
+            py: 0.1,
+            borderRadius: 999,
+            bgcolor: tinte,
+            color,
+            fontSize: 11.5,
+            fontWeight: 800,
+            letterSpacing: 0.2,
+          }}
+        >
+          {t(`watch.severity.${finding.severity}` as MessageKey)}
+        </Box>
+        <Stack direction="row" spacing={0.3} sx={{ alignItems: 'center', color: 'var(--muted)' }}>
+          <PlaceRoundedIcon sx={{ fontSize: 12.5 }} />
+          <Typography sx={{ fontSize: 11.5 }}>
             {t(`watch.module.${finding.module}` as MessageKey)}
           </Typography>
         </Stack>
       </Stack>
 
-      <Typography sx={{ fontWeight: 800, fontSize: 14.5, lineHeight: 1.35, mb: 0.4 }}>{title}</Typography>
+      <Typography sx={{ fontWeight: 800, fontSize: 14, lineHeight: 1.3, mb: 0.3 }}>{title}</Typography>
       <Typography
         sx={{
-          fontSize: 13,
+          fontSize: 12.5,
           color: 'var(--muted)',
-          lineHeight: 1.5,
+          lineHeight: 1.45,
           display: '-webkit-box',
           WebkitLineClamp: 2,
           WebkitBoxOrient: 'vertical',
@@ -96,8 +110,16 @@ export function WatchCard({
         }}
       >
         {body}
-        {finding.samples.length > 0 && ` · ${finding.samples.map((sample) => sample.label).join(', ')}`}
       </Typography>
+      {finding.samples.length > 0 && (
+        <Typography
+          className="tnum"
+          sx={{ fontSize: 11.5, color: 'var(--muted)', mt: 0.4, opacity: 0.9 }}
+          noWrap
+        >
+          {finding.samples.map((sample) => sample.label).join(' · ')}
+        </Typography>
+      )}
 
       {why && (
         <Stack direction="row" spacing={0.5} sx={{ alignItems: 'flex-start', mt: 0.75 }}>
@@ -106,7 +128,7 @@ export function WatchCard({
         </Stack>
       )}
 
-      <Stack direction="row" spacing={0.25} sx={{ justifyContent: 'flex-end', mt: 0.75 }}>
+      <Stack direction="row" spacing={0.25} sx={{ justifyContent: 'flex-end', mt: 'auto', pt: 0.5 }}>
         {muted ? (
           <Tooltip title={t('watch.restore')}>
             <span>
@@ -175,13 +197,23 @@ export function WatchList({
   }
 
   return (
-    <Stack spacing={1.25} aria-live="polite">
+    <Box
+      aria-live="polite"
+      sx={{
+        display: 'grid',
+        gap: 1.25,
+        gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))',
+        alignItems: 'stretch',
+      }}
+    >
       {items.length === 0 && (
-        <EmptyState
-          title={t('watch.empty.title')}
-          description={t('watch.empty.body')}
-          icon={<MonitorHeartRoundedIcon fontSize="small" />}
-        />
+        <Box sx={{ gridColumn: '1 / -1' }}>
+          <EmptyState
+            title={t('watch.empty.title')}
+            description={t('watch.empty.body')}
+            icon={<MonitorHeartRoundedIcon fontSize="small" />}
+          />
+        </Box>
       )}
       {items.map((finding) => (
         <WatchCard key={finding.key} finding={finding} onNavigate={onNavigate} />
@@ -191,10 +223,11 @@ export function WatchList({
           tapó tres avisos es un panel que miente. */}
       {dismissed.length > 0 && (
         <Button
+          // Ocupa su propia fila de la rejilla para no partir la cuadrícula.
+          sx={{ gridColumn: '1 / -1', justifySelf: 'start' }}
           size="small"
           variant="text"
           onClick={() => setVerSilenciados((v) => !v)}
-          sx={{ alignSelf: 'flex-start' }}
         >
           {(verSilenciados ? t('watch.hideDismissed') : t('watch.showDismissed')).replace(
             '{n}',
@@ -206,6 +239,6 @@ export function WatchList({
         dismissed.map((finding) => (
           <WatchCard key={`muted-${finding.key}`} finding={finding} onNavigate={onNavigate} muted />
         ))}
-    </Stack>
+    </Box>
   )
 }

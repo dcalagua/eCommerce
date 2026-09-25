@@ -66,18 +66,13 @@ export function WatchSection() {
         p: { xs: 1.5, md: 2 },
       }}
     >
-      <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', mb: 1.5 }}>
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>
         <AppIcon tone="accent" size="sm">
           <GroupsRoundedIcon fontSize="small" />
         </AppIcon>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography component="h2" sx={{ fontSize: T.cardTitle, fontWeight: 800 }}>
-            {t('watch.title')}
-          </Typography>
-          <Typography sx={{ fontSize: 12, color: 'var(--muted)' }} noWrap>
-            {t('watch.subtitle')}
-          </Typography>
-        </Box>
+        <Typography component="h2" sx={{ flex: 1, minWidth: 0, fontSize: T.cardTitle, fontWeight: 800 }}>
+          {t('watch.title')}
+        </Typography>
 
         {/* El contador de la suite: cuántos avisos hay, en rojo si alguno es
             crítico. Es lo primero que se mira desde lejos. */}
@@ -99,10 +94,6 @@ export function WatchSection() {
           {items.length}
         </Box>
 
-        <Typography sx={{ fontSize: 12, color: 'var(--muted)', display: { xs: 'none', md: 'block' } }}>
-          {t('watch.deterministic')}
-        </Typography>
-
         <Tooltip title={t('common.refresh')}>
           <span>
             <IconButton
@@ -117,11 +108,22 @@ export function WatchSection() {
         </Tooltip>
       </Stack>
 
-      <Stack spacing={1.25}>
+      <Typography sx={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.4, mb: 1.5 }}>
+        {t('watch.subtitle')} · {t('watch.deterministic')}
+      </Typography>
+
+      <Box
+        sx={{
+          display: 'grid',
+          gap: 1.25,
+          gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))',
+          alignItems: 'stretch',
+        }}
+      >
         {visibles.map((finding) => (
           <WatchCard key={finding.key} finding={finding} why={porque.get(finding.key) ?? null} />
         ))}
-      </Stack>
+      </Box>
 
       {ordenados.length > VISIBLES && (
         <Box sx={{ textAlign: 'center', mt: 1 }}>

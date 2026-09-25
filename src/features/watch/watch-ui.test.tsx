@@ -206,16 +206,24 @@ describe('centro de vigilancia', () => {
     expect(await screen.findByText('Pedidos sin cobrar')).toBeInTheDocument()
     // El contador de la suite y la leyenda de que esto NO gasta IA.
     expect(screen.getByLabelText('Centro de vigilancia: 2 avisos')).toHaveTextContent('2')
-    expect(screen.getByText('Calculado por el sistema · no consume IA')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Lo que está en rojo ahora mismo.*Calculado por el sistema · no consume IA/),
+    ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Ejecutar análisis/ })).toBeEnabled()
   })
 
-  it('con más de cuatro avisos, el resto queda tras «Ver N más»', async () => {
-    const muchos = ['a', 'b', 'c', 'd', 'e'].map((suffix, i) => ({
-      ...bajoMinimo,
-      key: i === 0 ? 'orders.unpaid' : i === 1 ? 'orders.paid_unshipped' : i === 2 ? 'fulfillment.overdue' : i === 3 ? 'credit.overdue' : 'catalog.unpublished',
-      fingerprint: suffix,
-    }))
+  it('en el carril lateral caben cuatro avisos; el resto, tras «Ver N más»', async () => {
+    const claves = [
+      'orders.unpaid',
+      'orders.paid_unshipped',
+      'orders.awaiting_approval',
+      'inventory.negative',
+      'inventory.below_reorder',
+      'fulfillment.overdue',
+      'credit.overdue',
+      'catalog.unpublished',
+    ]
+    const muchos = claves.map((key, i) => ({ ...bajoMinimo, key, fingerprint: String(i) }))
     holder.client = backend(findings({ items: muchos }))
     renderWithProviders(
       <TenantProvider>
@@ -223,10 +231,10 @@ describe('centro de vigilancia', () => {
       </TenantProvider>,
       { session: makeSession(), route: '/app' },
     )
-    expect(await screen.findByRole('button', { name: 'Ver 1 más' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Ver 4 más' })).toBeInTheDocument()
     expect(screen.queryByText('Catálogo sin publicar')).not.toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Ver 1 más' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Ver 4 más' }))
     expect(screen.getByText('Catálogo sin publicar')).toBeInTheDocument()
   })
 

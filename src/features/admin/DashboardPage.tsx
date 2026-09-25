@@ -465,15 +465,25 @@ export function DashboardPage() {
       <Stack spacing={2.5}>
         <InsightBanner insights={insights} />
 
-        {/* Centro de vigilancia: lo que está en rojo AHORA, de todos los
-            módulos. Va antes del Analista IA porque no cuesta una consulta y
-            no espera a que nadie pulse nada. */}
-        <WatchSection />
+        {/* Dos columnas: el resumen ENTERO a la izquierda (80 %) y el centro
+            de vigilancia como carril a la derecha (20 %), igual que el Crew
+            del resto de la suite. En pantalla pequeña se apilan, con la
+            vigilancia debajo: primero el estado de la tienda.
 
-        {/* Analista IA (fase 02): COMPLEMENTA los avisos y KPIs deterministas,
-            no los sustituye. Se oculta solo para roles sin la funcionalidad
-            `insights`; en una tienda recien creada no hay nada que analizar. */}
-        {!isFresh && <AiAnalystPanel storeId={storeId} />}
+            El Analista IA COMPLEMENTA los avisos y KPIs deterministas, no los
+            sustituye; se oculta solo para roles sin la funcionalidad
+            `insights` y en una tienda recién creada, que no tiene nada que
+            analizar. */}
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 2.5,
+            gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 4fr) minmax(260px, 1fr)' },
+            alignItems: 'start',
+          }}
+        >
+          <Stack spacing={2.5} sx={{ minWidth: 0 }}>
+            {!isFresh && <AiAnalystPanel storeId={storeId} />}
 
         <SectionHeader icon={<QueryStatsRoundedIcon fontSize="small" />} title={t('admin.dashboard.section.sales')} />
         {/* Cuatro columnas iguales: la cifra protagonista manda por el borde y
@@ -547,6 +557,16 @@ export function DashboardPage() {
             <RecentOrders orders={recentOrders.data ?? []} />
           </>
         )}
+
+          </Stack>
+
+          {/* El carril se queda pegado arriba mientras se baja por el
+              dashboard: lo que está en rojo no debería perderse de vista al
+              mirar las ventas del mes. */}
+          <Box sx={{ position: { lg: 'sticky' }, top: { lg: 16 } }}>
+            <WatchSection />
+          </Box>
+        </Box>
 
         {isFresh && (
           <Card>
