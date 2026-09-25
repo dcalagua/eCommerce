@@ -86,7 +86,11 @@ select public.sync_platform_context(
     'ecommerce.promotions',
     'ecommerce.content.cms',
     'ecommerce.fulfillment',
-    'ecommerce.analytics.advanced'
+    'ecommerce.analytics.advanced',
+    'ecommerce.ai.assist',
+    'ecommerce.ai.catalog.copy',
+    'ecommerce.ai.insights',
+    'ecommerce.ai.content'
   ]::text[],
   'provisioning'::public.entitlement_source,
   'demo'                       -- plan, informativo
@@ -104,6 +108,25 @@ where company_id = 'PEGA-AQUI-EL-COMPANY-ID'::uuid order by 1;
 ```
 
 Recarga la aplicación después; el menú lateral se arma con esto.
+
+### La IA, dos pasos y no uno
+
+Las cuatro capacidades de IA **no son de base**: sin los cuatro códigos de arriba, el negocio nace sin un
+solo botón de IA. Le pasó a `biel`, que se dio de alta cuando esta lista todavía no los incluía.
+
+Y falta la cuota. Sin fila propia, la sociedad queda en plan de prueba con **25 usos en total**, que se
+agotan en una demostración:
+
+```sql
+insert into public.ai_quotas (organization_id, company_id, plan, monthly_quota)
+values ('PEGA-AQUI-EL-ORGANIZATION-ID'::uuid, 'PEGA-AQUI-EL-COMPANY-ID'::uuid, 'active', 2000)
+on conflict (organization_id, company_id) do update
+   set plan = excluded.plan, monthly_quota = excluded.monthly_quota;
+```
+
+La IA de cada módulo exige además **ese** módulo contratado: la de cobranza no existe sin
+`ecommerce.credit.management`. El recorrido completo está en
+[`FLUJO_COMPLETO_IA.md`](../demo/FLUJO_COMPLETO_IA.md).
 
 ## Paso 6 · Todo lo demás, ya sin SQL
 
