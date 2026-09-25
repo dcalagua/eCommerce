@@ -830,3 +830,8 @@ export const FULFILLMENT_WEBHOOK_FUNCTION = 'fulfillment-webhook'
 // que el nombre del despliegue viva en un sitio.
 export const API_FUNCTION = 'api'
 export const INTEGRATION_WORKER_FUNCTION = 'integration-worker'
+
+// Centro de vigilancia: los hallazgos y el silencio del equipo.
+export const WATCH_FINDINGS_RPC = 'watch_findings'
+export const WATCH_DISMISS_RPC = 'watch_dismiss'
+export const WATCH_RESTORE_RPC = 'watch_restore'
