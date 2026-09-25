@@ -26,7 +26,6 @@ import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/states'
 import { C, SH, T } from '@/theme/tokens'
 import { BarList, type BarRow } from './BarList'
 import { WatchSection } from '@/features/watch/WatchSection'
-import { AiAnalystPanel } from './dashboard/AiAnalystPanel'
 import { InsightBanner, type Insight } from './dashboard/InsightBanner'
 import { RecentOrders } from './dashboard/RecentOrders'
 import { SectionHeader } from './dashboard/SectionHeader'
@@ -483,7 +482,6 @@ export function DashboardPage() {
           }}
         >
           <Stack spacing={2.5} sx={{ minWidth: 0 }}>
-            {!isFresh && <AiAnalystPanel storeId={storeId} />}
 
         <SectionHeader icon={<QueryStatsRoundedIcon fontSize="small" />} title={t('admin.dashboard.section.sales')} />
         {/* Cuatro columnas iguales: la cifra protagonista manda por el borde y

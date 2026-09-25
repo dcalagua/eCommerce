@@ -54,7 +54,7 @@ vi.mock('@/shared/lib/supabase', () => ({
 
 const { TenantProvider } = await import('@/features/tenant/TenantProvider')
 const { CapabilitiesProvider } = await import('@/features/capabilities/CapabilitiesProvider')
-const { DashboardPage } = await import('../DashboardPage')
+const { AiAnalystPanel } = await import('./AiAnalystPanel')
 
 const INTERACTION = '22222222-2222-4222-8222-222222222222'
 
@@ -195,7 +195,7 @@ function render(options: Parameters<typeof backend>[0]) {
   renderWithProviders(
     <TenantProvider>
       <CapabilitiesProvider>
-        <DashboardPage />
+        <AiAnalystPanel storeId={STORE_A} />
       </CapabilitiesProvider>
     </TenantProvider>,
     { session: makeSession() },
@@ -352,7 +352,8 @@ describe('Resumen inteligente', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Generar resumen' }))
     expect(await screen.findByText(/No pudimos contactar con el Analista IA/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument()
-    expect(screen.getByText(/6[.,]334[.,]24/)).toBeInTheDocument()
+    // Las tarjetas del sistema siguen ahí: no dependen del analista.
+    expect(screen.getByRole('group', { name: 'Hoy en tu tienda' })).toBeInTheDocument()
   })
 
   it('IA no configurada en el servidor: aviso informativo', async () => {
@@ -377,8 +378,9 @@ describe('Resumen inteligente', () => {
 
   it('un rol sin la funcionalidad (viewer) no ve el panel', async () => {
     render({ role: 'viewer', insights: () => summaryBody() })
-    expect(await screen.findByText(/6[.,]334[.,]24/)).toBeInTheDocument()
+    // No se enseña NADA: ni el panel ni sus tarjetas del sistema.
     await waitFor(() => expect(screen.queryByText('Resumen inteligente')).not.toBeInTheDocument())
+    expect(screen.queryByRole('group', { name: 'Hoy en tu tienda' })).not.toBeInTheDocument()
   })
 })
 

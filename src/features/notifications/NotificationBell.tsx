@@ -18,11 +18,14 @@ import { NotificationList } from './NotificationList'
  */
 export function NotificationBell() {
   const { t } = useI18n()
-  const { activeCompanyId } = useTenant()
+  const { activeCompanyId, activeStore } = useTenant()
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
 
-  const notifications = useNotifications('backoffice', activeCompanyId, Boolean(activeCompanyId))
-  const markRead = useMarkNotificationsRead('backoffice', activeCompanyId)
+  // La campana enseña los avisos de la tienda en la que estás y los que no son
+  // de ninguna tienda; no los de la tienda de al lado.
+  const storeId = activeStore?.id ?? null
+  const notifications = useNotifications('backoffice', activeCompanyId, Boolean(activeCompanyId), storeId)
+  const markRead = useMarkNotificationsRead('backoffice', activeCompanyId, storeId)
 
   const items = notifications.data ?? []
   const unread = items.filter((item) => item.read_at === null).length
