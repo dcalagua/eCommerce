@@ -337,6 +337,8 @@ export const es = {
     'settings.design.live.tablet': 'Tableta',
     'settings.design.live.mobile': 'Teléfono',
     'settings.design.live.real': 'Con tus datos reales',
+    'settings.design.theme.inUse': 'En uso',
+    'settings.design.live.editing': 'Editando · {section}',
     'settings.design.live.frameTitle': 'Vista previa de la tienda',
     'settings.design.live.note': 'Es tu tienda de verdad con lo que tienes elegido ahora. La tienda pública no cambia hasta que guardes.',
     'settings.design.style.changedByYou': 'Cambiado por ti',

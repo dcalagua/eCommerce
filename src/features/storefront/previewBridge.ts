@@ -26,6 +26,27 @@ import type { PublicStore } from './types'
 export const PREVIEW_PARAM = 'vista_previa'
 export const PREVIEW_MESSAGE = 'ebim:store-preview'
 export const PREVIEW_READY = 'ebim:store-preview-ready'
+/** Qué sección está tocando el taller: se rodea y se trae a la vista. */
+export const PREVIEW_HIGHLIGHT = 'ebim:store-preview-highlight'
+
+/**
+ * Marca la sección que se está editando (y desmarca las demás). Solo DOM y
+ * solo en modo vista previa: la sección lleva `data-preview-section` porque
+ * `HomeComposer` la envuelve en ese modo.
+ */
+export function highlightPreviewSection(seccion: string | null, etiqueta: string): void {
+  for (const nodo of document.querySelectorAll('[data-preview-active]')) {
+    nodo.removeAttribute('data-preview-active')
+    nodo.removeAttribute('data-preview-label')
+  }
+  if (!seccion) return
+  const nodo = document.querySelector(`[data-preview-section="${CSS.escape(seccion)}"]`)
+  if (!(nodo instanceof HTMLElement)) return
+  nodo.setAttribute('data-preview-active', 'true')
+  nodo.setAttribute('data-preview-label', etiqueta)
+  const quieto = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  nodo.scrollIntoView?.({ block: 'center', behavior: quieto ? 'auto' : 'smooth' })
+}
 const MARCA_SESION = 'ebim.store-preview'
 
 /** Lo único que la vista previa puede pisar: presentación y textos. */
@@ -87,8 +108,16 @@ export function useStorePreview(store: PublicStore | undefined): PublicStore | u
     if (!activo) return
     const alRecibir = (evento: MessageEvent) => {
       if (evento.source !== window.parent || evento.origin !== window.location.origin) return
-      const datos = evento.data as { type?: unknown; overrides?: unknown } | null
-      if (!datos || datos.type !== PREVIEW_MESSAGE) return
+      const datos = evento.data as { type?: unknown; overrides?: unknown; section?: unknown; label?: unknown } | null
+      if (!datos) return
+      if (datos.type === PREVIEW_HIGHLIGHT) {
+        highlightPreviewSection(
+          typeof datos.section === 'string' ? datos.section : null,
+          typeof datos.label === 'string' ? datos.label.slice(0, 80) : '',
+        )
+        return
+      }
+      if (datos.type !== PREVIEW_MESSAGE) return
       setEncima(sanitizePreviewOverrides(datos.overrides))
     }
     window.addEventListener('message', alRecibir)

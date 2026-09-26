@@ -1,3 +1,4 @@
+import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
 import { Alert, Box, Link as MuiLink, Stack, Typography } from '@mui/material'
 import { useMemo, useState } from 'react'
 import type { UseFormReturn } from 'react-hook-form'
@@ -11,6 +12,7 @@ import '@/theme/storefrontFonts'
 import { R, TS, brandFontStack } from '@/theme/tokens'
 import {
   THEME_PRESET_IDS,
+  type HomeSectionId,
   type StorefrontStyle,
   type ThemePreset,
 } from '@/features/storefront/theme/types'
@@ -170,6 +172,8 @@ export function StorefrontDesignSection({
    */
   const [abiertos, setAbiertos] = useState<ReadonlySet<number>>(() => new Set(pasosAbiertos))
   const [visto, setVisto] = useState(() => Math.max(0, ...pasosAbiertos))
+  /** Resumen v2 · La sección de la portada que se está tocando. */
+  const [resaltada, setResaltada] = useState<{ id: HomeSectionId; nombre: string } | null>(null)
   function abrir(indice: number) {
     setAbiertos(new Set([indice]))
     setVisto((previo) => Math.max(previo, indice))
@@ -341,96 +345,111 @@ export function StorefrontDesignSection({
           <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
             {t('settings.design.theme.help')}
           </Typography>
-          {/* `radiogroup` y no cuatro botones: son cuatro opciones EXCLUYENTES, y
-              un lector de pantalla necesita saber que elegir una descarta las
-              otras tres. Con botones sueltos anunciaría cuatro acciones. */}
-          <Box
-            role="radiogroup"
-            aria-label={t('settings.design.theme.title')}
-            sx={{
-              display: 'grid',
-              gap: 1.5,
-              // Dos columnas también en el panel del taller: cuatro tarjetas en
-              // fila dentro de 420 px dejarían el título en tres líneas.
-              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
-            }}
-          >
-            {THEME_PRESET_IDS.map((id) => {
-              const elegido = preset === id
-              return (
-                <Box
-                  key={id}
-                  role="radio"
-                  tabIndex={0}
-                  aria-checked={elegido}
-                  aria-disabled={busy || undefined}
-                  onClick={() => !busy && elegirTema(id)}
-                  onKeyDown={(event) => {
-                    if (busy) return
-                    // Espacio y Enter: los dos gestos con los que se activa un
-                    // control de este tipo. Solo uno deja fuera a media gente.
-                    if (event.key === ' ' || event.key === 'Enter') {
-                      event.preventDefault()
-                      elegirTema(id)
-                    }
-                  }}
-                  sx={{
-                    cursor: busy ? 'default' : 'pointer',
-                    p: 1.5,
-                    borderRadius: `${R.lg}px`,
-                    border: '2px solid',
-                    borderColor: elegido ? 'var(--accent)' : 'var(--border)',
-                    bgcolor: elegido ? 'var(--accent-soft)' : 'var(--card)',
-                    opacity: busy ? 0.6 : 1,
-                    '&:focus-visible': { outline: '2px solid var(--accent)', outlineOffset: 2 },
-                  }}
-                >
-                  {/* La miniatura va PRIMERO: elegir un tema es una decisión
-                      visual, y hasta P12 se tomaba leyendo cuatro frases. Se
-                      dibuja con la definición del preset, así que no se
-                      desincroniza de la tienda. */}
-                  {/* Resumen v2 · La miniatura en el color de la TIENDA, no en el
-                      de la suite: se elige mirando la propia tienda. */}
-                  <Box style={tinta}>
-                    <ThemeMiniPreview preset={id} />
-                  </Box>
-
-                  <Typography
-                    sx={{
-                      fontSize: TS.bodyStrong,
-                      fontWeight: 800,
-                      mt: 1,
-                      color: elegido ? 'var(--accent-deep)' : 'var(--text)',
-                    }}
-                  >
-                    {t(ETIQUETA_TEMA[id])}
-                  </Typography>
-                  {/* Y la letra que propone, escrita en esa letra. */}
-                  <Stack direction="row" sx={{ alignItems: 'baseline', gap: 0.75, mt: 0.25 }}>
-                    <Typography
-                      aria-hidden
-                      sx={{ fontFamily: brandFontStack(THEME_FONTS[id]), fontSize: 20, fontWeight: 700, lineHeight: 1 }}
-                    >
-                      Aa
-                    </Typography>
-                    <Typography sx={{ fontSize: TS.label, fontWeight: 700, color: 'var(--muted)' }}>
-                      {nombreDeLetra(THEME_FONTS[id])}
-                    </Typography>
-                  </Stack>
-                  <Typography sx={{ fontSize: TS.label, color: 'var(--muted)', mt: 0.5 }}>
-                    {t(AYUDA_TEMA[id])}
-                  </Typography>
-                  {/* Y las diferencias en datos, para quien no puede ver la
-                      miniatura y para quien quiere el número exacto. */}
-                  <Typography
-                    sx={{ fontSize: TS.label, color: 'var(--muted)', mt: 0.5, fontWeight: 700 }}
-                  >
-                    {resumen(id, t)}
-                  </Typography>
-                </Box>
-              )
-            })}
-          </Box>
+          {/* `radiogroup` y no cuatro botones: son cuatro opciones EXCLUYENTES, y
+              un lector de pantalla necesita saber que elegir una descarta las
+              otras tres. Con botones sueltos anunciaría cuatro acciones. */}
+          <Box
+            role="radiogroup"
+            aria-label={t('settings.design.theme.title')}
+            sx={{
+              display: 'grid',
+              gap: 1.5,
+              // Dos columnas también en el panel del taller: cuatro tarjetas en
+              // fila dentro de 420 px dejarían el título en tres líneas.
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
+            }}
+          >
+            {THEME_PRESET_IDS.map((id) => {
+              const elegido = preset === id
+              return (
+                <Box
+                  key={id}
+                  role="radio"
+                  tabIndex={0}
+                  aria-checked={elegido}
+                  aria-disabled={busy || undefined}
+                  onClick={() => !busy && elegirTema(id)}
+                  onKeyDown={(event) => {
+                    if (busy) return
+                    // Espacio y Enter: los dos gestos con los que se activa un
+                    // control de este tipo. Solo uno deja fuera a media gente.
+                    if (event.key === ' ' || event.key === 'Enter') {
+                      event.preventDefault()
+                      elegirTema(id)
+                    }
+                  }}
+                  sx={{
+                    cursor: busy ? 'default' : 'pointer',
+                    p: 1.5,
+                    borderRadius: `${R.lg}px`,
+                    border: '2px solid',
+                    borderColor: elegido ? 'var(--accent)' : 'var(--border)',
+                    bgcolor: elegido ? 'var(--accent-soft)' : 'var(--card)',
+                    opacity: busy ? 0.6 : 1,
+                    '&:focus-visible': { outline: '2px solid var(--accent)', outlineOffset: 2 },
+                  }}
+                >
+                  {/* La miniatura va PRIMERO: elegir un tema es una decisión
+                      visual, y hasta P12 se tomaba leyendo cuatro frases. Se
+                      dibuja con la definición del preset, así que no se
+                      desincroniza de la tienda. */}
+                  {/* Resumen v2 · La miniatura en el color de la TIENDA, no en el
+                      de la suite: se elige mirando la propia tienda. */}
+                  <Box style={tinta}>
+                    <ThemeMiniPreview preset={id} />
+                  </Box>
+
+                  <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 1, mt: 1 }}>
+                    <Typography
+                      sx={{
+                        fontSize: TS.bodyStrong,
+                        fontWeight: 800,
+                        color: elegido ? 'var(--accent-deep)' : 'var(--text)',
+                      }}
+                    >
+                      {t(ETIQUETA_TEMA[id])}
+                    </Typography>
+                    {/* Resumen v2 · «En uso», como en el diseño: se ve cuál es sin
+                        comparar bordes. (El estado ya lo anuncia `aria-checked`.) */}
+                    {elegido ? (
+                      <Stack
+                        aria-hidden
+                        direction="row"
+                        sx={{ alignItems: 'center', gap: 0.25, px: 1, py: 0.125, borderRadius: 999, bgcolor: 'var(--accent)', color: '#fff' }}
+                      >
+                        <CheckRoundedIcon sx={{ fontSize: 13 }} />
+                        <Typography component="span" sx={{ fontSize: 11, fontWeight: 800 }}>
+                          {t('settings.design.theme.inUse')}
+                        </Typography>
+                      </Stack>
+                    ) : null}
+                  </Stack>
+                  {/* Y la letra que propone, escrita en esa letra. */}
+                  <Stack direction="row" sx={{ alignItems: 'baseline', gap: 0.75, mt: 0.25 }}>
+                    <Typography
+                      aria-hidden
+                      sx={{ fontFamily: brandFontStack(THEME_FONTS[id]), fontSize: 20, fontWeight: 700, lineHeight: 1 }}
+                    >
+                      Aa
+                    </Typography>
+                    <Typography sx={{ fontSize: TS.label, fontWeight: 700, color: 'var(--muted)' }}>
+                      {nombreDeLetra(THEME_FONTS[id])}
+                    </Typography>
+                  </Stack>
+                  <Typography sx={{ fontSize: TS.label, color: 'var(--muted)', mt: 0.5 }}>
+                    {t(AYUDA_TEMA[id])}
+                  </Typography>
+                  {/* Y las diferencias en datos, para quien no puede ver la
+                      miniatura y para quien quiere el número exacto. */}
+                  <Typography
+                    sx={{ fontSize: TS.label, color: 'var(--muted)', mt: 0.5, fontWeight: 700 }}
+                  >
+                    {resumen(id, t)}
+                  </Typography>
+                </Box>
+              )
+            })}
+          </Box>
         </DesignStep>
 
         <DesignStep
@@ -446,7 +465,7 @@ export function StorefrontDesignSection({
           {/* El tema efectivo baja al editor: el panel de presentación por
               sección necesita saber qué significa `auto` hoy para poder
               escribirlo en el desplegable (V3 · P12). */}
-          <HomeLayoutEditor form={form} busy={busy} preset={preset} style={estiloEfectivo} />
+          <HomeLayoutEditor form={form} busy={busy} preset={preset} style={estiloEfectivo} onEnfocar={(id, nombre) => setResaltada(id ? { id, nombre } : null)} />
         </DesignStep>
 
         <DesignStep
@@ -564,7 +583,19 @@ export function StorefrontDesignSection({
             lo del formulario encima). Sin tienda —cuenta nueva— queda el
             dibujo de siempre, con el color y la letra del formulario. */}
         {storeSlug ? (
-          <LiveStorePreview storeSlug={storeSlug} overrides={encima} productSlug={hits[0]?.slug ?? null} />
+          <LiveStorePreview
+            storeSlug={storeSlug}
+            overrides={encima}
+            productSlug={hits[0]?.slug ?? null}
+            highlight={
+              resaltada
+                ? {
+                    section: resaltada.id,
+                    label: t('settings.design.live.editing').replace('{section}', resaltada.nombre),
+                  }
+                : null
+            }
+          />
         ) : (
         <Box
           data-preview-tenant

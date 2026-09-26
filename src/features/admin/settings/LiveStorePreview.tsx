@@ -5,7 +5,7 @@ import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
 import DesktopWindowsRoundedIcon from '@mui/icons-material/DesktopWindowsRounded'
 import { Box, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { PREVIEW_MESSAGE, PREVIEW_PARAM, PREVIEW_READY } from '@/features/storefront/previewBridge'
+import { PREVIEW_HIGHLIGHT, PREVIEW_MESSAGE, PREVIEW_PARAM, PREVIEW_READY } from '@/features/storefront/previewBridge'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { R, TS } from '@/theme/tokens'
@@ -43,12 +43,15 @@ export function LiveStorePreview({
   storeSlug,
   overrides,
   productSlug,
+  highlight = null,
 }: {
   storeSlug: string
   /** Lo que hay en el formulario, con los nombres de los campos de la tienda. */
   overrides: Record<string, unknown>
   /** Un producto real para la página «Producto». Sin él, se ofrece el catálogo. */
   productSlug: string | null
+  /** Resumen v2 · La sección que se está tocando, para rodearla en la tienda. */
+  highlight?: { section: string; label: string } | null
 }) {
   const { t } = useI18n()
   const [pagina, setPagina] = useState<Pagina>('home')
@@ -93,6 +96,12 @@ export function LiveStorePreview({
   useEffect(() => {
     enviar()
   }, [overrides])
+  useEffect(() => {
+    marco.current?.contentWindow?.postMessage(
+      { type: PREVIEW_HIGHLIGHT, section: highlight?.section ?? null, label: highlight?.label ?? '' },
+      window.location.origin,
+    )
+  }, [highlight?.section, highlight?.label])
   useEffect(() => {
     const alRecibir = (evento: MessageEvent) => {
       if (evento.origin !== window.location.origin || evento.source !== marco.current?.contentWindow) return

@@ -109,6 +109,7 @@ export function HomeLayoutEditor({
   busy = false,
   preset,
   style,
+  onEnfocar,
 }: {
   form: UseFormReturn<StoreFormValues>
   busy?: boolean
@@ -122,6 +123,8 @@ export function HomeLayoutEditor({
    */
   preset: ThemePreset
   style: StorefrontStyle
+  /** Resumen v2 · Qué sección se está tocando (para marcarla en la vista previa). */
+  onEnfocar?: (id: HomeSectionId | null, nombre: string) => void
 }) {
   const { t } = useI18n()
   const guardado = form.watch('home_layout')
@@ -138,7 +141,6 @@ export function HomeLayoutEditor({
 
   /** Las que se pueden ordenar, en su orden. Las pendientes no entran. */
   const activas = secciones.filter((s) => !SIN_IMPLEMENTAR.has(s.id))
-  const pendientes = secciones.filter((s) => SIN_IMPLEMENTAR.has(s.id))
 
   /**
    * Guarda el orden, con la VERSIÓN que le corresponde (V3 · P12).
@@ -268,57 +270,12 @@ export function HomeLayoutEditor({
         onLimitar={limitar}
         onPresentar={presentar}
         onDespersonalizar={despersonalizar}
+        {...(onEnfocar ? { onEnfocar } : {})}
       />
 
-      {pendientes.length > 0 && (
-        <Stack spacing={0.5} sx={{ pt: 1 }}>
-          <Typography
-            component="h3"
-            sx={{
-              fontSize: TS.label,
-              fontWeight: 800,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              color: 'var(--muted)',
-            }}
-          >
-            {t('settings.design.home.pendingGroup')}
-          </Typography>
-          <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
-            {t('settings.design.home.pendingGroupHelp')}
-          </Typography>
-          <Stack component="ul" sx={{ listStyle: 'none', m: 0, p: 0, gap: 1, mt: 0.5 }}>
-            {pendientes.map((seccion) => (
-              <Stack
-                key={seccion.id}
-                component="li"
-                direction="row"
-                data-pending-section={seccion.id}
-                sx={{
-                  alignItems: 'center',
-                  gap: 0.5,
-                  px: 1,
-                  py: 0.75,
-                  borderRadius: `${R.md}px`,
-                  border: '1px dashed var(--border)',
-                  // Sin fondo de tarjeta: no es una fila que se pueda tocar, y
-                  // parecerlo es lo que hacía que se intentara.
-                  color: 'var(--muted)',
-                }}
-              >
-                {/* Ni interruptor ni flechas: no hay nada que encender ni nada
-                    que ordenar. Un control desactivado invita a pulsarlo. */}
-                <Typography sx={{ fontSize: TS.body, fontWeight: 700 }}>
-                  {t(NOMBRE[seccion.id])}
-                </Typography>
-                <Typography sx={{ fontSize: TS.label }}>
-                  · {t('settings.design.home.pending')}
-                </Typography>
-              </Stack>
-            ))}
-          </Stack>
-        </Stack>
-      )}
+      {/* Resumen v2 · Lo que aún no tiene componente (el boletín) ya no se
+          enseña como «próximamente»: una sección que no existe no ayuda a
+          decidir. Aparecerá en la lista cuando se pueda encender. */}
     </Stack>
   )
 }
@@ -341,6 +298,7 @@ function ListaOrdenable({
   onLimitar,
   onPresentar,
   onDespersonalizar,
+  onEnfocar,
 }: {
   secciones: readonly HomeSectionConfig[]
   busy: boolean
@@ -351,6 +309,7 @@ function ListaOrdenable({
   onLimitar: (id: HomeSectionId, valor: string) => void
   onPresentar: (id: HomeSectionId, clave: 'variant' | 'surface' | 'width', valor: string) => void
   onDespersonalizar: (id: HomeSectionId) => void
+  onEnfocar?: (id: HomeSectionId | null, nombre: string) => void
 }) {
   const { t } = useI18n()
   const origen = useRef<number | null>(null)
@@ -393,6 +352,10 @@ function ListaOrdenable({
             data-section={seccion.id}
             data-drop-target={encima === indice ? 'true' : undefined}
             draggable={!busy}
+            // Resumen v2 · Apuntar o enfocar una fila la marca en la vista previa.
+            onMouseEnter={() => onEnfocar?.(seccion.id, nombre)}
+            onMouseLeave={() => !afinando && onEnfocar?.(null, '')}
+            onFocus={() => onEnfocar?.(seccion.id, nombre)}
             onDragStart={(evento) => {
               origen.current = indice
               evento.dataTransfer?.setData('text/plain', seccion.id)
@@ -538,7 +501,10 @@ function ListaOrdenable({
         <SectionPresentationPopover
           open
           anchorEl={afinando.anchor}
-          onClose={() => setAfinando(null)}
+          onClose={() => {
+            setAfinando(null)
+            onEnfocar?.(null, '')
+          }}
           sectionId={afinando.id}
           sectionName={t(NOMBRE[afinando.id])}
           preset={preset}

@@ -277,6 +277,32 @@
 
 /* RETAIL: el precio es el protagonista. Sube por encima del nombre y el
    descuento pesa mas: quien compra jabon y paracetamol compara cifras. */
+/* Resumen v2 · VISTA PREVIA del taller: la sección que se está editando.
+   Solo existe dentro del iframe del taller (`data-preview-section` lo pone
+   `HomeComposer` en ese modo). El verde es el del EDITOR, no el de la tienda:
+   marca la herramienta, no forma parte del diseño del comercio. */
+[data-preview-section] {
+  position: relative;
+  border-radius: 14px;
+  transition: outline-color 0.15s ease;
+}
+[data-preview-section][data-preview-active] {
+  outline: 3px solid #5aa97f;
+  outline-offset: 6px;
+}
+[data-preview-section][data-preview-active]::before {
+  content: attr(data-preview-label);
+  position: absolute;
+  top: -30px;
+  left: 0;
+  z-index: 5;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: #5aa97f;
+  color: #fff;
+  font: 800 12px/1.4 'DM Sans', system-ui, sans-serif;
+}
+
 /* RETAIL «FERIA DE OFERTAS» · la cabecera (Resumen v2).
    Todo sale del acento de la TIENDA: el tema pone la forma, nunca un color.
    - La barra de familias se vuelve una banda del color de la tienda. Va en

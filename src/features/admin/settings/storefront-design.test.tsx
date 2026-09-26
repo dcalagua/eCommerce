@@ -319,10 +319,11 @@ describe('ajustar el tema', () => {
 // ---------------------------------------------------------------------------
 
 describe('ordenar la portada', () => {
-  it('se listan todas las secciones conocidas', () => {
+  it('se listan todas las secciones que se pueden encender', () => {
     pintar()
 
-    expect(screen.getAllByRole('listitem')).toHaveLength(HOME_SECTION_IDS.length)
+    // Resumen v2 · El boletín (sin componente) ya no sale como «próximamente».
+    expect(screen.getAllByRole('listitem')).toHaveLength(HOME_SECTION_IDS.length - 1)
   })
 
   it('cada botón dice a qué sección pertenece', () => {
@@ -396,14 +397,14 @@ describe('ordenar la portada', () => {
     expect(screen.queryByRole('button', { name: /Boletín/ })).not.toBeInTheDocument()
   })
 
-  it('pero se sigue enseñando, y se dice por qué', () => {
-    // Esconderla sería más limpio y peor: quien busca «boletín» y no lo
-    // encuentra no sabe si no existe o si no lo ha visto.
+  it('y no se enseña hasta que exista (Resumen v2)', () => {
+    // Decisión del diseño: una sección que no existe no ayuda a decidir nada, y
+    // el bloque «Próximamente» ocupaba el paso de la portada. Aparecerá en la
+    // lista, con su ojo, cuando tenga componente.
     pintar()
 
-    expect(screen.getByText('Próximamente')).toBeInTheDocument()
-    expect(screen.getByText('Boletín')).toBeInTheDocument()
-    expect(screen.getAllByText(/Todavía no disponible/).length).toBeGreaterThan(0)
+    expect(screen.queryByText('Próximamente')).not.toBeInTheDocument()
+    expect(screen.queryByText('Boletín')).not.toBeInTheDocument()
   })
 
   it('reordenar las activas no mueve a las pendientes de su sitio', () => {

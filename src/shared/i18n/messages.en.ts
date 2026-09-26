@@ -369,6 +369,8 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'settings.design.live.tablet': 'Tablet',
     'settings.design.live.mobile': 'Phone',
     'settings.design.live.real': 'With your real data',
+    'settings.design.theme.inUse': 'In use',
+    'settings.design.live.editing': 'Editing · {section}',
     'settings.design.live.frameTitle': 'Store preview',
     'settings.design.live.note': 'This is your real store with what you have chosen now. The public store doesn\'t change until you save.',
     'settings.design.style.changedByYou': 'Changed by you',
