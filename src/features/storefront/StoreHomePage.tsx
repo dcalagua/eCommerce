@@ -142,7 +142,7 @@ export function StoreHomePage() {
   // El tema trae el ORDEN de la portada. No trae los datos ni decide qué hay:
   // eso sigue resolviéndose aquí abajo, con las mismas consultas de siempre.
   const tema = useStorefrontTheme()
-  const { pathname } = useLocation()
+  const { pathname, hash } = useLocation()
   const [params, setParams] = useSearchParams()
 
   const categorySlug = params.get('c')
@@ -516,7 +516,8 @@ export function StoreHomePage() {
    * El ORDEN manda el de las facetas (por tamaño): es el que ya tenía la fila,
    * y reordenar por nombre habría enterrado las marcas que de verdad se compran.
    */
-  const brandsConLogo = usePublicBrands(catalogo ? null : store.store_id)
+  const directorioMarcas = catalogo && hash === '#marcas'
+  const brandsConLogo = usePublicBrands(catalogo && !directorioMarcas ? null : store.store_id)
   const logosPorMarca = useMemo(() => {
     const mapa = new Map<string, string | null>()
     for (const marca of brandsConLogo.data ?? []) mapa.set(marca.code, marca.logo_url)
@@ -528,6 +529,18 @@ export function StoreHomePage() {
   const logosFirmados = useSignedStoreAssets(
     useMemo(() => [...logosPorMarca.values()], [logosPorMarca]),
   )
+
+  // Con `#marcas` el directorio llega después de la rejilla: se baja a él en
+  // cuanto existe, sin animación si el comprador pidió menos movimiento.
+  const hayMarcas = brandFacets.length > 0
+  useEffect(() => {
+    if (!directorioMarcas || !hayMarcas) return
+    const marco = requestAnimationFrame(() => {
+      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+      document.getElementById('marcas')?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' })
+    })
+    return () => cancelAnimationFrame(marco)
+  }, [directorioMarcas, hayMarcas])
 
   const brandOptions = brandFacets.map((facet) => {
     const ref = logosPorMarca.get(facet.code) ?? null
@@ -724,8 +737,16 @@ export function StoreHomePage() {
   const layoutAPintar = useMemo(() => {
     if (!catalogo && !cargandoPortada) return tema.layout
     const promociones = tema.layout.sections.find((seccion) => seccion.id === 'promotions')
-    return { version: 1 as const, sections: promociones ? [promociones] : [] }
-  }, [catalogo, cargandoPortada, tema.layout])
+    const secciones = promociones ? [promociones] : []
+    // «Marcas» de la cabecera lleva a `?ver=todo#marcas`. Sin esto el ancla no
+    // tenía destino en el catálogo y el enlace no hacía nada: el directorio de
+    // marcas se pinta aquí, con la configuración del comercio si la tiene.
+    if (catalogo && hash === '#marcas') {
+      const marcas = tema.layout.sections.find((seccion) => seccion.id === 'brands')
+      secciones.push({ ...(marcas ?? { id: 'brands' as const }), enabled: true })
+    }
+    return { version: 1 as const, sections: secciones }
+  }, [catalogo, cargandoPortada, tema.layout, hash])
 
   /**
    * ¿Lo destacado se pinta como sección propia?
@@ -873,7 +894,9 @@ export function StoreHomePage() {
   }
 
   return (
-    <Stack sx={{ gap: { xs: 2, md: 3 } }}>
+    // El aire entre secciones es el del tema (`sectionSpacing`): compacto en
+    // Retail y Catálogo, amplio en Premium. Universal resuelve 16/24, lo de antes.
+    <Stack sx={{ gap: { xs: 'var(--sf-section-gap, 16px)', md: 'var(--sf-section-gap-md, 24px)' } }}>
       {cargandoPortada ? <StoreLandingSkeleton /> : null}
 
       {/* El `<h1>` cuando la cubierta es un carrusel.
@@ -1075,7 +1098,9 @@ export function StoreHomePage() {
                 description={filtered ? t('store.catalog.noResultsBody') : t('store.catalog.emptyBody')}
                 action={
                   filtered ? (
-                    <Button variant="contained" onClick={() => setParams(new URLSearchParams())}>
+                    // Quitar filtros deja al comprador en el catálogo completo: la
+                    // URL vacía era la portada y lo sacaba de donde estaba.
+                    <Button variant="contained" onClick={() => setParams(new URLSearchParams({ ver: 'todo' }))}>
                       {t('store.catalog.clear')}
                     </Button>
                   ) : undefined

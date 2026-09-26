@@ -591,6 +591,8 @@ describe('catálogo', () => {
 
     await user.click(screen.getByRole('button', { name: 'Quitar filtros' }))
     expect(await screen.findByText('Silla de roble')).toBeInTheDocument()
+    // Sigue en el catálogo: antes la URL vacía lo devolvía a la portada.
+    expect(screen.getByRole('heading', { name: 'Todo el catálogo', level: 1 })).toBeInTheDocument()
   })
 
   it('filtra por categoría desde las píldoras y marca cuál está activa', async () => {
