@@ -440,3 +440,104 @@ export function CategoryDoor({
     </Box>
   )
 }
+
+/**
+ * Las familias en CÍRCULOS (Resumen v2 · contrato V4).
+ *
+ * Una fila de discos con la foto de la familia —o su icono sobre el tinte del
+ * acento— y el nombre debajo. Es la forma de explorar que no compite con la
+ * oferta: ocupa una franja baja, se recorre de un vistazo y cada disco es una
+ * puerta al catálogo filtrado, igual que las otras tres composiciones.
+ *
+ * Todos los discos van en el color del TENANT y no en tintes por nombre: seis
+ * colores por hash al lado del acento de la marca competían con él.
+ */
+export function CategoryCircles({
+  categories,
+  storeSlug,
+  ariaLabel,
+}: {
+  categories: readonly CategoryDoorItem[]
+  storeSlug: string
+  ariaLabel?: string
+}) {
+  if (categories.length === 0) return null
+
+  return (
+    <ScrollRow component="nav" ariaLabel={ariaLabel} gap={2}>
+      {categories.map((category) => {
+        const Icono = iconoDe(category.name)
+        return (
+          <Stack
+            key={category.category_id}
+            component={Link}
+            to={`/s/${storeSlug}?c=${encodeURIComponent(category.slug)}`}
+            data-category-circle="true"
+            sx={{
+              flexShrink: 0,
+              width: { xs: 88, md: 112 },
+              alignItems: 'center',
+              gap: 1,
+              textDecoration: 'none',
+              color: 'var(--text)',
+              '&:focus-visible': { outline: 'none' },
+              '&:focus-visible .eb-circle': { outline: '2px solid var(--accent)', outlineOffset: 3 },
+              '@media (hover: hover)': {
+                '&:hover .eb-circle': { transform: 'translateY(-3px)', boxShadow: 'var(--sf-shadow-hover)' },
+              },
+              '@media (prefers-reduced-motion: reduce)': {
+                '&:hover .eb-circle': { transform: 'none' },
+              },
+            }}
+          >
+            <Box
+              className="eb-circle"
+              sx={{
+                width: { xs: 76, md: 96 },
+                height: { xs: 76, md: 96 },
+                borderRadius: '50%',
+                overflow: 'hidden',
+                display: 'grid',
+                placeItems: 'center',
+                bgcolor: 'var(--card)',
+                border: '1px solid var(--sf-line)',
+                boxShadow: 'var(--sf-shadow)',
+                transition: 'transform .18s ease, box-shadow .18s ease',
+              }}
+            >
+              {category.imageUrl ? (
+                <Box
+                  component="img"
+                  src={category.imageUrl}
+                  alt=""
+                  loading="lazy"
+                  sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                <Box
+                  aria-hidden
+                  sx={{
+                    width: '72%',
+                    height: '72%',
+                    borderRadius: '50%',
+                    display: 'grid',
+                    placeItems: 'center',
+                    bgcolor: 'var(--accent-soft)',
+                    color: 'var(--accent-deep)',
+                  }}
+                >
+                  <Icono sx={{ fontSize: { xs: 26, md: 32 } }} />
+                </Box>
+              )}
+            </Box>
+            <Typography
+              sx={{ fontSize: TS.label + 1, fontWeight: 700, textAlign: 'center', lineHeight: 1.25 }}
+            >
+              {category.name}
+            </Typography>
+          </Stack>
+        )
+      })}
+    </ScrollRow>
+  )
+}

@@ -11,6 +11,7 @@ import {
   Stack,
   Typography,
 } from '@mui/material'
+import { visuallyHidden } from '@mui/utils'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
@@ -75,6 +76,7 @@ export function ProductCard({
   variant,
   commercialPrice = null,
   b2b = false,
+  rank,
 }: {
   product: PublicProduct
   storeSlug: string
@@ -149,6 +151,8 @@ export function ProductCard({
    * lo que espera de una tienda.
    */
   b2b?: boolean
+  /** Puesto en un ranking de ventas (1 = el más vendido). Sin él, no hay insignia. */
+  rank?: number
 }) {
   const { t, locale } = useI18n()
   const [cantidad, setCantidad] = useState(1)
@@ -343,8 +347,10 @@ export function ProductCard({
               px: 1,
               py: 0.25,
               borderRadius: 'var(--sf-pill)',
-              bgcolor: 'var(--accent-deep)',
-              color: '#FFFFFF',
+              // El color de la oferta lo pone el tema con RESERVA al acento: en
+              // Retail es el amarillo de oferta; en los demás, lo de siempre.
+              bgcolor: 'var(--sf-discount-bg, var(--accent-deep))',
+              color: 'var(--sf-discount-fg, #FFFFFF)',
               fontSize: TS.label,
               fontWeight: 800,
               letterSpacing: '0.02em',
@@ -355,6 +361,37 @@ export function ProductCard({
             {`-${discount}%`}
           </Box>
         )}
+
+        {/* Resumen v2 · El puesto en el ranking de ventas, cuando la fila es un
+            ranking. Es un dato (sale del agregado de pedidos), no un adorno. */}
+        {rank ? (
+          <Box
+            data-rank={rank}
+            title={t('store.ranking.position').replace('{n}', String(rank))}
+            sx={{
+              position: 'absolute',
+              bottom: 8,
+              left: 8,
+              zIndex: 1,
+              minWidth: 30,
+              height: 30,
+              px: 0.75,
+              display: 'grid',
+              placeItems: 'center',
+              borderRadius: '50%',
+              bgcolor: rank === 1 ? 'var(--sf-discount-bg, var(--accent-deep))' : 'var(--text)',
+              color: rank === 1 ? 'var(--sf-discount-fg, #FFFFFF)' : 'var(--card)',
+              fontSize: 12.5,
+              fontWeight: 800,
+              boxShadow: '0 2px 8px rgba(0,0,0,.2)',
+            }}
+          >
+            <Box component="span" aria-hidden>{`#${rank}`}</Box>
+            <Box component="span" sx={visuallyHidden}>
+              {t('store.ranking.position').replace('{n}', String(rank))}
+            </Box>
+          </Box>
+        ) : null}
       </Box>
 
       <Stack sx={{ gap: 0.5, flex: 1 }}>

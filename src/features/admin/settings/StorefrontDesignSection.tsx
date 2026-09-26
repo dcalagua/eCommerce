@@ -100,6 +100,8 @@ const ETIQUETA_VALOR: Record<string, MessageKey> = {
   brand: 'settings.design.value.brand',
   editorial: 'settings.design.value.editorial',
   mosaic: 'settings.design.value.mosaic',
+  bento: 'settings.design.value.bento',
+  circles: 'settings.design.value.circles',
   cover: 'settings.design.value.cover',
   contain: 'settings.design.value.contain',
   lg: 'settings.design.value.lg',

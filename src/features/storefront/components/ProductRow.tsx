@@ -72,6 +72,7 @@ export function ProductRow({
   favorites,
   onToggleFavorite,
   presentation,
+  ranked = false,
 }: {
   title: string
   /**
@@ -120,6 +121,12 @@ export function ProductRow({
    *    bien enseñadas, que es el ritmo de una portada editorial.
    */
   presentation?: 'rail' | 'grid' | 'spotlight'
+  /**
+   * Resumen v2 · La fila ES un ranking: cada tarjeta lleva su puesto. Solo lo
+   * pide la de más vendidos cuando el orden sale del agregado de pedidos; un
+   * «recomendados» de reserva no tiene puestos que dar.
+   */
+  ranked?: boolean
 }) {
   const { t } = useI18n()
   // Una cotización por fila, no por tarjeta: la fila que gira repite tarjetas
@@ -160,6 +167,7 @@ export function ProductRow({
 
   const tarjeta = (product: PublicProduct, anuncio: boolean) => (
     <ProductCard
+      {...(ranked ? { rank: products.indexOf(product) + 1 } : {})}
       reduced={anuncio}
       product={product}
       storeSlug={storeSlug}

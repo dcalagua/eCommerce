@@ -215,6 +215,18 @@ describe('heroVariant elige entre DOS portadas, no entre dos rellenos', () => {
     expect(within(hero).getAllByText(/459/).length).toBeGreaterThan(0)
   })
 
+  it('`bento` abre con la oferta principal y, al lado, la puerta a todas las ofertas', async () => {
+    // Resumen v2 · contrato V4. La misma oferta que `product` —misma foto,
+    // mismo precio— y el centro que quedaba vacío ahora vende.
+    await pintar({ heroVariant: 'bento' })
+
+    const hero = await heroPintado()
+    expect(hero.getAttribute('data-hero-variant')).toBe('bento')
+    expect(within(hero).getByText('Abrigo de lana')).toBeInTheDocument()
+    const todas = within(hero).getByRole('link', { name: /ofertas vigentes/ })
+    expect(todas.getAttribute('href')).toBe('/s/tienda?ver=todo&oferta=1')
+  })
+
   it('`statement` abre con la marca: lema grande y puertas, sin precios', async () => {
     await pintar({ heroVariant: 'statement' })
 
@@ -506,6 +518,13 @@ describe('los presets usan lo que declaran', () => {
     expect(seccion.querySelectorAll('[data-category-pill]').length).toBe(2)
   })
 
+  it('`circles` pinta las familias como una fila de círculos', async () => {
+    // Resumen v2 · contrato V4.
+    await pintar({ categoryVariant: 'circles' })
+    const seccion = await screen.findByRole('region', { name: 'Compra por categoría' })
+    await waitFor(() => expect(seccion.querySelectorAll('[data-category-circle]').length).toBe(2))
+  })
+
   it('ningún valor del contrato se queda sin probar en este archivo', () => {
     // La guarda del guarda: si mañana el contrato gana una opción y nadie añade
     // su caso, esto lo dice en vez de quedarse verde sin mirar.
@@ -523,10 +542,11 @@ describe('los presets usan lo que declaran', () => {
     expect(probados).toEqual({
       // V3 suma `brand`, `editorial` y `mosaic`: las tres composiciones que
       // le dan a Premium una forma propia en vez de las medidas de Universal.
+      // V4 (Resumen v2) suma `bento` y `circles`, probados arriba.
       headerVariant: 3,
-      heroVariant: 2,
+      heroVariant: 3,
       productCardVariant: 3,
-      categoryVariant: 3,
+      categoryVariant: 4,
       contentWidth: 2,
       imageRatio: 3,
       sectionSpacing: 3,

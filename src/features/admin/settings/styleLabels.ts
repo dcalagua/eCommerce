@@ -31,6 +31,9 @@ export const ETIQUETA_VALOR: Record<string, MessageKey> = {
   brand: 'settings.design.value.brand',
   editorial: 'settings.design.value.editorial',
   mosaic: 'settings.design.value.mosaic',
+  // Resumen v2 · contrato V4
+  bento: 'settings.design.value.bento',
+  circles: 'settings.design.value.circles',
   cover: 'settings.design.value.cover',
   contain: 'settings.design.value.contain',
   // Storefront V3 · P12 · Los valores de la presentación por sección.

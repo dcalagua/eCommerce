@@ -977,6 +977,7 @@ export function StoreHomePage() {
     brandSelected: brand,
     // Lo mismo que ya sabe la banda de ofertas, sin preguntarlo dos veces.
     hayOfertas: ofertas.length > 0,
+    ofertasTotal: ofertasPages.data?.pages[0]?.total ?? ofertas.length,
     favorites: favorites.ids,
     cargandoNovedades: novedadesPages.isPending,
     // El ranking cuenta como carga de esta fila: sin esto, la portada enseñaría

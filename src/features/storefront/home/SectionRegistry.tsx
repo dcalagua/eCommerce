@@ -18,6 +18,7 @@ import { OffersFeaturedBand } from '../components/OffersFeaturedBand'
 import { ProductRow } from '../components/ProductRow'
 import { PromoCarousel } from '../components/PromoCarousel'
 import { SectionHeading } from '../components/SectionHeading'
+import { StoreBentoHero } from '../components/StoreBentoHero'
 import { StoreFeaturedHero } from '../components/StoreFeaturedHero'
 import { StoreHero } from '../components/StoreHero'
 import { StoreBusinessInfo } from '../components/StoreBusinessInfo'
@@ -57,6 +58,9 @@ const CategoryDoorGrid = lazy(() =>
 )
 const CategoryPills = lazy(() =>
   import('../components/CategoryDoors').then((modulo) => ({ default: modulo.CategoryPills })),
+)
+const CategoryCircles = lazy(() =>
+  import('../components/CategoryDoors').then((modulo) => ({ default: modulo.CategoryCircles })),
 )
 /**
  * El mosaico también por `lazy` (Storefront V3 · P07), por lo mismo que las
@@ -223,6 +227,22 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
     const productos = conTope(data.hero, maxItems)
     if (productos.length === 0) return editorial
 
+    // Resumen v2 · El mosaico: la misma oferta principal y, al lado, otra
+    // oferta que no esté ya en el carrusel y la puerta a todas.
+    if (data.theme.style.heroVariant === 'bento') {
+      const enCarrusel = new Set(productos.map((producto) => producto.product_id))
+      const siguiente = [...data.ofertas, ...data.hero].find((producto) => !enCarrusel.has(producto.product_id)) ?? null
+      return (
+        <StoreBentoHero
+          products={productos}
+          next={siguiente}
+          offersTotal={data.ofertasTotal}
+          storeSlug={data.storeSlug}
+          thumbnails={data.thumbsOfertas}
+        />
+      )
+    }
+
     return (
       <StoreFeaturedHero
         products={productos}
@@ -344,6 +364,7 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
     const comoSeEnsenan = presentation?.variant ?? data.theme.style.categoryVariant
     const pills = comoSeEnsenan === 'pills'
     const mosaico = comoSeEnsenan === 'mosaic'
+    const circulos = comoSeEnsenan === 'circles'
 
     // Las puertas llegan por `lazy`, sin fallback: lo que hay debajo no se
     // mueve de sitio —la sección ya tiene su título— y un esqueleto de cuatro
@@ -352,7 +373,13 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
       <Suspense fallback={null}>
         <Stack component="section" aria-label={data.t('store.categories.shopBy')} sx={{ gap: 1.5 }}>
           <SectionHeading title={data.t('store.categories.shopBy')} />
-          {mosaico ? (
+          {circulos ? (
+            <CategoryCircles
+              categories={familias}
+              storeSlug={data.storeSlug}
+              ariaLabel={data.t('store.categories.shopBy')}
+            />
+          ) : mosaico ? (
             /**
              * El MOSAICO (Storefront V3 · P07): la primera familia ocupa el doble.
              *
@@ -498,6 +525,7 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
         favorites={data.favorites}
         onToggleFavorite={data.onToggleFavorite}
         presentation={repartoDeFila(presentation)}
+        ranked={real}
       />
     )
   },

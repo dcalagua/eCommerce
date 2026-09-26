@@ -52,7 +52,7 @@ export const PRODUCT_PRESENTATIONS = ['auto', 'rail', 'grid', 'spotlight'] as co
 export type ProductPresentation = (typeof PRODUCT_PRESENTATIONS)[number]
 
 /** Cómo se enseñan las familias del catálogo. */
-export const CATEGORY_PRESENTATIONS = ['auto', 'tiles', 'pills', 'mosaic'] as const
+export const CATEGORY_PRESENTATIONS = ['auto', 'tiles', 'pills', 'mosaic', 'circles'] as const
 export type CategoryPresentation = (typeof CATEGORY_PRESENTATIONS)[number]
 
 /** Cómo se enseñan las marcas. */

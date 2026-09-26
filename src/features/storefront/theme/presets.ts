@@ -79,7 +79,13 @@ export const THEME_PRESETS: Readonly<Record<ThemePreset, ThemeDefinition>> = {
   retail: {
     id: 'retail',
     headerVariant: 'standard',
-    heroVariant: 'product',
+    /**
+     * Resumen v2 · Retail estrena la portada en MOSAICO: la oferta principal
+     * y, al lado, la siguiente y la puerta a todas las ofertas. Es la tienda
+     * que vive de rebajar, y el hueco central de la portada de producto era
+     * espacio de venta perdido. Sin ofertas cae a la portada de siempre.
+     */
+    heroVariant: 'bento',
     productCardVariant: 'compact',
     categoryVariant: 'tiles',
     contentWidth: 'lg',

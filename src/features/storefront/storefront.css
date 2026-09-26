@@ -279,6 +279,12 @@
    descuento pesa mas: quien compra jabon y paracetamol compara cifras. */
 .sf-scope[data-store-theme='retail'] {
   --sf-card-price: 20px;
+  /* Resumen v2 · El AMARILLO DE OFERTA. Es un color de estado —como el rojo
+     de error o el ambar de aviso—, no de marca: dice «esto esta rebajado» en
+     una tienda que vive de rebajar. Los otros tres temas no lo definen y la
+     pastilla vuelve a su reserva, el acento del tenant. */
+  --sf-discount-bg: #ffd23f;
+  --sf-discount-fg: #1b1a17;
 }
 
 /* ---------------------------------------------------------------------------

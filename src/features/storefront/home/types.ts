@@ -147,6 +147,8 @@ export interface HomeSectionData {
    * petición por visita.
    */
   readonly hayOfertas: boolean
+  /** Resumen v2 · Cuántas ofertas hay en total, para la portada en mosaico. */
+  readonly ofertasTotal: number
 
   readonly favorites: ReadonlySet<string>
   readonly cargandoNovedades: boolean

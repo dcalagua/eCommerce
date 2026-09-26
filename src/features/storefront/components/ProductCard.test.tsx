@@ -134,3 +134,22 @@ describe('comprador empresa', () => {
     expect(screen.queryByRole('button', { name: 'Sumar una unidad' })).not.toBeInTheDocument()
   })
 })
+
+describe('ranking de ventas', () => {
+  it('en una fila de más vendidos, la tarjeta lleva su puesto dicho en texto', async () => {
+    renderWithProviders(
+      <CartProvider storeId={STORE} storeSlug="casa-nordica" currency="PEN">
+        <ProductCard product={product()} storeSlug="casa-nordica" rank={1} />
+      </CartProvider>,
+    )
+    expect(await screen.findByText('#1')).toBeInTheDocument()
+    // Para un lector de pantalla, el puesto con palabras y no un «#1» suelto.
+    expect(screen.getByText('Puesto 1 en ventas')).toBeInTheDocument()
+  })
+
+  it('sin ranking no hay insignia', async () => {
+    render(product())
+    await screen.findByRole('button', { name: /^Agregar al carrito/ })
+    expect(screen.queryByText('#1')).not.toBeInTheDocument()
+  })
+})
