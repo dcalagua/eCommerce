@@ -323,6 +323,8 @@ export const es = {
       'Las páginas que marcas para el menú se enlazan desde el pie de la tienda.',
     'settings.design.unavailable':
       'El diseño de tienda estará disponible en cuanto se aplique la última actualización de la base de datos. Mientras tanto tu tienda se ve como siempre y el resto de la configuración funciona con normalidad.',
+    'settings.design.style.changedByYou': 'Cambiado por ti',
+    'settings.design.style.fromTheme': 'del tema',
     'settings.design.step.theme': 'Tema',
     'settings.design.step.home': 'Portada',
     'settings.design.step.style': 'Forma y detalles',

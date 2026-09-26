@@ -6,9 +6,7 @@ import {
   Box,
   Button,
   Chip,
-  MenuItem,
   Stack,
-  TextField,
   Typography,
 } from '@mui/material'
 import { useI18n } from '@/shared/i18n/i18n-context'
@@ -284,36 +282,81 @@ export function AdvancedStyleSettings({
                   {grupo.ajustes.map((ajuste) => {
                     const heredado = definicion[ajuste.clave]
                     const pisado = style?.[ajuste.clave]
+                    const efectivo = pisado ?? heredado
+                    const etiquetaId = `ajuste-${ajuste.clave}`
 
+                    /**
+                     * Resumen v2 · Las opciones A LA VISTA, no en un desplegable.
+                     *
+                     * El desplegable escondía justo lo que había que comparar, y
+                     * con el valor heredado salía en blanco. Aquí se ven todas:
+                     * la que está en uso, marcada; la que propone el tema, con
+                     * «del tema»; y si la tocaste, «Cambiado por ti». Pulsar la
+                     * del tema vuelve a heredar (borra la clave), igual que la
+                     * opción «Usar tema» de antes.
+                     */
                     return (
-                      <TextField
-                        key={ajuste.clave}
-                        select
-                        fullWidth
-                        size="small"
-                        label={t(ajuste.etiqueta)}
-                        disabled={busy}
-                        value={pisado ?? HEREDAR}
-                        onChange={(evento) => onChange(ajuste.clave, evento.target.value)}
-                        // `displayEmpty`: sin él, MUI no pinta la opción de valor vacío y el
-                        // «Usar tema: …» salía EN BLANCO justo cuando se hereda.
-                        slotProps={{ inputLabel: { shrink: true }, select: { displayEmpty: true } }}
-                      >
-                        {/* La herencia DICE lo que hereda. «Heredar del tema» a
-                            secas obligaba a abrir la tienda para saber qué se
-                            estaba heredando, y el dato estaba aquí al lado. */}
-                        <MenuItem value={HEREDAR}>
-                          {t('settings.design.style.inheritValue').replace(
-                            '{value}',
-                            t(ETIQUETA_VALOR[heredado] ?? 'settings.design.style.inherit'),
-                          )}
-                        </MenuItem>
-                        {ajuste.valores.map((valor) => (
-                          <MenuItem key={valor} value={valor}>
-                            {t(ETIQUETA_VALOR[valor] ?? 'settings.design.style.inherit')}
-                          </MenuItem>
-                        ))}
-                      </TextField>
+                      <Stack key={ajuste.clave} sx={{ gap: 0.75 }}>
+                        <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
+                          <Typography id={etiquetaId} sx={{ fontSize: TS.label + 1, fontWeight: 700 }}>
+                            {t(ajuste.etiqueta)}
+                          </Typography>
+                          {pisado !== undefined ? (
+                            <Chip
+                              size="small"
+                              label={t('settings.design.style.changedByYou')}
+                              sx={{ height: 20, fontSize: 11, fontWeight: 800, bgcolor: 'var(--amber-soft)', color: 'var(--amber)' }}
+                            />
+                          ) : null}
+                        </Stack>
+                        <Box
+                          role="group"
+                          aria-labelledby={etiquetaId}
+                          sx={{ display: 'grid', gap: 0.75, gridTemplateColumns: 'repeat(auto-fill, minmax(92px, 1fr))' }}
+                        >
+                          {ajuste.valores.map((valor) => {
+                            const enUso = efectivo === valor
+                            const delTema = valor === heredado
+                            return (
+                              <Box
+                                key={valor}
+                                component="button"
+                                type="button"
+                                aria-pressed={enUso}
+                                disabled={busy}
+                                data-style-option={valor}
+                                onClick={() => onChange(ajuste.clave, delTema ? HEREDAR : valor)}
+                                sx={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'flex-start',
+                                  gap: 0.25,
+                                  px: 1.25,
+                                  py: 1,
+                                  borderRadius: `${R.md}px`,
+                                  border: enUso ? '2px solid var(--accent)' : '1px solid var(--border)',
+                                  bgcolor: enUso ? 'var(--accent-soft)' : 'var(--card)',
+                                  color: 'var(--text)',
+                                  font: 'inherit',
+                                  textAlign: 'left',
+                                  cursor: busy ? 'default' : 'pointer',
+                                  '&:hover:not(:disabled)': { borderColor: 'var(--accent)' },
+                                  '&:focus-visible': { outline: '2px solid var(--accent-deep)', outlineOffset: 2 },
+                                }}
+                              >
+                                <Typography component="span" sx={{ fontSize: TS.label + 1, fontWeight: enUso ? 800 : 600, lineHeight: 1.25 }}>
+                                  {t(ETIQUETA_VALOR[valor] ?? 'settings.design.style.inherit')}
+                                </Typography>
+                                {delTema ? (
+                                  <Typography component="span" sx={{ fontSize: 10.5, fontWeight: 700, color: 'var(--muted)' }}>
+                                    {t('settings.design.style.fromTheme')}
+                                  </Typography>
+                                ) : null}
+                              </Box>
+                            )
+                          })}
+                        </Box>
+                      </Stack>
                     )
                   })}
                 </Box>

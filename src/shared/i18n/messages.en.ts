@@ -355,6 +355,8 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'settings.readiness.pagesWhy': 'Pages you mark for the menu are linked from the store footer.',
     'settings.design.unavailable':
       'Storefront design will be available once the latest database update is applied. In the meantime your store looks exactly as it did and the rest of the settings work as usual.',
+    'settings.design.style.changedByYou': 'Changed by you',
+    'settings.design.style.fromTheme': 'from theme',
     'settings.design.step.theme': 'Theme',
     'settings.design.step.home': 'Homepage',
     'settings.design.step.style': 'Shape and details',
