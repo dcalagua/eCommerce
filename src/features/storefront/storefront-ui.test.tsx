@@ -1771,3 +1771,58 @@ describe('ningún comentario de código se pinta en la vitrina', () => {
     expect(sinUrls).not.toContain('//')
   })
 })
+
+describe('catálogo: varias marcas, precio, lista y ofertas', () => {
+  it('varias marcas y el rango de precio viajan al buscador desde la URL', async () => {
+    const fake = backend()
+    renderStorefront(fake, '/s/casa-nordica?ver=todo&b=nordica,lumen&pmin=20&pmax=150')
+    await screen.findByText('Silla de roble')
+
+    const llamada = fake.state.rpcCalls.find(
+      (call) => call.name === 'catalog_search_for_slug' && Number(call.args.p_limit) === 24,
+    )
+    expect(llamada?.args.p_filters).toMatchObject({
+      brands: ['nordica', 'lumen'],
+      price_min: '20',
+      price_max: '150',
+    })
+  })
+
+  it('con marcas marcadas pide las marcas SIN ese filtro, para poder sumar otra', async () => {
+    // El buscador cuenta sobre lo ya filtrado: sin esta segunda consulta, al
+    // marcar una marca desaparecían las demás del panel.
+    const fake = backend()
+    renderStorefront(fake, '/s/casa-nordica?ver=todo&b=nordica')
+    await screen.findByText('Silla de roble')
+
+    await waitFor(() =>
+      expect(
+        fake.state.rpcCalls.some(
+          (call) =>
+            call.name === 'catalog_search_for_slug' &&
+            Number(call.args.p_limit) === 1 &&
+            !('brands' in ((call.args.p_filters ?? {}) as Record<string, unknown>)),
+        ),
+      ).toBe(true),
+    )
+  })
+
+  it('la vista de lista pinta filas con favorito y precio, y se elige desde la barra', async () => {
+    const user = userEvent.setup()
+    const { container } = renderStorefront(backend(), '/s/casa-nordica?ver=todo')
+    await screen.findByText('Silla de roble')
+    expect(container.querySelector('[data-catalog-view="list"]')).toBeNull()
+
+    await user.click(screen.getAllByRole('button', { name: 'Vista en lista' })[0]!)
+
+    await waitFor(() => expect(container.querySelector('[data-catalog-view="list"]')).not.toBeNull())
+    const fila = container.querySelector('[data-list-row]') as HTMLElement
+    expect(within(fila).getByRole('button', { name: /Guardar en favoritos|favoritos/i })).toBeInTheDocument()
+  })
+
+  it('«Ver todo» de ofertas es una página con nombre: el título es «Ofertas»', async () => {
+    renderStorefront(backend(), '/s/casa-nordica?ver=todo&oferta=1')
+    expect(await screen.findByRole('heading', { name: 'Ofertas', level: 1 })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Todo el catálogo', level: 1 })).not.toBeInTheDocument()
+  })
+})

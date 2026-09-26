@@ -9,10 +9,11 @@ import {
   FormControlLabel,
   Stack,
   Switch,
+  TextField,
   Typography,
 } from '@mui/material'
 import { visuallyHidden } from '@mui/utils'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { TS } from '@/theme/tokens'
 
@@ -55,10 +56,14 @@ const VISIBLE = 8
 export function StoreFilterPanel({
   brands,
   categories,
-  selectedBrand,
+  selectedBrands,
   selectedCategory,
   inStockOnly,
   discountedOnly,
+  priceMin = null,
+  priceMax = null,
+  priceBounds = null,
+  onPrice,
   onBrand,
   onCategory,
   onInStock,
@@ -68,8 +73,20 @@ export function StoreFilterPanel({
 }: {
   brands: readonly FacetOption[]
   categories: readonly FacetOption[]
-  selectedBrand: string | null
+  /**
+   * Las marcas marcadas: VARIAS a la vez (se suman con «o»).
+   *
+   * Quien compra para una clínica compara Tecnofarma con Quilab; obligarlo a
+   * elegir una sola era obligarlo a mirar el catálogo dos veces.
+   */
+  selectedBrands: readonly string[]
   selectedCategory: string | null
+  /** Rango de precio puesto, como texto (es dinero). */
+  priceMin?: string | null
+  priceMax?: string | null
+  /** Lo más barato y lo más caro del resultado: pistas, no límites. */
+  priceBounds?: { min: string | null; max: string | null } | null
+  onPrice?: (min: string | null, max: string | null) => void
   inStockOnly: boolean
   /**
    * Solo lo rebajado.
@@ -81,7 +98,8 @@ export function StoreFilterPanel({
    * segmento, un mayorista y un visitante anonimo no ven las mismas rebajas.
    */
   discountedOnly: boolean
-  onBrand: (code: string | null) => void
+  /** Marca o desmarca UNA marca; la lista la mantiene quien usa el panel. */
+  onBrand: (code: string) => void
   onCategory: (slug: string | null) => void
   onInStock: (only: boolean) => void
   onDiscounted: (only: boolean) => void
@@ -99,7 +117,9 @@ export function StoreFilterPanel({
   marco?: 'tarjeta' | 'columna' | 'hoja'
 }) {
   const { t } = useI18n()
-  const dirty = Boolean(selectedBrand || selectedCategory || inStockOnly || discountedOnly)
+  const dirty = Boolean(
+    selectedBrands.length > 0 || selectedCategory || inStockOnly || discountedOnly || priceMin || priceMax,
+  )
   const enCajon = marco === 'hoja'
   const conCaja = marco === 'tarjeta'
 
@@ -198,13 +218,22 @@ export function StoreFilterPanel({
         }
       />
 
+      {onPrice ? (
+        <PriceRange
+          min={priceMin}
+          max={priceMax}
+          bounds={priceBounds}
+          onApply={onPrice}
+        />
+      ) : null}
+
       <FacetGroup title={t('store.filter.brand')}>
         {brands.map((option) => (
           <FacetRow
             key={option.code ?? option.name ?? ''}
             option={option}
-            checked={selectedBrand === option.code}
-            onToggle={() => onBrand(selectedBrand === option.code ? null : option.code)}
+            checked={option.code !== null && selectedBrands.includes(option.code)}
+            onToggle={() => option.code && onBrand(option.code)}
           />
         ))}
       </FacetGroup>
@@ -338,5 +367,87 @@ function FacetRow({
         </Stack>
       }
     />
+  )
+}
+
+/**
+ * Rango de precio: «desde» y «hasta», y se aplica al pulsar.
+ *
+ * Dos cajas y no un deslizador: con un deslizador no se escribe «150», se
+ * arrastra hasta acercarse, y en un teléfono es imposible dar con la cifra.
+ * Las pistas son lo más barato y lo más caro de lo que hay AHORA en pantalla.
+ *
+ * Se aplica con el botón (o Enter), no a cada tecla: cada cambio es una
+ * consulta nueva al buscador, y escribir «1-5-0» serían tres.
+ */
+function PriceRange({
+  min,
+  max,
+  bounds,
+  onApply,
+}: {
+  min: string | null
+  max: string | null
+  bounds: { min: string | null; max: string | null } | null
+  onApply: (min: string | null, max: string | null) => void
+}) {
+  const { t } = useI18n()
+  const [desde, setDesde] = useState(min ?? '')
+  const [hasta, setHasta] = useState(max ?? '')
+  // Si el filtro cambia desde fuera (un chip, «quitar filtros»), las cajas lo siguen.
+  useEffect(() => setDesde(min ?? ''), [min])
+  useEffect(() => setHasta(max ?? ''), [max])
+
+  const limpio = (valor: string) => {
+    const numero = Number(valor.replace(',', '.'))
+    return valor.trim() !== '' && Number.isFinite(numero) && numero >= 0 ? String(numero) : null
+  }
+  const aplicar = () => onApply(limpio(desde), limpio(hasta))
+
+  return (
+    <Box sx={{ borderTop: '1px solid var(--sf-line)', pt: 1.5, mt: 1.5 }}>
+      <Typography
+        component="h3"
+        sx={{
+          fontSize: TS.label,
+          fontWeight: 800,
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          color: 'var(--muted)',
+          mb: 1,
+        }}
+      >
+        {t('store.filter.price')}
+      </Typography>
+      <Stack
+        component="form"
+        direction="row"
+        onSubmit={(event: React.FormEvent) => {
+          event.preventDefault()
+          aplicar()
+        }}
+        sx={{ gap: 0.75, alignItems: 'center' }}
+      >
+        <TextField
+          size="small"
+          value={desde}
+          onChange={(event) => setDesde(event.target.value)}
+          placeholder={bounds?.min ? String(Math.floor(Number(bounds.min))) : ''}
+          slotProps={{ htmlInput: { inputMode: 'decimal', 'aria-label': t('store.filter.priceMin') } }}
+          label={t('store.filter.priceMin')}
+        />
+        <TextField
+          size="small"
+          value={hasta}
+          onChange={(event) => setHasta(event.target.value)}
+          placeholder={bounds?.max ? String(Math.ceil(Number(bounds.max))) : ''}
+          slotProps={{ htmlInput: { inputMode: 'decimal', 'aria-label': t('store.filter.priceMax') } }}
+          label={t('store.filter.priceMax')}
+        />
+        <Button type="submit" size="small" variant="outlined" sx={{ minWidth: 0, flexShrink: 0, fontWeight: 800 }}>
+          {t('store.filter.priceApply')}
+        </Button>
+      </Stack>
+    </Box>
   )
 }

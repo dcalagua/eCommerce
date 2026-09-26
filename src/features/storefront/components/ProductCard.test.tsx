@@ -105,3 +105,32 @@ describe('la tarjeta sigue siendo navegable', () => {
     expect(onQuickView).toHaveBeenCalledWith('silla-roble')
   })
 })
+
+describe('comprador empresa', () => {
+  it('elige cuántas unidades antes de agregar, y la tarjeta vuelve a uno', async () => {
+    // Quien repone 24 cajas no pulsa 24 veces: pone la cifra y agrega.
+    const user = userEvent.setup()
+    renderWithProviders(
+      <CartProvider storeId={STORE} storeSlug="casa-nordica" currency="PEN">
+        <ProductCard product={product()} storeSlug="casa-nordica" b2b />
+      </CartProvider>,
+    )
+
+    const mas = await screen.findByRole('button', { name: 'Sumar una unidad' })
+    await user.click(mas)
+    await user.click(mas)
+    expect(screen.getByLabelText('Cantidad')).toHaveTextContent('3')
+
+    await user.click(screen.getByRole('button', { name: /^Agregar al carrito: Silla de roble/ }))
+
+    const guardado = JSON.parse(localStorage.getItem(`ebim.ecommerce.cart.v1:${STORE}`) ?? '{}')
+    expect(guardado.lines?.[0]?.quantity).toBe(3)
+    expect(await screen.findByLabelText('Cantidad')).toHaveTextContent('1')
+  })
+
+  it('el consumidor no ve el selector: agrega de a uno como en cualquier tienda', async () => {
+    render(product())
+    await screen.findByRole('button', { name: /^Agregar al carrito/ })
+    expect(screen.queryByRole('button', { name: 'Sumar una unidad' })).not.toBeInTheDocument()
+  })
+})

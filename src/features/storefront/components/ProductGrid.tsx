@@ -1,7 +1,13 @@
 import { Box, Card, Skeleton, Stack } from '@mui/material'
+import { useSessionContext } from '@/features/auth/session-context'
 import { useCatalogCommercialPrices } from '../commerce/catalogPrices'
+import { useCommerceContext } from '../commerce/context'
 import type { PublicProduct } from '../types'
 import { ProductCard } from './ProductCard'
+import { ProductListRow } from './ProductListRow'
+
+/** Cómo se pinta el resultado: tarjetas para mirar, filas para despachar. */
+export type CatalogView = 'grid' | 'list'
 
 /**
  * Rejilla del catálogo, mobile-first de verdad: **dos columnas ya en el móvil**
@@ -33,6 +39,7 @@ export function ProductGrid({
   onQuickView,
   favorites,
   onToggleFavorite,
+  view = 'grid',
 }: {
   products: PublicProduct[]
   storeSlug: string
@@ -48,10 +55,52 @@ export function ProductGrid({
       tarjeta. */
   favorites?: ReadonlySet<string>
   onToggleFavorite?: (productId: string) => void
+  /** `list` para quien compra por referencia. Por defecto, la rejilla. */
+  view?: CatalogView
 }) {
   // UNA cotización para toda la rejilla, y solo si la sesión tiene condiciones
   // comerciales (N03). Invitado y consumidor: ninguna.
   const commercial = useCatalogCommercialPrices(storeSlug, products)
+  // Comprador empresa o comercio: pide cantidad antes de agregar. La consulta
+  // es la misma que usa la barra de la cuenta, así que no cuesta otra lectura.
+  const { status } = useSessionContext()
+  const { audience } = useCommerceContext(storeSlug, status === 'authenticated')
+  const b2b = audience !== 'consumer'
+
+  if (view === 'list') {
+    return (
+      <Box
+        component="ul"
+        data-catalog-view="list"
+        sx={{
+          listStyle: 'none',
+          m: 0,
+          p: 0,
+          bgcolor: 'var(--card)',
+          borderRadius: 'var(--sf-radius)',
+          border: '1px solid var(--sf-line)',
+          boxShadow: 'var(--sf-shadow)',
+          overflow: 'hidden',
+        }}
+      >
+        {products.map((product) => (
+          <ProductListRow
+            key={product.product_id}
+            product={product}
+            storeSlug={storeSlug}
+            commercialPrice={commercial.get(product.product_id) ?? null}
+            b2b={b2b}
+            favorite={favorites?.has(product.product_id) ?? false}
+            imageUrl={product.primary_image_path ? (thumbnails[product.primary_image_path] ?? null) : null}
+            {...(onQuickView ? { onQuickView } : {})}
+            {...(onToggleFavorite ? { onToggleFavorite } : {})}
+            {...(onPrefetch ? { onPrefetch } : {})}
+          />
+        ))}
+      </Box>
+    )
+  }
+
   return (
     <Box sx={GRID_SX}>
       {products.map((product) => (
@@ -60,6 +109,7 @@ export function ProductGrid({
           product={product}
           storeSlug={storeSlug}
           commercialPrice={commercial.get(product.product_id) ?? null}
+          b2b={b2b}
           {...(onQuickView ? { onQuickView } : {})}
           {...(onToggleFavorite ? { onToggleFavorite } : {})}
           favorite={favorites?.has(product.product_id) ?? false}

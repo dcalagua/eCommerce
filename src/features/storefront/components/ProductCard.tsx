@@ -11,6 +11,7 @@ import {
   Stack,
   Typography,
 } from '@mui/material'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
@@ -22,6 +23,7 @@ import { useStorefrontTheme } from '../theme/useStorefrontTheme'
 import type { ProductCardVariant } from '../theme/types'
 import { discountPercent, type PublicProduct } from '../types'
 import { ProductMedia } from './ProductMedia'
+import { QuantityStepper } from './QuantityStepper'
 
 /**
  * Tarjeta de catálogo: foto, categoría, nombre, precio, disponibilidad y compra.
@@ -72,6 +74,7 @@ export function ProductCard({
   reduced = false,
   variant,
   commercialPrice = null,
+  b2b = false,
 }: {
   product: PublicProduct
   storeSlug: string
@@ -138,8 +141,17 @@ export function ProductCard({
    * cual y vuelve a cotizar con el servidor.
    */
   commercialPrice?: CommercialPrice | null
+  /**
+   * Comprador empresa: la tarjeta pide CUÁNTOS antes de agregar.
+   *
+   * Quien repone 24 cajas no debería pulsar 24 veces ni ir al carrito a
+   * corregir la cifra. El consumidor sigue con el botón de una unidad, que es
+   * lo que espera de una tienda.
+   */
+  b2b?: boolean
 }) {
   const { t, locale } = useI18n()
+  const [cantidad, setCantidad] = useState(1)
   const { agregar, pending } = useAddToCart()
   /**
    * La presentación, resuelta una vez (Storefront V3 · P05).
@@ -487,53 +499,70 @@ export function ProductCard({
       {/* Por encima de la capa que hace pulsable la tarjeta: pulsar aquí compra,
           no navega. */}
       {reduced ? null : (
-      <Button
-        fullWidth
-        variant={available ? 'contained' : 'outlined'}
-        size="small"
-        disabled={!available || pending}
-        startIcon={
-          hasVariants ? (
-            <TuneRoundedIcon />
-          ) : pending ? (
-            <CircularProgress size={14} color="inherit" />
-          ) : (
-            <ShoppingCartRoundedIcon />
-          )
-        }
-        onClick={() => {
-          if (hasVariants) {
-            onQuickView?.(product.slug)
-            return
-          }
-          void agregar(product, 1, null)
-          // Se cuenta aquí igual que en la ficha: `add_to_cart` es una decisión,
-          // y si solo se contara desde la ficha, el embudo perdería a todo el
-          // que compra desde la rejilla.
-          track(storeSlug, {
-            type: 'add_to_cart',
-            product_id: product.product_id,
-            quantity: 1,
-          })
-        }}
-        sx={{
-          position: 'relative',
-          zIndex: 1,
-          mt: 0.25,
-          textTransform: 'none',
-          fontWeight: 700,
-          borderRadius: 'var(--sf-radius-sm)',
-          py: 0.75,
-          boxShadow: 'none',
-          '&:hover': { boxShadow: 'none' },
-        }}
-        // Igual que el corazón: el texto visible se queda corto —la tarjeta
-        // entera dice de qué producto es— y el nombre accesible lleva el
-        // producto, porque un lector de pantalla anuncia el botón solo.
-        aria-label={`${hasVariants ? t('store.product.chooseOptions') : t('store.product.addToCart')}: ${product.name}`}
+      <Stack
+        direction="row"
+        sx={{ position: 'relative', zIndex: 1, gap: 0.75, alignItems: 'center', mt: 0.25 }}
       >
-        {hasVariants ? t('store.product.chooseOptions') : t('store.product.addToCart')}
-      </Button>
+        {/* La cantidad, solo para empresa y solo cuando se puede comprar: con
+            variantes la cifra se elige en la vista rápida, junto a la opción. */}
+        {b2b && available && !hasVariants ? (
+          <QuantityStepper value={cantidad} onChange={setCantidad} size="sm" disabled={pending} />
+        ) : null}
+        <Button
+          fullWidth
+          variant={available ? 'contained' : 'outlined'}
+          size="small"
+          disabled={!available || pending}
+          startIcon={
+            hasVariants ? (
+              <TuneRoundedIcon />
+            ) : pending ? (
+              <CircularProgress size={14} color="inherit" />
+            ) : (
+              <ShoppingCartRoundedIcon />
+            )
+          }
+          onClick={() => {
+            if (hasVariants) {
+              onQuickView?.(product.slug)
+              return
+            }
+            void agregar(product, cantidad, null).then((ok) => {
+              if (ok) setCantidad(1)
+            })
+            // Se cuenta aquí igual que en la ficha: `add_to_cart` es una decisión,
+            // y si solo se contara desde la ficha, el embudo perdería a todo el
+            // que compra desde la rejilla.
+            track(storeSlug, {
+              type: 'add_to_cart',
+              product_id: product.product_id,
+              quantity: cantidad,
+            })
+          }}
+          sx={{
+            position: 'relative',
+            zIndex: 1,
+            mt: 0.25,
+            textTransform: 'none',
+            fontWeight: 700,
+            borderRadius: 'var(--sf-radius-sm)',
+            py: 0.75,
+            boxShadow: 'none',
+            '&:hover': { boxShadow: 'none' },
+          }}
+          // Igual que el corazón: el texto visible se queda corto —la tarjeta
+          // entera dice de qué producto es— y el nombre accesible lleva el
+          // producto, porque un lector de pantalla anuncia el botón solo.
+          aria-label={`${hasVariants ? t('store.product.chooseOptions') : t('store.product.addToCart')}: ${product.name}`}
+        >
+          {hasVariants
+            ? t('store.product.chooseOptions')
+            : b2b
+              ? t('store.product.addShort')
+              : t('store.product.addToCart')}
+        </Button>
+
+      </Stack>
       )}
     </Card>
   )

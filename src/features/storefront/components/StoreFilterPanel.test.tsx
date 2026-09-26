@@ -24,7 +24,7 @@ function render(props: Partial<Parameters<typeof StoreFilterPanel>[0]> = {}) {
     <StoreFilterPanel
       brands={BRANDS}
       categories={CATEGORIES}
-      selectedBrand={null}
+      selectedBrands={[]}
       selectedCategory={null}
       inStockOnly={false}
       discountedOnly={false}
@@ -67,15 +67,32 @@ describe('contadores', () => {
 })
 
 describe('elección', () => {
-  it('marcar una marca la propone; volver a marcarla la quita', async () => {
+  it('se pueden marcar varias marcas: el panel avisa cuál se tocó', async () => {
+    // Con varias a la vez, el panel no decide si «poner» o «quitar»: dice qué
+    // marca se pulsó y la lista la mantiene la página (vive en la URL).
     const user = userEvent.setup()
-    const { onBrand } = render({ selectedBrand: 'lumen' })
+    const { onBrand } = render({ selectedBrands: ['lumen'] })
 
+    expect(screen.getByRole('checkbox', { name: /Lumen/ })).toBeChecked()
     await user.click(await screen.findByRole('checkbox', { name: /Nordica/ }))
     expect(onBrand).toHaveBeenCalledWith('nordica')
 
     await user.click(screen.getByRole('checkbox', { name: /Lumen/ }))
-    expect(onBrand).toHaveBeenCalledWith(null)
+    expect(onBrand).toHaveBeenCalledWith('lumen')
+  })
+
+  it('el rango de precio se aplica de una vez, con desde y hasta', async () => {
+    const user = userEvent.setup()
+    const onPrice = vi.fn()
+    render({ onPrice, priceBounds: { min: '12.50', max: '480.00' } })
+
+    const desde = await screen.findByRole('textbox', { name: 'Desde' })
+    // La pista es lo más barato de lo que hay, no un valor puesto.
+    expect(desde).toHaveAttribute('placeholder', '12')
+    await user.type(desde, '20')
+    await user.type(screen.getByRole('textbox', { name: 'Hasta' }), '150')
+    await user.click(screen.getByRole('button', { name: 'Aplicar' }))
+    expect(onPrice).toHaveBeenCalledWith('20', '150')
   })
 
   it('con una categoría elegida se puede cambiar a otra, no solo quitarla', async () => {

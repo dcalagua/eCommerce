@@ -13,7 +13,9 @@ import { EmptyState, ErrorState } from '@/shared/ui/states'
 import { TS } from '@/theme/tokens'
 import { BackToTop } from './components/BackToTop'
 import { CategoryBar } from './components/CategoryBar'
-import { ProductGrid, ProductGridSkeleton } from './components/ProductGrid'
+import { CatalogOffersBand } from './components/CatalogOffersBand'
+import { CatalogViewToggle } from './components/CatalogViewToggle'
+import { ProductGrid, ProductGridSkeleton, type CatalogView } from './components/ProductGrid'
 import { useFavorites } from './useFavorites'
 import { StoreLandingSkeleton } from './components/StoreLandingSkeleton'
 import { HomeComposer } from './home/HomeComposer'
@@ -146,7 +148,21 @@ export function StoreHomePage() {
   const [params, setParams] = useSearchParams()
 
   const categorySlug = params.get('c')
-  const brand = params.get('b')
+  /**
+   * Marcas elegidas (`?b=tecnofarma,quilab`): varias a la vez, sumadas con «o».
+   * `brand` sigue siendo la primera, para quien solo necesita saber si hay una.
+   */
+  const brandsParam = params.get('b') ?? ''
+  const brands = useMemo(
+    () => brandsParam.split(',').map((code) => code.trim()).filter(Boolean),
+    [brandsParam],
+  )
+  const brand = brands[0] ?? null
+  /** Rango de precio (`?pmin=&pmax=`), como texto: es dinero. */
+  const precioValido = (valor: string | null) =>
+    valor !== null && valor.trim() !== '' && Number.isFinite(Number(valor)) && Number(valor) >= 0 ? valor : null
+  const priceMin = precioValido(params.get('pmin'))
+  const priceMax = precioValido(params.get('pmax'))
   const availability = params.get('d') === '1' ? 'in-stock' : 'all'
   /**
    * Solo lo rebajado (`?oferta=1`).
@@ -206,19 +222,27 @@ export function StoreHomePage() {
       term: search,
       filters: {
         category: categorySlug,
-        brands: brand ? [brand] : [],
+        brands,
         availability,
         ...(soloOferta ? { discounted: true } : {}),
+        ...(priceMin ? { priceMin } : {}),
+        ...(priceMax ? { priceMax } : {}),
       },
       sort,
       limit: PAGE_SIZE,
       offset: 0,
     }),
-    [search, categorySlug, brand, availability, soloOferta, sort],
+    [search, categorySlug, brands, availability, soloOferta, sort, priceMin, priceMax],
   )
 
   const filtered = Boolean(
-    search.trim() || categorySlug || brand || availability === 'in-stock' || soloOferta,
+    search.trim() ||
+      categorySlug ||
+      brands.length > 0 ||
+      availability === 'in-stock' ||
+      soloOferta ||
+      priceMin ||
+      priceMax,
   )
 
   /**
@@ -237,6 +261,24 @@ export function StoreHomePage() {
   const catalogo = filtered || params.get('ver') === 'todo'
 
   const results = useCatalogPages(storeSlug, query)
+
+  /**
+   * Las marcas SIN el filtro de marcas, para poder elegir varias.
+   *
+   * El buscador cuenta las facetas sobre el resultado ya filtrado: con
+   * «Tecnofarma» marcada, la lista de marcas volvía con una sola y no había
+   * forma de sumar «Quilab». Esta consulta pide lo mismo quitando las marcas y
+   * solo UNA fila —lo que interesa son sus facetas—. Solo corre cuando hay
+   * marcas marcadas; sin ellas, las facetas de la consulta principal ya valen.
+   */
+  const universoMarcasQuery: SearchQuery = useMemo(
+    () => ({ ...query, filters: { ...query.filters, brands: [] }, limit: 1 }),
+    [query],
+  )
+  const universoMarcas = useCatalogPages(
+    catalogo && brands.length > 0 ? storeSlug : undefined,
+    universoMarcasQuery,
+  )
 
   /**
    * Novedades, solo para la portada.
@@ -452,7 +494,9 @@ export function StoreHomePage() {
   const assetsPromos = useSignedStoreAssets(promosVigentes.map((promo) => promo.imageUrl))
   const first = pages[0]
   const total = first?.total ?? 0
-  const brandFacets = first?.facets.brands ?? []
+  const brandFacets =
+    (brands.length > 0 ? universoMarcas.data?.pages[0]?.facets.brands : first?.facets.brands) ?? []
+  const priceBounds = first?.facets.price ?? null
 
   /**
    * Opciones del panel lateral.
@@ -547,7 +591,9 @@ export function StoreHomePage() {
     return {
       code: facet.code,
       name: facet.name,
-      count: brand ? null : facet.count,
+      // Con marcas marcadas el recuento viene de la consulta SIN ellas: es
+      // cierto para cada marca y se puede enseñar.
+      count: facet.count,
       // Una `https://` externa se pinta tal cual; una ruta, ya firmada. Si la
       // firma no ha llegado todavía, `null` y monograma: mejor el respaldo que
       // un hueco que se rellena a medio segundo.
@@ -602,7 +648,7 @@ export function StoreHomePage() {
    * mismo de otra forma, y devolver el scroll al principio haría perder el
    * sitio a quien solo quería reordenar.
    */
-  const listaVista = `${catalogo}|${categorySlug ?? ''}|${brand ?? ''}|${search.trim()}`
+  const listaVista = `${catalogo}|${categorySlug ?? ''}|${brands.join(',')}|${search.trim()}`
   const listaPrevia = useRef(listaVista)
   useEffect(() => {
     if (listaPrevia.current === listaVista) return
@@ -648,11 +694,24 @@ export function StoreHomePage() {
         onRemove: () => update('c', null),
       })
     }
-    if (brand) {
+    for (const code of brands) {
       puestos.push({
-        id: `b:${brand}`,
-        label: brandOptions.find((opcion) => opcion.code === brand)?.name ?? brand,
-        onRemove: () => update('b', null),
+        id: `b:${code}`,
+        label: brandOptions.find((opcion) => opcion.code === code)?.name ?? code,
+        onRemove: () => update('b', brands.filter((otra) => otra !== code).join(',') || null),
+      })
+    }
+    if (priceMin || priceMax) {
+      puestos.push({
+        id: 'precio',
+        label: `${priceMin ?? '0'} – ${priceMax ?? '∞'}`,
+        onRemove: () =>
+          setParams((prev) => {
+            const next = new URLSearchParams(prev)
+            next.delete('pmin')
+            next.delete('pmax')
+            return next
+          }),
       })
     }
     if (availability === 'in-stock') {
@@ -668,7 +727,10 @@ export function StoreHomePage() {
     return puestos
   }, [
     categorySlug,
-    brand,
+    brands,
+    priceMin,
+    priceMax,
+    setParams,
     availability,
     soloOferta,
     trail,
@@ -692,8 +754,44 @@ export function StoreHomePage() {
   const tituloCatalogo = search.trim()
     ? `${t('store.catalog.resultsFor')} "${search.trim()}"`
     : (trail.at(-1)?.name ??
-       brandOptions.find((b) => b.code === brand)?.name ??
+       (brands.length === 1 ? brandOptions.find((b) => b.code === brand)?.name : undefined) ??
+       (directorioMarcas ? t('store.catalog.brandsTitle') : undefined) ??
        t('store.catalog.all'))
+
+  /** «Ofertas» es una página con nombre, no un interruptor sobre el catálogo. */
+  const paginaOfertas = soloOferta && !search.trim() && !categorySlug && brands.length === 0
+
+  /** Marca o desmarca una marca en la lista de la URL. */
+  const alternarMarca = (code: string) =>
+    update(
+      'b',
+      (brands.includes(code) ? brands.filter((otra) => otra !== code) : [...brands, code]).join(',') || null,
+    )
+
+  /** Pone o quita el rango de precio de una vez: dos `update` serían dos navegaciones. */
+  const ponerPrecio = (min: string | null, max: string | null) =>
+    setParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (min) next.set('pmin', min)
+      else next.delete('pmin')
+      if (max) next.set('pmax', max)
+      else next.delete('pmax')
+      return next
+    })
+
+  /**
+   * Rejilla o lista (`?vista=lista`). Sin elegir, lo decide el tema: Catálogo
+   * abre en lista, que es como compra quien tiene miles de referencias.
+   */
+  const vistaParam = params.get('vista')
+  const vista: CatalogView =
+    vistaParam === 'lista'
+      ? 'list'
+      : vistaParam === 'rejilla'
+        ? 'grid'
+        : tema.preset === 'catalog'
+          ? 'list'
+          : 'grid'
 
   // Metadatos de la portada. Cuelgan de la tienda YA RESUELTA, así que el
   // nombre, el banner y el contacto que se le enseñan a un buscador son los del
@@ -936,12 +1034,21 @@ export function StoreHomePage() {
           >
             {`\u2190 ${t('store.catalog.back')}`}
           </MuiLink>
-          <Typography
-            component="h1"
-            sx={{ fontSize: { xs: 22, md: 26 }, fontWeight: 800, letterSpacing: '-0.02em' }}
-          >
-            {tituloCatalogo}
-          </Typography>
+          {paginaOfertas ? (
+            <CatalogOffersBand
+              title={t('store.catalog.offersTitle')}
+              subtitle={
+                results.isSuccess ? t('store.catalog.offersSubtitle').replace('{n}', resultCount) : null
+              }
+            />
+          ) : (
+            <Typography
+              component="h1"
+              sx={{ fontSize: { xs: 22, md: 26 }, fontWeight: 800, letterSpacing: '-0.02em' }}
+            >
+              {tituloCatalogo}
+            </Typography>
+          )}
       </Stack>
       ) : null}
 
@@ -1045,6 +1152,12 @@ export function StoreHomePage() {
                 ) : null
               }
               sortMenu={<StoreSortMenu value={sort} onChange={(next) => update('sort', next)} />}
+              viewToggle={
+                <CatalogViewToggle
+                  value={vista}
+                  onChange={(next) => update('vista', next === 'list' ? 'lista' : 'rejilla')}
+                />
+              }
               activeFilters={filtrosPuestos}
               onOpenFilters={() => setCajonAbierto(true)}
               onClearFilters={quitarFiltros}
@@ -1069,11 +1182,15 @@ export function StoreHomePage() {
                   marco="hoja"
                   brands={brandOptions}
                   categories={categoryOptions}
-                  selectedBrand={brand}
+                  selectedBrands={brands}
                   selectedCategory={categorySlug}
                   inStockOnly={availability === 'in-stock'}
                   discountedOnly={soloOferta}
-                  onBrand={(code) => update('b', code)}
+                  priceMin={priceMin}
+                  priceMax={priceMax}
+                  priceBounds={priceBounds}
+                  onPrice={ponerPrecio}
+                  onBrand={alternarMarca}
                   onCategory={(slug) => update('c', slug)}
                   onInStock={(only) => update('d', only ? '1' : null)}
                   onDiscounted={(only) => update('oferta', only ? '1' : null)}
@@ -1119,6 +1236,7 @@ export function StoreHomePage() {
                 onQuickView={(slug) => update('p', slug)}
                 favorites={favorites.ids}
                 onToggleFavorite={(productId) => void favorites.toggle(productId)}
+                view={vista}
               />
 
           {/* La siguiente página se PIDE al servidor: 24 filas, no las 48 o 72
@@ -1216,11 +1334,15 @@ export function StoreHomePage() {
               marco="columna"
               brands={brandOptions}
               categories={categoryOptions}
-              selectedBrand={brand}
+              selectedBrands={brands}
               selectedCategory={categorySlug}
               inStockOnly={availability === 'in-stock'}
               discountedOnly={soloOferta}
-              onBrand={(code) => update('b', code)}
+              priceMin={priceMin}
+              priceMax={priceMax}
+              priceBounds={priceBounds}
+              onPrice={ponerPrecio}
+              onBrand={alternarMarca}
               onCategory={(slug) => update('c', slug)}
               onInStock={(only) => update('d', only ? '1' : null)}
               onDiscounted={(only) => update('oferta', only ? '1' : null)}

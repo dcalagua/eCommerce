@@ -50,6 +50,7 @@ export function StoreCatalogToolbar({
   count,
   note,
   sortMenu,
+  viewToggle,
   activeFilters,
   onOpenFilters,
   onClearFilters,
@@ -59,6 +60,8 @@ export function StoreCatalogToolbar({
   /** Aviso sobre el resultado —tolerancia a erratas—, si lo hay. */
   note?: ReactNode
   sortMenu: ReactNode
+  /** Rejilla o lista. Opcional: fuera del catálogo no hay a qué cambiar. */
+  viewToggle?: ReactNode
   activeFilters: readonly FiltroActivo[]
   /** Abre el cajón. Solo se pinta el botón si hay quien lo atienda. */
   onOpenFilters?: () => void
@@ -136,6 +139,7 @@ export function StoreCatalogToolbar({
             </Badge>
           ) : null}
           {sortMenu}
+          {viewToggle}
         </Stack>
       </Stack>
 
