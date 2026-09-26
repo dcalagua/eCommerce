@@ -166,13 +166,14 @@ export const DEFAULT_THEME_PRESET: ThemePreset = 'universal'
  *  · universal → Plus Jakarta Sans, la de siempre: quien nunca eligió tema no
  *    ve cambiar su tienda.
  *  · retail    → Archivo: grotesca de cifras firmes, para comparar precios.
- *  · premium   → Fraunces: serifa editorial, la foto y el titular mandan.
+ *  · premium   → Jost: geométrica fina, de boutique (elegida por el operador
+ *    el 2026-09-27 en lugar de Fraunces, que se leía peor en textos chicos).
  *  · catalog   → IBM Plex Sans: técnica y compacta, para SKU y listas.
  */
 export const THEME_FONTS: Readonly<Record<ThemePreset, BrandFont>> = {
   universal: 'plus-jakarta',
   retail: 'archivo',
-  premium: 'fraunces',
+  premium: 'jost',
   catalog: 'plex',
 }
 

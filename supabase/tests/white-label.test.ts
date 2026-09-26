@@ -94,7 +94,7 @@ describe('la lista de tokens es CERRADA', () => {
 
   it('acepta los tokens de tipografia que la app sabe pintar', async () => {
     // Resumen v2 (20260927100000) suma las tres que proponen los temas.
-    for (const font of ['dm-sans', 'plus-jakarta', 'system', 'grotesk', 'serif', 'mono', 'archivo', 'fraunces', 'plex']) {
+    for (const font of ['dm-sans', 'plus-jakarta', 'system', 'grotesk', 'serif', 'mono', 'archivo', 'fraunces', 'plex', 'jost']) {
       await svc(`update public.store_settings set font_family = $1 where store_id = $2`, [
         font, storeA,
       ])

@@ -17,11 +17,11 @@ describe('la tipografía que propone cada tema', () => {
   })
 
   it('cada uno de los otros tres tiene su propia letra', () => {
-    expect(THEME_FONTS).toMatchObject({ retail: 'archivo', premium: 'fraunces', catalog: 'plex' })
+    expect(THEME_FONTS).toMatchObject({ retail: 'archivo', premium: 'jost', catalog: 'plex' })
   })
 
   it('sin elección de la tienda manda el tema; con elección, la tienda', () => {
-    expect(resolveStoreFont(null, 'premium')).toBe('fraunces')
+    expect(resolveStoreFont(null, 'premium')).toBe('jost')
     expect(resolveStoreFont('', 'catalog')).toBe('plex')
     expect(resolveStoreFont('grotesk', 'premium')).toBe('grotesk')
   })

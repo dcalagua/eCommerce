@@ -135,6 +135,10 @@ export const BRAND_FONTS = [
   'archivo',
   'fraunces',
   'plex',
+  // Premium desde 2026-09-27 (elección del operador): sustituye a Fraunces
+  // como propuesta del tema. Fraunces sigue en la lista: hay tiendas que
+  // pueden tenerla guardada.
+  'jost',
 ] as const
 export type BrandFont = (typeof BRAND_FONTS)[number]
 
@@ -155,6 +159,8 @@ export const BRAND_FONT_STACKS: Record<BrandFont, string> = {
   fraunces: "'Fraunces', Georgia, 'Times New Roman', serif",
   // Catálogo: técnica y compacta, pensada para códigos y tablas.
   plex: "'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif",
+  // Premium: geométrica y fina, de boutique; legible en precios y botones.
+  jost: "'Jost', 'Helvetica Neue', Arial, system-ui, sans-serif",
 }
 
 /** Radio del tenant. `soft` es el de suite y el default cuando no hay token. */
