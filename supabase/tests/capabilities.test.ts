@@ -691,3 +691,124 @@ describe('sincronizacion', () => {
     expect(message).toMatch(/EBIM_TENANT_REQUERIDO/)
   })
 })
+
+// ---------------------------------------------------------------------------
+
+/**
+ * Un negocio recien dado de alta tiene que poder trabajar, y eso incluye la IA.
+ *
+ * Antes del paquete de arranque, `bootstrap_tenant` dejaba una sociedad sin una
+ * sola capacidad vendible: el backoffice salia con tres menus y sin un boton de
+ * IA hasta que el operador ejecutaba `sync_platform_context` a mano. Quien no lo
+ * hacia se quedaba asi sin enterarse.
+ */
+describe('paquete de arranque del alta', () => {
+  const NUEVO = {
+    organizationId: '0c000000-0000-4000-8000-00000000c001',
+    companyId: '0c000000-0000-4000-8000-00000000c002',
+    ownerId: '0c000000-0000-4000-8000-00000000c003',
+    slug: 'tenant-arranque',
+    storeSlug: 'tienda-arranque',
+    adminEmail: 'owner@arranque.test',
+  }
+
+  async function darDeAlta(tenant: typeof NUEVO): Promise<void> {
+    await svc(`select public.bootstrap_tenant($1, $2, $3, $4, $5, $6, $7, $8, 'PEN')`, [
+      tenant.organizationId,
+      tenant.companyId,
+      tenant.slug,
+      `Cuenta ${tenant.slug}`,
+      tenant.adminEmail,
+      tenant.ownerId,
+      tenant.storeSlug,
+      `Tienda ${tenant.slug}`,
+    ])
+  }
+
+  async function limpiar(tenant: typeof NUEVO): Promise<void> {
+    await svc(`delete from public.stores where organization_id = $1`, [tenant.organizationId])
+    await svc(`delete from public.tenant_members where organization_id = $1`, [tenant.organizationId])
+    await svc(`delete from public.tenants where organization_id = $1`, [tenant.organizationId])
+    await svc(`delete from public.ai_quotas where organization_id = $1`, [tenant.organizationId])
+  }
+
+  it('cada codigo del paquete existe en el catalogo de capacidades', async () => {
+    // Guarda contra el error tonto y silencioso: un codigo mal escrito en la
+    // lista no falla en el alta, simplemente no concede nada.
+    const huerfanos = await svc<{ code: string }>(
+      `select paquete.code
+         from unnest(ebim.starter_entitlements()) as paquete(code)
+        where not exists (
+          select 1 from public.app_capabilities cap where cap.entitlement_code = paquete.code
+        )`,
+    )
+    expect(huerfanos.map((row) => row.code)).toEqual([])
+  })
+
+  it('el negocio nace con sus modulos y con la IA, sin SQL del operador', async () => {
+    await darDeAlta(NUEVO)
+    try {
+      for (const capacidad of ['catalog.advanced', 'payments', 'pricing.lists', 'credit.management']) {
+        expect(await capabilityInDb(NUEVO as unknown as typeof TENANT_A, capacidad), capacidad).toBe(true)
+      }
+      for (const ia of ['ai.assist', 'ai.catalog.copy', 'ai.insights', 'ai.content']) {
+        expect(await capabilityInDb(NUEVO as unknown as typeof TENANT_A, ia), ia).toBe(true)
+      }
+    } finally {
+      await limpiar(NUEVO)
+    }
+  })
+
+  it('y con cuota de IA: contratada sin cuota son 25 usos en total', async () => {
+    await darDeAlta(NUEVO)
+    try {
+      const [cuota] = await svc<{ plan: string; monthly_quota: number }>(
+        `select plan, monthly_quota from public.ai_quotas where organization_id = $1`,
+        [NUEVO.organizationId],
+      )
+      expect(cuota?.plan).toBe('active')
+      expect(Number(cuota?.monthly_quota)).toBeGreaterThan(25)
+
+      const [estado] = await svc<{ e: Record<string, unknown> }>(
+        `select ebim.ai_entitlement_for($1, $2) as e`,
+        [NUEVO.organizationId, NUEVO.companyId],
+      )
+      expect(estado?.e).toMatchObject({ enabled: true, status: 'active' })
+    } finally {
+      await limpiar(NUEVO)
+    }
+  })
+
+  it('no pisa a una sociedad de la que el hub ya dijo algo', async () => {
+    // `apply_starter_package` se llama en el alta, pero la regla se comprueba
+    // directa: con contexto escrito, no toca nada.
+    // El alta de `beforeAll` ya le dejo cuota: se retira para ver si el
+    // arranque la vuelve a poner, que es justo lo que no debe hacer.
+    await svc(`delete from public.ai_quotas where organization_id = $1`, [TENANT_A.organizationId])
+    await sync(TENANT_A, ['ecommerce.payments'], { source: 'hub' })
+    await svc(`select ebim.apply_starter_package($1, $2)`, [
+      TENANT_A.organizationId,
+      TENANT_A.companyId,
+    ])
+
+    expect(await capabilityInDb(TENANT_A, 'payments')).toBe(true)
+    // El hub no vendio IA a esta sociedad, y el arranque no se la regala.
+    expect(await capabilityInDb(TENANT_A, 'ai.insights')).toBe(false)
+    const cuotas = await svc(`select 1 from public.ai_quotas where organization_id = $1`, [
+      TENANT_A.organizationId,
+    ])
+    expect(cuotas).toEqual([])
+  })
+
+  it('el comprador no puede darse a si mismo el paquete', async () => {
+    await asRole(db, 'authenticated', claimsFor(TENANT_A), async () => {
+      const message = await expectFailure(() =>
+        db.query(`select ebim.apply_starter_package($1, $2)`, [
+          TENANT_A.organizationId,
+          TENANT_A.companyId,
+        ]),
+      )
+      expect(message).toMatch(/permission denied|no existe|does not exist/i)
+    })
+  })
+})

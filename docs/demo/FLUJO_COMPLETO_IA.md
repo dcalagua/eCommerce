@@ -16,10 +16,14 @@
 
 ## 0 · Lo que hay que saber antes de empezar
 
-### La IA no viene activa en una tienda nueva
+### La IA viene activa desde la migración `20260926100000`
 
-Las cuatro capacidades de IA **no son de base**. Una sociedad recién creada nace sin ninguna, y en el
-backoffice no aparece ni un botón. No es un fallo: es el mismo criterio que con el resto de módulos.
+Las cuatro capacidades de IA **no son de base**, pero el alta aplica un *paquete de arranque* dentro de
+su misma transacción: los módulos para vender, las cuatro capacidades de IA y la cuota. Un negocio dado
+de alta hoy entra con IA funcionando.
+
+Antes no era así, y sigue importando para las sociedades anteriores: nacían sin una sola capacidad y sin
+cuota, y en el backoffice no aparecía ni un botón. Le pasó a `biel`.
 
 | Capacidad | Código para contratar | Qué habilita |
 |---|---|---|
@@ -82,7 +86,8 @@ hay módulos contratados.
 
 ## 2 · Contratar los módulos, IA incluida
 
-Una sola llamada activa todo. La lista **reemplaza** lo anterior, así que va completa.
+Con el paquete de arranque esto ya viene hecho. La llamada de abajo sirve para **cambiar** lo que trae
+el alta: la lista reemplaza a la anterior, así que va completa, con los códigos de IA incluidos.
 
 ```sql
 select public.sync_platform_context(
@@ -122,7 +127,8 @@ select public.sync_platform_context(
 );
 ```
 
-Y la cuota de IA, que sin esto son 25 usos en total:
+La cuota de IA la deja el arranque en plan activo. Esto sirve para cambiarla, o para una sociedad
+anterior al paquete, donde sin fila propia son 25 usos en total:
 
 ```sql
 insert into public.ai_quotas (organization_id, company_id, plan, monthly_quota)
@@ -350,8 +356,8 @@ todos salen del servidor. El navegador nunca manda un precio.
 
 ## Pendientes conocidos
 
-- La guía de alta de negocio no incluye los cuatro códigos de IA en su lista de ejemplo. Por eso la
-  tienda `biel` se creó sin IA.
+- Las sociedades anteriores a la migración `20260926100000` siguen sin paquete de arranque: hay que
+  activarles los módulos y la cuota a mano, como se hizo con `biel`.
 - La capacidad `ai.content` figura como **declarada**, no implementada, porque el código comercial lo
   tiene que dar de alta el hub. Activándola por provisión funciona igual.
 - No hay pantalla para la cuota de IA: se configura con SQL.

@@ -109,6 +109,19 @@ beforeAll(async () => {
       tenant.organizationId, tenant.companyId, tenant.slug, tenant.slug,
       tenant.adminEmail, tenant.ownerId, storeSlug,
     ])
+
+    // El alta deja el PAQUETE DE ARRANQUE (20260926100000): módulos, IA y cuota.
+    // Aquí se retira porque estos casos prueban el candado de módulo, y un
+    // candado no se puede probar sobre una sociedad que ya lo tiene todo.
+    await svc(
+      `with entitlements as (
+         delete from public.tenant_entitlements where organization_id = $1 returning 1
+       ), contexto as (
+         delete from public.tenant_platform_context where organization_id = $1 returning 1
+       )
+       delete from public.ai_quotas where organization_id = $1`,
+      [tenant.organizationId],
+    )
   }
   await svc(`update public.stores set status = 'active'`)
   await svc(`update public.store_settings set tax_rate = 0`)

@@ -67,9 +67,15 @@ select email, raw_app_meta_data from auth.users where email = lower('owner@biel.
 
 Queda creado: el negocio, el owner y la tienda en estado borrador.
 
-## Paso 5 · Activar los módulos contratados
+## Paso 5 · Ajustar los módulos, solo si hacen falta otros
 
-SQL Editor, con los mismos uuid. Ajusta la lista a lo que ese negocio contrata:
+**Desde la migración `20260926100000`, este paso es opcional.** El alta aplica un *paquete de
+arranque* dentro de la misma transacción: los módulos que un negocio necesita para vender, las cuatro
+capacidades de IA y la cuota de IA. El negocio entra funcionando, sin SQL.
+
+El paquete lo declara `ebim.starter_entitlements()` y se cambia reemplazando esa función. Lo de abajo
+sirve cuando **este** negocio concreto contrata algo distinto: la lista reemplaza a la anterior, así que
+va completa, incluidos los códigos de IA si quieres conservarla.
 
 ```sql
 select public.sync_platform_context(
@@ -109,13 +115,14 @@ where company_id = 'PEGA-AQUI-EL-COMPANY-ID'::uuid order by 1;
 
 Recarga la aplicación después; el menú lateral se arma con esto.
 
-### La IA, dos pasos y no uno
+### La IA ya viene activa
 
-Las cuatro capacidades de IA **no son de base**: sin los cuatro códigos de arriba, el negocio nace sin un
-solo botón de IA. Le pasó a `biel`, que se dio de alta cuando esta lista todavía no los incluía.
+Las cuatro capacidades de IA **no son de base**, pero el paquete de arranque las incluye, así que un
+negocio dado de alta hoy entra con IA y con cuota mensual. Antes no era así: a `biel` le tocó la época
+en la que había que activarla a mano, y nació sin un solo botón.
 
-Y falta la cuota. Sin fila propia, la sociedad queda en plan de prueba con **25 usos en total**, que se
-agotan en una demostración:
+Dos casos en los que sí hay que tocarla. Si reemplazas la lista del paso 5, incluye los cuatro códigos o
+la apagas. Y si la sociedad ya existía antes del paquete de arranque, dale cuota:
 
 ```sql
 insert into public.ai_quotas (organization_id, company_id, plan, monthly_quota)
