@@ -1,5 +1,5 @@
-import { Alert, Box, Stack, Typography } from '@mui/material'
-import { useMemo } from 'react'
+import { Alert, Box, Link as MuiLink, Stack, Typography } from '@mui/material'
+import { useMemo, useState } from 'react'
 import type { UseFormReturn } from 'react-hook-form'
 import { useCatalogSearch, useSignedThumbnails } from '@/features/storefront/hooks'
 import { useI18n } from '@/shared/i18n/i18n-context'
@@ -14,14 +14,16 @@ import {
   type StorefrontStyle,
   type ThemePreset,
 } from '@/features/storefront/theme/types'
-import { THEME_FONTS, THEME_PRESETS, resolveStoreFont } from '@/features/storefront/theme/presets'
+import { THEME_FONTS, THEME_PRESETS, normalizeHomeLayout, resolveStoreFont } from '@/features/storefront/theme/presets'
 import { AdvancedStyleSettings } from './AdvancedStyleSettings'
 import { themeColumnsReady } from './api'
+import { DesignStep } from './DesignStep'
 import { HomeLayoutEditor } from './HomeLayoutEditor'
 import { StoreReadiness } from './StoreReadiness'
 import { StorefrontPreview, type PreviewData } from './StorefrontPreview'
 import { ThemeMiniPreview } from './ThemeMiniPreview'
 import type { StoreFormValues } from './types'
+import { ValuePropsSection } from './ValuePropsSection'
 
 /**
  * «Diseño de tienda»: el taller donde se compone la vitrina (Storefront V2 · P10).
@@ -121,11 +123,15 @@ const ETIQUETA_VALOR: Record<string, MessageKey> = {
 /** El valor que significa «no lo piso, lo hereda del tema». */
 const HEREDAR = ''
 
+/** Resumen v2 · Los pasos del taller, en orden (sirven de ancla: `#diseno-tema`…). */
+const ORDEN_PASOS = ['tema', 'portada', 'forma', 'confianza', 'revisar'] as const
+
 export function StorefrontDesignSection({
   form,
   busy = false,
   storeId = null,
   storeSlug = null,
+  pasosAbiertos = [0],
 }: {
   form: UseFormReturn<StoreFormValues>
   busy?: boolean
@@ -139,6 +145,8 @@ export function StorefrontDesignSection({
    */
   storeId?: string | null
   storeSlug?: string | null
+  /** Resumen v2 · Qué pasos empiezan abiertos (por índice). En la app, el primero. */
+  pasosAbiertos?: readonly number[]
 }) {
   const { t } = useI18n()
   const preset = form.watch('theme_preset')
@@ -153,6 +161,29 @@ export function StorefrontDesignSection({
    * hace el motor al leer la fila.
    */
   const estiloEfectivo = { ...THEME_PRESETS[preset], ...estilo }
+
+  /**
+   * Resumen v2 · Qué pasos están abiertos. Uno a la vez en la app; quien monta
+   * el taller puede abrir varios (los tests, que miran el contenido y no el
+   * plegado).
+   */
+  const [abiertos, setAbiertos] = useState<ReadonlySet<number>>(() => new Set(pasosAbiertos))
+  const [visto, setVisto] = useState(() => Math.max(0, ...pasosAbiertos))
+  function abrir(indice: number) {
+    setAbiertos(new Set([indice]))
+    setVisto((previo) => Math.max(previo, indice))
+    const quieto = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    requestAnimationFrame(() =>
+      document.getElementById(`diseno-${ORDEN_PASOS[indice]}`)?.scrollIntoView?.({ block: 'start', behavior: quieto ? 'auto' : 'smooth' }),
+    )
+  }
+  function alternar(indice: number) {
+    if (abiertos.has(indice)) setAbiertos(new Set())
+    else abrir(indice)
+  }
+  const fuenteDelTema = resolveStoreFont(form.watch('font_family'), preset)
+  const encendidas = normalizeHomeLayout(form.watch('home_layout')).sections.filter((seccion) => seccion.enabled).length
+  const cambiados = Object.keys(estilo ?? {}).length
 
   /**
    * Resumen v2 · LA TIENDA DE VERDAD en la vista previa.
@@ -259,120 +290,192 @@ export function StorefrontDesignSection({
         spacing={2.5}
         sx={{ minWidth: 0 }}
       >
-        <Stack spacing={1}>
-          <Typography sx={{ fontSize: TS.bodyStrong, fontWeight: 700 }}>
-            {t('settings.design.theme.title')}
-          </Typography>
+        {/* Resumen v2 · EL TALLER EN CINCO PASOS.
+            Antes, tema, ajustes, portada y preparación iban seguidos en un solo
+            scroll, sin orden ni final. Ahora son pasos con su resumen: cerrado,
+            cada uno dice lo que se eligió; abierto, lleva el borde del acento. */}
+        <DesignStep
+          id="tema"
+          numero={1}
+          titulo={t('settings.design.step.theme')}
+          resumen={`${t(ETIQUETA_TEMA[preset])} · ${t(`settings.font.${fuenteDelTema}` as MessageKey)}`}
+          abierto={abiertos.has(0)}
+          hecho={visto > 0}
+          onAlternar={() => alternar(0)}
+          siguiente={{ etiqueta: t('settings.design.step.next').replace('{step}', t('settings.design.step.home')), onClick: () => abrir(1) }}
+        >
           <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
             {t('settings.design.theme.help')}
           </Typography>
+          {/* `radiogroup` y no cuatro botones: son cuatro opciones EXCLUYENTES, y
+              un lector de pantalla necesita saber que elegir una descarta las
+              otras tres. Con botones sueltos anunciaría cuatro acciones. */}
+          <Box
+            role="radiogroup"
+            aria-label={t('settings.design.theme.title')}
+            sx={{
+              display: 'grid',
+              gap: 1.5,
+              // Dos columnas también en el panel del taller: cuatro tarjetas en
+              // fila dentro de 420 px dejarían el título en tres líneas.
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
+            }}
+          >
+            {THEME_PRESET_IDS.map((id) => {
+              const elegido = preset === id
+              return (
+                <Box
+                  key={id}
+                  role="radio"
+                  tabIndex={0}
+                  aria-checked={elegido}
+                  aria-disabled={busy || undefined}
+                  onClick={() => !busy && elegirTema(id)}
+                  onKeyDown={(event) => {
+                    if (busy) return
+                    // Espacio y Enter: los dos gestos con los que se activa un
+                    // control de este tipo. Solo uno deja fuera a media gente.
+                    if (event.key === ' ' || event.key === 'Enter') {
+                      event.preventDefault()
+                      elegirTema(id)
+                    }
+                  }}
+                  sx={{
+                    cursor: busy ? 'default' : 'pointer',
+                    p: 1.5,
+                    borderRadius: `${R.lg}px`,
+                    border: '2px solid',
+                    borderColor: elegido ? 'var(--accent)' : 'var(--border)',
+                    bgcolor: elegido ? 'var(--accent-soft)' : 'var(--card)',
+                    opacity: busy ? 0.6 : 1,
+                    '&:focus-visible': { outline: '2px solid var(--accent)', outlineOffset: 2 },
+                  }}
+                >
+                  {/* La miniatura va PRIMERO: elegir un tema es una decisión
+                      visual, y hasta P12 se tomaba leyendo cuatro frases. Se
+                      dibuja con la definición del preset, así que no se
+                      desincroniza de la tienda. */}
+                  {/* Resumen v2 · La miniatura en el color de la TIENDA, no en el
+                      de la suite: se elige mirando la propia tienda. */}
+                  <Box style={tinta}>
+                    <ThemeMiniPreview preset={id} />
+                  </Box>
+
+                  <Typography
+                    sx={{
+                      fontSize: TS.bodyStrong,
+                      fontWeight: 800,
+                      mt: 1,
+                      color: elegido ? 'var(--accent-deep)' : 'var(--text)',
+                    }}
+                  >
+                    {t(ETIQUETA_TEMA[id])}
+                  </Typography>
+                  {/* Y la letra que propone, escrita en esa letra. */}
+                  <Stack direction="row" sx={{ alignItems: 'baseline', gap: 0.75, mt: 0.25 }}>
+                    <Typography
+                      aria-hidden
+                      sx={{ fontFamily: brandFontStack(THEME_FONTS[id]), fontSize: 20, fontWeight: 700, lineHeight: 1 }}
+                    >
+                      Aa
+                    </Typography>
+                    <Typography sx={{ fontSize: TS.label, fontWeight: 700, color: 'var(--muted)' }}>
+                      {t(`settings.font.${THEME_FONTS[id]}` as MessageKey)}
+                    </Typography>
+                  </Stack>
+                  <Typography sx={{ fontSize: TS.label, color: 'var(--muted)', mt: 0.5 }}>
+                    {t(AYUDA_TEMA[id])}
+                  </Typography>
+                  {/* Y las diferencias en datos, para quien no puede ver la
+                      miniatura y para quien quiere el número exacto. */}
+                  <Typography
+                    sx={{ fontSize: TS.label, color: 'var(--muted)', mt: 0.5, fontWeight: 700 }}
+                  >
+                    {resumen(id, t)}
+                  </Typography>
+                </Box>
+              )
+            })}
+          </Box>
+        </DesignStep>
 
-          {/* `radiogroup` y no cuatro botones: son cuatro opciones EXCLUYENTES, y
-              un lector de pantalla necesita saber que elegir una descarta las
-              otras tres. Con botones sueltos anunciaría cuatro acciones. */}
-          <Box
-            role="radiogroup"
-            aria-label={t('settings.design.theme.title')}
-            sx={{
-              display: 'grid',
-              gap: 1.5,
-              // Dos columnas también en el panel del taller: cuatro tarjetas en
-              // fila dentro de 420 px dejarían el título en tres líneas.
-              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
-            }}
-          >
-            {THEME_PRESET_IDS.map((id) => {
-              const elegido = preset === id
-              return (
-                <Box
-                  key={id}
-                  role="radio"
-                  tabIndex={0}
-                  aria-checked={elegido}
-                  aria-disabled={busy || undefined}
-                  onClick={() => !busy && elegirTema(id)}
-                  onKeyDown={(event) => {
-                    if (busy) return
-                    // Espacio y Enter: los dos gestos con los que se activa un
-                    // control de este tipo. Solo uno deja fuera a media gente.
-                    if (event.key === ' ' || event.key === 'Enter') {
-                      event.preventDefault()
-                      elegirTema(id)
-                    }
-                  }}
-                  sx={{
-                    cursor: busy ? 'default' : 'pointer',
-                    p: 1.5,
-                    borderRadius: `${R.lg}px`,
-                    border: '2px solid',
-                    borderColor: elegido ? 'var(--accent)' : 'var(--border)',
-                    bgcolor: elegido ? 'var(--accent-soft)' : 'var(--card)',
-                    opacity: busy ? 0.6 : 1,
-                    '&:focus-visible': { outline: '2px solid var(--accent)', outlineOffset: 2 },
-                  }}
-                >
-                  {/* La miniatura va PRIMERO: elegir un tema es una decisión
-                      visual, y hasta P12 se tomaba leyendo cuatro frases. Se
-                      dibuja con la definición del preset, así que no se
-                      desincroniza de la tienda. */}
-                  {/* Resumen v2 · La miniatura en el color de la TIENDA, no en el
-                      de la suite: se elige mirando la propia tienda. */}
-                  <Box style={tinta}>
-                    <ThemeMiniPreview preset={id} />
-                  </Box>
+        <DesignStep
+          id="portada"
+          numero={2}
+          titulo={t('settings.design.step.home')}
+          resumen={t('settings.design.step.homeSummary').replace('{n}', String(encendidas))}
+          abierto={abiertos.has(1)}
+          hecho={visto > 1}
+          onAlternar={() => alternar(1)}
+          siguiente={{ etiqueta: t('settings.design.step.next').replace('{step}', t('settings.design.step.style')), onClick: () => abrir(2) }}
+        >
+          {/* El tema efectivo baja al editor: el panel de presentación por
+              sección necesita saber qué significa `auto` hoy para poder
+              escribirlo en el desplegable (V3 · P12). */}
+          <HomeLayoutEditor form={form} busy={busy} preset={preset} style={estiloEfectivo} />
+        </DesignStep>
 
-                  <Typography
-                    sx={{
-                      fontSize: TS.bodyStrong,
-                      fontWeight: 800,
-                      mt: 1,
-                      color: elegido ? 'var(--accent-deep)' : 'var(--text)',
-                    }}
-                  >
-                    {t(ETIQUETA_TEMA[id])}
-                  </Typography>
-                  {/* Y la letra que propone, escrita en esa letra. */}
-                  <Stack direction="row" sx={{ alignItems: 'baseline', gap: 0.75, mt: 0.25 }}>
-                    <Typography
-                      aria-hidden
-                      sx={{ fontFamily: brandFontStack(THEME_FONTS[id]), fontSize: 20, fontWeight: 700, lineHeight: 1 }}
-                    >
-                      Aa
-                    </Typography>
-                    <Typography sx={{ fontSize: TS.label, fontWeight: 700, color: 'var(--muted)' }}>
-                      {t(`settings.font.${THEME_FONTS[id]}` as MessageKey)}
-                    </Typography>
-                  </Stack>
-                  <Typography sx={{ fontSize: TS.label, color: 'var(--muted)', mt: 0.5 }}>
-                    {t(AYUDA_TEMA[id])}
-                  </Typography>
-                  {/* Y las diferencias en datos, para quien no puede ver la
-                      miniatura y para quien quiere el número exacto. */}
-                  <Typography
-                    sx={{ fontSize: TS.label, color: 'var(--muted)', mt: 0.5, fontWeight: 700 }}
-                  >
-                    {resumen(id, t)}
-                  </Typography>
-                </Box>
-              )
-            })}
-          </Box>
-        </Stack>
+        <DesignStep
+          id="forma"
+          numero={3}
+          titulo={t('settings.design.step.style')}
+          resumen={
+            cambiados === 0
+              ? t('settings.design.step.styleInherit')
+              : t('settings.design.step.styleSummary').replace('{n}', String(cambiados))
+          }
+          abierto={abiertos.has(2)}
+          hecho={visto > 2}
+          onAlternar={() => alternar(2)}
+          siguiente={{ etiqueta: t('settings.design.step.next').replace('{step}', t('settings.design.step.trust')), onClick: () => abrir(3) }}
+        >
+          <AdvancedStyleSettings
+            preset={preset}
+            style={estilo}
+            busy={busy}
+            onChange={pisar}
+            onReset={() => form.setValue('storefront_style', {}, { shouldDirty: true })}
+          />
+        </DesignStep>
 
-        <AdvancedStyleSettings
-          preset={preset}
-          style={estilo}
-          busy={busy}
-          onChange={pisar}
-          onReset={() => form.setValue('storefront_style', {}, { shouldDirty: true })}
-        />
+        <DesignStep
+          id="confianza"
+          numero={4}
+          titulo={t('settings.design.step.trust')}
+          resumen={t('settings.design.step.trustSummary')}
+          abierto={abiertos.has(3)}
+          hecho={visto > 3}
+          onAlternar={() => alternar(3)}
+          siguiente={{ etiqueta: t('settings.design.step.next').replace('{step}', t('settings.design.step.review')), onClick: () => abrir(4) }}
+        >
+          {/* Las garantías («Por qué comprarnos») viven aquí desde el Resumen
+              v2. Iban en General para no obligar a bajar por los ajustes de
+              diseño hasta llegar a escribirlas; con pasos, tienen el suyo. */}
+          <Stack sx={{ gap: 0.5 }}>
+            <Typography sx={{ fontSize: TS.bodyStrong, fontWeight: 700 }}>{t('settings.valueProps.title')}</Typography>
+            <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>{t('settings.valueProps.help')}</Typography>
+          </Stack>
+          <ValuePropsSection form={form} busy={busy} />
+          {/* La barra de avisos, el logotipo y el interruptor claro/oscuro NO
+              se editan aquí: tienen UN sitio, Marca. Aquí se dice dónde. */}
+          <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
+            {t('settings.design.step.trustBrandHint')}{' '}
+            <MuiLink href="#branding" sx={{ fontWeight: 800 }}>
+              {t('settings.design.step.goToBrand')}
+            </MuiLink>
+          </Typography>
+        </DesignStep>
 
-        {/* El tema efectivo baja al editor: el panel de presentación por
-            sección necesita saber qué significa `auto` hoy para poder
-            escribirlo en el desplegable (V3 · P12). */}
-        <HomeLayoutEditor form={form} busy={busy} preset={preset} style={estiloEfectivo} />
-
-        {storeId && storeSlug && (
+        <DesignStep
+          id="revisar"
+          numero={5}
+          titulo={t('settings.design.step.review')}
+          resumen={t('settings.design.step.reviewSummary')}
+          abierto={abiertos.has(4)}
+          hecho={false}
+          onAlternar={() => alternar(4)}
+        >
+        {storeId && storeSlug ? (
           <StoreReadiness
             storeId={storeId}
             storeSlug={storeSlug}
@@ -382,21 +485,16 @@ export function StorefrontDesignSection({
               support_email: form.watch('support_email'),
               contact_phone: form.watch('contact_phone'),
               contact_address: form.watch('contact_address'),
-              /**
-               * Identidad V3 (P11): sin estos tres, dos señales preguntarían
-               * mal.
-               *
-               * Con `brand_lockup` en `name`, el logotipo no es un hueco — el
-               * comercio eligió su nombre escrito como marca. Y la descripción
-               * es una señal nueva, con la bajada del hero como respaldo de
-               * compatibilidad para las tiendas anteriores a V3.
-               */
               brand_lockup: form.watch('brand_lockup'),
               store_description: form.watch('store_description'),
               hero_subtitle: form.watch('hero_subtitle'),
             }}
           />
-        )}
+        ) : null}
+          <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
+            {t('settings.design.step.reviewHint')}
+          </Typography>
+        </DesignStep>
       </Stack>
 
       {/**

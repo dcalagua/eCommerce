@@ -10,7 +10,6 @@ import PhotoLibraryRoundedIcon from '@mui/icons-material/PhotoLibraryRounded'
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
-import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded'
 import WorkspacePremiumRoundedIcon from '@mui/icons-material/WorkspacePremiumRounded'
 import {
   Alert,
@@ -51,7 +50,6 @@ import RemoveShoppingCartRoundedIcon from '@mui/icons-material/RemoveShoppingCar
 import { StorefrontDesignSection } from './settings/StorefrontDesignSection'
 import { TaxesSection } from './settings/TaxesSection'
 import { StoreIdentitySection } from './settings/StoreIdentitySection'
-import { ValuePropsSection } from './settings/ValuePropsSection'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import { EmptyState, ErrorState, LoadingState, UnauthorizedState } from '@/shared/ui/states'
 import { THEME_FONTS, normalizeThemePreset } from '@/features/storefront/theme/presets'
@@ -483,22 +481,8 @@ export function SettingsPage() {
                       </Grid>
                     </SectionCard>
 
-                    {/* Storefront V2 · P01 · Las promesas de la franja de
-                        portada.
-                        Va en General, junto al contacto y la descripción,
-                        porque es CONTENIDO del comercio y no disposición: en
-                        Diseño se elige cómo se presenta lo que se vende, aquí
-                        se escribe una afirmación sobre el negocio. Mezclarlas
-                        obligaría a bajar por un selector de proporción de
-                        imagen para llegar a escribir «Garantía de 12 meses». */}
-                    <SectionCard
-                      icon={<VerifiedUserRoundedIcon />}
-                      title={t('settings.valueProps.title')}
-                      subtitle={t('settings.valueProps.help')}
-                      padded
-                    >
-                      <ValuePropsSection form={form} busy={busy} />
-                    </SectionCard>
+                    {/* Resumen v2 · Las garantías («Por qué comprarnos») se mudaron al
+                        paso 4 de Diseño de tienda, «Confianza y avisos». */}
 
                     {/* P18 · Quién puede comprar.
                         Va en General y no en Marca porque no es apariencia: es

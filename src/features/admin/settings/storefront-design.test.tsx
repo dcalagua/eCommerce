@@ -54,6 +54,9 @@ function Anfitrion({
     <>
       <StorefrontDesignSection
         form={form}
+        // Resumen v2 · el taller va por pasos; estas pruebas miran el CONTENIDO
+        // de todos, así que se monta con los cinco abiertos.
+        pasosAbiertos={[0, 1, 2, 3, 4]}
         {...(conTienda
           ? { storeId: 'aaaa1111-1111-4111-8111-111111111111', storeSlug: 'botica' }
           : {})}
