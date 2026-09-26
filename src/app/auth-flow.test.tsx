@@ -188,10 +188,10 @@ describe('flujo login → onboarding → /app', () => {
     renderApp('/app')
 
     expect(await screen.findByRole('heading', { name: 'Resumen' })).toBeInTheDocument()
-    expect(await screen.findByText('3')).toBeInTheDocument()
-    // «Publicados» deja de ser tarjeta propia: acompana al total de productos,
-    // que es la comparacion que de verdad se lee. La cifra sigue siendo real.
-    expect(screen.getByText(/2 publicados/)).toBeInTheDocument()
+    // Resumen v2: publicados contra total vive en «Salud de la tienda», y las
+    // ventas en la tarjeta principal (aquí, las acumuladas: el backend falso no
+    // tiene `dashboard_sales_trend`). Las cifras siguen siendo las de la base.
+    expect(await screen.findByText('2 / 3')).toBeInTheDocument()
     expect(screen.getByText(/150[.,]00/)).toBeInTheDocument()
   })
 

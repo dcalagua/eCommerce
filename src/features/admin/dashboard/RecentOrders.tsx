@@ -1,5 +1,6 @@
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import {
+  Avatar,
   Button,
   Card,
   CardContent,
@@ -38,11 +39,18 @@ import type { RecentOrder } from '../useDashboardKpis'
  * de significar nada. Antes el chip iba SIN color y los cinco estados se veían
  * idénticos.
  */
+/** «Christian Espinoza» → «CE»; un correo, por lo que va antes de la @. Decorativo. */
+function initials(name: string): string {
+  const base = name.includes('@') ? (name.split('@')[0] ?? '') : name
+  const words = base.split(/[\s._-]+/).filter(Boolean)
+  return (words.slice(0, 2).map((w) => w[0]).join('') || '?').toUpperCase()
+}
+
 export function RecentOrders({ orders }: { orders: RecentOrder[] }) {
   const { t, locale } = useI18n()
 
   return (
-    <Card>
+    <Card sx={{ height: '100%' }}>
       <CardContent>
         <Stack
           direction="row"
@@ -86,15 +94,30 @@ export function RecentOrders({ orders }: { orders: RecentOrder[] }) {
                   <TableCell sx={{ fontFamily: 'monospace', fontSize: 12.5 }}>
                     {order.order_number}
                   </TableCell>
-                  <TableCell
-                    sx={{
-                      maxWidth: 200,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {order.customer ?? '—'}
+                  <TableCell sx={{ maxWidth: 260 }}>
+                    <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', minWidth: 0 }}>
+                      {order.customer && (
+                        <Avatar
+                          aria-hidden
+                          sx={{
+                            width: 26,
+                            height: 26,
+                            fontSize: 10.5,
+                            fontWeight: 800,
+                            bgcolor: 'var(--accent-soft)',
+                            color: 'var(--accent-deep)',
+                          }}
+                        >
+                          {initials(order.customer)}
+                        </Avatar>
+                      )}
+                      <Typography
+                        component="span"
+                        sx={{ fontSize: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                      >
+                        {order.customer ?? '—'}
+                      </Typography>
+                    </Stack>
                   </TableCell>
                   <TableCell>
                     <StatusChip

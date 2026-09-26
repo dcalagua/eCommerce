@@ -24,6 +24,21 @@ export function formatMoneyOrDash(amount: string | null, currency: string, local
   return amount === null ? '—' : formatMoney(Number(amount), currency, locale)
 }
 
+/**
+ * Fecha de CALENDARIO (`2026-09-23`), sin hora ni zona: la base ya cortó el día
+ * en la zona de quien mira, y `new Date('2026-09-23')` la leería como medianoche
+ * UTC —el 22 en Lima—. `day` → «23 sept»; `month` → «sept 2026».
+ */
+export function formatCalendarDate(isoDate: string, style: 'day' | 'month', locale: Locale = 'es'): string {
+  const [year, month, day] = isoDate.split('-').map(Number)
+  if (!year || !month) return '—'
+  const date = new Date(year, month - 1, day || 1)
+  return new Intl.DateTimeFormat(
+    LOCALE_TAG[locale],
+    style === 'month' ? { month: 'short', year: 'numeric' } : { day: 'numeric', month: 'short' },
+  ).format(date)
+}
+
 export function formatDate(value: string | Date, locale: Locale = 'es'): string {
   const date = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(date.getTime())) return '—'

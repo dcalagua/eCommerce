@@ -1,16 +1,19 @@
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import MonitorHeartRoundedIcon from '@mui/icons-material/MonitorHeartRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
-import { Badge, Box, Drawer, IconButton, Stack, Tooltip, Typography } from '@mui/material'
+import { Badge, Box, Drawer, IconButton, Stack, Tab, Tabs, Tooltip, Typography } from '@mui/material'
+import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
+import type { MessageKey } from '@/shared/i18n/messages'
 import { AppIcon } from '@/shared/ui/AppIcon'
 import { T } from '@/theme/tokens'
-import { WatchList } from './WatchList'
+import { WatchList, type WatchSeverityFilter } from './WatchList'
 import { sortByModuleFirst, watchModuleFromPath } from './modules'
 import { useWatch } from './useWatch'
 
 const TITLE_ID = 'ebim-watch-title'
+const TABS: readonly WatchSeverityFilter[] = ['all', 'critica', 'advertencia']
 
 /**
  * El centro de vigilancia como cajón lateral: el mismo listado que el bloque
@@ -50,6 +53,9 @@ export function WatchDrawer({ open, onClose }: { open: boolean; onClose: () => v
   const { t } = useI18n()
   const location = useLocation()
   const watch = useWatch(open)
+  const [severity, setSeverity] = useState<WatchSeverityFilter>('all')
+  const items = watch.data?.items ?? []
+  const total = items.length
 
   // Abrirlo desde Cobranza y tener que buscar el aviso de cobranza es trabajo
   // que puede hacer la pantalla. Se ORDENA, no se filtra: el panel sigue siendo
@@ -109,8 +115,38 @@ export function WatchDrawer({ open, onClose }: { open: boolean; onClose: () => v
         </IconButton>
       </Stack>
 
-      <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', px: 2, py: 2 }}>
-        <WatchList query={vista} onNavigate={onClose} />
+      {/* Con N avisos, filtrar por severidad es lo primero que se hace: el
+          contador de cada pestaña dice cuánto hay sin tener que abrirla. */}
+      {total > 0 && (
+        <Box sx={{ bgcolor: 'var(--card)', borderBottom: '1px solid var(--border)', px: 1 }}>
+          <Tabs
+            value={severity}
+            onChange={(_, next: WatchSeverityFilter) => setSeverity(next)}
+            aria-label={t('watch.tabs.label')}
+            variant="scrollable"
+            scrollButtons={false}
+            sx={{ minHeight: 42, '& .MuiTab-root': { minHeight: 42, textTransform: 'none', fontWeight: 700 } }}
+          >
+            {TABS.map((tab) => (
+              <Tab
+                key={tab}
+                value={tab}
+                label={
+                  <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+                    <span>{t(`watch.tab.${tab}` as MessageKey)}</span>
+                    <Box component="span" className="tnum" sx={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>
+                      {tab === 'all' ? total : items.filter((item) => item.severity === tab).length}
+                    </Box>
+                  </Stack>
+                }
+              />
+            ))}
+          </Tabs>
+        </Box>
+      )}
+
+      <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', px: 2, py: 1.5 }}>
+        <WatchList query={vista} onNavigate={onClose} severity={severity} grouped />
       </Box>
     </Drawer>
   )

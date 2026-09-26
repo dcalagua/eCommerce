@@ -5,13 +5,14 @@ import MonitorHeartRoundedIcon from '@mui/icons-material/MonitorHeartRounded'
 import PlaceRoundedIcon from '@mui/icons-material/PlaceRounded'
 import UndoRoundedIcon from '@mui/icons-material/UndoRounded'
 import { Box, Button, IconButton, Stack, Tooltip, Typography } from '@mui/material'
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/states'
 import type { WatchFinding, WatchResult } from './api'
 import { useDismissWatch, useRestoreWatch } from './useWatch'
+import { watchText } from './watchText'
 
 /**
  * Las tarjetas del centro de vigilancia, en la forma del EBIM Crew de la suite:
@@ -27,23 +28,17 @@ import { useDismissWatch, useRestoreWatch } from './useWatch'
  * cambie, no un botón.
  */
 
-function textOf(finding: WatchFinding, t: (key: MessageKey) => string): { title: string; body: string } {
-  const title = t(`watch.finding.${finding.key}.title` as MessageKey)
-  let body = t(`watch.finding.${finding.key}.body` as MessageKey)
-  for (const [name, value] of Object.entries(finding.metrics)) {
-    body = body.split(`{${name}}`).join(String(value))
-  }
-  return { title, body: body.split('{count}').join(String(finding.count)) }
-}
-
 export function WatchCard({
   finding,
   onNavigate,
   muted = false,
   why = null,
+  hideModule = false,
 }: {
   finding: WatchFinding
   onNavigate?: () => void
+  /** En una lista agrupada por módulo, el grupo ya lo nombra. */
+  hideModule?: boolean
   muted?: boolean
   /** Por qué va aquí, según el análisis de IA. Sin análisis, no hay línea. */
   why?: string | null
@@ -51,7 +46,7 @@ export function WatchCard({
   const { t } = useI18n()
   const dismiss = useDismissWatch()
   const restore = useRestoreWatch()
-  const { title, body } = textOf(finding, t)
+  const { title, body } = watchText(finding, t)
   const critica = finding.severity === 'critica'
   const color = critica ? 'var(--red)' : 'var(--amber)'
   const tinte = critica ? 'var(--red-soft)' : 'var(--amber-soft)'
@@ -89,12 +84,14 @@ export function WatchCard({
         >
           {t(`watch.severity.${finding.severity}` as MessageKey)}
         </Box>
-        <Stack direction="row" spacing={0.3} sx={{ alignItems: 'center', color: 'var(--muted)' }}>
-          <PlaceRoundedIcon sx={{ fontSize: 12.5 }} />
-          <Typography sx={{ fontSize: 11.5 }}>
-            {t(`watch.module.${finding.module}` as MessageKey)}
-          </Typography>
-        </Stack>
+        {!hideModule && (
+          <Stack direction="row" spacing={0.3} sx={{ alignItems: 'center', color: 'var(--muted)' }}>
+            <PlaceRoundedIcon sx={{ fontSize: 12.5 }} />
+            <Typography sx={{ fontSize: 11.5 }}>
+              {t(`watch.module.${finding.module}` as MessageKey)}
+            </Typography>
+          </Stack>
+        )}
       </Stack>
 
       <Typography sx={{ fontWeight: 800, fontSize: 14, lineHeight: 1.3, mb: 0.3 }}>{title}</Typography>
@@ -174,9 +171,20 @@ export function WatchCard({
   )
 }
 
+/** Agrupa por módulo respetando el orden de llegada: el primer grupo es el del primer aviso. */
+function byModule(items: readonly WatchFinding[]): Array<[string, WatchFinding[]]> {
+  const groups = new Map<string, WatchFinding[]>()
+  for (const item of items) groups.set(item.module, [...(groups.get(item.module) ?? []), item])
+  return [...groups.entries()]
+}
+
+export type WatchSeverityFilter = 'all' | WatchFinding['severity']
+
 export function WatchList({
   query,
   onNavigate,
+  severity = 'all',
+  grouped = false,
 }: {
   query: {
     data: WatchResult | undefined
@@ -185,10 +193,18 @@ export function WatchList({
     refetch: () => unknown
   }
   onNavigate?: () => void
+  /** Filtra la vista; los silenciados se siguen contando igual. */
+  severity?: WatchSeverityFilter
+  /**
+   * Con N avisos, una rejilla plana obliga a leerlos todos para encontrar los
+   * de Inventario. Agrupados, el módulo se nombra una vez en su cabecera.
+   */
+  grouped?: boolean
 }) {
   const { t } = useI18n()
   const [verSilenciados, setVerSilenciados] = useState(false)
-  const items = query.data?.items ?? []
+  const all = query.data?.items ?? []
+  const items = severity === 'all' ? all : all.filter((item) => item.severity === severity)
   const dismissed = query.data?.dismissed ?? []
 
   if (query.isPending) return <LoadingState label={t('common.loading')} />
@@ -206,7 +222,7 @@ export function WatchList({
         alignItems: 'stretch',
       }}
     >
-      {items.length === 0 && (
+      {all.length === 0 && (
         <Box sx={{ gridColumn: '1 / -1' }}>
           <EmptyState
             title={t('watch.empty.title')}
@@ -215,9 +231,36 @@ export function WatchList({
           />
         </Box>
       )}
-      {items.map((finding) => (
-        <WatchCard key={finding.key} finding={finding} onNavigate={onNavigate} />
-      ))}
+      {all.length > 0 && items.length === 0 && (
+        <Typography sx={{ gridColumn: '1 / -1', fontSize: 13, color: 'var(--muted)', py: 2, textAlign: 'center' }}>
+          {t('watch.tab.empty')}
+        </Typography>
+      )}
+      {grouped
+        ? byModule(items).map(([module, group]) => (
+            <Fragment key={module}>
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{ gridColumn: '1 / -1', alignItems: 'center', pt: 1, color: 'var(--muted)' }}
+              >
+                <Typography
+                  component="h3"
+                  sx={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase' }}
+                >
+                  {t(`watch.module.${module}` as MessageKey)}
+                </Typography>
+                <Box aria-hidden sx={{ flex: 1, height: '1px', bgcolor: 'var(--border)' }} />
+                <Typography className="tnum" aria-hidden sx={{ fontSize: 11, fontWeight: 800 }}>
+                  {group.length}
+                </Typography>
+              </Stack>
+              {group.map((finding) => (
+                <WatchCard key={finding.key} finding={finding} onNavigate={onNavigate} hideModule />
+              ))}
+            </Fragment>
+          ))
+        : items.map((finding) => <WatchCard key={finding.key} finding={finding} onNavigate={onNavigate} />)}
 
       {/* Lo silenciado se DICE, no se esconde: un panel en calma porque alguien
           tapó tres avisos es un panel que miente. */}

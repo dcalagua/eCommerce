@@ -836,3 +836,8 @@ export const WATCH_FINDINGS_RPC = 'watch_findings'
 export const WATCH_DISMISS_RPC = 'watch_dismiss'
 export const WATCH_RESTORE_RPC = 'watch_restore'
 export const WATCH_ASSISTANT_FUNCTION = 'watch-assistant'
+
+// Resumen v2: rendimiento de ventas por periodo. Sin `satisfies FunctionName`
+// hasta regenerar los tipos contra una base que ya tenga la migración
+// `20260926120000_dashboard_sales_trend.sql`.
+export const DASHBOARD_SALES_TREND_RPC = 'dashboard_sales_trend'

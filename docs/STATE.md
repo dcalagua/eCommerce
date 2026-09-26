@@ -11,6 +11,22 @@ el recorrido SaaS P00–P17 queda cerrado)
 > (`claude-saas-opus/config/phases.json`), que se identifica siempre como «P0x-SaaS». No son la misma
 > serie: el P12 histórico es el framework de integraciones; el P12-SaaS es fulfillment y devoluciones.
 
+## Resumen v2 (2026-09-26)
+
+Rediseño del dashboard a partir del diseño en pen.dev (`design/storefront.pen`, frame «Resumen —
+Propuesta v2»). Tres filas: **ventas del periodo** (7d / 30d / 12m, variación contra el periodo
+anterior, barras por día o mes, ticket, pedidos y mejor día) + **centro de vigilancia** con un botón
+por aviso («Cobrar», «Despachar»…); **flujo de pedidos** (Pendiente → Pagado → Entregado, lo atascado
+sale de `watch_findings`) + salud de la tienda; **últimos pedidos** + ranking de lo que más vende.
+«Ver N más» abre el cajón de vigilancia, que gana pestañas por severidad y grupos por módulo. Fuera el
+banner de avisos (duplicaba la vigilancia) y las tarjetas KPI sueltas.
+
+Servicio nuevo: `public.dashboard_sales_trend(p_store_id, p_period, p_tz)` (migración
+`20260926120000_dashboard_sales_trend.sql`, SECURITY INVOKER, sin anon, dinero como texto, null con
+monedas mezcladas, cero afirmado con la moneda de la tienda). **No aplicada en QAS**: hasta aplicarla,
+la tarjeta cae a las ventas acumuladas de `dashboard_kpis` y lo dice. Tests: 11 de base
+(`supabase/tests/dashboard-sales-trend.test.ts`, aislamiento incluido) y 23 de pantalla.
+
 ## Rendimiento de la RLS: membresía una vez por consulta (2026-09-23)
 
 En QAS el «Resumen inteligente» respondía `ERROR_INTERNO`: `ai_dashboard_facts` de miquimica (~3 800
