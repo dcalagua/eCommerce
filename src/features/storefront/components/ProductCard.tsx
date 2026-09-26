@@ -189,7 +189,9 @@ export function ProductCard({
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        p: denso ? 1 : editorial ? 0 : { xs: 'var(--sf-card-pad)', md: 'var(--sf-card-pad-md)' },
+        // Editorial: sin caja, pero con un margen interior pequeño — sin él, el
+        // estado y el botón quedaban pegados al borde de la columna.
+        p: denso ? 1 : editorial ? { xs: 0.5, md: 0.75 } : { xs: 'var(--sf-card-pad)', md: 'var(--sf-card-pad-md)' },
         gap: denso ? 0.75 : 'var(--sf-card-gap)',
         borderRadius: 'var(--sf-radius)',
         /**

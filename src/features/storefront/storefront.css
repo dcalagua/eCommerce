@@ -363,8 +363,52 @@
   box-shadow: none;
 }
 
-.sf-scope[data-store-theme='premium'] .eb-card:hover {
+/* Resumen v2 · EDITORIAL, rehecha (pedido del operador).
+   Antes, al apuntar aparecía de golpe un recuadro con sombra alrededor de una
+   tarjeta sin margen interior: el contenido quedaba pegado al borde y la
+   rejilla parecía rota. Ahora la tarjeta NUNCA se vuelve caja:
+   - la FOTO es la pieza: marco propio, fondo de tarjeta y sombra suave;
+   - al apuntar sube la foto (sombra más honda) y el nombre se subraya;
+   - el botón es contorneado en el color de la tienda y se rellena al apuntar:
+     pesa menos que un bloque rojo, y sigue siendo evidente.
+   Va por la VARIANTE de tarjeta y no por el tema: cualquier tema que elija
+   `editorial` la recibe igual. */
+.sf-scope .eb-card[data-card-variant='editorial'],
+.sf-scope .eb-card[data-card-variant='editorial']:hover {
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
+  background: transparent;
+}
+.sf-scope .eb-card[data-card-variant='editorial'] .eb-card-media {
+  padding: 0;
+  background: var(--card);
   box-shadow: var(--sf-shadow);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.sf-scope .eb-card[data-card-variant='editorial']:hover .eb-card-media {
+  box-shadow: var(--sf-shadow-hover);
+  transform: translateY(-3px);
+}
+.sf-scope .eb-card[data-card-variant='editorial']:hover h3 a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.sf-scope .eb-card[data-card-variant='editorial'] .MuiButton-contained {
+  background: transparent;
+  color: var(--accent-deep);
+  box-shadow: inset 0 0 0 1.5px currentColor;
+}
+.sf-scope .eb-card[data-card-variant='editorial'] .MuiButton-contained:hover {
+  background: var(--accent-deep);
+  color: #fff;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sf-scope .eb-card[data-card-variant='editorial'] .eb-card-media,
+  .sf-scope .eb-card[data-card-variant='editorial']:hover .eb-card-media {
+    transition: none;
+    transform: none;
+  }
 }
 
 /* Y tampoco pinta la pastilla de «disponible».
