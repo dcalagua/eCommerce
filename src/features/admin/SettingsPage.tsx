@@ -381,6 +381,23 @@ export function SettingsPage() {
                             {...form.register('store_description')}
                           />
                         </Grid>
+                        {/* Resumen v2 · El titular de la portada, por fin editable. */}
+                        <Grid item xs={12} md={8}>
+                          <TextField
+                            fullWidth
+                            slotProps={SHRINK}
+                            label={t('settings.heroTitle')}
+                            placeholder={form.watch('name')}
+                            helperText={
+                              fieldError(form.formState.errors.hero_title?.message, t) ??
+                              t('settings.heroTitleHelp')
+                            }
+                            error={Boolean(form.formState.errors.hero_title)}
+                            disabled={busy}
+                            inputProps={{ maxLength: 120 }}
+                            {...form.register('hero_title')}
+                          />
+                        </Grid>
                         <Grid item xs={12} md={4}>
                           <TextField
                             fullWidth

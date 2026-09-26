@@ -1,5 +1,5 @@
 import { Box, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
-import { useEffect, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
@@ -138,6 +138,30 @@ export interface PreviewIdentity {
   readonly announcements: unknown
 }
 
+/** Resumen v2 · Un producto REAL de la tienda, listo para la tarjeta de muestra. */
+export interface PreviewProduct {
+  readonly name: string
+  /** Ya formateado con la moneda de la tienda. */
+  readonly price: string
+  /** Precio de antes, formateado, si está rebajado. */
+  readonly compareAt: string | null
+  readonly imageUrl: string | null
+}
+
+/**
+ * Resumen v2 · Los DATOS de la tienda que la vista previa enseña en lugar de
+ * «Producto de ejemplo» y «Aquí va la frase de tu portada». Todo opcional: sin
+ * datos (tienda nueva, sin conexión) se vuelve a los textos neutros.
+ */
+export interface PreviewData {
+  readonly products: readonly PreviewProduct[]
+  readonly heroTitle: string | null
+  readonly heroSubtitle: string | null
+}
+
+const SIN_DATOS: PreviewData = { products: [], heroTitle: null, heroSubtitle: null }
+const PreviewDataContext = createContext<PreviewData>(SIN_DATOS)
+
 const SIN_IDENTIDAD: PreviewIdentity = {
   logoUrl: null,
   brandLockup: null,
@@ -150,6 +174,7 @@ export function StorefrontPreview({
   style,
   layout,
   identity = SIN_IDENTIDAD,
+  data = SIN_DATOS,
 }: {
   storeName: string
   themePreset: string
@@ -157,6 +182,8 @@ export function StorefrontPreview({
   layout: HomeLayout
   /** Con defecto para que la pantalla siga montándose desde cualquier sitio. */
   identity?: PreviewIdentity
+  /** Resumen v2 · Productos y textos reales de la tienda. */
+  data?: PreviewData
 }) {
   const { t } = useI18n()
   const [modo, setModo] = useState<Modo>('focus')
@@ -178,6 +205,7 @@ export function StorefrontPreview({
   const escala = factorDeAjuste(ajustar, disponible, necesario)
 
   return (
+    <PreviewDataContext.Provider value={data}>
     <Stack spacing={1}>
       <Stack
         direction="row"
@@ -341,6 +369,7 @@ export function StorefrontPreview({
         </Box>
       </Box>
     </Stack>
+    </PreviewDataContext.Provider>
   )
 }
 
@@ -701,6 +730,8 @@ function PreviewHeader({
  */
 function PreviewHero({ tema, storeName }: { tema: ResolvedStoreTheme; storeName: string }) {
   const { t } = useI18n()
+  const datos = useContext(PreviewDataContext)
+  const primero = datos.products[0] ?? null
   const lema = tema.style.heroVariant === 'statement'
 
   return (
@@ -729,10 +760,10 @@ function PreviewHero({ tema, storeName }: { tema: ResolvedStoreTheme; storeName:
             color: '#FFFFFF',
           }}
         >
-          {storeName}
+          {datos.heroTitle || storeName}
         </Typography>
         <Typography sx={{ fontSize: 13, color: '#FFFFFF', opacity: 0.85, mt: 0.5 }}>
-          {t('settings.design.preview.heroSubtitle')}
+          {datos.heroSubtitle || t('settings.design.preview.heroSubtitle')}
         </Typography>
       </Box>
 
@@ -749,15 +780,9 @@ function PreviewHero({ tema, storeName }: { tema: ResolvedStoreTheme; storeName:
             boxShadow: 'var(--sf-shadow)',
           }}
         >
-          <Box
-            sx={{
-              aspectRatio: 'var(--sf-image-ratio)',
-              borderRadius: 'var(--sf-radius-sm)',
-              bgcolor: 'var(--sf-media-bg)',
-            }}
-          />
-          <Typography sx={{ fontSize: 11, fontWeight: 700 }}>
-            {t('settings.design.preview.demoProduct').replace('{n}', '1')}
+          <FotoDeMuestra url={primero?.imageUrl ?? null} />
+          <Typography sx={{ fontSize: 11, fontWeight: 700 }} noWrap>
+            {primero?.name ?? t('settings.design.preview.demoProduct').replace('{n}', '1')}
           </Typography>
         </Box>
       )}
@@ -1081,8 +1106,34 @@ function MarcasDeEjemplo({ titulo, variante }: { titulo: string; variante: strin
  * precio. El relleno sale de `--sfp-card-pad`, que el marco resuelve por su
  * ancho, así que la misma tarjeta se aprieta sola en el teléfono.
  */
+/** La foto de la tarjeta de muestra: la del producto real, o el hueco neutro. */
+function FotoDeMuestra({ url }: { url: string | null }) {
+  return (
+    <Box
+      sx={{
+        aspectRatio: 'var(--sf-image-ratio)',
+        borderRadius: 'var(--sf-radius-sm)',
+        bgcolor: 'var(--sf-media-bg)',
+        overflow: 'hidden',
+      }}
+    >
+      {url ? (
+        <Box
+          component="img"
+          src={url}
+          alt=""
+          loading="lazy"
+          sx={{ width: '100%', height: '100%', objectFit: 'var(--sf-media-fit, contain)', display: 'block' }}
+        />
+      ) : null}
+    </Box>
+  )
+}
+
 function PreviewCard({ numero, variante }: { numero: number; variante: string }) {
   const { t } = useI18n()
+  // Resumen v2 · Si la tienda tiene productos, la muestra enseña LOS SUYOS.
+  const real = useContext(PreviewDataContext).products[numero - 1] ?? null
   const comoda = variante === 'comfortable'
   /**
    * La tarjeta EDITORIAL (V3 · P13).
@@ -1110,13 +1161,7 @@ function PreviewCard({ numero, variante }: { numero: number; variante: string })
         minWidth: 0,
       }}
     >
-      <Box
-        sx={{
-          aspectRatio: 'var(--sf-image-ratio)',
-          borderRadius: 'var(--sf-radius-sm)',
-          bgcolor: 'var(--sf-media-bg)',
-        }}
-      />
+      <FotoDeMuestra url={real?.imageUrl ?? null} />
       <Typography
         sx={{
           fontSize: 11,
@@ -1127,16 +1172,23 @@ function PreviewCard({ numero, variante }: { numero: number; variante: string })
           whiteSpace: 'nowrap',
         }}
       >
-        {t('settings.design.preview.demoProduct').replace('{n}', String(numero))}
+        {real?.name ?? t('settings.design.preview.demoProduct').replace('{n}', String(numero))}
       </Typography>
-      {comoda && (
+      {comoda && !real && (
         <Typography sx={{ fontSize: 10, color: 'var(--muted)' }}>
           {t('settings.design.preview.demoProductSupport')}
         </Typography>
       )}
-      <Typography sx={{ fontSize: 12, fontWeight: 800, color: 'var(--accent-deep)' }}>
-        {t('settings.design.preview.demoPrice')}
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, flexWrap: 'wrap' }}>
+        <Typography sx={{ fontSize: 12, fontWeight: 800, color: 'var(--accent-deep)' }}>
+          {real?.price ?? t('settings.design.preview.demoPrice')}
+        </Typography>
+        {real?.compareAt ? (
+          <Typography component="s" sx={{ fontSize: 10, color: 'var(--muted)', fontWeight: 600 }}>
+            {real.compareAt}
+          </Typography>
+        ) : null}
+      </Box>
     </Stack>
   )
 }

@@ -259,6 +259,8 @@ export async function saveStoreSettings(input: SaveSettingsInput): Promise<void>
   const patch = {
     accent_color: values.accent_color.trim().toLowerCase(),
     hero_subtitle: orNull(values.hero_subtitle),
+    // Resumen v2 · el titular de la portada (vacío = el nombre de la tienda).
+    hero_title: orNull(values.hero_title),
     support_email: orNull(values.support_email),
     contact_phone: orNull(values.contact_phone),
     contact_address: orNull(values.contact_address),

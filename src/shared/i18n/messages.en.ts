@@ -1779,6 +1779,9 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'settings.storeDescriptionHelp':
       'A stable summary of the business. Used in the footer, the business section and as a search-engine fallback. It does not expire with campaigns (up to 360 characters).',
     'settings.heroKicker': 'Cover kicker',
+    'settings.heroTitle': 'Homepage headline',
+    'settings.heroTitleHelp': 'The big line on your homepage. Leave it empty to show the store name.',
+    'settings.error.heroTitle': '120 characters at most.',
     'settings.heroKickerHelp':
       'Optional short line above the headline. It lets the cover stop repeating the store name (up to 80).',
     'settings.heroSubtitle': 'Cover message',

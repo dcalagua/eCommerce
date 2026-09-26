@@ -1,19 +1,25 @@
 import { Alert, Box, Stack, Typography } from '@mui/material'
+import { useMemo } from 'react'
 import type { UseFormReturn } from 'react-hook-form'
+import { useCatalogSearch, useSignedThumbnails } from '@/features/storefront/hooks'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
-import { R, TS } from '@/theme/tokens'
+import { formatMoney } from '@/shared/lib/format'
+import { tenantAccentVars } from '@/theme/appearance'
+import { useAppearance } from '@/theme/appearance-context'
+import '@/theme/storefrontFonts'
+import { R, TS, brandFontStack } from '@/theme/tokens'
 import {
   THEME_PRESET_IDS,
   type StorefrontStyle,
   type ThemePreset,
 } from '@/features/storefront/theme/types'
-import { THEME_PRESETS } from '@/features/storefront/theme/presets'
+import { THEME_FONTS, THEME_PRESETS, resolveStoreFont } from '@/features/storefront/theme/presets'
 import { AdvancedStyleSettings } from './AdvancedStyleSettings'
 import { themeColumnsReady } from './api'
 import { HomeLayoutEditor } from './HomeLayoutEditor'
 import { StoreReadiness } from './StoreReadiness'
-import { StorefrontPreview } from './StorefrontPreview'
+import { StorefrontPreview, type PreviewData } from './StorefrontPreview'
 import { ThemeMiniPreview } from './ThemeMiniPreview'
 import type { StoreFormValues } from './types'
 
@@ -149,6 +155,51 @@ export function StorefrontDesignSection({
   const estiloEfectivo = { ...THEME_PRESETS[preset], ...estilo }
 
   /**
+   * Resumen v2 · LA TIENDA DE VERDAD en la vista previa.
+   *
+   * Hasta aquí la vista previa salía en el verde de la suite, con «Producto de
+   * ejemplo 1» y «Aquí va la frase de tu portada»: se elegía un tema mirando una
+   * tienda que no era la suya. Ahora lleva, SIN GUARDAR:
+   *  - el color del formulario, como variables en línea SOLO en su zona (el
+   *    backoffice de alrededor sigue en el suyo);
+   *  - la letra que se va a pintar (la elegida o la que propone el tema);
+   *  - el titular y el mensaje de la portada;
+   *  - los seis productos más recientes, con su foto y su precio.
+   */
+  const { locale } = useI18n()
+  const { appearance } = useAppearance()
+  const acento = form.watch('accent_color')
+  const tinta = useMemo(
+    () => (/^#[0-9a-f]{6}$/i.test(acento ?? '') ? tenantAccentVars(acento as string, appearance.mode) : {}),
+    [acento, appearance.mode],
+  )
+  const letra = brandFontStack(resolveStoreFont(form.watch('font_family'), preset))
+  const muestra = useCatalogSearch(
+    storeSlug ?? undefined,
+    { term: '', filters: {}, sort: 'recent', limit: 6, offset: 0 },
+    Boolean(storeSlug),
+  )
+  const hits = muestra.data?.items ?? []
+  const miniaturas = useSignedThumbnails(hits.map((hit) => hit.imagePath ?? null))
+  const datos: PreviewData = useMemo(
+    () => ({
+      products: hits.map((hit) => ({
+        name: hit.name,
+        price: formatMoney(Number(hit.price ?? 0), hit.currency ?? 'PEN', locale),
+        compareAt:
+          hit.compareAtPrice && Number(hit.compareAtPrice) > Number(hit.price ?? 0)
+            ? formatMoney(Number(hit.compareAtPrice), hit.currency ?? 'PEN', locale)
+            : null,
+        imageUrl: hit.imagePath ? (miniaturas[hit.imagePath] ?? null) : null,
+      })),
+      heroTitle: form.watch('hero_title') || null,
+      heroSubtitle: form.watch('hero_subtitle') || null,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [hits, miniaturas, locale, form.watch('hero_title'), form.watch('hero_subtitle')],
+  )
+
+  /**
    * La base puede ir por detrás del código.
    *
    * Entre que se publica esta pantalla y se aplica su migración hay una ventana
@@ -264,7 +315,11 @@ export function StorefrontDesignSection({
                       visual, y hasta P12 se tomaba leyendo cuatro frases. Se
                       dibuja con la definición del preset, así que no se
                       desincroniza de la tienda. */}
-                  <ThemeMiniPreview preset={id} />
+                  {/* Resumen v2 · La miniatura en el color de la TIENDA, no en el
+                      de la suite: se elige mirando la propia tienda. */}
+                  <Box style={tinta}>
+                    <ThemeMiniPreview preset={id} />
+                  </Box>
 
                   <Typography
                     sx={{
@@ -276,6 +331,18 @@ export function StorefrontDesignSection({
                   >
                     {t(ETIQUETA_TEMA[id])}
                   </Typography>
+                  {/* Y la letra que propone, escrita en esa letra. */}
+                  <Stack direction="row" sx={{ alignItems: 'baseline', gap: 0.75, mt: 0.25 }}>
+                    <Typography
+                      aria-hidden
+                      sx={{ fontFamily: brandFontStack(THEME_FONTS[id]), fontSize: 20, fontWeight: 700, lineHeight: 1 }}
+                    >
+                      Aa
+                    </Typography>
+                    <Typography sx={{ fontSize: TS.label, fontWeight: 700, color: 'var(--muted)' }}>
+                      {t(`settings.font.${THEME_FONTS[id]}` as MessageKey)}
+                    </Typography>
+                  </Stack>
                   <Typography sx={{ fontSize: TS.label, color: 'var(--muted)', mt: 0.5 }}>
                     {t(AYUDA_TEMA[id])}
                   </Typography>
@@ -361,7 +428,15 @@ export function StorefrontDesignSection({
           pr: { lg: 0.5 },
         }}
       >
+        {/* El color y la letra de la tienda, solo en esta zona. La letra se
+            fuerza sobre la tipografía de MUI, que trae la de la suite. */}
+        <Box
+          data-preview-tenant
+          style={{ ...tinta, fontFamily: letra }}
+          sx={{ '& .MuiTypography-root': { fontFamily: 'inherit' } }}
+        >
         <StorefrontPreview
+          data={datos}
           storeName={form.watch('name') || form.watch('business_display_name')}
           themePreset={preset}
           style={estilo}
@@ -380,6 +455,7 @@ export function StorefrontDesignSection({
             announcements: form.watch('announcement_messages'),
           }}
         />
+        </Box>
       </Box>
     </Box>
   )

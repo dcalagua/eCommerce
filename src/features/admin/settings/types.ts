@@ -228,6 +228,12 @@ export const storeFormSchema = z.object({
     .min(1, 'settings.error.name')
     .max(200, 'settings.error.name'),
   hero_subtitle: optionalText(240, 'settings.error.description'),
+  /**
+   * Resumen v2 · El TITULAR de la portada («Tu botica en línea»). Existía en la
+   * base y lo pintaba la vitrina, pero no había dónde escribirlo: solo se podía
+   * cambiar tocando la base. Vacío = el nombre de la tienda.
+   */
+  hero_title: optionalText(120, 'settings.error.heroTitle'),
   accent_color: z
     .string()
     .trim()
@@ -331,6 +337,7 @@ export function toForm(name: string, settings: StoreSettings | null): StoreFormV
   return {
     name,
     hero_subtitle: settings?.hero_subtitle ?? '',
+    hero_title: settings?.hero_title ?? '',
     accent_color: settings?.accent_color ?? '#5AA97F',
     support_email: settings?.support_email ?? '',
     contact_phone: settings?.contact_phone ?? '',

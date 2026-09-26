@@ -1445,6 +1445,9 @@ export const es = {
     'settings.storeDescriptionHelp':
       'Resumen estable del negocio. Se usa en el pie, en los datos del negocio y como reserva para buscadores. No caduca con las campañas (hasta 360 caracteres).',
     'settings.heroKicker': 'Línea superior de la portada',
+    'settings.heroTitle': 'Titular de la portada',
+    'settings.heroTitleHelp': 'La frase grande de la portada. Si lo dejas vacío, sale el nombre de la tienda.',
+    'settings.error.heroTitle': 'Máximo 120 caracteres.',
     'settings.heroKickerHelp':
       'Texto corto encima del titular, opcional. Sirve para que la portada no repita el nombre de la tienda (hasta 80).',
     'settings.heroSubtitle': 'Mensaje de la portada',
