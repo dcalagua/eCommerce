@@ -382,6 +382,14 @@ export const trackedOrderSchema = z.object({
    * despliegue no lo trae y tiene que seguir pintándose.
    */
   payment_status: z.string().default('pending'),
+  /**
+   * Resumen v2 · Los otros dos ejes del pedido, para la línea de tiempo.
+   * `order_by_token` los devuelve y el esquema los tiraba. `null` en una
+   * respuesta anterior al despliegue: la línea de tiempo lo trata como «sin
+   * dato», nunca como «hecho».
+   */
+  approval_status: z.string().nullable().default(null),
+  fulfillment_status: z.string().nullable().default(null),
   currency: z.string().length(3),
   placed_at: z.string(),
   customer_name: z.string().nullable(),

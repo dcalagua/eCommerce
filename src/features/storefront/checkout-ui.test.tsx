@@ -862,6 +862,10 @@ describe('confirmación', () => {
     // Impuesto y total del servidor, no el subtotal que calculó el carrito.
     expect(screen.getByText(/^S\/ 36\.00$/)).toBeInTheDocument()
     expect(screen.getByText(/^S\/ 236\.00$/)).toBeInTheDocument()
+    // Resumen v2 · dónde está el pedido y qué se puede hacer con él.
+    expect(screen.getByRole('list', { name: 'Estado del pedido' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Descargar PDF' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Repetir este pedido' })).toBeInTheDocument()
 
     await waitFor(() =>
       expect(localStorage.getItem(`ebim.ecommerce.cart.v1:${STORE}`)).toBeNull(),

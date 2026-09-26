@@ -196,6 +196,12 @@ export const orderResultSchema = z.object({
   replay: z.boolean().default(false),
   intent_id: z.string().uuid().optional(),
   payment_status: z.string().optional(),
+  /**
+   * Resumen v2 · Si el pedido quedó esperando aprobación. El checkout ya lo
+   * devolvía y el esquema lo tiraba: sin él, la confirmación no podía decir
+   * «tu jefatura tiene que aprobarlo».
+   */
+  approval_status: z.string().nullable().optional(),
   /** N05: la orden de compra con la que quedó firmado. Ausente en respuestas anteriores. */
   purchase_order_number: z.string().nullable().optional(),
 })

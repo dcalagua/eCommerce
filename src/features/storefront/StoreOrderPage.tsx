@@ -1,5 +1,8 @@
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
-import { Box, Button, Card, Chip, Divider, Stack, Typography } from '@mui/material'
+import PictureAsPdfRoundedIcon from '@mui/icons-material/PictureAsPdfRounded'
+import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded'
+import { Box, Button, Card, Chip, Divider, GlobalStyles, Stack, Typography } from '@mui/material'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
@@ -8,6 +11,9 @@ import { formatMoney } from '@/shared/lib/format'
 import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
 import { R, TS } from '@/theme/tokens'
 import { fetchOrderByToken } from './api'
+import { addLinesToCart } from './cart/addLinesToCart'
+import { useCart } from './cart/cart-context'
+import { OrderTimeline } from './components/OrderTimeline'
 import { orderResultSchema, type OrderResult } from './checkout'
 import { useStorefront } from './hooks'
 import { usePaymentMethods } from './payment'
@@ -142,9 +148,47 @@ export function StoreOrderPage() {
   // el que sigue siendo cierto si el cobro se revierte después.
   const estadoPago = tracked.data?.payment_status ?? fromState?.payment_status ?? null
   const yaPagado = estadoPago !== null && PAGADO.includes(estadoPago)
+  const estadoAprobacion = tracked.data?.approval_status ?? fromState?.approval_status ?? null
+  const estadoEnvio = tracked.data?.fulfillment_status ?? null
+
+  /**
+   * Resumen v2 · Repetir el pedido.
+   *
+   * Solo con los ids de producto, que trae la respuesta del checkout y no el
+   * enlace permanente (lo recorta a propósito). `addLinesToCart` vuelve a leer
+   * cada producto del catálogo: se repite QUÉ y CUÁNTO, nunca un precio.
+   */
+  const cartApi = useCart()
+  const repetibles = (order?.items ?? []).filter((item) => item.product_id)
+  const [repitiendo, setRepitiendo] = useState(false)
+  const [repetido, setRepetido] = useState<{ added: number; skipped: number } | null>(null)
+  const repetir = async () => {
+    setRepitiendo(true)
+    try {
+      const resultado = await addLinesToCart(
+        cartApi,
+        store.store_id,
+        repetibles.map((item) => ({ product_id: item.product_id, quantity: item.quantity })),
+      )
+      setRepetido(resultado)
+      if (resultado.added > 0) cartApi.openCart()
+    } finally {
+      setRepitiendo(false)
+    }
+  }
 
   return (
     <Stack sx={{ gap: 2, maxWidth: 720, mx: 'auto' }}>
+      {/* «Descargar PDF» es imprimir: el navegador guarda en PDF sin una
+          librería ni un servicio. Al imprimir solo queda el pedido. */}
+      <GlobalStyles
+        styles={{
+          '@media print': {
+            '.sf-header, footer, .MuiFab-root, [data-no-print]': { display: 'none !important' },
+            body: { background: '#fff !important' },
+          },
+        }}
+      />
       <Card sx={{ p: { xs: 2.5, md: 4 }, textAlign: 'center' }}>
         <Box
           sx={{
@@ -200,7 +244,50 @@ export function StoreOrderPage() {
             fontWeight: 700,
           }}
         />
+
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          data-no-print
+          sx={{ gap: 1, justifyContent: 'center', mt: 2.5 }}
+        >
+          <Button variant="outlined" startIcon={<PictureAsPdfRoundedIcon />} onClick={() => window.print()}>
+            {t('store.order.download')}
+          </Button>
+          {repetibles.length > 0 && (
+            <Button
+              variant="outlined"
+              startIcon={<ReplayRoundedIcon />}
+              disabled={repitiendo}
+              onClick={() => void repetir()}
+            >
+              {t('store.order.repeat')}
+            </Button>
+          )}
+        </Stack>
+        {repetido ? (
+          <Typography data-no-print aria-live="polite" sx={{ fontSize: TS.label, color: 'var(--muted)', mt: 1 }}>
+            {t('store.order.repeated')
+              .replace('{added}', String(repetido.added))
+              .replace('{skipped}', String(repetido.skipped))}
+          </Typography>
+        ) : null}
       </Card>
+
+      {/* Dónde está el pedido: registrado, aprobación (si la hay), pago,
+          envío y entrega, cada uno con su estado dicho en texto. */}
+      {order && (
+        <Card sx={{ p: { xs: 2, md: 3 } }}>
+          <Typography component="h2" sx={{ fontSize: TS.cardTitle, fontWeight: 800, mb: 2 }}>
+            {t('store.order.timeline')}
+          </Typography>
+          <OrderTimeline
+            status={order.status}
+            paid={yaPagado}
+            approvalStatus={estadoAprobacion}
+            fulfillmentStatus={estadoEnvio}
+          />
+        </Card>
+      )}
 
       {order && (
         <Card sx={{ p: { xs: 2, md: 3 } }}>
@@ -209,10 +296,10 @@ export function StoreOrderPage() {
           </Typography>
 
           <Stack component="ul" sx={{ listStyle: 'none', m: 0, p: 0, gap: 0.75 }}>
-            {order.items.map((item) => (
+            {order.items.map((item, index) => (
               <Stack
                 component="li"
-                key={item.product_id}
+                key={`${item.sku}-${index}`}
                 direction="row"
                 sx={{ justifyContent: 'space-between', gap: 1 }}
               >
