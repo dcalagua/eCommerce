@@ -1,6 +1,7 @@
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import RadioButtonUncheckedRoundedIcon from '@mui/icons-material/RadioButtonUncheckedRounded'
 import { Box, Stack, Typography } from '@mui/material'
+import { visuallyHidden } from '@mui/utils'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { R, TS } from '@/theme/tokens'
@@ -81,6 +82,22 @@ const DONDE: Record<ReadinessSignal['id'], string> = {
   pages: '/app/content',
 }
 
+/**
+ * Resumen v2 · El orden de lo pendiente: lo que más se nota al entrar, primero.
+ * Una tienda con 140 recuadros grises en el catálogo tiene un problema más
+ * visible que una sin logotipos de marca.
+ */
+const PRIORIDAD: readonly ReadinessSignal['id'][] = [
+  'product-images',
+  'hero',
+  'logo',
+  'category-images',
+  'description',
+  'contact',
+  'brand-logos',
+  'pages',
+]
+
 /** Las que cuentan cosas enseñan «hechas de totales»; las de sí o no, no. */
 const CUENTA: ReadonlySet<ReadinessSignal['id']> = new Set<ReadinessSignal['id']>([
   'product-images',
@@ -115,128 +132,170 @@ export function StoreReadiness({
   })
 
   const alDia = señales.filter((s) => s.state === 'ok').length
+  /**
+   * Resumen v2 · Lo que falta, primero y ORDENADO por lo que más se nota al
+   * entrar; lo que ya está, al final y en pequeño. Antes eran ocho tarjetas
+   * iguales y lo resuelto ocupaba lo mismo que lo pendiente.
+   */
+  const pendientes = señales
+    .filter((s) => s.state !== 'ok')
+    .sort((a, b) => PRIORIDAD.indexOf(a.id) - PRIORIDAD.indexOf(b.id))
+  const listas = señales.filter((s) => s.state === 'ok')
 
   return (
-    <Stack component="section" aria-label={t('settings.readiness.title')} spacing={1}>
+    <Stack component="section" aria-label={t('settings.readiness.title')} spacing={1.5}>
+      {/* El resumen es una CUENTA, no una nota: el anillo dice «5/8» —se
+          comprueba mirando la lista— y no un porcentaje. */}
       <Stack
         direction="row"
-        sx={{ alignItems: 'baseline', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}
+        sx={{ alignItems: 'center', gap: 2, p: 1.5, borderRadius: `${R.lg}px`, bgcolor: 'var(--neutral-soft)' }}
       >
-        <Typography sx={{ fontSize: TS.bodyStrong, fontWeight: 700 }}>
-          {t('settings.readiness.title')}
-        </Typography>
-        {/* El resumen es una CUENTA, no una nota: se puede comprobar mirando la
-            lista de abajo, que es lo que una nota de 0 a 100 no permite. */}
-        <Typography sx={{ fontSize: TS.label, fontWeight: 800, color: 'var(--muted)' }}>
-          {t('settings.readiness.summary')
-            .replace('{n}', String(alDia))
-            .replace('{total}', String(señales.length))}
-        </Typography>
+        <Box
+          aria-hidden
+          sx={{
+            width: 64,
+            height: 64,
+            flexShrink: 0,
+            borderRadius: '50%',
+            display: 'grid',
+            placeItems: 'center',
+            background: `conic-gradient(var(--accent) ${(alDia / Math.max(señales.length, 1)) * 360}deg, var(--border) 0deg)`,
+          }}
+        >
+          <Box
+            sx={{
+              width: 50,
+              height: 50,
+              borderRadius: '50%',
+              display: 'grid',
+              placeItems: 'center',
+              bgcolor: 'var(--card)',
+              fontSize: 15,
+              fontWeight: 800,
+            }}
+          >
+            {`${alDia}/${señales.length}`}
+          </Box>
+        </Box>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography sx={{ fontSize: TS.bodyStrong, fontWeight: 800 }}>
+            {t('settings.readiness.summary')
+              .replace('{n}', String(alDia))
+              .replace('{total}', String(señales.length))}
+          </Typography>
+          <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>{t('settings.readiness.help')}</Typography>
+        </Box>
       </Stack>
 
-      <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
-        {t('settings.readiness.help')}
-      </Typography>
-
-      <Stack component="ul" sx={{ listStyle: 'none', m: 0, p: 0, gap: 0.75 }}>
-        {señales.map((señal) => {
-          const listo = señal.state === 'ok'
-
-          return (
-            <Stack
-              key={señal.id}
-              component="li"
-              direction="row"
-              data-readiness={señal.id}
-              data-state={señal.state}
-              sx={{
-                gap: 1,
-                alignItems: 'flex-start',
-                p: 1,
-                borderRadius: `${R.md}px`,
-                border: '1px solid var(--border)',
-                bgcolor: 'var(--card)',
-              }}
-            >
-              <Box
-                aria-hidden
-                sx={{ display: 'flex', mt: '2px', color: listo ? 'var(--accent)' : 'var(--muted)' }}
-              >
-                {listo ? (
-                  <CheckCircleRoundedIcon fontSize="small" />
-                ) : (
-                  <RadioButtonUncheckedRoundedIcon fontSize="small" />
-                )}
-              </Box>
-
-              <Box sx={{ minWidth: 0, flex: 1 }}>
+      {pendientes.length > 0 ? (
+        <>
+          <Typography sx={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--amber)' }}>
+            {t('settings.readiness.pendingTitle')}
+          </Typography>
+          <Stack component="ul" sx={{ listStyle: 'none', m: 0, p: 0, gap: 0.75 }}>
+            {pendientes.map((señal) => {
+              const cuenta = CUENTA.has(señal.id) && señal.total > 0
+              return (
                 <Stack
+                  key={señal.id}
+                  component="li"
                   direction="row"
-                  sx={{ gap: 1, alignItems: 'baseline', flexWrap: 'wrap' }}
+                  data-readiness={señal.id}
+                  data-state={señal.state}
+                  sx={{ gap: 1.25, alignItems: 'flex-start', p: 1.25, borderRadius: `${R.md}px`, border: '1px solid var(--border)', bgcolor: 'var(--card)' }}
                 >
-                  <Typography sx={{ fontSize: TS.body, fontWeight: 700 }}>
-                    {t(TITULO[señal.id])}
-                  </Typography>
-                  {/* El estado, en texto y no solo en color: un icono verde y
-                      uno gris no se distinguen con daltonismo. */}
-                  <Typography
-                    sx={{
-                      fontSize: TS.label,
-                      fontWeight: 800,
-                      color: listo ? 'var(--accent-deep)' : 'var(--muted)',
-                    }}
-                  >
-                    {listo ? t('settings.readiness.done') : t('settings.readiness.todo')}
-                  </Typography>
-                  {CUENTA.has(señal.id) && señal.total > 0 && (
-                    <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
-                      {t('settings.readiness.count')
-                        .replace('{n}', String(señal.done))
-                        .replace('{total}', String(señal.total))}
-                    </Typography>
-                  )}
-                </Stack>
-                <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
-                  {t(PORQUE[señal.id])}
-                </Typography>
-                {/**
-                 * Y a dónde se va a arreglarlo (V3 · P12).
-                 *
-                 * Solo en las que están por mejorar: un enlace de «arréglalo»
-                 * al lado de algo que ya está al día es una invitación a tocar
-                 * lo que funciona.
-                 *
-                 * Un `<a>` de verdad, no un botón con `navigate`: la mitad son
-                 * pestañas de esta misma página —`#branding`— y la otra mitad
-                 * otras pantallas, y las dos cosas se abren igual, se copian
-                 * igual y se abren en otra ventana igual.
-                 */}
-                {!listo && (
-                  <Box
-                    component="a"
-                    href={DONDE[señal.id]}
-                    data-readiness-link={señal.id}
-                    sx={{
-                      display: 'inline-block',
-                      mt: 0.25,
-                      fontSize: TS.label,
-                      fontWeight: 800,
-                      color: 'var(--accent-deep)',
-                      textDecoration: 'none',
-                      '&:hover': { textDecoration: 'underline' },
-                    }}
-                  >
-                    {t('settings.readiness.goTo')}
-                    <Box component="span" aria-hidden sx={{ ml: 0.25 }}>
-                      →
+                  <Box aria-hidden sx={{ display: 'flex', mt: '2px', color: 'var(--muted)' }}>
+                    <RadioButtonUncheckedRoundedIcon fontSize="small" />
+                  </Box>
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Stack direction="row" sx={{ gap: 1, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                      <Typography sx={{ fontSize: TS.body, fontWeight: 700 }}>{t(TITULO[señal.id])}</Typography>
+                      {/* El estado, en texto y no solo en color. */}
+                      <Typography sx={{ fontSize: TS.label, fontWeight: 800, color: 'var(--muted)' }}>
+                        {t('settings.readiness.todo')}
+                      </Typography>
+                      {cuenta ? (
+                        <Typography sx={{ fontSize: TS.label, color: 'var(--muted)', ml: 'auto' }} className="tnum">
+                          {t('settings.readiness.count')
+                            .replace('{n}', String(señal.done))
+                            .replace('{total}', String(señal.total))}
+                        </Typography>
+                      ) : null}
+                    </Stack>
+                    {cuenta ? (
+                      <Box aria-hidden sx={{ mt: 0.75, height: 6, borderRadius: 999, bgcolor: 'var(--neutral-soft)', overflow: 'hidden' }}>
+                        <Box sx={{ height: '100%', width: `${(señal.done / señal.total) * 100}%`, bgcolor: 'var(--accent)' }} />
+                      </Box>
+                    ) : null}
+                    <Typography sx={{ fontSize: TS.label, color: 'var(--muted)', mt: 0.5 }}>{t(PORQUE[señal.id])}</Typography>
+                    {/* Y a dónde se va a arreglarlo: un `<a>` de verdad (pestañas
+                        de esta página o rutas), con aspecto de botón. */}
+                    <Box
+                      component="a"
+                      href={DONDE[señal.id]}
+                      data-readiness-link={señal.id}
+                      sx={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        mt: 0.75,
+                        px: 1.25,
+                        py: 0.5,
+                        borderRadius: `${R.sm}px`,
+                        border: '1px solid var(--accent)',
+                        fontSize: TS.label,
+                        fontWeight: 800,
+                        color: 'var(--accent-deep)',
+                        textDecoration: 'none',
+                        '&:hover': { bgcolor: 'var(--accent-soft)' },
+                      }}
+                    >
+                      {t('settings.readiness.goTo')}
+                      <Box component="span" aria-hidden>
+                        →
+                      </Box>
                     </Box>
                   </Box>
-                )}
-              </Box>
-            </Stack>
-          )
-        })}
-      </Stack>
+                </Stack>
+              )
+            })}
+          </Stack>
+        </>
+      ) : null}
+
+      {listas.length > 0 ? (
+        <>
+          <Typography sx={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--accent-deep)' }}>
+            {t('settings.readiness.readyTitle')}
+          </Typography>
+          <Stack component="ul" direction="row" sx={{ listStyle: 'none', m: 0, p: 0, gap: 0.75, flexWrap: 'wrap' }}>
+            {listas.map((señal) => (
+              <Stack
+                key={señal.id}
+                component="li"
+                direction="row"
+                data-readiness={señal.id}
+                data-state={señal.state}
+                title={t(PORQUE[señal.id])}
+                sx={{ alignItems: 'center', gap: 0.5, px: 1.25, py: 0.5, borderRadius: 999, bgcolor: 'var(--accent-soft)', color: 'var(--accent-deep)' }}
+              >
+                <CheckCircleRoundedIcon aria-hidden sx={{ fontSize: 16 }} />
+                <Typography component="span" sx={{ fontSize: TS.label, fontWeight: 800 }}>
+                  {t(TITULO[señal.id])}
+                </Typography>
+                {/* El estado también en texto (para lector de pantalla y para
+                    quien no distingue el verde): «Completo». */}
+                <Box component="span" sx={visuallyHidden}>
+                  {t('settings.readiness.done')}
+                </Box>
+                <Box component="span" sx={visuallyHidden}>
+                  {t(PORQUE[señal.id])}
+                </Box>
+              </Stack>
+            ))}
+          </Stack>
+        </>
+      ) : null}
     </Stack>
   )
 }

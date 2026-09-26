@@ -308,6 +308,8 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'settings.readiness.help':
       'A store can have a well ordered home page and still look poor. This blocks nothing and is not required: these are things that change what a first-time visitor sees.',
     'settings.readiness.summary': '{n} of {total} up to date',
+    'settings.readiness.pendingTitle': 'To improve · most visible first',
+    'settings.readiness.readyTitle': 'Done',
     'settings.readiness.done': 'Complete',
     'settings.readiness.todo': 'Could be better',
     'settings.readiness.count': '{n} of {total}',

@@ -275,6 +275,8 @@ export const es = {
     'settings.readiness.help':
       'Una tienda puede tener la portada bien ordenada y verse pobre. Esto no bloquea nada ni es obligatorio: son cosas que cambian lo que ve quien llega por primera vez.',
     'settings.readiness.summary': '{n} de {total} al día',
+    'settings.readiness.pendingTitle': 'Por mejorar · primero lo que más se nota',
+    'settings.readiness.readyTitle': 'Listo',
     'settings.readiness.done': 'Completo',
     'settings.readiness.todo': 'Por mejorar',
     'settings.readiness.count': '{n} de {total}',
