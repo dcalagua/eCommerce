@@ -54,6 +54,7 @@ import {
   type StorefrontOutlet,
 } from './hooks'
 import { useFavorites } from './useFavorites'
+import { useStorePreview } from './previewBridge'
 import { resolveStoreFont } from './theme/presets'
 import { StorefrontThemeProvider } from './theme/StorefrontThemeProvider'
 import { useStorefrontTheme } from './theme/useStorefrontTheme'
@@ -113,7 +114,10 @@ export function StorefrontLayout() {
   const { storeSlug } = useParams<{ storeSlug: string }>()
   const { t, locale } = useI18n()
   const { pathname } = useLocation()
-  const { data: store, isPending, isError, error, refetch } = usePublicStore(storeSlug)
+  const { data: storeDeLaBase, isPending, isError, error, refetch } = usePublicStore(storeSlug)
+  // Resumen v2 · Abierta como vista previa del taller de diseño, la tienda se
+  // pinta con lo que el backoffice tenga SIN GUARDAR. Fuera de ahí, tal cual.
+  const store = useStorePreview(storeDeLaBase)
 
   // Antes de cualquier retorno temprano: el orden de los hooks no puede
   // depender de si la tienda cargo.

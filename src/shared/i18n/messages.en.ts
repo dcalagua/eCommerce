@@ -252,6 +252,7 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'settings.design.home.up': 'Move up',
     'settings.design.home.down': 'Move down',
     'settings.design.home.maxItems': 'Maximum',
+    'settings.design.home.adjust': 'Adjust',
     'settings.design.home.pending': 'Not available yet',
     // P12 · Pending sections get their own group: ordering what is not
     // painted orders nothing, and it pushed the real ones out of place.
@@ -357,6 +358,19 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'settings.readiness.pagesWhy': 'Pages you mark for the menu are linked from the store footer.',
     'settings.design.unavailable':
       'Storefront design will be available once the latest database update is applied. In the meantime your store looks exactly as it did and the rest of the settings work as usual.',
+    'settings.design.live.home': 'Home',
+    'settings.design.live.catalog': 'Catalog',
+    'settings.design.live.product': 'Product',
+    'settings.design.live.cart': 'Cart',
+    'settings.design.live.checkout': 'Checkout',
+    'settings.design.live.page': 'Store page',
+    'settings.design.live.device': 'Device',
+    'settings.design.live.desktop': 'Desktop',
+    'settings.design.live.tablet': 'Tablet',
+    'settings.design.live.mobile': 'Phone',
+    'settings.design.live.real': 'With your real data',
+    'settings.design.live.frameTitle': 'Store preview',
+    'settings.design.live.note': 'This is your real store with what you have chosen now. The public store doesn\'t change until you save.',
     'settings.design.style.changedByYou': 'Changed by you',
     'settings.design.style.fromTheme': 'from theme',
     'settings.design.step.theme': 'Theme',

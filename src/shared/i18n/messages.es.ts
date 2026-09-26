@@ -215,6 +215,7 @@ export const es = {
     'settings.design.home.up': 'Subir',
     'settings.design.home.down': 'Bajar',
     'settings.design.home.maxItems': 'Máximo',
+    'settings.design.home.adjust': 'Ajustar',
     'settings.design.home.pending': 'Todavía no disponible',
     // P12 · Las pendientes van en su propio grupo: ordenar lo que no se pinta
     // es ordenar nada, y empujaba a las de verdad fuera de sitio.
@@ -325,6 +326,19 @@ export const es = {
       'Las páginas que marcas para el menú se enlazan desde el pie de la tienda.',
     'settings.design.unavailable':
       'El diseño de tienda estará disponible en cuanto se aplique la última actualización de la base de datos. Mientras tanto tu tienda se ve como siempre y el resto de la configuración funciona con normalidad.',
+    'settings.design.live.home': 'Portada',
+    'settings.design.live.catalog': 'Catálogo',
+    'settings.design.live.product': 'Producto',
+    'settings.design.live.cart': 'Carrito',
+    'settings.design.live.checkout': 'Checkout',
+    'settings.design.live.page': 'Página de la tienda',
+    'settings.design.live.device': 'Dispositivo',
+    'settings.design.live.desktop': 'Escritorio',
+    'settings.design.live.tablet': 'Tableta',
+    'settings.design.live.mobile': 'Teléfono',
+    'settings.design.live.real': 'Con tus datos reales',
+    'settings.design.live.frameTitle': 'Vista previa de la tienda',
+    'settings.design.live.note': 'Es tu tienda de verdad con lo que tienes elegido ahora. La tienda pública no cambia hasta que guardes.',
     'settings.design.style.changedByYou': 'Cambiado por ti',
     'settings.design.style.fromTheme': 'del tema',
     'settings.design.step.theme': 'Tema',

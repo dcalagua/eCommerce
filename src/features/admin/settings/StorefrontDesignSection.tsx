@@ -19,6 +19,7 @@ import { AdvancedStyleSettings } from './AdvancedStyleSettings'
 import { themeColumnsReady } from './api'
 import { DesignStep } from './DesignStep'
 import { HomeLayoutEditor } from './HomeLayoutEditor'
+import { LiveStorePreview } from './LiveStorePreview'
 import { StoreReadiness } from './StoreReadiness'
 import { StorefrontPreview, type PreviewData } from './StorefrontPreview'
 import { ThemeMiniPreview } from './ThemeMiniPreview'
@@ -182,6 +183,39 @@ export function StorefrontDesignSection({
     else abrir(indice)
   }
   const fuenteDelTema = resolveStoreFont(form.watch('font_family'), preset)
+  /** El nombre de la letra, sin el «(Retail)» que lleva en el selector de Marca. */
+  const nombreDeLetra = (fuente: string) =>
+    t(`settings.font.${fuente}` as MessageKey).replace(/\s*\([^)]*\)\s*$/, '')
+
+  /**
+   * Resumen v2 · Lo que la vista previa en vivo pinta encima de la tienda: los
+   * campos del formulario, con los textos vacíos como `null` (así los lee la
+   * vitrina: vacío = «usa lo de siempre»).
+   */
+  const vacioANulo = (valor: unknown) => (typeof valor === 'string' && valor.trim() === '' ? null : valor)
+  const encima = useMemo(
+    () => ({
+      name: form.watch('name'),
+      accent_color: vacioANulo(form.watch('accent_color')),
+      font_family: vacioANulo(form.watch('font_family')),
+      ui_radius: vacioANulo(form.watch('ui_radius')),
+      ui_density: vacioANulo(form.watch('ui_density')),
+      theme_preset: preset,
+      storefront_style: estilo,
+      home_layout: form.watch('home_layout'),
+      hero_title: vacioANulo(form.watch('hero_title')),
+      hero_subtitle: vacioANulo(form.watch('hero_subtitle')),
+      hero_kicker: vacioANulo(form.watch('hero_kicker')),
+      store_description: vacioANulo(form.watch('store_description')),
+      brand_lockup: form.watch('brand_lockup'),
+      show_theme_toggle: form.watch('show_theme_toggle'),
+      announcement_messages: form.watch('announcement_messages'),
+      value_props: form.watch('value_props'),
+    }),
+    // `watch` devuelve valores nuevos en cada render; se compara por contenido.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(form.watch())],
+  )
   const encendidas = normalizeHomeLayout(form.watch('home_layout')).sections.filter((seccion) => seccion.enabled).length
   const cambiados = Object.keys(estilo ?? {}).length
 
@@ -298,7 +332,7 @@ export function StorefrontDesignSection({
           id="tema"
           numero={1}
           titulo={t('settings.design.step.theme')}
-          resumen={`${t(ETIQUETA_TEMA[preset])} · ${t(`settings.font.${fuenteDelTema}` as MessageKey)}`}
+          resumen={`${t(ETIQUETA_TEMA[preset])} · ${nombreDeLetra(fuenteDelTema)}`}
           abierto={abiertos.has(0)}
           hecho={visto > 0}
           onAlternar={() => alternar(0)}
@@ -380,7 +414,7 @@ export function StorefrontDesignSection({
                       Aa
                     </Typography>
                     <Typography sx={{ fontSize: TS.label, fontWeight: 700, color: 'var(--muted)' }}>
-                      {t(`settings.font.${THEME_FONTS[id]}` as MessageKey)}
+                      {nombreDeLetra(THEME_FONTS[id])}
                     </Typography>
                   </Stack>
                   <Typography sx={{ fontSize: TS.label, color: 'var(--muted)', mt: 0.5 }}>
@@ -526,8 +560,12 @@ export function StorefrontDesignSection({
           pr: { lg: 0.5 },
         }}
       >
-        {/* El color y la letra de la tienda, solo en esta zona. La letra se
-            fuerza sobre la tipografía de MUI, que trae la de la suite. */}
+        {/* Resumen v2 · Con tienda, la vista previa ES la tienda (iframe con
+            lo del formulario encima). Sin tienda —cuenta nueva— queda el
+            dibujo de siempre, con el color y la letra del formulario. */}
+        {storeSlug ? (
+          <LiveStorePreview storeSlug={storeSlug} overrides={encima} productSlug={hits[0]?.slug ?? null} />
+        ) : (
         <Box
           data-preview-tenant
           style={{ ...tinta, fontFamily: letra }}
@@ -554,6 +592,7 @@ export function StorefrontDesignSection({
           }}
         />
         </Box>
+        )}
       </Box>
     </Box>
   )

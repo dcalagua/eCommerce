@@ -419,20 +419,33 @@ describe('ordenar la portada', () => {
     expect(valores().home_layout.sections.findIndex((s) => s.id === 'newsletter')).toBe(antes)
   })
 
-  it('el tope solo aparece donde significa algo', () => {
+  // Resumen v2 · El tope vive en el panel de la sección (la fila solo lo dice,
+  // «Relámpago · 6»). Se abre el panel por la pastilla de la fila.
+  async function abrirPanelDe(user: ReturnType<typeof userEvent.setup>, nombre: string) {
+    await user.click(screen.getByRole('button', { name: new RegExp(`Cómo se enseña: ${nombre}`) }))
+    await waitFor(() => expect(document.querySelector('[data-presentation-popover]')).not.toBeNull())
+  }
+
+  it('el tope solo aparece donde significa algo', async () => {
+    const user = userEvent.setup()
     pintar()
 
+    await abrirPanelDe(user, 'Ofertas')
     expect(screen.getByLabelText('Máximo: Ofertas')).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(document.querySelector('[data-presentation-popover]')).toBeNull())
+
     // El hero enseña una cosa y los servicios cuatro fijas: un tope ahí es
     // ruido que alguien tendría que interpretar.
+    await abrirPanelDe(user, 'Portada')
     expect(screen.queryByLabelText('Máximo: Portada')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('Máximo: Servicios')).not.toBeInTheDocument()
   })
 
   it('un tope fuera de rango se acota en vez de guardarse mal', async () => {
     const user = userEvent.setup()
     pintar()
 
+    await abrirPanelDe(user, 'Ofertas')
     const campo = screen.getByLabelText('Máximo: Ofertas')
     await user.clear(campo)
     await user.type(campo, '99')
