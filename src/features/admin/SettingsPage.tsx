@@ -65,6 +65,7 @@ import {
   type Density,
 } from '@/theme/tokens'
 import { SettingsError } from './settings/api'
+import { zonasCambiadas } from './settings/changes'
 import { BrandPreview } from './settings/BrandPreview'
 import { StoreAssetField } from './settings/StoreAssetField'
 import { storeFormSchema, toForm, type StoreFormValues } from './settings/types'
@@ -1018,9 +1019,16 @@ export function SettingsPage() {
         }}
       >
         {form.formState.isDirty && (
-          <Box sx={{ mr: 'auto' }}>
+          <Stack direction="row" sx={{ mr: 'auto', alignItems: 'center', gap: 1.25, minWidth: 0, flexWrap: 'wrap' }}>
             <StatusChip tone="warning" label={t('settings.unsaved')} />
-          </Box>
+            {/* Resumen v2 · QUÉ se va a publicar, por zonas, y que la tienda
+                cambia al guardar: antes la barra no decía ni lo uno ni lo otro. */}
+            <Typography data-testid="cambios" sx={{ fontSize: 12.5, color: 'var(--muted)', minWidth: 0 }}>
+              {zonasCambiadas(form.formState.dirtyFields).map((zona) => t(zona)).join(' · ')}
+              {' — '}
+              {t('settings.changes.publishHint')}
+            </Typography>
+          </Stack>
         )}
         <GhostButton
           type="button"
