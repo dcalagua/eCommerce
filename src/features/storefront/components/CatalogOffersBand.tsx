@@ -1,5 +1,7 @@
 import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
 import { Box, Stack, Typography } from '@mui/material'
+import { useI18n } from '@/shared/i18n/i18n-context'
+import { Countdown } from './Countdown'
 
 /**
  * La cabecera de «Ofertas» dentro del catálogo.
@@ -11,7 +13,20 @@ import { Box, Stack, Typography } from '@mui/material'
  *
  * El degradado es el del tenant (`--hero-grad`): cada tienda la ve en su color.
  */
-export function CatalogOffersBand({ title, subtitle }: { title: string; subtitle: string | null }) {
+export function CatalogOffersBand({
+  title,
+  subtitle,
+  kicker = null,
+  endsAt = null,
+}: {
+  title: string
+  subtitle: string | null
+  /** Resumen v2 · El nombre de la campaña que antes termina, encima del título. */
+  kicker?: string | null
+  /** Resumen v2 · Su fin REAL: con él, la cuenta regresiva a la derecha. */
+  endsAt?: string | null
+}) {
+  const { t } = useI18n()
   return (
     <Box
       data-catalog-band="offers"
@@ -51,7 +66,15 @@ export function CatalogOffersBand({ title, subtitle }: { title: string; subtitle
         >
           <LocalOfferRoundedIcon />
         </Box>
-        <Box sx={{ minWidth: 0 }}>
+        <Box sx={{ minWidth: 0, flex: 1 }}>
+          {kicker ? (
+            <Box
+              component="span"
+              sx={{ display: 'inline-block', mb: 0.5, px: 1, borderRadius: 'var(--sf-pill)', bgcolor: '#fff', color: 'var(--accent-deep)', fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase' }}
+            >
+              {kicker}
+            </Box>
+          ) : null}
           <Typography
             component="h1"
             sx={{ fontSize: { xs: 26, md: 34 }, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.1 }}
@@ -62,6 +85,12 @@ export function CatalogOffersBand({ title, subtitle }: { title: string; subtitle
             <Typography sx={{ fontSize: { xs: 13.5, md: 15 }, opacity: 0.88, mt: 0.25 }}>{subtitle}</Typography>
           ) : null}
         </Box>
+        {endsAt ? (
+          <Stack sx={{ alignItems: 'flex-end', gap: 0.5, display: { xs: 'none', sm: 'flex' } }}>
+            <Typography sx={{ fontSize: 11.5, fontWeight: 700, opacity: 0.9 }}>{t('store.catalog.endsIn')}</Typography>
+            <Countdown endsAt={endsAt} />
+          </Stack>
+        ) : null}
       </Stack>
     </Box>
   )

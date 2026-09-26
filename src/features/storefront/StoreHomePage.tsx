@@ -1,7 +1,10 @@
+import BoltRoundedIcon from '@mui/icons-material/BoltRounded'
 import { Box, Breadcrumbs, Button, Card, Link as MuiLink, Stack, Typography } from '@mui/material'
 import { visuallyHidden } from '@mui/utils'
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
+import { useSessionContext } from '@/features/auth/session-context'
+import { useCommerceContext } from './commerce/context'
 import { lazyPage } from '@/app/lazyPage'
 import type { SearchQuery, SearchSort } from '@/domain'
 import type { PublicProduct } from './types'
@@ -20,6 +23,7 @@ import { useFavorites } from './useFavorites'
 import { StoreLandingSkeleton } from './components/StoreLandingSkeleton'
 import { HomeComposer } from './home/HomeComposer'
 import type { HomeSectionData } from './home/types'
+import { campanaQueTerminaAntes } from './feria'
 import { resolveSectionPresentation } from './theme/presentation'
 import { useStorefrontTheme } from './theme/useStorefrontTheme'
 
@@ -547,6 +551,8 @@ export function StoreHomePage() {
    * hijas al entrar en una, hermanas dentro de una hoja. Con treinta categorías
    * planas la barra era un muro; con el árbol es una ruta.
    */
+  /** ¿El buscador contó por familia? Sin cuentas, ni se enseñan ni se oculta nada. */
+  const hayCuentasDeFamilia = (first?.facets.categories.length ?? 0) > 0
   const categoryOptions = categoryBarItems(categories.data ?? [], categorySlug).map(
     (category) => ({
       code: category.slug,
@@ -678,6 +684,22 @@ export function StoreHomePage() {
       // un error: es que no hay a dónde.
     }
   }, [listaVista])
+
+  // Resumen v2 · Quién compra: el comprador empresa ve «Pedido rápido por SKU».
+  const { status: estadoSesion } = useSessionContext()
+  const { audience: audiencia } = useCommerceContext(storeSlug, estadoSesion === 'authenticated')
+  /** El símbolo de la moneda de la tienda, para las cajas de precio del panel. */
+  const simboloMoneda = useMemo(() => {
+    try {
+      return (
+        new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'es-PE', { style: 'currency', currency: store.currency })
+          .formatToParts(0)
+          .find((parte) => parte.type === 'currency')?.value ?? ''
+      )
+    } catch {
+      return ''
+    }
+  }, [locale, store.currency])
 
   const resultCount = new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'es-PE').format(total)
   const cuentaDeResultados = `${resultCount} ${
@@ -1054,6 +1076,9 @@ export function StoreHomePage() {
           </MuiLink>
           {paginaOfertas ? (
             <CatalogOffersBand
+              // Resumen v2 · La campaña que antes termina, con su reloj REAL.
+              kicker={campanaQueTerminaAntes(promotions.data ?? [])?.name ?? null}
+              endsAt={campanaQueTerminaAntes(promotions.data ?? [])?.endsAt ?? null}
               title={t('store.catalog.offersTitle')}
               subtitle={
                 results.isSuccess ? t('store.catalog.offersSubtitle').replace('{n}', resultCount) : null
@@ -1128,9 +1153,31 @@ export function StoreHomePage() {
             </Breadcrumbs>
           )}
           <CategoryBar
-            categories={categoryBarItems(categories.data ?? [], categorySlug)}
+            categories={categoryBarItems(categories.data ?? [], categorySlug).filter(
+              // Resumen v2 · Con las cantidades a la vista, una familia a CERO es
+              // una puerta a una lista vacía: no se enseña (como en el diseño).
+              (category) => categorySlug !== null || !hayCuentasDeFamilia || (categoryCounts.get(category.slug) ?? 1) > 0,
+            )}
             selected={categorySlug}
             onSelect={(slug) => update('c', slug)}
+            // Las cantidades solo sin familia elegida: con una puesta, las
+            // facetas de las demás salen a cero y dirían algo falso.
+            counts={categorySlug || !hayCuentasDeFamilia ? null : categoryCounts}
+            total={categorySlug || !results.isSuccess ? null : total}
+            trailing={
+              audiencia !== 'consumer' ? (
+                <Button
+                  component={Link}
+                  to={`/s/${storeSlug}/pedido-rapido`}
+                  variant="outlined"
+                  size="small"
+                  startIcon={<BoltRoundedIcon />}
+                  sx={{ borderRadius: 'var(--sf-pill)', textTransform: 'none', fontWeight: 800, whiteSpace: 'nowrap' }}
+                >
+                  {t('store.catalog.quickOrderSku')}
+                </Button>
+              ) : null
+            }
           />
         </Stack>
       ) : null}
@@ -1213,6 +1260,7 @@ export function StoreHomePage() {
                   onInStock={(only) => update('d', only ? '1' : null)}
                   onDiscounted={(only) => update('oferta', only ? '1' : null)}
                   onClear={quitarFiltros}
+                  currencySymbol={simboloMoneda}
                 />
               </StoreFilterDrawer>
             </Suspense>
@@ -1245,7 +1293,12 @@ export function StoreHomePage() {
           )}
 
           {results.isSuccess && total > 0 && (
-            <Box>
+            <Box
+              // Resumen v2 · Con la columna de filtros al lado, el ancho útil es
+              // ~1000 px: cuatro columnas como en el diseño, sea cual sea el tema.
+              // Con cinco o seis, la tarjeta de empresa cortaba «Agregar».
+              sx={vista === 'grid' ? { '--sf-grid-sm': 3, '--sf-grid-lg': 4 } : undefined}
+            >
               <ProductGrid
                 products={products}
                 storeSlug={storeSlug}
@@ -1265,11 +1318,24 @@ export function StoreHomePage() {
                   vale la pena pedir la siguiente pagina. */}
               <Box ref={sentinel} aria-hidden sx={{ height: 1, width: '100%' }} />
 
+              {/* Resumen v2 · Cuánto se ha visto y cuánto queda, como en el diseño. */}
+              <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
+                {t('store.catalog.showing')
+                  .replace('{n}', String(products.length))
+                  .replace('{total}', resultCount)}
+              </Typography>
+              <Box aria-hidden sx={{ width: 260, maxWidth: '80%', height: 4, borderRadius: 999, bgcolor: 'var(--neutral-soft)', overflow: 'hidden' }}>
+                <Box sx={{ height: '100%', width: `${Math.min(100, (products.length / Math.max(total, 1)) * 100)}%`, background: 'var(--hero-grad)' }} />
+              </Box>
               {results.isFetchingNextPage ? (
                 <BrandLoader label={t('store.catalog.loadingMore')} compact />
               ) : (
-                <Button variant="outlined" onClick={() => void results.fetchNextPage()}>
-                  {t('store.catalog.more')}
+                <Button
+                  variant="outlined"
+                  onClick={() => void results.fetchNextPage()}
+                  sx={{ borderRadius: 'var(--sf-pill)', textTransform: 'none', fontWeight: 800, px: 2.5 }}
+                >
+                  {t('store.catalog.loadN').replace('{n}', String(Math.min(PAGE_SIZE, Math.max(total - products.length, 0))))}
                 </Button>
               )}
             </Stack>
@@ -1366,6 +1432,7 @@ export function StoreHomePage() {
               onDiscounted={(only) => update('oferta', only ? '1' : null)}
               // Quien pulsa «limpiar» quiere verlo todo, no volver a la portada.
               onClear={quitarFiltros}
+              currencySymbol={simboloMoneda}
             />
           </Suspense>
         </Box>

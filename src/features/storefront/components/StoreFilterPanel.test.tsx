@@ -44,8 +44,9 @@ describe('contadores', () => {
     render()
 
     expect(await screen.findByText('Nordica')).toBeInTheDocument()
-    expect(screen.getAllByText('(4)')).toHaveLength(1)
-    expect(screen.getAllByText('(3)')).toHaveLength(2)
+    // Resumen v2 · la cifra, alineada a la derecha y sin paréntesis (diseño).
+    expect(screen.getAllByText('4')).toHaveLength(1)
+    expect(screen.getAllByText('3')).toHaveLength(2)
   })
 
   it('sin número no se inventa un cero', async () => {
@@ -62,7 +63,7 @@ describe('contadores', () => {
     })
 
     expect(await screen.findByText('Mesas')).toBeInTheDocument()
-    expect(screen.queryByText('(0)')).not.toBeInTheDocument()
+    expect(screen.queryByText('0')).not.toBeInTheDocument()
   })
 })
 
@@ -129,7 +130,8 @@ describe('rebajado', () => {
     render({ discountedOnly: true })
 
     await screen.findByText('Nordica')
-    expect(screen.getByRole('button', { name: 'Quitar filtros' })).toBeInTheDocument()
+    // Resumen v2 · «Limpiar (n)»: dice cuántos quita.
+    expect(screen.getByRole('button', { name: 'Limpiar (1)' })).toBeInTheDocument()
   })
 })
 
@@ -138,14 +140,14 @@ describe('limpiar', () => {
     render()
 
     await screen.findByText('Nordica')
-    expect(screen.queryByRole('button', { name: 'Quitar filtros' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Limpiar/ })).not.toBeInTheDocument()
   })
 
   it('aparece en cuanto hay un filtro puesto', async () => {
     const user = userEvent.setup()
     const { onClear } = render({ inStockOnly: true })
 
-    await user.click(await screen.findByRole('button', { name: 'Quitar filtros' }))
+    await user.click(await screen.findByRole('button', { name: 'Limpiar (1)' }))
     expect(onClear).toHaveBeenCalled()
   })
 })

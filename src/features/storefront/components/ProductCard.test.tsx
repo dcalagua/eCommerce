@@ -142,7 +142,8 @@ describe('SKU y «ya comprado» (Resumen v2)', () => {
         <ProductCard product={product({ sku: 'SIL-ROB-01' })} storeSlug="casa-nordica" b2b purchased />
       </CartProvider>,
     )
-    expect(await screen.findByText('SKU SIL-ROB-01')).toBeInTheDocument()
+    // Resumen v2 · el código solo, en monoespaciada, como en el diseño.
+    expect(await screen.findByText('SIL-ROB-01')).toBeInTheDocument()
     expect(screen.getByText('Ya comprado')).toBeInTheDocument()
   })
 
@@ -153,7 +154,7 @@ describe('SKU y «ya comprado» (Resumen v2)', () => {
       </CartProvider>,
     )
     await screen.findByRole('button', { name: /^Agregar al carrito/ })
-    expect(screen.queryByText('SKU SIL-ROB-01')).not.toBeInTheDocument()
+    expect(screen.queryByText('SIL-ROB-01')).not.toBeInTheDocument()
     expect(screen.queryByText('Ya comprado')).not.toBeInTheDocument()
   })
 })

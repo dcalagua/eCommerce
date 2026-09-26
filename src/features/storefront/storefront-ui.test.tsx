@@ -603,12 +603,13 @@ describe('catálogo', () => {
     renderStorefront(backend(), '/s/casa-nordica?ver=todo')
     await screen.findByText('Silla de roble')
 
-    await user.click(screen.getByRole('button', { name: 'Mesas' }))
+    // Resumen v2 · la píldora lleva su cantidad al lado del nombre: «Mesas 1».
+    await user.click(screen.getByRole('button', { name: /^Mesas( \d+)?$/ }))
 
     await waitFor(() => expect(screen.queryByText('Silla de roble')).not.toBeInTheDocument())
     expect(screen.getByText('Mesa extensible')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Mesas' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'Todo' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: /^Mesas( \d+)?$/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: /^Todo( \d+)?$/ })).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('volver a pulsar la categoría activa la quita', async () => {
@@ -616,7 +617,7 @@ describe('catálogo', () => {
     renderStorefront(backend(), '/s/casa-nordica?c=mesas')
     await screen.findByText('Mesa extensible')
 
-    await user.click(screen.getByRole('button', { name: 'Mesas' }))
+    await user.click(screen.getByRole('button', { name: /^Mesas( \d+)?$/ }))
 
     expect(await screen.findByText('Silla de roble')).toBeInTheDocument()
   })

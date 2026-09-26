@@ -1,7 +1,9 @@
 import FavoriteBorderRoundedIcon from '@mui/icons-material/FavoriteBorderRounded'
+import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded'
 import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded'
 import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
+import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
 import {
   Box,
   Button,
@@ -23,7 +25,6 @@ import type { CommercialPrice } from '../commerce/catalogPrices'
 import { useStorefrontTheme } from '../theme/useStorefrontTheme'
 import type { ProductCardVariant } from '../theme/types'
 import { discountPercent, type PublicProduct } from '../types'
-import { B2BProductMeta } from './B2BProductMeta'
 import { ProductMedia } from './ProductMedia'
 import { QuantityStepper } from './QuantityStepper'
 
@@ -225,6 +226,9 @@ export function ProductCard({
         // si no, con el teclado se ilumina solo el nombre y no se ve qué
         // tarjeta está seleccionada.
         '&:has(a:focus-visible)': { outline: '2px solid var(--accent)', outlineOffset: 2 },
+        // Resumen v2 · La tarjeta mide su propio ancho: en una rejilla estrecha
+        // el botón suelta el icono antes que cortar «Agregar».
+        containerType: 'inline-size',
       }}
     >
       {/* La foto flota sobre la tarjeta, sin caja propia.
@@ -338,16 +342,18 @@ export function ProductCard({
           </IconButton>
         )}
 
+        {/* Resumen v2 · Las pastillas de la foto, en fila: el descuento y, para
+            la cuenta de empresa, «Ya comprado» (como en el diseño). */}
+        <Stack
+          direction="row"
+          sx={{ position: 'absolute', top: 10, left: 10, right: 46, zIndex: 1, gap: 0.5, flexWrap: 'wrap' }}
+        >
         {discount !== null && (
           // Pastilla plana y compacta, no un `Chip` con su alto de 24 px y su
           // sombra: sobre la foto lo que hace falta es una etiqueta que se lea,
           // no un control que parezca pulsable.
           <Box
             sx={{
-              position: 'absolute',
-              top: 10,
-              left: 10,
-              zIndex: 1,
               px: 1,
               py: 0.25,
               borderRadius: 'var(--sf-pill)',
@@ -365,6 +371,29 @@ export function ProductCard({
             {`-${discount}%`}
           </Box>
         )}
+        {b2b && purchased ? (
+          <Box
+            data-purchased
+            sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 0.375,
+              px: 1,
+              py: 0.25,
+              borderRadius: 'var(--sf-pill)',
+              bgcolor: 'var(--text)',
+              color: 'var(--card)',
+              fontSize: TS.label,
+              fontWeight: 800,
+              lineHeight: 1.6,
+              boxShadow: '0 2px 8px rgba(0,0,0,.18)',
+            }}
+          >
+            <HistoryRoundedIcon aria-hidden sx={{ fontSize: 13 }} />
+            {t('store.product.purchasedBefore')}
+          </Box>
+        ) : null}
+        </Stack>
 
         {/* Resumen v2 · El puesto en el ranking de ventas, cuando la fila es un
             ranking. Es un dato (sale del agregado de pedidos), no un adorno. */}
@@ -399,7 +428,15 @@ export function ProductCard({
       </Box>
 
       <Stack sx={{ gap: 0.5, flex: 1 }}>
-        {product.category_name && (
+        {b2b && (product.brand_name || product.category_name) ? (
+          <Typography
+            className="eb-card-brand"
+            noWrap
+            sx={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)', lineHeight: 1.4 }}
+          >
+            {product.brand_name ?? product.category_name}
+          </Typography>
+        ) : product.category_name && (
           <Typography
             // La categoría es CONTEXTO, y cuánto contexto cabe depende del tema:
             // `compact` reparte cinco o seis columnas y ahí el nombre truncado
@@ -461,10 +498,60 @@ export function ProductCard({
             {product.name}
           </Box>
         </Typography>
-        {b2b ? <B2BProductMeta sku={product.sku} purchased={purchased} /> : null}
+        {b2b ? (
+          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 1, minWidth: 0 }}>
+            <Typography
+              data-sku={product.sku ?? ''}
+              noWrap
+              sx={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}
+            >
+              {product.sku ?? ''}
+            </Typography>
+            <Stack
+              direction="row"
+              data-stock={available ? 'in' : 'out'}
+              sx={{ alignItems: 'center', gap: 0.5, flexShrink: 0, fontSize: 11, fontWeight: 700, color: available ? 'var(--accent-deep)' : 'var(--muted)' }}
+            >
+              <Box aria-hidden sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: 'currentColor' }} />
+              {available ? t('store.availability.inStock') : t('store.availability.outOfStock')}
+            </Stack>
+          </Stack>
+        ) : null}
       </Stack>
 
       <Stack sx={{ gap: 0.75, mt: 'auto' }}>
+        {b2b ? (
+          <Stack sx={{ gap: 0.25 }} data-b2b-price>
+            {commercialPrice || (discount !== null && product.compare_at_price) ? (
+              <Typography component="s" className="tnum" sx={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>
+                {formatMoney(
+                  commercialPrice ? Number(product.price) : Number(product.compare_at_price),
+                  product.currency,
+                  locale,
+                )}
+              </Typography>
+            ) : null}
+            <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 0.75, flexWrap: 'wrap' }}>
+              <Typography
+                className="tnum"
+                sx={{ fontSize: denso ? 18 : 'var(--sf-card-price)', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.15, color: 'var(--accent-deep)' }}
+              >
+                {formatMoney(commercialPrice ? commercialPrice.amount : Number(product.price), product.currency, locale)}
+              </Typography>
+              {commercialPrice ? (
+                <Stack
+                  direction="row"
+                  data-commercial-price={commercialPrice.label}
+                  sx={{ alignItems: 'center', gap: 0.375, px: 0.875, py: 0.125, borderRadius: 'var(--sf-pill)', bgcolor: 'var(--accent-soft)', color: 'var(--accent-deep)', fontSize: 11, fontWeight: 800 }}
+                >
+                  <VerifiedRoundedIcon aria-hidden sx={{ fontSize: 13 }} />
+                  {commercialPrice.label === 'enterprise' ? t('store.product.agreementPriceCard') : t('store.product.tradePriceCard')}
+                </Stack>
+              ) : null}
+            </Stack>
+          </Stack>
+        ) : (
+        <>
         <Stack direction="row" sx={{ alignItems: 'baseline', gap: 0.75, flexWrap: 'wrap', minWidth: 0 }}>
           {/* La cifra que decide. Sube a 19 px y el nombre baja a 15: antes
               pesaban lo mismo y la tarjeta no tenía protagonista. Con precio
@@ -509,11 +596,13 @@ export function ProductCard({
             {commercialPrice.label === 'enterprise' ? t('store.product.agreementPriceCard') : t('store.product.tradePriceCard')}
           </Typography>
         )}
+        </>
+        )}
 
         {/* El estado, en pastilla: en una línea de texto suelta se confunde con
             el resto de la ficha, y es lo que decide si el botón sirve. En la
             fila no se pinta: allí no hay botón al que condicionar. */}
-        {reduced ? null : (
+        {reduced || b2b ? null : (
         <Box
           className="eb-card-state"
           // `in` es el estado ESPERADO de un producto publicado, y por eso hay
@@ -585,12 +674,16 @@ export function ProductCard({
             position: 'relative',
             zIndex: 1,
             mt: 0.25,
+            flex: 1,
+            minWidth: 0,
+            whiteSpace: 'nowrap',
             textTransform: 'none',
             fontWeight: 700,
             borderRadius: 'var(--sf-radius-sm)',
             py: 0.75,
             boxShadow: 'none',
             '&:hover': { boxShadow: 'none' },
+            '@container (max-width: 210px)': { '& .MuiButton-startIcon': { display: 'none' } },
           }}
           // Igual que el corazón: el texto visible se queda corto —la tarjeta
           // entera dice de qué producto es— y el nombre accesible lleva el
@@ -600,7 +693,9 @@ export function ProductCard({
           {hasVariants
             ? t('store.product.chooseOptions')
             : b2b
-              ? t('store.product.addShort')
+              ? available
+                ? t('store.product.addShort')
+                : t('store.availability.outOfStock')
               : t('store.product.addToCart')}
         </Button>
 
