@@ -12,8 +12,11 @@ import {
   Chip,
   CircularProgress,
   Divider,
+  InputAdornment,
   Stack,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from '@mui/material'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -49,6 +52,7 @@ import {
   type CheckoutStage,
   type CheckoutValues,
 } from './checkout'
+import { BuyerTermsNotice } from './commerce/BuyerTermsNotice'
 import { useCommerceContext } from './commerce/context'
 import { addressBookKey, checkoutProfileKey, consumerOrdersKey, formatSavedAddress, type SavedAddress } from './consumer'
 import { useStorefront } from './hooks'
@@ -131,7 +135,7 @@ const PASOS = [
 const CAMPOS: ReadonlyArray<ReadonlyArray<keyof CheckoutValues>> = [
   ['customerName', 'customerEmail', 'customerPhone'],
   ['address', 'city', 'region', 'postalCode', 'country', 'reference', 'couponCode'],
-  ['paymentMethodCode', 'purchaseOrderNumber'],
+  ['paymentMethodCode', 'purchaseOrderNumber', 'invoiceType', 'taxId', 'legalName', 'costCenter'],
 ]
 
 export function StoreCheckoutPage() {
@@ -144,8 +148,8 @@ export function StoreCheckoutPage() {
   const authenticated = sessionStatus === 'authenticated'
   // N05 · ¿La cuenta con la que se compra exige orden de compra? Lo dice el
   // servidor (el mismo contexto que la barra); sin sesión o sin cuenta, no.
-  const ordenDeCompraObligatoria =
-    useCommerceContext(storeSlug, authenticated).context?.purchase_order_required === true
+  const { context: contextoComercial } = useCommerceContext(storeSlug, authenticated)
+  const ordenDeCompraObligatoria = contextoComercial?.purchase_order_required === true
 
   // Carrito, checkout, cuenta y seguimiento NO se indexan (P15-SaaS). No es
   // pudor: son estado de una sesión, no contenido. `robots.txt` pide que no se
@@ -206,8 +210,25 @@ export function StoreCheckoutPage() {
       pickupPointId: '',
       paymentMethodCode: '',
       purchaseOrderNumber: '',
+      invoiceType: 'receipt',
+      taxId: '',
+      legalName: '',
+      costCenter: '',
     },
   })
+
+  /**
+   * Resumen v2 · Al elegir FACTURA, la razón social se propone con el nombre
+   * de la cuenta de empresa. No se elige factura de entrada: sin el RUC —que
+   * la vitrina no conoce— esa elección dejaría el pago bloqueado hasta que el
+   * comprador lo escriba. Solo se rellena si está vacía: nunca se pisa lo
+   * que escribió.
+   */
+  const tipoComprobante = useWatch({ control, name: 'invoiceType' })
+  useEffect(() => {
+    if (tipoComprobante !== 'invoice' || !contextoComercial) return
+    if ((getValues('legalName') ?? '') === '') setValue('legalName', contextoComercial.account_name)
+  }, [tipoComprobante, contextoComercial, getValues, setValue])
 
   /**
    * H04 · Lo que ya sabemos de quien compra con sesión.
@@ -806,6 +827,24 @@ export function StoreCheckoutPage() {
                   }
                   inputProps={{ style: { textTransform: 'uppercase' } }}
                   {...register('couponCode')}
+                  InputProps={{
+                    // Aplicar AHORA, sin esperar a salir del paso: quien teclea
+                    // un código quiere ver si descuenta antes de seguir.
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <Button
+                          size="small"
+                          onClick={() => {
+                            const cupon = (getValues('couponCode') ?? '').trim()
+                            setCuponCotizado(cupon === '' ? SIN_CUPONES : [cupon])
+                          }}
+                          sx={{ fontWeight: 800 }}
+                        >
+                          {t('store.checkout.couponApply')}
+                        </Button>
+                      </InputAdornment>
+                    ),
+                  }}
                 />
                 <Divider />
 
@@ -873,6 +912,66 @@ export function StoreCheckoutPage() {
                     {...register('purchaseOrderNumber')}
                   />
                 )}
+
+                {/* Resumen v2 · El comprobante. Boleta no pide nada más; factura
+                    pide RUC y razón social, que el servidor vuelve a validar. El
+                    centro de costo solo tiene sentido para una cuenta de empresa. */}
+                <Divider />
+                <Stack sx={{ gap: 1.25 }} data-checkout-invoice={watched.invoiceType ?? 'receipt'}>
+                  <Typography component="h3" sx={{ fontSize: TS.bodyStrong, fontWeight: 800 }}>
+                    {t('store.checkout.invoiceTitle')}
+                  </Typography>
+                  <ToggleButtonGroup
+                    exclusive
+                    size="small"
+                    value={watched.invoiceType ?? 'receipt'}
+                    aria-label={t('store.checkout.invoiceTitle')}
+                    onChange={(_, next: 'receipt' | 'invoice' | null) => next && setValue('invoiceType', next)}
+                    sx={{ alignSelf: 'flex-start', '& .MuiToggleButton-root': { textTransform: 'none', fontWeight: 700, px: 2 } }}
+                  >
+                    <ToggleButton value="receipt">{t('store.checkout.invoiceReceipt')}</ToggleButton>
+                    <ToggleButton value="invoice">{t('store.checkout.invoiceInvoice')}</ToggleButton>
+                  </ToggleButtonGroup>
+                  {watched.invoiceType === 'invoice' && (
+                    <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ gap: 1.5 }}>
+                      <TextField
+                        label={t('store.checkout.taxId')}
+                        required
+                        autoComplete="off"
+                        sx={{ width: { sm: 200 } }}
+                        error={Boolean(errors.taxId)}
+                        helperText={errors.taxId ? t(errors.taxId.message as MessageKey) : undefined}
+                        slotProps={{ htmlInput: { maxLength: 20, inputMode: 'numeric', style: { fontFamily: 'monospace' } } }}
+                        {...register('taxId')}
+                      />
+                      <TextField
+                        label={t('store.checkout.legalName')}
+                        required
+                        fullWidth
+                        autoComplete="organization"
+                        error={Boolean(errors.legalName)}
+                        helperText={errors.legalName ? t(errors.legalName.message as MessageKey) : undefined}
+                        slotProps={{ htmlInput: { maxLength: 200 } }}
+                        {...register('legalName')}
+                      />
+                    </Stack>
+                  )}
+                  {contextoComercial && (
+                    <TextField
+                      label={t('store.checkout.costCenter')}
+                      fullWidth
+                      autoComplete="off"
+                      error={Boolean(errors.costCenter)}
+                      helperText={
+                        errors.costCenter
+                          ? t(errors.costCenter.message as MessageKey)
+                          : t('store.checkout.costCenterHelp')
+                      }
+                      slotProps={{ htmlInput: { maxLength: 60 } }}
+                      {...register('costCenter')}
+                    />
+                  )}
+                </Stack>
               </>
             )}
           </Stack>
@@ -996,6 +1095,15 @@ export function StoreCheckoutPage() {
                   sx={{ mt: 1 }}
                 />
               )}
+              {/* Crédito y aprobación, al lado del total: es donde se decide. */}
+              <Box sx={{ mt: 1.5 }}>
+                <BuyerTermsNotice
+                  storeSlug={storeSlug}
+                  total={quoted?.grossTotal ?? null}
+                  currency={quoted?.currency ?? currency}
+                  compact
+                />
+              </Box>
               {/* Lo que se promete cambia con el medio elegido. Dejar «todavía no
                   cobramos en línea» debajo de un formulario de tarjeta que SÍ
                   cobra es la clase de frase que se descubre cuando ya no toca. */}

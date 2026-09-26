@@ -29,6 +29,7 @@ import {
   canTransition,
   nextForAxis,
   normalizeOrderItems,
+  normalizeBillingAddress,
   normalizeShippingAddress,
 } from '../functions/_shared/orders.ts'
 import { ROLE_PERMISSIONS, can } from '../functions/_shared/roles.ts'
@@ -526,6 +527,56 @@ describe('direccion de entrega del checkout (P06)', () => {
     expectCode(() => normalizeShippingAddress({ address: 'x'.repeat(301) }), 'CAMPO_INVALIDO')
     expectCode(
       () => normalizeShippingAddress({ address: 'Jr. Lima 45', reference: 'x'.repeat(201) }),
+      'CAMPO_INVALIDO',
+    )
+  })
+})
+
+describe('normalizeBillingAddress · datos del comprobante', () => {
+  it('acepta la dirección más el comprobante, y deja el RUC en mayúsculas', () => {
+    expect(
+      normalizeBillingAddress({
+        address: 'Av. Javier Prado 1234',
+        country: 'pe',
+        document_type: 'invoice',
+        tax_id: ' 20601234567 ',
+        legal_name: ' Policlínico Andino S.A.C. ',
+        cost_center: 'CC-0412',
+      }),
+    ).toEqual({
+      address: 'Av. Javier Prado 1234',
+      country: 'PE',
+      document_type: 'invoice',
+      tax_id: '20601234567',
+      legal_name: 'Policlínico Andino S.A.C.',
+      cost_center: 'CC-0412',
+    })
+  })
+
+  it('una factura sin RUC o sin razón social no se acepta', () => {
+    expectCode(
+      () => normalizeBillingAddress({ address: 'Jr. Lima 45', document_type: 'invoice', legal_name: 'ACME SAC' }),
+      'CAMPO_INVALIDO',
+    )
+    expectCode(
+      () => normalizeBillingAddress({ address: 'Jr. Lima 45', document_type: 'invoice', tax_id: '20601234567' }),
+      'CAMPO_INVALIDO',
+    )
+  })
+
+  it('la boleta no pide RUC', () => {
+    expect(normalizeBillingAddress({ address: 'Jr. Lima 45', document_type: 'receipt' })).toEqual({
+      address: 'Jr. Lima 45',
+      document_type: 'receipt',
+    })
+  })
+
+  it('sigue sin ser un vertedero: tipo desconocido, RUC raro o claves ajenas se rechazan', () => {
+    expectCode(() => normalizeBillingAddress({ address: 'Jr. Lima 45', document_type: 'ticket' }), 'CAMPO_INVALIDO')
+    expectCode(() => normalizeBillingAddress({ address: 'Jr. Lima 45', tax_id: '2060 1234' }), 'CAMPO_INVALIDO')
+    expectCode(() => normalizeBillingAddress({ address: 'Jr. Lima 45', total: '0.01' }), 'CAMPO_NO_PERMITIDO')
+    expectCode(
+      () => normalizeBillingAddress({ address: 'Jr. Lima 45', cost_center: 'x'.repeat(61) }),
       'CAMPO_INVALIDO',
     )
   })

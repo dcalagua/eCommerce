@@ -24,7 +24,7 @@
  * vocabulario de estados se compara con el del dominio en un test.
  */
 import type { CheckoutStage } from './stages.ts'
-import type { OrderItemInput, ShippingAddress } from '../orders.ts'
+import type { BillingAddress, OrderItemInput, ShippingAddress } from '../orders.ts'
 
 /** Importe decimal como TEXTO. El céntimo no pasa por un `number`. */
 export type MoneyText = string
@@ -409,7 +409,7 @@ export interface CheckoutRequest {
    * en casi toda compra B2C. No es un dato de dinero: es una dirección, y por
    * eso sí puede venir del comprador.
    */
-  readonly billingAddress: ShippingAddress | null
+  readonly billingAddress: BillingAddress | null
   readonly notes: string | null
   readonly items: readonly OrderItemInput[]
   /**

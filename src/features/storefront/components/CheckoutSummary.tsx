@@ -134,6 +134,16 @@ export function CheckoutSummary({
           )
           const unitario = Number(cotizada?.unitPrice.amount ?? line.unit_price)
           const monedaLinea = quoted?.currency ?? line.currency
+          // Resumen v2 · El precio de antes, tachado, cuando el servidor dice
+          // que la línea bajó (oferta del catálogo o acuerdo del comprador).
+          const antesOferta = cotizada?.compareAtPrice ? Number(cotizada.compareAtPrice.amount) : null
+          const escaparate = Number(line.unit_price)
+          const antes =
+            antesOferta !== null && antesOferta > unitario
+              ? antesOferta
+              : cotizada && esAcuerdoDelComprador(cotizada) && escaparate > unitario
+                ? escaparate
+                : null
           return (
             <Stack
               component="li"
@@ -182,7 +192,19 @@ export function CheckoutSummary({
                   </Typography>
                 )}
                 <Typography sx={{ fontSize: TS.micro, color: 'var(--muted)' }}>
-                  {line.quantity} × {formatMoney(unitario, monedaLinea, locale)}
+                  {line.quantity} ×{' '}
+                  {antes !== null ? (
+                    <Box component="s" className="tnum" sx={{ mr: 0.5 }}>
+                      {formatMoney(antes, monedaLinea, locale)}
+                    </Box>
+                  ) : null}
+                  <Box
+                    component="span"
+                    className="tnum"
+                    sx={antes !== null ? { color: 'var(--accent-deep)', fontWeight: 800 } : undefined}
+                  >
+                    {formatMoney(unitario, monedaLinea, locale)}
+                  </Box>
                 </Typography>
               </Stack>
 

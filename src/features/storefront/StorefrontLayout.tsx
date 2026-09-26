@@ -40,6 +40,7 @@ import { resolveShowThemeToggle } from './identity'
 import { StoreCategoryNav } from './components/StoreCategoryNav'
 import { StoreFooter } from './components/StoreFooter'
 import { StoreAnnouncementBar } from './components/StoreAnnouncementBar'
+import { CheckoutHeader } from './components/CheckoutHeader'
 import { StoreBrandLockup } from './components/StoreBrandLockup'
 import { StoreQuickSearch } from './components/StoreQuickSearch'
 import { CartDrawer } from './cart/CartDrawer'
@@ -199,7 +200,12 @@ export function StorefrontLayout() {
               cuenta y el carrito en CADA página. El destino ya existía
               (`id="contenido"`) y el texto también; faltaba el enlace. */}
           <SkipToContentLink label={t('store.skipToContent')} />
-          <StoreHeader store={store} storeSlug={storeSlug as string} />
+          {/* En el pago, la cabecera enfocada: sin buscador ni categorías. */}
+          {enCheckout ? (
+            <CheckoutHeader store={store} storeSlug={storeSlug as string} />
+          ) : (
+            <StoreHeader store={store} storeSlug={storeSlug as string} />
+          )}
 
           <StoreMain>
             {/* Para quién se compra, cuando hay una cuenta de empresa activa en

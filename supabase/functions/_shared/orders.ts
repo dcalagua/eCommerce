@@ -352,3 +352,79 @@ export function normalizeShippingAddress(raw: unknown): ShippingAddress {
 
   return normalized
 }
+
+/**
+ * Dirección FISCAL: la de entrega más los datos del comprobante.
+ *
+ * `billing_address` ya era un `jsonb` del pedido, pero pasaba por la misma
+ * puerta que la de entrega y no admitía nada fiscal. Un comprador empresa
+ * necesita pedir FACTURA con su RUC y razón social, y cargarla a un centro de
+ * costo; sin esto esos datos llegaban por correo después del pedido.
+ *
+ * Se aceptan cuatro claves más, cerradas y con tope, y nada más: la puerta
+ * sigue rechazando lo que no conoce.
+ *  - `document_type`: `invoice` (factura) o `receipt` (boleta).
+ *  - `tax_id`: el RUC o documento fiscal. Obligatorio con factura.
+ *  - `legal_name`: la razón social. Obligatoria con factura.
+ *  - `cost_center`: a qué centro de costo se carga. Opcional.
+ */
+export type BillingAddress = ShippingAddress & {
+  document_type?: 'invoice' | 'receipt'
+  tax_id?: string
+  legal_name?: string
+  cost_center?: string
+}
+
+const BILLING_EXTRA = ['document_type', 'tax_id', 'legal_name', 'cost_center'] as const
+
+export function normalizeBillingAddress(raw: unknown): BillingAddress {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    throw badRequest('CAMPO_INVALIDO', '`billing_address` debe ser un objeto')
+  }
+  const source = raw as Record<string, unknown>
+  const direccion: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(source)) {
+    if (!(BILLING_EXTRA as readonly string[]).includes(key)) direccion[key] = value
+  }
+  const normalized: BillingAddress = { ...normalizeShippingAddress(direccion) }
+
+  const texto = (key: 'tax_id' | 'legal_name' | 'cost_center', min: number, max: number) => {
+    const value = source[key]
+    if (value === undefined || value === null) return undefined
+    if (typeof value !== 'string') throw badRequest('CAMPO_INVALIDO', `\`billing_address.${key}\` debe ser texto`)
+    const trimmed = value.trim()
+    if (trimmed === '') return undefined
+    if (trimmed.length < min || trimmed.length > max) {
+      throw badRequest('CAMPO_INVALIDO', `\`billing_address.${key}\` debe tener entre ${min} y ${max} caracteres`)
+    }
+    return trimmed
+  }
+
+  const documentType = source.document_type
+  if (documentType !== undefined && documentType !== null) {
+    if (documentType !== 'invoice' && documentType !== 'receipt') {
+      throw badRequest('CAMPO_INVALIDO', '`billing_address.document_type` debe ser `invoice` o `receipt`')
+    }
+    normalized.document_type = documentType
+  }
+
+  const taxId = texto('tax_id', 3, 20)
+  if (taxId !== undefined) {
+    if (!/^[0-9A-Za-z-]+$/.test(taxId)) {
+      throw badRequest('CAMPO_INVALIDO', '`billing_address.tax_id` solo admite letras, dígitos y guiones')
+    }
+    normalized.tax_id = taxId.toUpperCase()
+  }
+  const legalName = texto('legal_name', 2, 200)
+  if (legalName !== undefined) normalized.legal_name = legalName
+  const costCenter = texto('cost_center', 1, 60)
+  if (costCenter !== undefined) normalized.cost_center = costCenter
+
+  // Una factura sin RUC o sin razón social no se puede emitir: se rechaza aquí
+  // y no cuando alguien intente facturar el pedido.
+  if (normalized.document_type === 'invoice' && (!normalized.tax_id || !normalized.legal_name)) {
+    throw badRequest('CAMPO_INVALIDO', 'La factura necesita `tax_id` y `legal_name`')
+  }
+
+  return normalized
+}
