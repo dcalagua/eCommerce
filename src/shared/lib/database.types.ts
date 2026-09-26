@@ -12332,6 +12332,12 @@ export type Database = {
           product_id: string
         }[]
       }
+      my_purchased_products_for_slug: {
+        Args: { p_store_slug: string }
+        Returns: {
+          product_id: string
+        }[]
+      }
       my_store_business_accounts: {
         Args: { p_store_slug: string }
         Returns: Json

@@ -114,7 +114,7 @@ const PAGE_SIZE = 24
  */
 const POCOS_RESULTADOS = 3
 
-const SORTS: readonly SearchSort[] = ['relevance', 'price-asc', 'price-desc', 'name', 'recent']
+const SORTS: readonly SearchSort[] = ['relevance', 'price-asc', 'price-desc', 'name', 'recent', 'discount']
 
 /**
  * Portada de la vitrina: contenido administrable + catálogo buscable.

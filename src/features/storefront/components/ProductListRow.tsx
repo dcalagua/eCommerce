@@ -12,6 +12,7 @@ import { track } from '../analytics'
 import { useAddToCart } from '../cart/useAddToCart'
 import type { CommercialPrice } from '../commerce/catalogPrices'
 import { discountPercent, type PublicProduct } from '../types'
+import { B2BProductMeta } from './B2BProductMeta'
 import { ProductMedia } from './ProductMedia'
 import { QuantityStepper } from './QuantityStepper'
 
@@ -39,6 +40,7 @@ export function ProductListRow({
   onPrefetch,
   commercialPrice = null,
   b2b = false,
+  purchased = false,
 }: {
   product: PublicProduct
   storeSlug: string
@@ -49,6 +51,8 @@ export function ProductListRow({
   onPrefetch?: (slug: string) => void
   commercialPrice?: CommercialPrice | null
   b2b?: boolean
+  /** Resumen v2 · Su empresa ya lo pidió en esta tienda. Solo se pinta con `b2b`. */
+  purchased?: boolean
 }) {
   const { t, locale } = useI18n()
   const { agregar, pending } = useAddToCart()
@@ -144,6 +148,7 @@ export function ProductListRow({
             {product.name}
           </Box>
         </Typography>
+        {b2b ? <B2BProductMeta sku={product.sku} purchased={purchased} /> : null}
         <Typography
           data-stock={available ? 'in' : 'out'}
           sx={{ fontSize: 11.5, fontWeight: 700, color: available ? 'var(--accent-deep)' : 'var(--muted)' }}

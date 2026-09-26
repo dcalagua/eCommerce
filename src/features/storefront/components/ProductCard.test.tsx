@@ -135,6 +135,29 @@ describe('comprador empresa', () => {
   })
 })
 
+describe('SKU y «ya comprado» (Resumen v2)', () => {
+  it('el comprador empresa ve el SKU y si su empresa ya lo compró', async () => {
+    renderWithProviders(
+      <CartProvider storeId={STORE} storeSlug="casa-nordica" currency="PEN">
+        <ProductCard product={product({ sku: 'SIL-ROB-01' })} storeSlug="casa-nordica" b2b purchased />
+      </CartProvider>,
+    )
+    expect(await screen.findByText('SKU SIL-ROB-01')).toBeInTheDocument()
+    expect(screen.getByText('Ya comprado')).toBeInTheDocument()
+  })
+
+  it('el consumidor no ve ni el SKU ni la marca de compra', async () => {
+    renderWithProviders(
+      <CartProvider storeId={STORE} storeSlug="casa-nordica" currency="PEN">
+        <ProductCard product={product({ sku: 'SIL-ROB-01' })} storeSlug="casa-nordica" purchased />
+      </CartProvider>,
+    )
+    await screen.findByRole('button', { name: /^Agregar al carrito/ })
+    expect(screen.queryByText('SKU SIL-ROB-01')).not.toBeInTheDocument()
+    expect(screen.queryByText('Ya comprado')).not.toBeInTheDocument()
+  })
+})
+
 describe('ranking de ventas', () => {
   it('en una fila de más vendidos, la tarjeta lleva su puesto dicho en texto', async () => {
     renderWithProviders(

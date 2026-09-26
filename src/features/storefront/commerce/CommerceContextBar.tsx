@@ -2,14 +2,18 @@ import ApartmentRoundedIcon from '@mui/icons-material/ApartmentRounded'
 import ArrowDropDownRoundedIcon from '@mui/icons-material/ArrowDropDownRounded'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
+import BoltRoundedIcon from '@mui/icons-material/BoltRounded'
+import CreditScoreRoundedIcon from '@mui/icons-material/CreditScoreRounded'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
 import { Box, ButtonBase, Menu, MenuItem, Link as MuiLink, Stack, Typography } from '@mui/material'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useSessionContext } from '@/features/auth/session-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
+import { formatMoney } from '@/shared/lib/format'
 import { TS } from '@/theme/tokens'
 import { useStoreAccounts, useSwitchStoreAccount } from './accounts'
+import { useBuyerCredit } from './buyerTerms'
 import { useCommerceContext } from './context'
 
 /**
@@ -34,9 +38,12 @@ import { useCommerceContext } from './context'
  * una sola cuenta no hay selector ni petición extra.
  */
 export function CommerceContextBar({ storeSlug }: { storeSlug: string }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { status } = useSessionContext()
   const { audience, context } = useCommerceContext(storeSlug, status === 'authenticated')
+  // Resumen v2 · El crédito que le queda, si su cuenta compra a crédito. La
+  // consulta solo corre con condiciones de crédito: nadie más la paga.
+  const credito = useBuyerCredit(storeSlug)
 
   if (audience === 'consumer' || context === null) return null
 
@@ -113,6 +120,40 @@ export function CommerceContextBar({ storeSlug }: { storeSlug: string }) {
             </Typography>
           </Stack>
         )}
+
+        {credito && (
+          <Stack
+            direction="row"
+            data-credit-available
+            sx={{ alignItems: 'center', gap: 0.5, color: 'var(--text)', flexShrink: 0 }}
+          >
+            <CreditScoreRoundedIcon aria-hidden sx={{ fontSize: 16, color: 'var(--accent-deep)' }} />
+            <Typography component="p" className="tnum" sx={{ fontSize: TS.label, fontWeight: 700 }}>
+              {t('store.commerce.creditAvailable').replace(
+                '{amount}',
+                formatMoney(credito.available, credito.currency ?? '', locale),
+              )}
+            </Typography>
+          </Stack>
+        )}
+
+        {/* El atajo de quien compra por referencia: SKU + cantidad al carrito. */}
+        <MuiLink
+          component={Link}
+          to={`/s/${storeSlug}/pedido-rapido`}
+          sx={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 0.25,
+            fontSize: TS.label,
+            fontWeight: 700,
+            color: 'var(--accent-deep)',
+            flexShrink: 0,
+          }}
+        >
+          <BoltRoundedIcon aria-hidden sx={{ fontSize: 16 }} />
+          {t('store.quickOrder.open')}
+        </MuiLink>
 
         <MuiLink
           component={Link}

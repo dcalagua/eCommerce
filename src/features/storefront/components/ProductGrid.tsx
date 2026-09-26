@@ -2,6 +2,7 @@ import { Box, Card, Skeleton, Stack } from '@mui/material'
 import { useSessionContext } from '@/features/auth/session-context'
 import { useCatalogCommercialPrices } from '../commerce/catalogPrices'
 import { useCommerceContext } from '../commerce/context'
+import { usePurchasedProducts } from '../commerce/purchased'
 import type { PublicProduct } from '../types'
 import { ProductCard } from './ProductCard'
 import { ProductListRow } from './ProductListRow'
@@ -66,6 +67,8 @@ export function ProductGrid({
   const { status } = useSessionContext()
   const { audience } = useCommerceContext(storeSlug, status === 'authenticated')
   const b2b = audience !== 'consumer'
+  // «Ya comprado», también UNA consulta para toda la rejilla y solo para empresa.
+  const purchased = usePurchasedProducts(storeSlug)
 
   if (view === 'list') {
     return (
@@ -90,6 +93,7 @@ export function ProductGrid({
             storeSlug={storeSlug}
             commercialPrice={commercial.get(product.product_id) ?? null}
             b2b={b2b}
+            purchased={purchased.has(product.product_id)}
             favorite={favorites?.has(product.product_id) ?? false}
             imageUrl={product.primary_image_path ? (thumbnails[product.primary_image_path] ?? null) : null}
             {...(onQuickView ? { onQuickView } : {})}
@@ -110,6 +114,7 @@ export function ProductGrid({
           storeSlug={storeSlug}
           commercialPrice={commercial.get(product.product_id) ?? null}
           b2b={b2b}
+          purchased={purchased.has(product.product_id)}
           {...(onQuickView ? { onQuickView } : {})}
           {...(onToggleFavorite ? { onToggleFavorite } : {})}
           favorite={favorites?.has(product.product_id) ?? false}

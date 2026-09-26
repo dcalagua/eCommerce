@@ -522,6 +522,10 @@ export const SET_DEFAULT_MY_CONSUMER_ADDRESS_RPC = 'set_default_my_consumer_addr
 // 20260913110000). Solo para PINTAR «cuenta comercial» o «comprando para»: la
 // misma cuenta que usa el motor de precios, sin un precio ni un id de lista.
 export const MY_COMMERCE_CONTEXT_RPC = 'my_commerce_context' satisfies FunctionName
+// «Ya comprado» (Resumen v2, migración 20260926140000): ids de producto que la
+// cuenta de empresa EFECTIVA ya pidió en esta tienda. Solo ids; la cuenta sale
+// del token, nunca de un parámetro.
+export const MY_PURCHASED_PRODUCTS_RPC = 'my_purchased_products_for_slug' satisfies FunctionName
 // Cuenta B2B efectiva y selector multi-cuenta (N01, migración 20260913130000).
 // El navegador PIDE comprar para una de sus cuentas; el servidor valida vínculo,
 // estado y sociedad antes de guardar. `my_effective_business_account_for_slug`

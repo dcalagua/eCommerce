@@ -136,9 +136,36 @@ describe('CommerceContextBar', () => {
     expect(screen.getByText('Condiciones comerciales activas')).toBeInTheDocument()
     expect(screen.queryByText(/Enterprise|Comprando para/)).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Ver cuenta' })).toHaveAttribute('href', '/s/tienda-a/account')
+    // Resumen v2 · el atajo de quien compra por referencia.
+    expect(screen.getByRole('link', { name: 'Pedido rápido' })).toHaveAttribute('href', '/s/tienda-a/pedido-rapido')
 
     // La pregunta lleva el slug de la tienda y NADA más; y no se cotiza nada.
     expect(fake.state.rpcCalls).toEqual([{ name: 'my_commerce_context', args: { p_store_slug: 'tienda-a' } }])
+  })
+
+  it('con crédito, dice cuánto le queda a SU cuenta (Resumen v2)', async () => {
+    const session = makeSession({ withTenantClaims: false })
+    const fake = createFakeSupabase({
+      session,
+      rpc: {
+        my_commerce_context: () => ({ ...BASE, has_credit_terms: true }),
+        my_account_statement: () => [
+          { account_id: 'x', account_name: 'Otra SAC', account_code: 'OTRA', credit_limit: '9999.00', payment_terms_days: 60, balance_due: '0', credit_available: '9999.00', overdue_amount: '0', documents: [], purchased_12m: '0', paid_12m: '0', currency: 'PEN' },
+          { account_id: 'y', account_name: 'Bodega Esperanza', account_code: 'BOD', credit_limit: '5000.00', payment_terms_days: 30, balance_due: '800.00', credit_available: '4200.00', overdue_amount: '0', documents: [], purchased_12m: '0', paid_12m: '0', currency: 'PEN' },
+        ],
+      },
+    })
+    holder.client = fake
+    renderWithProviders(<CommerceContextBar storeSlug="tienda-a" />, { session })
+
+    expect(await screen.findByText(/Crédito disponible: S\/ 4,200\.00/)).toBeInTheDocument()
+  })
+
+  it('sin condiciones de crédito no pregunta el estado de cuenta', async () => {
+    const { fake } = pintar(() => BASE)
+    await screen.findByRole('complementary', { name: 'Contexto de compra' })
+    expect(fake.state.rpcCalls.some((c) => c.name === 'my_account_statement')).toBe(false)
+    expect(screen.queryByText(/Crédito disponible/)).not.toBeInTheDocument()
   })
 
   it('empresa sin convenio vigente: «Comprando para», sin prometer convenio', async () => {

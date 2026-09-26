@@ -238,6 +238,11 @@ export const publicProductSchema = z.object({
   variant_count: z.number().int().default(0),
   /** Precio más bajo que el comprador puede pagar. El «desde» de la tarjeta. */
   price_from: moneyText.nullable().default(null),
+  /**
+   * Resumen v2 · El SKU, que solo trae el buscador. Opcional porque las vistas
+   * públicas de portada no lo exponen: la tarjeta lo enseña si lo tiene.
+   */
+  sku: z.string().nullable().optional(),
 })
 export type PublicProduct = z.infer<typeof publicProductSchema>
 

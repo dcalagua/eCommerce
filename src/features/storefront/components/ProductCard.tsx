@@ -23,6 +23,7 @@ import type { CommercialPrice } from '../commerce/catalogPrices'
 import { useStorefrontTheme } from '../theme/useStorefrontTheme'
 import type { ProductCardVariant } from '../theme/types'
 import { discountPercent, type PublicProduct } from '../types'
+import { B2BProductMeta } from './B2BProductMeta'
 import { ProductMedia } from './ProductMedia'
 import { QuantityStepper } from './QuantityStepper'
 
@@ -77,6 +78,7 @@ export function ProductCard({
   commercialPrice = null,
   b2b = false,
   rank,
+  purchased = false,
 }: {
   product: PublicProduct
   storeSlug: string
@@ -153,6 +155,8 @@ export function ProductCard({
   b2b?: boolean
   /** Puesto en un ranking de ventas (1 = el más vendido). Sin él, no hay insignia. */
   rank?: number
+  /** Resumen v2 · Su empresa ya lo pidió en esta tienda. Solo se pinta con `b2b`. */
+  purchased?: boolean
 }) {
   const { t, locale } = useI18n()
   const [cantidad, setCantidad] = useState(1)
@@ -457,6 +461,7 @@ export function ProductCard({
             {product.name}
           </Box>
         </Typography>
+        {b2b ? <B2BProductMeta sku={product.sku} purchased={purchased} /> : null}
       </Stack>
 
       <Stack sx={{ gap: 0.75, mt: 'auto' }}>

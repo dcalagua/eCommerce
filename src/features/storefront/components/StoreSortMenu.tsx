@@ -12,6 +12,7 @@ const OPTIONS: ReadonlyArray<{ value: SearchSort; label: MessageKey }> = [
   { value: 'name', label: 'store.sort.name' },
   { value: 'price-asc', label: 'store.sort.priceAsc' },
   { value: 'price-desc', label: 'store.sort.priceDesc' },
+  { value: 'discount', label: 'store.sort.discount' },
 ]
 
 /**

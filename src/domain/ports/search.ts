@@ -69,7 +69,8 @@ export interface SearchFilters {
   readonly priceMax?: MoneyAmount | null
 }
 
-export type SearchSort = 'relevance' | 'price-asc' | 'price-desc' | 'name' | 'recent'
+/** `discount` (Resumen v2): mayor PORCENTAJE de rebaja primero; lo no rebajado, al final. */
+export type SearchSort = 'relevance' | 'price-asc' | 'price-desc' | 'name' | 'recent' | 'discount'
 
 export interface SearchQuery {
   /** Lo que se tecleó. Vacío = navegar el catálogo con filtros. */
@@ -90,6 +91,8 @@ export interface SearchHit {
   readonly productId: string
   readonly slug: string
   readonly name: string
+  /** El código con el que pide el comprador empresa. Nulo en respuestas antiguas. */
+  readonly sku: string | null
   readonly description: string
   readonly kind: 'simple' | 'variant' | 'bundle'
   readonly brandName: string | null
