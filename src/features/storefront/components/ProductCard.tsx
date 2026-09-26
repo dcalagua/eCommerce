@@ -226,9 +226,6 @@ export function ProductCard({
         // si no, con el teclado se ilumina solo el nombre y no se ve qué
         // tarjeta está seleccionada.
         '&:has(a:focus-visible)': { outline: '2px solid var(--accent)', outlineOffset: 2 },
-        // Resumen v2 · La tarjeta mide su propio ancho: en una rejilla estrecha
-        // el botón suelta el icono antes que cortar «Agregar».
-        containerType: 'inline-size',
       }}
     >
       {/* La foto flota sobre la tarjeta, sin caja propia.
@@ -632,7 +629,18 @@ export function ProductCard({
       {reduced ? null : (
       <Stack
         direction="row"
-        sx={{ position: 'relative', zIndex: 1, gap: 0.75, alignItems: 'center', mt: 0.25 }}
+        sx={{
+          position: 'relative',
+          zIndex: 1,
+          gap: 0.75,
+          alignItems: 'center',
+          mt: 0.25,
+          // Resumen v2 · Quien mide su ancho es la FILA del botón, no la
+          // tarjeta: una tarjeta con `container-type` deja de crecer con su
+          // contenido y en las filas con desplazamiento lateral (que miden a
+          // las tarjetas por su contenido) se quedaba en cero píxeles.
+          containerType: 'inline-size',
+        }}
       >
         {/* La cantidad, solo para empresa y solo cuando se puede comprar: con
             variantes la cifra se elige en la vista rápida, junto a la opción. */}
@@ -683,7 +691,7 @@ export function ProductCard({
             py: 0.75,
             boxShadow: 'none',
             '&:hover': { boxShadow: 'none' },
-            '@container (max-width: 210px)': { '& .MuiButton-startIcon': { display: 'none' } },
+            '@container (max-width: 190px)': { '& .MuiButton-startIcon': { display: 'none' } },
           }}
           // Igual que el corazón: el texto visible se queda corto —la tarjeta
           // entera dice de qué producto es— y el nombre accesible lleva el
