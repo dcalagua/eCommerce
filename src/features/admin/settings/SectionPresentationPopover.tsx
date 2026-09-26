@@ -172,7 +172,9 @@ export function SectionPresentationPopover({
             disabled={busy}
             value={campo.guardado ?? HEREDAR}
             onChange={(evento) => onChange(campo.clave, evento.target.value)}
-            slotProps={{ inputLabel: { shrink: true } }}
+            // `displayEmpty`: sin él, MUI no pinta la opción de valor vacío y el
+                        // «Usar tema: …» salía EN BLANCO justo cuando se hereda.
+                        slotProps={{ inputLabel: { shrink: true }, select: { displayEmpty: true } }}
           >
             <MenuItem value={HEREDAR}>{heredado(campo.efectivo)}</MenuItem>
             {campo.valores.map((valor) => (

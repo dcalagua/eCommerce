@@ -295,7 +295,9 @@ export function AdvancedStyleSettings({
                         disabled={busy}
                         value={pisado ?? HEREDAR}
                         onChange={(evento) => onChange(ajuste.clave, evento.target.value)}
-                        slotProps={{ inputLabel: { shrink: true } }}
+                        // `displayEmpty`: sin él, MUI no pinta la opción de valor vacío y el
+                        // «Usar tema: …» salía EN BLANCO justo cuando se hereda.
+                        slotProps={{ inputLabel: { shrink: true }, select: { displayEmpty: true } }}
                       >
                         {/* La herencia DICE lo que hereda. «Heredar del tema» a
                             secas obligaba a abrir la tienda para saber qué se
