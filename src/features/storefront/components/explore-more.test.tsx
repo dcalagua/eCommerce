@@ -129,12 +129,17 @@ describe('las presentaciones de la tarjeta se declaran en la hoja', () => {
     )
   })
 
-  it('la editorial quita canto y sombra en reposo, y los devuelve al apuntar', () => {
+  it('la editorial quita canto y sombra, y al apuntar sube la FOTO en vez de volverse caja', () => {
     expect(CSS).toMatch(
       /\.sf-scope\[data-store-theme='premium'\]\s+\.eb-card\s*\{[^}]*border-color:\s*transparent/,
     )
+    // Resumen v2 (pedido del operador): al apuntar ya no aparece un recuadro con
+    // sombra alrededor de una tarjeta sin margen. La que se eleva es la foto.
     expect(CSS).toMatch(
-      /\.sf-scope\[data-store-theme='premium'\]\s+\.eb-card:hover\s*\{[^}]*box-shadow/,
+      /\.eb-card\[data-card-variant='editorial'\]:hover\s+\.eb-card-media\s*\{[^}]*box-shadow/,
+    )
+    expect(CSS).toMatch(
+      /\.eb-card\[data-card-variant='editorial'\]:hover\s*\{[^}]*box-shadow:\s*none/,
     )
   })
 
