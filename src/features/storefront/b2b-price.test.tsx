@@ -343,8 +343,13 @@ describe('el panel del carrito dice lo mismo que la pagina', () => {
     // dos veces —el total de la linea y el subtotal del pie— y las dos tienen
     // que ser la cotizada: que el pie baje y la linea siga en el catalogo es
     // exactamente el problema que esto arregla.
-    expect(within(panel).getAllByText('S/ 184.00')).toHaveLength(2)
+    // Desde el Resumen v2 sale TRES veces: la línea, el subtotal y el total
+    // del pie, que ahora se enseña cuando hay cotización.
+    expect(within(panel).getAllByText('S/ 184.00')).toHaveLength(3)
     expect(within(panel).getByText('S/ 92.00 · c/u')).toBeInTheDocument()
     expect(within(panel).queryByText('S/ 200.00')).not.toBeInTheDocument()
+    // El precio de escaparate se TACHA al lado del de convenio, con su etiqueta.
+    expect(within(panel).getByText('S/ 100.00').tagName).toBe('S')
+    expect(within(panel).getByText('Convenio')).toBeInTheDocument()
   })
 })

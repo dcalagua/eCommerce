@@ -8,6 +8,7 @@ import { PageHeader } from '@/shared/ui/PageHeader'
 import { EmptyState } from '@/shared/ui/states'
 import { TS } from '@/theme/tokens'
 import { CartLineList } from './cart/CartLineList'
+import { BuyerTermsNotice } from './commerce/BuyerTermsNotice'
 import { RequestQuoteButton } from './cart/RequestQuoteButton'
 import { ScheduleCartButton } from './cart/ScheduleCartButton'
 import { useCart } from './cart/cart-context'
@@ -153,6 +154,16 @@ export function StoreCartPage() {
               {t('store.cart.quoteFailed')}
             </Alert>
           )}
+
+          {/* Crédito y aprobación ANTES de pagar: hasta ahora llegaban como un
+              error al confirmar. Solo aparecen si la cuenta los tiene. */}
+          <Box sx={{ mt: 1.5 }}>
+            <BuyerTermsNotice
+              storeSlug={storeSlug}
+              total={quoted?.grossTotal ?? null}
+              currency={quoted?.currency ?? cart.lines[0]?.currency ?? 'PEN'}
+            />
+          </Box>
 
           <Divider sx={{ my: 2 }} />
           <Stack sx={{ gap: 1 }}>

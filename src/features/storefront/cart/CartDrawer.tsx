@@ -1,12 +1,19 @@
+import ApartmentRoundedIcon from '@mui/icons-material/ApartmentRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
+import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
 import { Box, Button, Card, Chip, Drawer, IconButton, Stack, Typography } from '@mui/material'
 import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
 import { EmptyState } from '@/shared/ui/states'
 import { TS } from '@/theme/tokens'
+import { useSessionContext } from '@/features/auth/session-context'
+import { BuyerTermsNotice } from '../commerce/BuyerTermsNotice'
+import { useCommerceContext } from '../commerce/context'
 import { CartLineList } from './CartLineList'
+import { RequestQuoteButton } from './RequestQuoteButton'
+import { ScheduleCartButton } from './ScheduleCartButton'
 import { useCart } from './cart-context'
 import { useQuotedCart } from './useQuotedCart'
 
@@ -25,6 +32,11 @@ export function CartDrawer({ storeSlug }: { storeSlug: string }) {
   const { cart, count, subtotal, currency, isOpen, closeCart } = useCart()
   const { quoted, discounted } = useQuotedCart(storeSlug)
   const empty = cart.lines.length === 0
+  // La cuenta con la que se compra, arriba: en B2B el total depende de ella.
+  const { status } = useSessionContext()
+  const { context } = useCommerceContext(storeSlug, status === 'authenticated')
+  const moneda = quoted?.currency ?? currency
+  const total = quoted?.grossTotal ?? null
 
   return (
     <Drawer
@@ -59,6 +71,34 @@ export function CartDrawer({ storeSlug }: { storeSlug: string }) {
             <CloseRoundedIcon fontSize="small" />
           </IconButton>
         </Stack>
+
+        {context && !empty ? (
+          <Stack
+            direction="row"
+            data-cart-account
+            sx={{
+              alignItems: 'center',
+              gap: 1,
+              px: 2,
+              py: 1,
+              bgcolor: 'color-mix(in srgb, var(--accent) 7%, var(--card))',
+              borderBottom: '1px solid var(--border)',
+            }}
+          >
+            <ApartmentRoundedIcon aria-hidden sx={{ fontSize: 17, color: 'var(--accent-deep)' }} />
+            <Typography noWrap sx={{ flex: 1, minWidth: 0, fontSize: TS.label, fontWeight: 800 }}>
+              {context.account_name}
+            </Typography>
+            {context.has_commercial_pricing ? (
+              <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+                <VerifiedRoundedIcon aria-hidden sx={{ fontSize: 15, color: 'var(--accent-deep)' }} />
+                <Typography sx={{ fontSize: TS.label, fontWeight: 700, color: 'var(--accent-deep)' }}>
+                  {t('store.cart.agreementActive')}
+                </Typography>
+              </Stack>
+            ) : null}
+          </Stack>
+        ) : null}
 
         {/* `--bg` y no `--card`: la zona de las líneas se hunde un tono y las
             líneas se ven sobre ella, en vez de flotar en un panel blanco donde
@@ -134,11 +174,39 @@ export function CartDrawer({ storeSlug }: { storeSlug: string }) {
                 sx={{ mt: 1 }}
               />
             )}
-            {/* El impuesto y el total definitivos los calcula el servidor al
-                confirmar: aquí no se promete un número que no es el de cobro. */}
-            <Typography sx={{ fontSize: TS.label, color: 'var(--muted)', mt: 0.5, mb: 1.75 }}>
-              {t('store.cart.taxNote')}
-            </Typography>
+            {/* Con la cotización del servidor el total YA es el de cobro —con su
+                impuesto—, y se dice. Sin ella se avisa, como antes, de que el
+                número final lo confirma la tienda. El envío se elige al pagar. */}
+            {quoted ? (
+              <>
+                <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 2 }}>
+                  <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>{t('store.cart.tax')}</Typography>
+                  <Typography className="tnum" sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
+                    {formatMoney(Number(quoted.taxTotal), moneda, locale)}
+                  </Typography>
+                </Stack>
+                <Stack
+                  direction="row"
+                  data-cart-total
+                  sx={{ justifyContent: 'space-between', alignItems: 'baseline', gap: 2, mt: 0.75 }}
+                >
+                  <Typography sx={{ fontWeight: 800, fontSize: TS.bodyStrong }}>{t('store.cart.total')}</Typography>
+                  <Typography className="tnum" sx={{ fontWeight: 800, fontSize: 22, color: 'var(--accent-deep)' }}>
+                    {formatMoney(Number(quoted.grossTotal), moneda, locale)}
+                  </Typography>
+                </Stack>
+                <Typography sx={{ fontSize: TS.label, color: 'var(--muted)', mt: 0.25, mb: 1.25 }}>
+                  {t('store.cart.shippingNote')}
+                </Typography>
+              </>
+            ) : (
+              <Typography sx={{ fontSize: TS.label, color: 'var(--muted)', mt: 0.5, mb: 1.75 }}>
+                {t('store.cart.taxNote')}
+              </Typography>
+            )}
+            <Box sx={{ mb: 1.25 }}>
+              <BuyerTermsNotice storeSlug={storeSlug} total={total} currency={moneda} compact />
+            </Box>
             <Stack sx={{ gap: 0.5 }}>
               <Button
                 component={Link}
@@ -151,6 +219,13 @@ export function CartDrawer({ storeSlug }: { storeSlug: string }) {
               >
                 {t('store.cart.checkout')}
               </Button>
+              {/* Cotizar y programar también desde aquí: son el flujo B2B más
+                  usado y exigían pasar por la página del carrito. Se callan
+                  solos para quien no compra con cuenta de empresa. */}
+              <Stack direction="row" sx={{ gap: 1, '& > *': { flex: 1, minWidth: 0 } }}>
+                <RequestQuoteButton storeSlug={storeSlug} lines={cart.lines} />
+                <ScheduleCartButton storeSlug={storeSlug} lines={cart.lines} />
+              </Stack>
               <Button
                 component={Link}
                 to={`/s/${storeSlug}/cart`}
