@@ -559,8 +559,9 @@ describe('checkout', () => {
     renderStorefront(fake, '/s/casa-nordica/checkout')
 
     await rellenarContacto(user)
-    await user.type(screen.getByLabelText(/Cupón de descuento/), 'verano-25')
     await irAPagar(user)
+    // Resumen v2 · el cupón vive en el paso de pago, junto al total.
+    await user.type(screen.getByLabelText(/Cupón de descuento/), 'verano-25')
     await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
 
     await waitFor(() => expect(fake.state.invocations).toHaveLength(1))

@@ -12,7 +12,6 @@ import {
   Chip,
   CircularProgress,
   Divider,
-  InputAdornment,
   Stack,
   TextField,
   ToggleButton,
@@ -30,11 +29,13 @@ import type { MessageKey } from '@/shared/i18n/messages'
 import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { EmptyState } from '@/shared/ui/states'
+import { formatMoney } from '@/shared/lib/format'
 import { TS } from '@/theme/tokens'
 import { useCart } from './cart/cart-context'
 import { CheckoutSteps } from './components/CheckoutSteps'
 import { CheckoutSummary } from './components/CheckoutSummary'
 import { DeliveryPicker } from './components/DeliveryPicker'
+import { CheckoutStepRow } from './components/CheckoutStepRow'
 import { PaymentPicker } from './components/PaymentPicker'
 import { useDeliveryOptions } from './delivery'
 import { defaultPaymentCode, usePaymentMethods } from './payment'
@@ -53,6 +54,7 @@ import {
   type CheckoutValues,
 } from './checkout'
 import { BuyerTermsNotice } from './commerce/BuyerTermsNotice'
+import { useBuyerCredit } from './commerce/buyerTerms'
 import { useCommerceContext } from './commerce/context'
 import { addressBookKey, checkoutProfileKey, consumerOrdersKey, formatSavedAddress, type SavedAddress } from './consumer'
 import { useStorefront } from './hooks'
@@ -134,8 +136,9 @@ const PASOS = [
 /** Campos del esquema que vive en cada paso. El índice es el del paso. */
 const CAMPOS: ReadonlyArray<ReadonlyArray<keyof CheckoutValues>> = [
   ['customerName', 'customerEmail', 'customerPhone'],
-  ['address', 'city', 'region', 'postalCode', 'country', 'reference', 'couponCode'],
-  ['paymentMethodCode', 'purchaseOrderNumber', 'invoiceType', 'taxId', 'legalName', 'costCenter'],
+  ['address', 'city', 'region', 'postalCode', 'country', 'reference'],
+  // Resumen v2 · El cupón vive en el paso de PAGO, junto al total que cambia.
+  ['paymentMethodCode', 'purchaseOrderNumber', 'invoiceType', 'taxId', 'legalName', 'costCenter', 'couponCode'],
 ]
 
 export function StoreCheckoutPage() {
@@ -150,6 +153,8 @@ export function StoreCheckoutPage() {
   // servidor (el mismo contexto que la barra); sin sesión o sin cuenta, no.
   const { context: contextoComercial } = useCommerceContext(storeSlug, authenticated)
   const ordenDeCompraObligatoria = contextoComercial?.purchase_order_required === true
+  // Resumen v2 · Lo que dice la tarjeta del medio «crédito»: plazo y disponible.
+  const credito = useBuyerCredit(storeSlug)
 
   // Carrito, checkout, cuenta y seguimiento NO se indexan (P15-SaaS). No es
   // pudor: son estado de una sesión, no contenido. `robots.txt` pide que no se
@@ -428,6 +433,33 @@ export function StoreCheckoutPage() {
     setCuponCotizado(cupon === '' ? SIN_CUPONES : [cupon])
   }
 
+  /** La línea de un paso plegado: lo que se eligió en él, o qué se hará. */
+  const resumenDe = (indice: number): string => {
+    if (indice === 0) {
+      return [watched.customerName, watched.customerEmail, watched.customerPhone]
+        .map((valor) => (valor ?? '').trim())
+        .filter(Boolean)
+        .join(' · ')
+    }
+    if (indice === 1) {
+      const donde = [watched.address, watched.city].map((valor) => (valor ?? '').trim()).filter(Boolean).join(', ')
+      return [donde, selectedDelivery?.name].filter(Boolean).join(' · ')
+    }
+    return t('store.checkout.paymentPending')
+  }
+
+  const pistasDePago = useMemo(() => {
+    const pistas: Record<string, string> = {}
+    if (!credito) return pistas
+    for (const metodo of paymentMethods) {
+      if (metodo.kind !== 'credit') continue
+      pistas[metodo.code] = t('store.payment.creditHint')
+        .replace('{days}', String(credito.termsDays))
+        .replace('{amount}', formatMoney(credito.available, credito.currency ?? currency, locale))
+    }
+    return pistas
+  }, [credito, paymentMethods, t, currency, locale])
+
   const mutation = useMutation({
     mutationFn: async (input: { values: CheckoutValues; acceptPriceChanges: boolean }) => {
       /**
@@ -654,18 +686,9 @@ export function StoreCheckoutPage() {
           alignItems: 'start',
         }}
       >
-        {/* Los tokens de la vitrina y no los del backoffice: el comprador
-            viene de una tienda con esquinas redondeadas y sombra suave, y
-            aterrizar en un formulario plano se lee como haber salido del
-            sitio justo cuando va a pagar. */}
-        <Card
-          sx={{
-            p: { xs: 2, md: 3 },
-            borderRadius: 'var(--sf-radius)',
-            border: '1px solid var(--sf-line)',
-            boxShadow: 'var(--sf-shadow)',
-          }}
-        >
+        {/* Resumen v2 · La barra de pasos, a todo el ancho y encima de las
+            dos columnas, como en el diseño «Checkout B2B enfocado». */}
+        <Box sx={{ gridColumn: '1 / -1' }}>
           <CheckoutSteps
             pasos={PASOS.map((definicion) => ({
               id: definicion.id,
@@ -675,10 +698,57 @@ export function StoreCheckoutPage() {
             alcanzado={alcanzado}
             onIr={(indice) => void irA(indice)}
           />
+        </Box>
 
-          <Typography component="h2" sx={{ fontSize: TS.cardTitle, fontWeight: 800, mb: 2 }}>
-            {t(PASOS[paso]!.tituloKey)}
-          </Typography>
+        <Stack sx={{ gap: 1.5, minWidth: 0 }}>
+        {/* Los pasos HECHOS, plegados: lo que se eligió y «Cambiar». */}
+        {PASOS.slice(0, paso).map((definicion, indice) => (
+          <CheckoutStepRow
+            key={definicion.id}
+            numero={indice + 1}
+            titulo={t(definicion.tituloKey)}
+            resumen={resumenDe(indice)}
+            estado="hecho"
+            onCambiar={() => void irA(indice)}
+          />
+        ))}
+
+        {/* Los tokens de la vitrina y no los del backoffice: el comprador
+            viene de una tienda con esquinas redondeadas y sombra suave, y
+            aterrizar en un formulario plano se lee como haber salido del
+            sitio justo cuando va a pagar. El paso ACTIVO lleva el borde en el
+            color de la tienda: es donde está la decisión. */}
+        <Card
+          data-checkout-active-step={PASOS[paso]!.id}
+          sx={{
+            p: { xs: 2, md: 3 },
+            borderRadius: 'var(--sf-radius)',
+            border: '2px solid var(--accent)',
+            boxShadow: 'var(--sf-shadow)',
+          }}
+        >
+          <Stack direction="row" sx={{ alignItems: 'center', gap: 1.25, mb: 2 }}>
+            <Box
+              aria-hidden
+              sx={{
+                width: 28,
+                height: 28,
+                flexShrink: 0,
+                display: 'grid',
+                placeItems: 'center',
+                borderRadius: '50%',
+                background: 'var(--hero-grad)',
+                color: '#fff',
+                fontSize: 13,
+                fontWeight: 800,
+              }}
+            >
+              {paso + 1}
+            </Box>
+            <Typography component="h2" sx={{ fontSize: TS.cardTitle, fontWeight: 800 }}>
+              {t(PASOS[paso]!.tituloKey)}
+            </Typography>
+          </Stack>
 
           <Stack sx={{ gap: 2 }}>
             {paso === 0 && (
@@ -812,40 +882,6 @@ export function StoreCheckoutPage() {
                   }
                   {...register('reference')}
                 />
-                {/* P10 · el cupón. Un solo campo, y lo que se manda es TEXTO: si
-                    descuenta y cuánto lo decide el servidor, que vuelve a evaluar
-                    con la fila delante y bloqueada. Aquí no se valida contra nada:
-                    comprobarlo en el navegador sería una segunda autoridad sobre el
-                    mismo dato, y la del navegador siempre acaba desactualizada. */}
-                <TextField
-                  label={t('store.checkout.coupon')}
-                  error={Boolean(errors.couponCode)}
-                  helperText={
-                    errors.couponCode
-                      ? t(errors.couponCode.message as MessageKey)
-                      : t('store.checkout.couponHint')
-                  }
-                  inputProps={{ style: { textTransform: 'uppercase' } }}
-                  {...register('couponCode')}
-                  InputProps={{
-                    // Aplicar AHORA, sin esperar a salir del paso: quien teclea
-                    // un código quiere ver si descuenta antes de seguir.
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <Button
-                          size="small"
-                          onClick={() => {
-                            const cupon = (getValues('couponCode') ?? '').trim()
-                            setCuponCotizado(cupon === '' ? SIN_CUPONES : [cupon])
-                          }}
-                          sx={{ fontWeight: 800 }}
-                        >
-                          {t('store.checkout.couponApply')}
-                        </Button>
-                      </InputAdornment>
-                    ),
-                  }}
-                />
                 <Divider />
 
                 {/* P12 · cómo lo quiere recibir. Envío, recojo, reparto propio y
@@ -884,6 +920,7 @@ export function StoreCheckoutPage() {
                   selectedCode={watched.paymentMethodCode ?? ''}
                   onSelect={(code) => setValue('paymentMethodCode', code)}
                   error={null}
+                  hints={pistasDePago}
                 />
 
                 {/* Los datos de la tarjeta solo cuando se ha elegido una: pedir
@@ -891,9 +928,61 @@ export function StoreCheckoutPage() {
                     pedir un dato que nadie va a usar. */}
                 {pideTarjeta && <CardFields datos={tarjeta} onCambio={setTarjeta} error={null} />}
 
-                {/* N05 · Solo si la cuenta con la que se compra la EXIGE. Sin esa
-                    exigencia no hay campo: una casilla opcional más en el paso
-                    que cierra la compra es ruido para casi todos. */}
+                {/* Resumen v2 · El comprobante, en UNA fila: tipo, RUC y razón
+                    social. Boleta no pide nada más; factura pide RUC y razón
+                    social, que el servidor vuelve a validar. */}
+                <Divider />
+                <Stack
+                  direction={{ xs: 'column', md: 'row' }}
+                  sx={{ gap: 1.5, alignItems: { md: 'flex-start' } }}
+                  data-checkout-invoice={watched.invoiceType ?? 'receipt'}
+                >
+                  <Stack sx={{ gap: 0.5, flexShrink: 0 }}>
+                    <Typography component="h3" sx={{ fontSize: TS.label, fontWeight: 700, color: 'var(--muted)' }}>
+                      {t('store.checkout.invoiceTitle')}
+                    </Typography>
+                    <ToggleButtonGroup
+                      exclusive
+                      size="small"
+                      value={watched.invoiceType ?? 'receipt'}
+                      aria-label={t('store.checkout.invoiceTitle')}
+                      onChange={(_, next: 'receipt' | 'invoice' | null) => next && setValue('invoiceType', next)}
+                      sx={{ alignSelf: 'flex-start', '& .MuiToggleButton-root': { textTransform: 'none', fontWeight: 700, px: 2 } }}
+                    >
+                      <ToggleButton value="receipt">{t('store.checkout.invoiceReceipt')}</ToggleButton>
+                      <ToggleButton value="invoice">{t('store.checkout.invoiceInvoice')}</ToggleButton>
+                    </ToggleButtonGroup>
+                  </Stack>
+                  {watched.invoiceType === 'invoice' && (
+                    <>
+                      <TextField
+                        label={t('store.checkout.taxId')}
+                        required
+                        autoComplete="off"
+                        sx={{ width: { md: 180 }, flexShrink: 0 }}
+                        error={Boolean(errors.taxId)}
+                        helperText={errors.taxId ? t(errors.taxId.message as MessageKey) : undefined}
+                        slotProps={{ htmlInput: { maxLength: 20, inputMode: 'numeric', style: { fontFamily: 'monospace' } } }}
+                        {...register('taxId')}
+                      />
+                      <TextField
+                        label={t('store.checkout.legalName')}
+                        required
+                        fullWidth
+                        autoComplete="organization"
+                        error={Boolean(errors.legalName)}
+                        helperText={errors.legalName ? t(errors.legalName.message as MessageKey) : undefined}
+                        slotProps={{ htmlInput: { maxLength: 200 } }}
+                        {...register('legalName')}
+                      />
+                    </>
+                  )}
+                </Stack>
+
+                {/* Orden de compra y centro de costo, lado a lado. N05 · la OC solo
+                    si la cuenta la EXIGE; el centro de costo solo para empresa. */}
+                {(ordenDeCompraObligatoria || contextoComercial) && (
+                <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ gap: 1.5 }}>
                 {ordenDeCompraObligatoria && (
                   <TextField
                     id="checkout-purchase-order"
@@ -912,50 +1001,6 @@ export function StoreCheckoutPage() {
                     {...register('purchaseOrderNumber')}
                   />
                 )}
-
-                {/* Resumen v2 · El comprobante. Boleta no pide nada más; factura
-                    pide RUC y razón social, que el servidor vuelve a validar. El
-                    centro de costo solo tiene sentido para una cuenta de empresa. */}
-                <Divider />
-                <Stack sx={{ gap: 1.25 }} data-checkout-invoice={watched.invoiceType ?? 'receipt'}>
-                  <Typography component="h3" sx={{ fontSize: TS.bodyStrong, fontWeight: 800 }}>
-                    {t('store.checkout.invoiceTitle')}
-                  </Typography>
-                  <ToggleButtonGroup
-                    exclusive
-                    size="small"
-                    value={watched.invoiceType ?? 'receipt'}
-                    aria-label={t('store.checkout.invoiceTitle')}
-                    onChange={(_, next: 'receipt' | 'invoice' | null) => next && setValue('invoiceType', next)}
-                    sx={{ alignSelf: 'flex-start', '& .MuiToggleButton-root': { textTransform: 'none', fontWeight: 700, px: 2 } }}
-                  >
-                    <ToggleButton value="receipt">{t('store.checkout.invoiceReceipt')}</ToggleButton>
-                    <ToggleButton value="invoice">{t('store.checkout.invoiceInvoice')}</ToggleButton>
-                  </ToggleButtonGroup>
-                  {watched.invoiceType === 'invoice' && (
-                    <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ gap: 1.5 }}>
-                      <TextField
-                        label={t('store.checkout.taxId')}
-                        required
-                        autoComplete="off"
-                        sx={{ width: { sm: 200 } }}
-                        error={Boolean(errors.taxId)}
-                        helperText={errors.taxId ? t(errors.taxId.message as MessageKey) : undefined}
-                        slotProps={{ htmlInput: { maxLength: 20, inputMode: 'numeric', style: { fontFamily: 'monospace' } } }}
-                        {...register('taxId')}
-                      />
-                      <TextField
-                        label={t('store.checkout.legalName')}
-                        required
-                        fullWidth
-                        autoComplete="organization"
-                        error={Boolean(errors.legalName)}
-                        helperText={errors.legalName ? t(errors.legalName.message as MessageKey) : undefined}
-                        slotProps={{ htmlInput: { maxLength: 200 } }}
-                        {...register('legalName')}
-                      />
-                    </Stack>
-                  )}
                   {contextoComercial && (
                     <TextField
                       label={t('store.checkout.costCenter')}
@@ -971,6 +1016,36 @@ export function StoreCheckoutPage() {
                       {...register('costCenter')}
                     />
                   )}
+                </Stack>
+                )}
+
+                {/* P10 · el cupón, en el paso de pago y con su botón al lado. Lo
+                    que se manda es TEXTO: si descuenta y cuánto lo decide el
+                    servidor. «Aplicar» cotiza AHORA: quien teclea un código
+                    quiere ver si descuenta antes de confirmar. */}
+                {/* Sin texto de ayuda fijo: el botón se estira al alto del campo
+                    y quedan alineados, como en el diseño. El error sí se dice. */}
+                <Stack direction="row" sx={{ gap: 1, alignItems: 'stretch' }}>
+                  <TextField
+                    fullWidth
+                    label={t('store.checkout.coupon')}
+                    placeholder={t('store.checkout.couponPlaceholder')}
+                    error={Boolean(errors.couponCode)}
+                    {...(errors.couponCode ? { helperText: t(errors.couponCode.message as MessageKey) } : {})}
+                    inputProps={{ style: { textTransform: 'uppercase' } }}
+                    {...register('couponCode')}
+                  />
+                  <Button
+                    type="button"
+                    variant="outlined"
+                    onClick={() => {
+                      const cupon = (getValues('couponCode') ?? '').trim()
+                      setCuponCotizado(cupon === '' ? SIN_CUPONES : [cupon])
+                    }}
+                    sx={{ fontWeight: 800, flexShrink: 0, px: 2.5 }}
+                  >
+                    {t('store.checkout.couponApply')}
+                  </Button>
                 </Stack>
               </>
             )}
@@ -1065,6 +1140,18 @@ export function StoreCheckoutPage() {
             </Button>
           )}
         </Card>
+
+        {/* Los pasos que FALTAN, plegados: se ve cuánto queda. */}
+        {PASOS.slice(paso + 1).map((definicion, desplazamiento) => (
+          <CheckoutStepRow
+            key={definicion.id}
+            numero={paso + desplazamiento + 2}
+            titulo={t(definicion.tituloKey)}
+            resumen={t(`store.checkout.pendingHint.${definicion.id}` as MessageKey)}
+            estado="pendiente"
+          />
+        ))}
+        </Stack>
 
         <CheckoutSummary
           lines={cart.lines}
