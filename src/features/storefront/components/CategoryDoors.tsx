@@ -1,3 +1,4 @@
+import PercentRoundedIcon from '@mui/icons-material/PercentRounded'
 import { Box, Stack, Typography } from '@mui/material'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -538,6 +539,88 @@ export function CategoryCircles({
           </Stack>
         )
       })}
+    </ScrollRow>
+  )
+}
+/**
+ * Las familias en TARJETAS CON ICONO (Resumen v2 · contrato V5, `icons`).
+ *
+ * Los «accesos» de Retail: una fila de tarjetas bajas, cada una con el icono de
+ * su familia en el color de la tienda y el nombre debajo. Se recorren de un
+ * vistazo y no compiten con la portada.
+ *
+ * Al final, si hay algo rebajado, una tarjeta INVERTIDA que lleva a todas las
+ * ofertas: no es una familia —por eso no lleva tinte ni icono de familia— sino
+ * un corte transversal, y el fondo invertido lo dice sin inventar un color.
+ */
+export function CategoryIconCards({
+  categories,
+  storeSlug,
+  ariaLabel,
+  offersHref,
+}: {
+  categories: readonly CategoryDoorItem[]
+  storeSlug: string
+  ariaLabel?: string
+  /** Destino de la tarjeta final de ofertas. Sin él, no se pinta. */
+  offersHref?: string | null
+}) {
+  const { t } = useI18n()
+  if (categories.length === 0) return null
+
+  const tarjeta = {
+    flexShrink: 0,
+    width: { xs: 112, md: 136 },
+    minHeight: { xs: 88, md: 96 },
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 1,
+    px: 1,
+    py: 1.5,
+    borderRadius: 'var(--sf-radius)',
+    border: '1px solid var(--sf-line)',
+    boxShadow: 'var(--sf-shadow)',
+    textDecoration: 'none',
+    transition: 'transform .18s ease, box-shadow .18s ease',
+    '@media (hover: hover)': { '&:hover': { transform: 'translateY(-2px)', boxShadow: 'var(--sf-shadow-hover)' } },
+    '@media (prefers-reduced-motion: reduce)': { transition: 'none', '&:hover': { transform: 'none' } },
+    '&:focus-visible': { outline: '2px solid var(--accent)', outlineOffset: 2 },
+  } as const
+
+  return (
+    <ScrollRow component="nav" ariaLabel={ariaLabel} gap={1.5}>
+      {categories.map((category) => {
+        const Icono = iconoDe(category.name)
+        return (
+          <Box
+            key={category.category_id}
+            component={Link}
+            to={`/s/${storeSlug}?c=${encodeURIComponent(category.slug)}`}
+            data-category-icon-card="true"
+            sx={{ ...tarjeta, bgcolor: 'var(--card)', color: 'var(--text)' }}
+          >
+            <Icono aria-hidden sx={{ fontSize: 28, color: 'var(--accent-deep)' }} />
+            <Typography sx={{ fontSize: TS.label + 1, fontWeight: 700, textAlign: 'center', lineHeight: 1.25 }}>
+              {category.name}
+            </Typography>
+          </Box>
+        )
+      })}
+      {offersHref ? (
+        <Box
+          component={Link}
+          to={offersHref}
+          data-category-icon-card="offers"
+          sx={{ ...tarjeta, bgcolor: 'var(--text)', color: 'var(--card)', borderColor: 'transparent' }}
+        >
+          <PercentRoundedIcon aria-hidden sx={{ fontSize: 28 }} />
+          <Typography sx={{ fontSize: TS.label + 1, fontWeight: 800, textAlign: 'center', lineHeight: 1.25 }}>
+            {t('store.nav.offers')}
+          </Typography>
+        </Box>
+      ) : null}
     </ScrollRow>
   )
 }

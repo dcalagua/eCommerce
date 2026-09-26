@@ -88,7 +88,8 @@ export const THEME_PRESETS: Readonly<Record<ThemePreset, ThemeDefinition>> = {
      */
     heroVariant: 'bento',
     productCardVariant: 'compact',
-    categoryVariant: 'tiles',
+    // Resumen v2 · Accesos: tarjetas con icono y la puerta a las ofertas.
+    categoryVariant: 'icons',
     contentWidth: 'lg',
     imageRatio: 'square',
     sectionSpacing: 'compact',

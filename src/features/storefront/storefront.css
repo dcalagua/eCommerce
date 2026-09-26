@@ -277,6 +277,50 @@
 
 /* RETAIL: el precio es el protagonista. Sube por encima del nombre y el
    descuento pesa mas: quien compra jabon y paracetamol compara cifras. */
+/* RETAIL «FERIA DE OFERTAS» · la cabecera (Resumen v2).
+   Todo sale del acento de la TIENDA: el tema pone la forma, nunca un color.
+   - La barra de familias se vuelve una banda del color de la tienda. Va en
+     `--accent-deep`, que es el tono que garantiza AA con texto blanco.
+   - El buscador gana protagonismo: borde de 2 px en el acento.
+   - El aviso superior pasa a la franja invertida del diseño.
+   - «Ofertas» deja de ser un enlace y se vuelve una pastilla blanca. */
+.sf-scope[data-store-theme='retail'] .sf-catnav {
+  background: var(--accent-deep);
+  border-top-color: transparent;
+}
+.sf-scope[data-store-theme='retail'] .sf-catnav .sf-catnav-item,
+.sf-scope[data-store-theme='retail'] .sf-catnav .sf-catnav-item:hover {
+  color: #fff;
+}
+.sf-scope[data-store-theme='retail'] .sf-catnav .sf-catnav-item[aria-current='true'],
+.sf-scope[data-store-theme='retail'] .sf-catnav .sf-catnav-item[aria-expanded='true'] {
+  border-bottom-color: #fff;
+}
+.sf-scope[data-store-theme='retail'] .sf-catnav .sf-catnav-icon {
+  background: color-mix(in srgb, #fff 18%, transparent);
+  color: #fff;
+}
+.sf-scope[data-store-theme='retail'] .sf-catnav .sf-catnav-door {
+  border-left-color: color-mix(in srgb, #fff 35%, transparent);
+  color: #fff;
+}
+.sf-scope[data-store-theme='retail'] .sf-catnav .sf-catnav-door[data-door='offers'] {
+  margin-left: auto;
+  align-self: center;
+  border: 0;
+  padding: 4px 14px;
+  border-radius: var(--sf-pill);
+  background: #fff;
+  color: var(--accent-deep);
+}
+.sf-scope[data-store-theme='retail'] .sf-search {
+  border: 2px solid var(--accent);
+}
+.sf-scope[data-store-theme='retail'] [data-announcement-bar] {
+  background: var(--text);
+  color: var(--card);
+}
+
 .sf-scope[data-store-theme='retail'] {
   --sf-card-price: 20px;
   /* Resumen v2 · Ningun tema pone COLOR: el color es de la tienda (decision

@@ -27,6 +27,25 @@ monedas mezcladas, cero afirmado con la moneda de la tienda). **No aplicada en Q
 la tarjeta cae a las ventas acumuladas de `dashboard_kpis` y lo dice. Tests: 11 de base
 (`supabase/tests/dashboard-sales-trend.test.ts`, aislamiento incluido) y 23 de pantalla.
 
+## Resumen v2 · Retail «Feria de ofertas» (2026-09-27)
+
+La vitrina en tema Retail sigue el frame `07 · Propuesta — Retail «Feria de ofertas»` de
+`design/storefront.pen` (verificado con captura a 1440 y 390 px contra la demo, sin tocar datos):
+
+- **Cabecera** (solo CSS del tema, `storefront.css`): banda de familias en `--accent-deep` con texto blanco,
+  «Ofertas» como pastilla, buscador con borde del acento, aviso superior invertido.
+- **Portada `bento` rehecha** (`StoreBentoHero`): bloque de la campaña en `--hero-grad` —nombre de la
+  campaña, «hasta −N %» con el mayor descuento real, cuenta regresiva solo si una campaña vigente termina
+  en ≤ 7 días— y 2×2 ofertas con corazón, tachado y «Convenio».
+- **Contrato V5** (migración `20260927110000_theme_contract_v5.sql`, **sin aplicar en QAS**):
+  `categoryVariant`/presentación `icons` (`CategoryIconCards`, con tarjeta final a las ofertas);
+  `offers: 'flash'` (`FlashOffersBand`, 6 ofertas, reloj y «Ver las N»); `promotions: 'banners'`
+  (`PromoBanners`, dos campañas, la segunda invertida). `offers` y `promotions` dejan de compartir lista.
+  Retail resuelve `auto` a estas tres. Sin la migración, la vitrina las pinta igual (el tema las resuelve
+  sin guardar nada) pero el backoffice no puede GUARDARLAS explícitamente.
+- No se pinta: «% vendido» (el stock no es público) ni un reloj sin fecha de fin real.
+- Helpers puros en `storefront/feria.ts` (`campanaQueTerminaAntes`, `mayorDescuento`, `partesRestantes`).
+
 ## Resumen v2 · Temas: forma y tipografía, el color es de la tienda (2026-09-26)
 
 Decisión del operador: **el color es 100 % de la tienda**; un tema solo cambia formas (radios, columnas,
@@ -41,8 +60,8 @@ oferta de Retail (la pastilla vuelve al acento del tenant).
   opción vacía «La del tema · {fuente}».
 - Migración `20260927100000_storefront_theme_fonts.sql`: CHECK `store_settings_font` suma `archivo`,
   `fraunces`, `plex`; policies de escritura de `store_settings` sin `font_family` en lo premium (forma
-  InitPlan); `reset_premium_branding` ya no borra la fuente. **Sin aplicar en QAS**: hasta aplicarla, elegir
-  una fuente sin el addon de marca blanca falla al guardar, y las tres nuevas las rechaza el CHECK.
+  InitPlan); `reset_premium_branding` ya no borra la fuente. **Aplicada en QAS** (2026-09-27, a pedido del
+  operador).
 - Instalación local con `--engine-strict=false`: el Node de la máquina (22.12) choca con
   `eslint-visitor-keys` (pide 22.13); el contrato es Node 24 (`.nvmrc`).
 

@@ -99,6 +99,7 @@ export function StoreQuickSearch({ storeSlug }: { storeSlug: string }) {
         <Stack
           ref={anchor}
           direction="row"
+          className="sf-search"
           sx={{
             alignItems: 'center',
             gap: 1,

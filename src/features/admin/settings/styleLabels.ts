@@ -34,6 +34,10 @@ export const ETIQUETA_VALOR: Record<string, MessageKey> = {
   // Resumen v2 · contrato V4
   bento: 'settings.design.value.bento',
   circles: 'settings.design.value.circles',
+  // Resumen v2 · contrato V5 (Retail «Feria de ofertas»)
+  icons: 'settings.design.value.icons',
+  flash: 'settings.design.value.flash',
+  banners: 'settings.design.value.banners',
   cover: 'settings.design.value.cover',
   contain: 'settings.design.value.contain',
   // Storefront V3 · P12 · Los valores de la presentación por sección.

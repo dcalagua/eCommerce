@@ -52,16 +52,27 @@ export const PRODUCT_PRESENTATIONS = ['auto', 'rail', 'grid', 'spotlight'] as co
 export type ProductPresentation = (typeof PRODUCT_PRESENTATIONS)[number]
 
 /** Cómo se enseñan las familias del catálogo. */
-export const CATEGORY_PRESENTATIONS = ['auto', 'tiles', 'pills', 'mosaic', 'circles'] as const
+export const CATEGORY_PRESENTATIONS = ['auto', 'tiles', 'pills', 'mosaic', 'circles', 'icons'] as const
 export type CategoryPresentation = (typeof CATEGORY_PRESENTATIONS)[number]
 
 /** Cómo se enseñan las marcas. */
 export const BRAND_PRESENTATIONS = ['auto', 'cards', 'logos'] as const
 export type BrandPresentation = (typeof BRAND_PRESENTATIONS)[number]
 
-/** Cómo se enseña lo rebajado y las campañas vigentes. */
-export const OFFER_PRESENTATIONS = ['auto', 'band', 'split'] as const
+/**
+ * Cómo se enseña lo rebajado. V5 suma `flash`: la banda oscura de «Ofertas
+ * relámpago», con cuenta regresiva solo si una campaña tiene fecha de fin.
+ */
+export const OFFER_PRESENTATIONS = ['auto', 'band', 'split', 'flash'] as const
 export type OfferPresentation = (typeof OFFER_PRESENTATIONS)[number]
+
+/**
+ * Cómo se enseñan las campañas vigentes. Compartía lista con `offers` hasta V5;
+ * se separa porque `banners` —dos campañas lado a lado— no significa nada para
+ * una lista de productos, igual que `flash` no significa nada para una campaña.
+ */
+export const PROMOTION_PRESENTATIONS = ['auto', 'band', 'split', 'banners'] as const
+export type PromotionPresentation = (typeof PROMOTION_PRESENTATIONS)[number]
 
 /**
  * La superficie sobre la que va la sección.
@@ -117,7 +128,7 @@ export const SECTION_PRESENTATION_RULES: Readonly<
   services: { variants: [], surfaces: ['plain', 'soft'] },
   offers: { variants: OFFER_PRESENTATIONS, surfaces: SECTION_SURFACES },
   cms: { variants: [], surfaces: ['plain'] },
-  promotions: { variants: OFFER_PRESENTATIONS, surfaces: SECTION_SURFACES },
+  promotions: { variants: PROMOTION_PRESENTATIONS, surfaces: SECTION_SURFACES },
   categories: { variants: CATEGORY_PRESENTATIONS, surfaces: ['plain', 'soft'] },
   brands: { variants: BRAND_PRESENTATIONS, surfaces: ['plain', 'soft'] },
   'new-arrivals': { variants: PRODUCT_PRESENTATIONS, surfaces: SECTION_SURFACES },
@@ -156,6 +167,7 @@ const AUTO_POR_TEMA: Readonly<
       readonly product: Exclude<ProductPresentation, 'auto'>
       readonly brands: Exclude<BrandPresentation, 'auto'>
       readonly offers: Exclude<OfferPresentation, 'auto'>
+      readonly promotions: Exclude<PromotionPresentation, 'auto'>
       readonly bleedOffers: boolean
     }
   >
@@ -166,14 +178,18 @@ const AUTO_POR_TEMA: Readonly<
    * `rail` es lo que la fila hacía: rejilla corta con pocos productos y
    * carrusel con muchos —esa adaptación es de la fila y no se toca—.
    */
-  universal: { product: 'rail', brands: 'cards', offers: 'band', bleedOffers: false },
+  universal: { product: 'rail', brands: 'cards', offers: 'band', promotions: 'band', bleedOffers: false },
   /**
    * Retail · descubrimiento.
    *
    * La rejilla enseña más de una vez lo que hay: en una tienda de conversión, el
    * carrusel esconde la mitad del surtido detrás de un gesto.
    */
-  retail: { product: 'grid', brands: 'cards', offers: 'band', bleedOffers: false },
+  /**
+   * Resumen v2 · «Feria de ofertas»: lo rebajado en la banda relámpago y las
+   * campañas como dos banners lado a lado.
+   */
+  retail: { product: 'grid', brands: 'cards', offers: 'flash', promotions: 'banners', bleedOffers: false },
   /**
    * Premium · ritmo editorial.
    *
@@ -189,7 +205,7 @@ const AUTO_POR_TEMA: Readonly<
    * con los bloques editoriales del CMS. `auto` no puede resolver a algo que
    * nadie pinta —sería un contrato que dice que cambia algo y no cambia nada—.
    */
-  premium: { product: 'spotlight', brands: 'logos', offers: 'band', bleedOffers: true },
+  premium: { product: 'spotlight', brands: 'logos', offers: 'band', promotions: 'band', bleedOffers: true },
   /**
    * Catalog · productividad.
    *
@@ -201,7 +217,7 @@ const AUTO_POR_TEMA: Readonly<
    * catálogo de miles de referencias, la marca es una forma de ACOTAR, y un muro
    * se recorre con la vista más rápido que una fila de tarjetas con su cuenta.
    */
-  catalog: { product: 'rail', brands: 'logos', offers: 'band', bleedOffers: false },
+  catalog: { product: 'rail', brands: 'logos', offers: 'band', promotions: 'band', bleedOffers: false },
 }
 
 /** Lo que `auto` resuelve para las familias: lo que el contrato del tema dice. */
@@ -241,6 +257,7 @@ export function resolveSectionPresentation({
     if (reglas.variants === CATEGORY_PRESENTATIONS) return autoCategorias(categoryVariant)
     if (reglas.variants === BRAND_PRESENTATIONS) return auto.brands
     if (reglas.variants === OFFER_PRESENTATIONS) return auto.offers
+    if (reglas.variants === PROMOTION_PRESENTATIONS) return auto.promotions
     /**
      * Producto. `spotlight` con tarjetas densas sería una contradicción —una
      * pieza grande pintada con la tarjeta de un catálogo— así que ahí se cae al

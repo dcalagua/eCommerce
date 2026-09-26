@@ -20,6 +20,7 @@ import { useFavorites } from './useFavorites'
 import { StoreLandingSkeleton } from './components/StoreLandingSkeleton'
 import { HomeComposer } from './home/HomeComposer'
 import type { HomeSectionData } from './home/types'
+import { resolveSectionPresentation } from './theme/presentation'
 import { useStorefrontTheme } from './theme/useStorefrontTheme'
 
 /**
@@ -432,6 +433,22 @@ export function StoreHomePage() {
   const heroReserva =
     tema.style.heroVariant === 'statement' || cmsTraePortada ? 0 : 4
 
+  /**
+   * Resumen v2 · Cuántas ofertas se reservan para la banda: tres para la de
+   * siempre, seis para la relámpago (`flash`), que las pinta en una fila de
+   * seis. Se resuelve con la MISMA regla que usa el compositor.
+   */
+  const ofertasEnBanda =
+    resolveSectionPresentation({
+      id: 'offers',
+      presentation: tema.layout.sections.find((section) => section.id === 'offers')?.presentation,
+      preset: tema.preset,
+      categoryVariant: tema.style.categoryVariant,
+      productCardVariant: tema.style.productCardVariant,
+    }).variant === 'flash'
+      ? 6
+      : 3
+
   const secciones = useMemo(() => {
     const usados = new Set<string>()
     const tomar = (lista: readonly PublicProduct[], cuantos: number) => {
@@ -463,12 +480,12 @@ export function StoreHomePage() {
      */
     return {
       hero: tomar(rebajados, heroReserva),
-      ofertas: tomar(rebajados, 3),
+      ofertas: tomar(rebajados, ofertasEnBanda),
       masVendido: tomar(ranking.length > 0 ? ranking : products, 12),
       destacados: tomar(products, 12),
       novedades: tomar(novedades, 12),
     }
-  }, [ofertasPorMedia, products, novedades, heroReserva, masVendidos.data])
+  }, [ofertasPorMedia, products, novedades, heroReserva, ofertasEnBanda, masVendidos.data])
 
 
   /**

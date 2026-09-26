@@ -508,10 +508,11 @@ describe('las puertas de categoría con fotografía', () => {
   }
 
   /**
-   * Los tres temas que piden AZULEJOS. `catalog` no está aquí y no es un olvido:
-   * desde P04 pide píldoras, y ahí la foto no cabe. Ver la prueba siguiente.
+   * Los temas que piden AZULEJOS. `catalog` no está aquí y no es un olvido:
+   * desde P04 pide píldoras, y ahí la foto no cabe. `retail` tampoco: desde el
+   * Resumen v2 pide tarjetas con icono. Ver las pruebas siguientes.
    */
-  it.each(['universal', 'retail', 'premium'])(
+  it.each(['universal', 'premium'])(
     'en el tema %s la que tiene foto la enseña y la que no cae al tinte',
     async (tema) => {
       cleanup()
@@ -527,6 +528,14 @@ describe('las puertas de categoría con fotografía', () => {
       )
     },
   )
+
+  it('en el tema retail las familias son tarjetas con icono que llevan a su catálogo', async () => {
+    cleanup()
+    const seccion = await portadaConCategorias('retail')
+    const abrigos = within(seccion).getAllByRole('link', { name: /Abrigos/ })[0]
+    expect(abrigos).toHaveAttribute('data-category-icon-card', 'true')
+    expect(abrigos).toHaveAttribute('href', '/s/tienda?c=abrigos')
+  })
 
   /**
    * La otra mitad del contrato `categoryVariant`, cerrado en P04.

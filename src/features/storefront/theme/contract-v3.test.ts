@@ -45,9 +45,9 @@ describe('el contrato creció donde tenía que crecer', () => {
     expect([...PRODUCT_CARD_VARIANTS]).toEqual(['comfortable', 'compact', 'editorial'])
   })
 
-  it('las familias tienen el mosaico (y, desde V4, los círculos)', () => {
-    // La lista solo CRECE: V3 sumó `mosaic` y V4 (Resumen v2) `circles`.
-    expect([...CATEGORY_VARIANTS]).toEqual(['tiles', 'pills', 'mosaic', 'circles'])
+  it('las familias tienen el mosaico (y, desde V4, los círculos; desde V5, los iconos)', () => {
+    // La lista solo CRECE: V3 sumó `mosaic`, V4 `circles` y V5 `icons`.
+    expect([...CATEGORY_VARIANTS]).toEqual(['tiles', 'pills', 'mosaic', 'circles', 'icons'])
   })
 
   it('el encaje de la foto es una clave del contrato, no un valor cableado', () => {

@@ -14,8 +14,10 @@ import { BrandLogoWall } from '../components/BrandLogoWall'
 import { BrandRow } from '../components/BrandRow'
 import { BrandTrustStrip } from '../components/BrandTrustStrip'
 import { Stack } from '@mui/material'
+import { FlashOffersBand } from '../components/FlashOffersBand'
 import { OffersFeaturedBand } from '../components/OffersFeaturedBand'
 import { ProductRow } from '../components/ProductRow'
+import { PromoBanners } from '../components/PromoBanners'
 import { PromoCarousel } from '../components/PromoCarousel'
 import { SectionHeading } from '../components/SectionHeading'
 import { StoreBentoHero } from '../components/StoreBentoHero'
@@ -23,6 +25,7 @@ import { StoreFeaturedHero } from '../components/StoreFeaturedHero'
 import { StoreHero } from '../components/StoreHero'
 import { StoreBusinessInfo } from '../components/StoreBusinessInfo'
 import { StoreValueProps } from '../components/StoreValueProps'
+import { campanaQueTerminaAntes, mayorDescuento } from '../feria'
 import type { ResolvedPresentation } from '../theme/presentation'
 import type { HomeSectionData, HomeSectionRegistry } from './types'
 
@@ -61,6 +64,9 @@ const CategoryPills = lazy(() =>
 )
 const CategoryCircles = lazy(() =>
   import('../components/CategoryDoors').then((modulo) => ({ default: modulo.CategoryCircles })),
+)
+const CategoryIconCards = lazy(() =>
+  import('../components/CategoryDoors').then((modulo) => ({ default: modulo.CategoryIconCards })),
 )
 /**
  * El mosaico también por `lazy` (Storefront V3 · P07), por lo mismo que las
@@ -227,18 +233,21 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
     const productos = conTope(data.hero, maxItems)
     if (productos.length === 0) return editorial
 
-    // Resumen v2 · El mosaico: la misma oferta principal y, al lado, otra
-    // oferta que no esté ya en el carrusel y la puerta a todas.
+    // Resumen v2 · «Feria de ofertas»: el bloque de la campaña y cuatro
+    // ofertas. Completa con lo rebajado que no esté ya en la portada.
     if (data.theme.style.heroVariant === 'bento') {
-      const enCarrusel = new Set(productos.map((producto) => producto.product_id))
-      const siguiente = [...data.ofertas, ...data.hero].find((producto) => !enCarrusel.has(producto.product_id)) ?? null
+      const vistos = new Set(productos.map((producto) => producto.product_id))
+      const cuatro = [...productos, ...data.ofertas.filter((producto) => !vistos.has(producto.product_id))].slice(0, 4)
       return (
         <StoreBentoHero
-          products={productos}
-          next={siguiente}
-          offersTotal={data.ofertasTotal}
+          products={cuatro}
+          promotion={data.promociones[0] ?? null}
+          clockEndsAt={campanaQueTerminaAntes(data.promociones)?.endsAt ?? null}
+          maxDiscount={mayorDescuento([...productos, ...data.ofertas], data.promociones)}
           storeSlug={data.storeSlug}
           thumbnails={data.thumbsOfertas}
+          favorites={data.favorites}
+          onToggleFavorite={data.onToggleFavorite}
         />
       )
     }
@@ -264,7 +273,23 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
    */
   services: (data) => <StoreValueProps store={data.store} />,
 
-  offers: (data, maxItems, presentation) => (
+  offers: (data, maxItems, presentation) =>
+    /**
+     * Resumen v2 · `flash`: la banda de «Ofertas relámpago» (Retail). Reloj
+     * solo si una campaña vigente tiene fecha de fin próxima.
+     */
+    presentation?.variant === 'flash' ? (
+      <FlashOffersBand
+        offers={conTope(data.ofertas, maxItems)}
+        total={data.ofertasTotal}
+        clockEndsAt={campanaQueTerminaAntes(data.promociones)?.endsAt ?? null}
+        storeSlug={data.storeSlug}
+        thumbnails={data.thumbsOfertas}
+        favorites={data.favorites}
+        onToggleFavorite={data.onToggleFavorite}
+        onQuickView={data.onQuickView}
+      />
+    ) : (
     <OffersFeaturedBand
       /**
        * `band` o `split` (V3 · P08).
@@ -286,7 +311,7 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
       onToggleFavorite={data.onToggleFavorite}
       onQuickView={data.onQuickView}
     />
-  ),
+    ),
 
   cms: (data) => {
     // Sin bloques no se monta nada, y así una tienda sin contenido tampoco
@@ -315,9 +340,20 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
    * Las promociones vigentes salen del motor, no de un cartel escrito a mano:
    * si está descontando, se anuncia; si caduca, desaparece sola.
    */
-  promotions: (data, maxItems) => {
+  promotions: (data, maxItems, presentation) => {
     const promos = conTope(data.promociones, maxItems)
     if (promos.length === 0) return null
+    // Resumen v2 · `banners`: dos campañas lado a lado (Retail).
+    if (presentation?.variant === 'banners') {
+      return (
+        <PromoBanners
+          promotions={promos}
+          storeSlug={data.storeSlug}
+          currency={data.store.currency}
+          assets={data.promoAssets}
+        />
+      )
+    }
     return (
       <PromoCarousel
         promotions={promos}
@@ -365,6 +401,7 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
     const pills = comoSeEnsenan === 'pills'
     const mosaico = comoSeEnsenan === 'mosaic'
     const circulos = comoSeEnsenan === 'circles'
+    const iconos = comoSeEnsenan === 'icons'
 
     // Las puertas llegan por `lazy`, sin fallback: lo que hay debajo no se
     // mueve de sitio —la sección ya tiene su título— y un esqueleto de cuatro
@@ -373,7 +410,14 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
       <Suspense fallback={null}>
         <Stack component="section" aria-label={data.t('store.categories.shopBy')} sx={{ gap: 1.5 }}>
           <SectionHeading title={data.t('store.categories.shopBy')} />
-          {circulos ? (
+          {iconos ? (
+            <CategoryIconCards
+              categories={familias}
+              storeSlug={data.storeSlug}
+              ariaLabel={data.t('store.categories.shopBy')}
+              offersHref={data.hayOfertas ? `/s/${data.storeSlug}?ver=todo&oferta=1` : null}
+            />
+          ) : circulos ? (
             <CategoryCircles
               categories={familias}
               storeSlug={data.storeSlug}

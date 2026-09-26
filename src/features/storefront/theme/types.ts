@@ -100,8 +100,12 @@ export type ProductCardVariant = (typeof PRODUCT_CARD_VARIANTS)[number]
  * familia manda; un mosaico dice cuál manda, que es lo que hace una portada
  * editorial.
  */
-/** `circles` llega con el contrato V4: las familias en una fila de círculos. */
-export const CATEGORY_VARIANTS = ['tiles', 'pills', 'mosaic', 'circles'] as const
+/**
+ * `circles` llega con el contrato V4: las familias en una fila de círculos.
+ * `icons` con el V5 (Retail «Feria de ofertas»): tarjetas con icono y, al final,
+ * la puerta a todas las ofertas.
+ */
+export const CATEGORY_VARIANTS = ['tiles', 'pills', 'mosaic', 'circles', 'icons'] as const
 export type CategoryVariant = (typeof CATEGORY_VARIANTS)[number]
 
 /** Los valores de `Container` que la vitrina usa hoy. */

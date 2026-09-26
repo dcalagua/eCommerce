@@ -167,6 +167,11 @@ describe('`auto` resuelve por tema, nunca por rubro', () => {
       'tiles',
       'pills',
       'mosaic',
+      // Resumen v2 · contrato V5: Retail resuelve estas tres, y las tres tienen
+      // componente (`CategoryIconCards`, `FlashOffersBand`, `PromoBanners`).
+      'icons',
+      'flash',
+      'banners',
     ]
     for (const preset of THEME_PRESET_IDS) {
       for (const id of HOME_SECTION_IDS) {

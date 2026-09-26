@@ -215,16 +215,19 @@ describe('heroVariant elige entre DOS portadas, no entre dos rellenos', () => {
     expect(within(hero).getAllByText(/459/).length).toBeGreaterThan(0)
   })
 
-  it('`bento` abre con la oferta principal y, al lado, la puerta a todas las ofertas', async () => {
-    // Resumen v2 · contrato V4. La misma oferta que `product` —misma foto,
-    // mismo precio— y el centro que quedaba vacío ahora vende.
+  it('`bento` abre con la «feria»: el bloque de la campaña y las ofertas al lado', async () => {
+    // Resumen v2 · Retail «Feria de ofertas». La misma oferta que `product`
+    // —misma foto, mismo precio— dentro de la rejilla, y la puerta a todas.
     await pintar({ heroVariant: 'bento' })
 
     const hero = await heroPintado()
     expect(hero.getAttribute('data-hero-variant')).toBe('bento')
+    expect(hero.querySelector('[data-feria-block]')).not.toBeNull()
     expect(within(hero).getByText('Abrigo de lana')).toBeInTheDocument()
-    const todas = within(hero).getByRole('link', { name: /ofertas vigentes/ })
+    const todas = within(hero).getByRole('link', { name: /Ver todas las ofertas/ })
     expect(todas.getAttribute('href')).toBe('/s/tienda?ver=todo&oferta=1')
+    // Sin campaña con fecha de fin no hay reloj: la urgencia no se inventa.
+    expect(hero.querySelector('[data-countdown]')).toBeNull()
   })
 
   it('`statement` abre con la marca: lema grande y puertas, sin precios', async () => {
@@ -525,6 +528,15 @@ describe('los presets usan lo que declaran', () => {
     await waitFor(() => expect(seccion.querySelectorAll('[data-category-circle]').length).toBe(2))
   })
 
+  it('`icons` pinta las familias como tarjetas con icono', async () => {
+    // Resumen v2 · contrato V5 (Retail «Feria de ofertas»).
+    await pintar({ categoryVariant: 'icons' })
+    const seccion = await screen.findByRole('region', { name: 'Compra por categoría' })
+    await waitFor(() =>
+      expect(seccion.querySelectorAll('[data-category-icon-card="true"]').length).toBe(2),
+    )
+  })
+
   it('ningún valor del contrato se queda sin probar en este archivo', () => {
     // La guarda del guarda: si mañana el contrato gana una opción y nadie añade
     // su caso, esto lo dice en vez de quedarse verde sin mirar.
@@ -546,7 +558,8 @@ describe('los presets usan lo que declaran', () => {
       headerVariant: 3,
       heroVariant: 3,
       productCardVariant: 3,
-      categoryVariant: 4,
+      // V5 suma `icons`, probado arriba.
+      categoryVariant: 5,
       contentWidth: 2,
       imageRatio: 3,
       sectionSpacing: 3,

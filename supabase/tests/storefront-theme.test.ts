@@ -835,3 +835,32 @@ describe('L · el formulario de Configuración puede guardar lo que enseña', ()
     expect(error).toMatch(/permission denied|denegado/i)
   })
 })
+describe('E4 · el contrato V5 (Retail «Feria de ofertas»)', () => {
+  const seccion = (id: string, variant: string) =>
+    JSON.stringify({ version: 2, sections: [{ id, enabled: true, presentation: { variant } }] })
+
+  it('acepta las familias en tarjetas con icono, como estilo y como presentación', async () => {
+    expect(await guardar('storefront_style', JSON.stringify({ categoryVariant: 'icons' }))).toHaveLength(1)
+    expect(await guardar('home_layout', seccion('categories', 'icons'))).toHaveLength(1)
+  })
+
+  it('acepta la banda relámpago en ofertas y los banners en campañas', async () => {
+    expect(await guardar('home_layout', seccion('offers', 'flash'))).toHaveLength(1)
+    expect(await guardar('home_layout', seccion('promotions', 'banners'))).toHaveLength(1)
+  })
+
+  it('cada una solo donde significa algo: ni banners en ofertas, ni relámpago en campañas', async () => {
+    await rechazado('home_layout', seccion('offers', 'banners'))
+    await rechazado('home_layout', seccion('promotions', 'flash'))
+    await rechazado('home_layout', seccion('brands', 'icons'))
+    await rechazado('storefront_style', JSON.stringify({ heroVariant: 'icons' }))
+  })
+
+  it('lo que ya valía sigue valiendo: band y split en las dos', async () => {
+    for (const id of ['offers', 'promotions']) {
+      for (const variant of ['band', 'split']) {
+        expect(await guardar('home_layout', seccion(id, variant))).toHaveLength(1)
+      }
+    }
+  })
+})

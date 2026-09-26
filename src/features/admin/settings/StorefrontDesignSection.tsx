@@ -102,6 +102,10 @@ const ETIQUETA_VALOR: Record<string, MessageKey> = {
   mosaic: 'settings.design.value.mosaic',
   bento: 'settings.design.value.bento',
   circles: 'settings.design.value.circles',
+  // Resumen v2 · contrato V5 (Retail «Feria de ofertas»)
+  icons: 'settings.design.value.icons',
+  flash: 'settings.design.value.flash',
+  banners: 'settings.design.value.banners',
   cover: 'settings.design.value.cover',
   contain: 'settings.design.value.contain',
   lg: 'settings.design.value.lg',
