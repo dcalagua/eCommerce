@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { orderSteps } from './OrderTimeline'
+import { orderSteps } from './orderSteps'
 
 const estados = (input: Parameters<typeof orderSteps>[0]) =>
   Object.fromEntries(orderSteps(input).map((paso) => [paso.key, paso.estado]))
