@@ -221,9 +221,9 @@ export interface SaveSettingsInput {
    *
    * Sin ella los campos PREMIUM no se envían en vez de enviarse vacíos: el
    * guardado de un nombre comercial no puede apagar de paso una marca blanca
-   * que el tenant tenía. Desde P11-SaaS son cuatro —`white_label`,
-   * `font_family` y la identidad de correo—; los de tematización (acento,
-   * logo, favicon, radio, densidad) van siempre. Si alguien los forzara
+   * que el tenant tenía. Son `white_label` y la identidad de correo; los de
+   * tematización (acento, logo, favicon, radio, densidad y, desde Resumen v2,
+   * la tipografía) van siempre. Si alguien los forzara
    * igualmente, la policy `store_settings_update_admin` lo rechaza — esto solo
    * evita el 403.
    */
@@ -268,6 +268,9 @@ export async function saveStoreSettings(input: SaveSettingsInput): Promise<void>
     // Tematización: no exige el addon. El lockup de la suite sigue puesto.
     ui_radius: orNull(values.ui_radius),
     ui_density: orNull(values.ui_density),
+    // Resumen v2 · Tematización (migración 20260927100000): cada tema propone
+    // una tipografía y cualquier tienda la cambia. Vacío = la del tema.
+    font_family: orNull(values.font_family),
     business_display_name: orNull(values.business_display_name),
     // P18 · Regla de negocio del comercio, no addon: se envía siempre.
     checkout_requires_account: values.checkout_requires_account,
@@ -317,7 +320,6 @@ export async function saveStoreSettings(input: SaveSettingsInput): Promise<void>
     ...(input.canWhiteLabel
       ? {
           white_label: values.white_label,
-          font_family: orNull(values.font_family),
           email_from_name: orNull(values.email_from_name),
           email_reply_to: orNull(values.email_reply_to),
         }

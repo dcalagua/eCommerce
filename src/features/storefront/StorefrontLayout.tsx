@@ -54,6 +54,7 @@ import {
   type StorefrontOutlet,
 } from './hooks'
 import { useFavorites } from './useFavorites'
+import { resolveStoreFont } from './theme/presets'
 import { StorefrontThemeProvider } from './theme/StorefrontThemeProvider'
 import { useStorefrontTheme } from './theme/useStorefrontTheme'
 import { themeCssVars, themeDataAttributes } from './theme/theme-context'
@@ -66,10 +67,7 @@ import type { PublicStore } from './types'
 // estan en `latin`, mientras que los ficheros genericos arrastran ademas
 // latin-ext, cirilico y vietnamita — tres alfabetos que esta tienda no escribe,
 // multiplicados por cada peso.
-import '@fontsource/plus-jakarta-sans/latin-400.css'
-import '@fontsource/plus-jakarta-sans/latin-500.css'
-import '@fontsource/plus-jakarta-sans/latin-700.css'
-import '@fontsource/plus-jakarta-sans/latin-800.css'
+import '@/theme/storefrontFonts'
 import './storefront.css'
 
 /**
@@ -171,12 +169,12 @@ export function StorefrontLayout() {
     // que el encargo prohíbe.
     <AppearanceProvider
       tenantAccent={store.accent_color}
-      // Plus Jakarta Sans es la fuente POR DEFECTO de la vitrina; el token del
-      // tenant, cuando existe, manda sobre ella. El defecto vive aqui y no en
-      // la fila: una tienda con `font_family` en null es una tienda que no ha
-      // elegido, y asi el dia que la suite cambie de fuente cambian todas sin
-      // migrar un solo dato.
-      tenantFont={store.font_family ?? 'plus-jakarta'}
+      // Resumen v2 · Sin elección de la tienda, la tipografía la PROPONE su
+      // tema (`THEME_FONTS`); el token del tenant, cuando existe, manda. El
+      // defecto vive aquí y no en la fila: una tienda con `font_family` en null
+      // es una tienda que no ha elegido, y así cambiar la propuesta de un tema
+      // no exige migrar un solo dato.
+      tenantFont={resolveStoreFont(store.font_family, store.theme_preset)}
       tenantRadius={store.ui_radius}
       tenantDensity={store.ui_density}
     >

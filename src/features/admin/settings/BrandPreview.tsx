@@ -1,6 +1,7 @@
 import ShoppingBagRoundedIcon from '@mui/icons-material/ShoppingBagRounded'
 import { Box, Stack, Typography } from '@mui/material'
 import { useI18n } from '@/shared/i18n/i18n-context'
+import '@/theme/storefrontFonts'
 import { brandFontStack, brandRadiusScale, T } from '@/theme/tokens'
 
 const HEX = /^#[0-9a-fA-F]{6}$/

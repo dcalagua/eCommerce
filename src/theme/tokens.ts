@@ -124,7 +124,18 @@ export const FONT_STACK = "'DM Sans', system-ui, -apple-system, 'Segoe UI', sans
  * `20260828140200`: si las dos listas se separan, un valor válido en la base
  * caería aquí al fallback y el tenant vería otra fuente sin que nada fallara.
  */
-export const BRAND_FONTS = ['dm-sans', 'plus-jakarta', 'system', 'grotesk', 'serif', 'mono'] as const
+export const BRAND_FONTS = [
+  'dm-sans',
+  'plus-jakarta',
+  'system',
+  'grotesk',
+  'serif',
+  'mono',
+  // Resumen v2 (migración 20260927100000): las que proponen los temas.
+  'archivo',
+  'fraunces',
+  'plex',
+] as const
 export type BrandFont = (typeof BRAND_FONTS)[number]
 
 export const BRAND_FONT_STACKS: Record<BrandFont, string> = {
@@ -137,6 +148,13 @@ export const BRAND_FONT_STACKS: Record<BrandFont, string> = {
   grotesk: "'Helvetica Neue', Helvetica, Arial, sans-serif",
   serif: "Georgia, 'Times New Roman', Times, serif",
   mono: "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace",
+  // Resumen v2 · Auto-alojadas con `@fontsource` (ver `storefrontFonts.ts`).
+  // Retail: grotesca de cifras firmes, para leer precios de un vistazo.
+  archivo: "'Archivo', 'Helvetica Neue', Arial, system-ui, sans-serif",
+  // Premium: serifa editorial; la reserva es la serifa del sistema.
+  fraunces: "'Fraunces', Georgia, 'Times New Roman', serif",
+  // Catálogo: técnica y compacta, pensada para códigos y tablas.
+  plex: "'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif",
 }
 
 /** Radio del tenant. `soft` es el de suite y el default cuando no hay token. */

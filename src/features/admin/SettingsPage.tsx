@@ -54,10 +54,12 @@ import { StoreIdentitySection } from './settings/StoreIdentitySection'
 import { ValuePropsSection } from './settings/ValuePropsSection'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import { EmptyState, ErrorState, LoadingState, UnauthorizedState } from '@/shared/ui/states'
+import { THEME_FONTS, normalizeThemePreset } from '@/features/storefront/theme/presets'
 import { useAppearance } from '@/theme/appearance-context'
 import {
   BRAND_FONTS,
   BRAND_RADII,
+  brandFontStack,
   COLOR_MODES,
   DENSITIES,
   R,
@@ -246,6 +248,9 @@ export function SettingsPage() {
   const previewAccent = form.watch('accent_color')
   const previewRadius = form.watch('ui_radius')
   const previewFont = form.watch('font_family')
+  // Resumen v2 · La que propone el tema elegido AHORA en el formulario, para
+  // que la muestra y la opción «la del tema» digan la verdad antes de guardar.
+  const themeFont = THEME_FONTS[normalizeThemePreset(form.watch('theme_preset'))]
 
   async function onSubmit(values: StoreFormValues) {
     if (!storeId || !activeCompanyId || !tenant) return
@@ -599,7 +604,7 @@ export function SettingsPage() {
                           <BrandPreview
                             color={previewAccent}
                             radius={previewRadius}
-                            font={previewFont}
+                            font={previewFont || themeFont}
                             storeName={previewName}
                           />
                         </Grid>
@@ -743,35 +748,38 @@ export function SettingsPage() {
                           />
                         </Grid>
 
-                        {/* Tipografía: PREMIUM. Es de las que hacen que la
-                            tienda deje de parecer de la suite. */}
-                        <CapabilityFeature capability="content.white_label">
-                          <Grid item xs={12} md={4}>
-                            <Controller
-                              control={form.control}
-                              name="font_family"
-                              render={({ field }) => (
-                                <TextField
-                                  select
-                                  fullWidth
-                                  slotProps={SHRINK}
-                                  label={t('settings.font')}
-                                  helperText={t('settings.fontHelp')}
-                                  value={field.value}
-                                  disabled={busy}
-                                  onChange={(event) => field.onChange(event.target.value)}
-                                >
-                                  <MenuItem value="">{t('settings.tokenDefault')}</MenuItem>
-                                  {BRAND_FONTS.map((value) => (
-                                    <MenuItem key={value} value={value}>
-                                      {t(`settings.font.${value}` as MessageKey)}
-                                    </MenuItem>
-                                  ))}
-                                </TextField>
-                              )}
-                            />
-                          </Grid>
-                        </CapabilityFeature>
+                        {/* Tipografía: TEMATIZACIÓN desde Resumen v2, como el
+                            radio y la densidad. Vacío = la que propone el tema. */}
+                        <Grid item xs={12} md={4}>
+                          <Controller
+                            control={form.control}
+                            name="font_family"
+                            render={({ field }) => (
+                              <TextField
+                                select
+                                fullWidth
+                                slotProps={SHRINK}
+                                label={t('settings.font')}
+                                helperText={t('settings.fontHelp')}
+                                value={field.value}
+                                disabled={busy}
+                                onChange={(event) => field.onChange(event.target.value)}
+                              >
+                                <MenuItem value="">
+                                  {t('settings.fontThemeDefault').replace(
+                                    '{font}',
+                                    t(`settings.font.${themeFont}` as MessageKey),
+                                  )}
+                                </MenuItem>
+                                {BRAND_FONTS.map((value) => (
+                                  <MenuItem key={value} value={value} sx={{ fontFamily: brandFontStack(value) }}>
+                                    {t(`settings.font.${value}` as MessageKey)}
+                                  </MenuItem>
+                                ))}
+                              </TextField>
+                            )}
+                          />
+                        </Grid>
                       </Grid>
                     </SectionCard>
 

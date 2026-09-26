@@ -254,13 +254,13 @@ export const storeFormSchema = z.object({
    */
   white_label: z.boolean(),
   /**
-   * Tokens de white-label. `font_family` es PREMIUM (exige
-   * `content.white_label`) y `ui_radius`/`ui_density`/`business_display_name`
-   * no: el acento, el logo, el favicon, el radio y la densidad son
-   * tematización —el lockup de la suite sigue puesto— mientras que la
-   * tipografía, la identidad de correo y el dominio propio son lo que hace que
-   * la tienda deje de parecer de la suite. La raya está explicada en la
-   * migración `20260828140200` y la impone la policy, no esta pantalla.
+   * Tokens de white-label. `font_family`, `ui_radius`, `ui_density` y
+   * `business_display_name` son tematización —el lockup de la suite sigue
+   * puesto—; la tipografía lo es desde Resumen v2 (migración
+   * `20260927100000`): cada tema propone una y la tienda la cambia. Premium
+   * queda lo que hace que la tienda deje de parecer de la suite: la marca
+   * blanca, la identidad de correo y el dominio propio. La raya la impone la
+   * policy, no esta pantalla.
    */
   font_family: z.string(),
   ui_radius: z.string(),

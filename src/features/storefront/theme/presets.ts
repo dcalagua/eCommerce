@@ -4,6 +4,7 @@ import {
   normalizeThemePreset,
   sanitizeHomeLayout as sanitizeHomeLayoutCon,
 } from './normalize'
+import type { BrandFont } from '@/theme/tokens'
 import type { HomeLayout, HomeSectionConfig, StorefrontStyle, ThemeDefinition, ThemePreset } from './types'
 
 export {
@@ -152,6 +153,32 @@ export const THEME_PRESETS: Readonly<Record<ThemePreset, ThemeDefinition>> = {
 } as const
 
 export const DEFAULT_THEME_PRESET: ThemePreset = 'universal'
+
+/**
+ * Resumen v2 · La tipografía que PROPONE cada tema.
+ *
+ * El color es de la tienda, siempre: un tema cambia formas y propone una
+ * letra. Es una propuesta y no una imposición — la tienda elige otra en
+ * Configuración (`store_settings.font_family`) y la suya manda. Con la
+ * columna en nulo, la vitrina usa la de aquí.
+ *
+ *  · universal → Plus Jakarta Sans, la de siempre: quien nunca eligió tema no
+ *    ve cambiar su tienda.
+ *  · retail    → Archivo: grotesca de cifras firmes, para comparar precios.
+ *  · premium   → Fraunces: serifa editorial, la foto y el titular mandan.
+ *  · catalog   → IBM Plex Sans: técnica y compacta, para SKU y listas.
+ */
+export const THEME_FONTS: Readonly<Record<ThemePreset, BrandFont>> = {
+  universal: 'plus-jakarta',
+  retail: 'archivo',
+  premium: 'fraunces',
+  catalog: 'plex',
+}
+
+/** La fuente que se pinta: la de la tienda si eligió; si no, la del tema. */
+export function resolveStoreFont(fontFamily: string | null | undefined, themePreset: unknown): string {
+  return fontFamily || THEME_FONTS[normalizeThemePreset(themePreset)]
+}
 
 /**
  * El orden heredado de la Home.

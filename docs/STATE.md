@@ -27,6 +27,25 @@ monedas mezcladas, cero afirmado con la moneda de la tienda). **No aplicada en Q
 la tarjeta cae a las ventas acumuladas de `dashboard_kpis` y lo dice. Tests: 11 de base
 (`supabase/tests/dashboard-sales-trend.test.ts`, aislamiento incluido) y 23 de pantalla.
 
+## Resumen v2 · Temas: forma y tipografía, el color es de la tienda (2026-09-26)
+
+Decisión del operador: **el color es 100 % de la tienda**; un tema solo cambia formas (radios, columnas,
+aire, cabecera, tarjeta) y **propone una tipografía que la tienda puede cambiar**. Fuera el amarillo de
+oferta de Retail (la pastilla vuelve al acento del tenant).
+
+- `THEME_FONTS` (`storefront/theme/presets.ts`): Universal → Plus Jakarta Sans (sin cambio), Retail →
+  Archivo, Premium → Fraunces, Catálogo → IBM Plex Sans. `resolveStoreFont`: `font_family` de la tienda si
+  eligió; si no, la del tema. Fuentes auto-alojadas con `@fontsource` en `src/theme/storefrontFonts.ts`
+  (vitrina y muestra de marca del backoffice).
+- La tipografía pasa de **premium a tematización**: selector fuera de `CapabilityFeature`, se envía siempre;
+  opción vacía «La del tema · {fuente}».
+- Migración `20260927100000_storefront_theme_fonts.sql`: CHECK `store_settings_font` suma `archivo`,
+  `fraunces`, `plex`; policies de escritura de `store_settings` sin `font_family` en lo premium (forma
+  InitPlan); `reset_premium_branding` ya no borra la fuente. **Sin aplicar en QAS**: hasta aplicarla, elegir
+  una fuente sin el addon de marca blanca falla al guardar, y las tres nuevas las rechaza el CHECK.
+- Instalación local con `--engine-strict=false`: el Node de la máquina (22.12) choca con
+  `eslint-visitor-keys` (pide 22.13); el contrato es Node 24 (`.nvmrc`).
+
 ## Resumen v2 · Vitrina B2B (2026-09-26)
 
 Implementación de los diseños de `design/storefront.pen` (temas, catálogo, carrito, checkout y

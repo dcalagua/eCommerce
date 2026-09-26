@@ -337,14 +337,19 @@ describe('guardar la configuración', () => {
   it('sin el addon sigue sin escribir lo premium', async () => {
     const patch = await guardar(false, {
       white_label: true,
-      font_family: 'grotesk',
       email_from_name: 'Botica',
       email_reply_to: 'hola@botica.com',
     })
 
-    for (const campo of ['white_label', 'font_family', 'email_from_name', 'email_reply_to']) {
+    for (const campo of ['white_label', 'email_from_name', 'email_reply_to']) {
       expect(patch).not.toHaveProperty(campo)
     }
+  })
+
+  it('la tipografía es tematización: se envía sin el addon (Resumen v2)', async () => {
+    expect((await guardar(false, { font_family: 'fraunces' })).font_family).toBe('fraunces')
+    // Vacío = «la del tema»: viaja como nulo, no como cadena vacía.
+    expect((await guardar(false, { font_family: '' })).font_family).toBeNull()
   })
 
   it('con el addon sí escribe lo premium, y el tema sigue estando', async () => {
