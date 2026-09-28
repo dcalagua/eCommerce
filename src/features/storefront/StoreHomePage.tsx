@@ -1,5 +1,5 @@
 import BoltRoundedIcon from '@mui/icons-material/BoltRounded'
-import { Box, Breadcrumbs, Button, Card, Link as MuiLink, Stack, Typography } from '@mui/material'
+import { Box, Breadcrumbs, Button, Card, Link as MuiLink, Skeleton, Stack, Typography } from '@mui/material'
 import { visuallyHidden } from '@mui/utils'
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
@@ -530,6 +530,15 @@ export function StoreHomePage() {
   const assetsPromos = useSignedStoreAssets(promosVigentes.map((promo) => promo.imageUrl))
   const first = pages[0]
   const total = first?.total ?? 0
+  /**
+   * ¿Lo que hay en pantalla es la respuesta a lo que se está mirando AHORA?
+   *
+   * Con `keepPreviousData`, al cambiar de categoría o de filtro la consulta
+   * sigue devolviendo la página anterior (`isPlaceholderData`) hasta que llega
+   * la nueva. Esa página vieja no se pinta: se pinta el esqueleto.
+   */
+  const cargandoResultados = results.isPending || results.isPlaceholderData
+  const resultadosListos = results.isSuccess && !results.isPlaceholderData
   const brandFacets =
     (brands.length > 0 ? universoMarcas.data?.pages[0]?.facets.brands : first?.facets.brands) ?? []
   const priceBounds = first?.facets.price ?? null
@@ -1300,7 +1309,12 @@ export function StoreHomePage() {
             </Suspense>
           ) : null}
 
-          {results.isPending && <ProductGridSkeleton />}
+          {/* Esqueleto también al CAMBIAR de filtro, no solo la primera vez.
+              La consulta guarda la página anterior mientras llega la nueva
+              (`keepPreviousData`) y eso dejaba en pantalla los productos de la
+              categoría de antes, sin ninguna señal de que algo estaba
+              cargando: se pulsaba «Selladores» y parecía que no pasaba nada. */}
+          {cargandoResultados && <ProductGridSkeleton />}
 
           {results.isError && (
             <Card>
@@ -1308,7 +1322,7 @@ export function StoreHomePage() {
             </Card>
           )}
 
-          {results.isSuccess && total === 0 && (
+          {resultadosListos && total === 0 && (
             <Card>
               <EmptyState
                 title={filtered ? t('store.catalog.noResults') : t('store.catalog.empty')}
@@ -1326,7 +1340,7 @@ export function StoreHomePage() {
             </Card>
           )}
 
-          {results.isSuccess && total > 0 && (
+          {resultadosListos && total > 0 && (
             <Box
               // Resumen v2 · Con la columna de filtros al lado, el ancho útil es
               // ~1000 px: cuatro columnas como en el diseño, sea cual sea el tema.
@@ -1395,7 +1409,7 @@ export function StoreHomePage() {
 
               El umbral es el mismo que usa la fila de la portada para crecer:
               hasta tres, la pantalla se queda corta. */}
-          {results.isSuccess && total > 0 && total <= POCOS_RESULTADOS && (
+          {resultadosListos && total > 0 && total <= POCOS_RESULTADOS && (
             <Suspense fallback={null}>
               <ExploreMore
                 storeSlug={storeSlug}
@@ -1410,7 +1424,7 @@ export function StoreHomePage() {
           {/* Y sin NINGÚN resultado, la misma salida bajo el estado vacío: el
               botón de quitar filtros arregla el caso de quien filtró de más,
               pero no el de quien buscó algo que esta tienda no vende. */}
-          {results.isSuccess && total === 0 && (
+          {resultadosListos && total === 0 && (
             <Suspense fallback={null}>
               <ExploreMore
                 storeSlug={storeSlug}
@@ -1447,7 +1461,7 @@ export function StoreHomePage() {
             order: { md: -1 },
           }}
         >
-          <Suspense fallback={null}>
+          <Suspense fallback={<FilterPanelSkeleton />}>
             <StoreFilterPanel
               marco="columna"
               brands={brandOptions}
@@ -1490,6 +1504,41 @@ export function StoreHomePage() {
           />
         </Suspense>
       )}
+    </Stack>
+  )
+}
+
+/**
+ * La columna de filtros mientras llega su módulo.
+ *
+ * Antes el hueco quedaba en blanco y la rejilla se veía desplazada a la
+ * derecha sin nada a su izquierda. Mismas piezas que el panel real —título,
+ * dos interruptores, precio y dos listas— para que al llegar no salte nada.
+ */
+function FilterPanelSkeleton() {
+  return (
+    <Stack aria-hidden data-testid="filters-skeleton" sx={{ gap: 2.25, pt: 0.5 }}>
+      <Skeleton variant="text" width="45%" height={28} />
+      <Stack sx={{ gap: 1 }}>
+        <Skeleton variant="rounded" height={22} />
+        <Skeleton variant="rounded" height={22} />
+      </Stack>
+      <Stack sx={{ gap: 1 }}>
+        <Skeleton variant="text" width="30%" />
+        <Skeleton variant="rounded" height={6} />
+        <Stack direction="row" sx={{ gap: 1 }}>
+          <Skeleton variant="rounded" height={38} sx={{ flex: 1 }} />
+          <Skeleton variant="rounded" height={38} sx={{ flex: 1 }} />
+        </Stack>
+      </Stack>
+      {[0, 1].map((grupo) => (
+        <Stack key={grupo} sx={{ gap: 1 }}>
+          <Skeleton variant="text" width="35%" />
+          {[0, 1, 2, 3].map((fila) => (
+            <Skeleton key={fila} variant="text" width={`${70 - fila * 8}%`} />
+          ))}
+        </Stack>
+      ))}
     </Stack>
   )
 }
