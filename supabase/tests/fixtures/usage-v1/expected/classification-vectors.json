@@ -1,0 +1,269 @@
+{
+  "description": "Vectores de clasificación del outbox: dada la respuesta, qué hace el SaaS con cada evento del lote. SENT = marcar enviado; DEAD = terminal con su código (dead-letter, no se reintenta); RETRY = backoff y token nuevo.",
+  "backoffSeconds": {
+    "formula": "min(30 * 2^(attempt-1), 21600)",
+    "samples": [
+      [
+        1,
+        30
+      ],
+      [
+        2,
+        60
+      ],
+      [
+        3,
+        120
+      ],
+      [
+        10,
+        15360
+      ],
+      [
+        11,
+        21600
+      ],
+      [
+        50,
+        21600
+      ]
+    ]
+  },
+  "vectors": [
+    {
+      "name": "mixed-results",
+      "batch": [
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e065"
+        },
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e066"
+        },
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e067"
+        }
+      ],
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "eventId": "00000000-0000-4ccc-8000-00000000e065",
+              "status": "ACCEPTED"
+            },
+            {
+              "eventId": "00000000-0000-4ccc-8000-00000000e066",
+              "status": "DUPLICATE"
+            },
+            {
+              "eventId": "00000000-0000-4ccc-8000-00000000e067",
+              "status": "REJECTED",
+              "code": "UNKNOWN_METER"
+            }
+          ]
+        }
+      },
+      "expect": [
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e065",
+          "outcome": "SENT"
+        },
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e066",
+          "outcome": "SENT"
+        },
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e067",
+          "outcome": "DEAD",
+          "code": "UNKNOWN_METER"
+        }
+      ]
+    },
+    {
+      "name": "missing-result-retries",
+      "batch": [
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e065"
+        },
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e066"
+        }
+      ],
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "eventId": "00000000-0000-4ccc-8000-00000000e065",
+              "status": "ACCEPTED"
+            }
+          ]
+        }
+      },
+      "expect": [
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e065",
+          "outcome": "SENT"
+        },
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e066",
+          "outcome": "RETRY",
+          "code": "MISSING_RESULT"
+        }
+      ]
+    },
+    {
+      "name": "results-matched-by-position",
+      "batch": [
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e065"
+        },
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e066"
+        }
+      ],
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "eventId": "00000000-0000-4ccc-8000-00000000e066",
+              "status": "ACCEPTED"
+            },
+            {
+              "eventId": "00000000-0000-4ccc-8000-00000000e065",
+              "status": "ACCEPTED"
+            }
+          ]
+        }
+      },
+      "expect": [
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e065",
+          "outcome": "RETRY",
+          "code": "MISSING_RESULT"
+        },
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e066",
+          "outcome": "RETRY",
+          "code": "MISSING_RESULT"
+        }
+      ]
+    },
+    {
+      "name": "disabled-retries-all",
+      "batch": [
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e065"
+        },
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e066"
+        }
+      ],
+      "response": {
+        "status": 503,
+        "body": {
+          "error": "USAGE_INGEST_DISABLED"
+        }
+      },
+      "expect": [
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e065",
+          "outcome": "RETRY",
+          "code": "USAGE_INGEST_DISABLED"
+        },
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e066",
+          "outcome": "RETRY",
+          "code": "USAGE_INGEST_DISABLED"
+        }
+      ]
+    },
+    {
+      "name": "auth-error-retries-all",
+      "batch": [
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e065"
+        }
+      ],
+      "response": {
+        "status": 401,
+        "body": {
+          "error": "SIGNATURE_INVALID"
+        }
+      },
+      "expect": [
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e065",
+          "outcome": "RETRY",
+          "code": "SIGNATURE_INVALID"
+        }
+      ]
+    },
+    {
+      "name": "transport-error",
+      "batch": [
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e065"
+        }
+      ],
+      "response": {
+        "status": null,
+        "body": null
+      },
+      "expect": [
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e065",
+          "outcome": "RETRY",
+          "code": "TRANSPORT_ERROR"
+        }
+      ]
+    },
+    {
+      "name": "non-json-5xx",
+      "batch": [
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e065"
+        }
+      ],
+      "response": {
+        "status": 502,
+        "body": null
+      },
+      "expect": [
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e065",
+          "outcome": "RETRY",
+          "code": "HTTP_502"
+        }
+      ]
+    },
+    {
+      "name": "conflict-is-terminal",
+      "batch": [
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e065"
+        }
+      ],
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "eventId": "00000000-0000-4ccc-8000-00000000e065",
+              "status": "REJECTED",
+              "code": "CONFLICT"
+            }
+          ]
+        }
+      },
+      "expect": [
+        {
+          "eventId": "00000000-0000-4ccc-8000-00000000e065",
+          "outcome": "DEAD",
+          "code": "CONFLICT"
+        }
+      ]
+    }
+  ]
+}

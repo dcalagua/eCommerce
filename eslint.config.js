@@ -17,6 +17,7 @@ export default tseslint.config(
       '.claude',
       '.worktrees',
       'supabase/tests/fixtures/entitlements-v1',
+      'supabase/tests/fixtures/usage-v1',
     ],
   },
   {

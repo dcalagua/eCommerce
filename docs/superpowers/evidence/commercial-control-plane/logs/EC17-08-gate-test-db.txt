@@ -1,0 +1,203 @@
+
+> ebim-ecommerce@0.1.0 test:db
+> vitest run supabase/tests
+
+
+ RUN  v3.2.7 /Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1
+
+ ✓ supabase/tests/capabilities.test.ts (39 tests) 4751ms
+ ✓ supabase/tests/pricing-checkout.test.ts (46 tests) 5238ms
+ ✓ supabase/tests/orders-oms.test.ts (57 tests) 5050ms
+ ✓ supabase/tests/storefront-value-props.test.ts (56 tests) 5218ms
+   ✓ A · una tienda que nunca tocó la franja > una tienda NUEVA obtiene el mismo default sin declararlo  309ms
+ ✓ supabase/tests/cart-recovery.test.ts (46 tests) 5420ms
+ ✓ supabase/tests/pricing-engine.test.ts (72 tests) 5727ms
+   ✓ precedencia entre alcances > un cliente sin acuerdo propio cae al segmento  491ms
+ ✓ supabase/tests/promotions-checkout.test.ts (23 tests) 5471ms
+ ✓ supabase/tests/enterprise-api.test.ts (40 tests) 5834ms
+ ✓ supabase/tests/scheduled-orders.test.ts (23 tests) 5338ms
+ ✓ supabase/tests/quote-to-order.test.ts (20 tests) 5514ms
+ ✓ supabase/tests/webhooks.test.ts (28 tests) 6120ms
+   ✓ el destino > crear un endpoint HABILITA el transporte de la sociedad  505ms
+ ✓ supabase/tests/promotions.test.ts (69 tests) 6178ms
+ ✓ supabase/tests/product-master.test.ts (17 tests) 6890ms
+ ✓ supabase/tests/inventory.test.ts (75 tests) 7336ms
+ ✓ supabase/tests/stores-product-master-certification.test.ts (23 tests) 7629ms
+ ✓ supabase/tests/schema-invariants.test.ts (17 tests) 7824ms
+   ✓ migraciones > la carpeta de migraciones es reproducible: dos bases virgenes dan el mismo esquema  5123ms
+ ✓ supabase/tests/targeted-promotions.test.ts (8 tests) 2887ms
+   ✓ preview = pedido, audiencia por audiencia > 1 · `all`: invitado y empresa ven y pagan el mismo descuento  730ms
+   ✓ a quién NO le llega > 7 · la cuenta elegida (N01) decide qué campaña aplica, en carrito y pedido  328ms
+ ✓ supabase/tests/delivery-buyer-pricing.test.ts (8 tests) 2466ms
+   ✓ entrega del checkout = entrega del pedido > invitado: precio público (200 ≥ 150) → envío gratis en los dos  417ms
+   ✓ entrega del checkout = entrega del pedido > multi-cuenta: A paga envío; al elegir B (180 ≥ 150) pasa a gratis, en cotización y pedido  363ms
+ ✓ supabase/tests/capability-guards.test.ts (26 tests) 2700ms
+ ✓ supabase/tests/carts.test.ts (43 tests) 2743ms
+ ✓ supabase/tests/effective-business-account.test.ts (23 tests) 2716ms
+ ✓ supabase/tests/analytics.test.ts (35 tests) 2531ms
+ ✓ supabase/tests/payments.test.ts (59 tests) 2844ms
+ ✓ supabase/tests/pim-catalog.test.ts (48 tests) 2631ms
+ ✓ supabase/tests/pim-orders.test.ts (28 tests) 2708ms
+ ✓ supabase/tests/ai-quotes-facts.test.ts (20 tests) 2857ms
+ ✓ supabase/tests/purchase-order.test.ts (13 tests) 2989ms
+ ✓ supabase/tests/cms-content.test.ts (55 tests) 3256ms
+ ✓ supabase/tests/catalog-search.test.ts (41 tests) 2424ms
+ ✓ supabase/tests/checkout-order.test.ts (28 tests) 2023ms
+ ✓ supabase/tests/security-baseline.test.ts (55 tests) 2264ms
+ ✓ supabase/tests/platform-entitlements-db.test.ts (34 tests) 2268ms
+ ✓ supabase/tests/ai-core-db.test.ts (24 tests) 1869ms
+ ✓ supabase/tests/ai-inventory-planning-facts.test.ts (14 tests) 2198ms
+ ✓ supabase/tests/checkout-rate-limit.test.ts (8 tests) 2305ms
+ ✓ supabase/tests/returns.test.ts (31 tests) 2485ms
+ ✓ supabase/tests/demo-fixtures.test.ts (4 tests) 2566ms
+   ✓ los fixtures de la demo se aplican sobre el esquema real > `demo-data.sql` llena el backoffice sin violar un solo CHECK  510ms
+ ✓ supabase/tests/fulfillment.test.ts (54 tests) 2975ms
+ ✓ supabase/tests/product-master-commands.test.ts (27 tests) 2460ms
+ ✓ supabase/tests/customers.test.ts (45 tests) 2410ms
+ ✓ supabase/tests/guest-cart-retention.test.ts (16 tests) 2308ms
+ ✓ supabase/tests/white-label.test.ts (30 tests) 1720ms
+ ✓ supabase/tests/credit-receivables.test.ts (12 tests) 1328ms
+ ✓ supabase/tests/planning-suggest-v2.test.ts (17 tests) 12667ms
+   ✓ no propone lo que no se puede vender > respeta el surtido del cliente: fuera de la lista blanca no se sugiere  612ms
+   ✓ la disponibilidad (ATP) > recorta a lo disponible y lo dice  446ms
+   ✓ la disponibilidad (ATP) > sin existencia la línea sale con cero y marcada, para que se vea qué falta  599ms
+   ✓ la temporada, solo con datos > con un año de historial y un pico en estas fechas, sube el sugerido (acotado a 2×)  724ms
+   ✓ la temporada, solo con datos > sin un año de historial no hay factor, aunque haya muchos pedidos  884ms
+   ✓ la temporada, solo con datos > con un año pero pocos pedidos, tampoco  1506ms
+   ✓ el fallback a v1 > si v2 no deja ninguna línea, responde v1 marcado historic_v1 y lo dice  2306ms
+   ✓ el fallback a v1 > el fallback tampoco propone lo que no se puede vender  2233ms
+ ✓ supabase/tests/ai-promotions-reviews-facts.test.ts (14 tests) 1797ms
+ ✓ supabase/tests/checkout-pipeline.test.ts (36 tests) 2986ms
+ ✓ supabase/tests/credit-block.test.ts (11 tests) 2295ms
+ ✓ supabase/tests/rls-tenant-isolation.test.ts (35 tests) 1977ms
+ ✓ supabase/tests/api-catalog-ingest.test.ts (17 tests) 1888ms
+ ✓ supabase/tests/gift-cards.test.ts (29 tests) 2235ms
+ ✓ supabase/tests/platform-provisioning-contract.test.ts (42 tests) 1468ms
+ ✓ supabase/tests/ai-customer-facts.test.ts (15 tests) 2541ms
+ ✓ supabase/tests/catalog-admin.test.ts (24 tests) 1940ms
+ ✓ supabase/tests/orders-admin.test.ts (16 tests) 1990ms
+ ✓ supabase/tests/store-best-sellers.test.ts (18 tests) 1906ms
+ ✓ supabase/tests/platform-entitlements-contract.test.ts (26 tests) 1932ms
+ ✓ supabase/tests/integration-monitor.test.ts (20 tests) 2632ms
+ ✓ supabase/tests/ai-metering.test.ts (29 tests) 2016ms
+ ✓ supabase/tests/fulfillment-routing.test.ts (10 tests) 1852ms
+ ✓ supabase/tests/storefront-theme.test.ts (120 tests) 3058ms
+ ✓ supabase/tests/product-master-storefront.test.ts (8 tests) 2417ms
+ ✓ supabase/tests/notifications.test.ts (34 tests) 2450ms
+ ✓ supabase/tests/product-reviews.test.ts (38 tests) 2550ms
+ ✓ supabase/tests/platform-provisioning-db.test.ts (22 tests) 1548ms
+ ✓ supabase/tests/observability.test.ts (26 tests) 2184ms
+ ✓ supabase/tests/product-master-orders.test.ts (8 tests) 2349ms
+ ✓ supabase/tests/invoice-issue.test.ts (26 tests) 3130ms
+ ✓ supabase/tests/ai-copilot-facts.test.ts (20 tests) 2122ms
+ ✓ supabase/tests/channels-admin.test.ts (17 tests) 1919ms
+ ✓ supabase/tests/my-stores.test.ts (7 tests) 1893ms
+ ✓ supabase/tests/dashboard-kpis.test.ts (8 tests) 1895ms
+ ✓ supabase/tests/storefront-product-relations.test.ts (17 tests) 1891ms
+ ✓ supabase/tests/consumer-account.test.ts (20 tests) 2481ms
+ ✓ supabase/tests/invite-by-email.test.ts (20 tests) 1714ms
+ ✓ supabase/tests/audit-log.test.ts (26 tests) 1872ms
+ ✓ supabase/tests/ai-orders-facts.test.ts (14 tests) 2050ms
+ ✓ supabase/tests/commerce-context.test.ts (12 tests) 2021ms
+ ✓ supabase/tests/category-media.test.ts (35 tests) 2193ms
+ ✓ supabase/tests/quick-order-resolver.test.ts (28 tests) 2378ms
+ ✓ supabase/tests/store-management.test.ts (13 tests) 2201ms
+ ✓ supabase/tests/product-master-pricing.test.ts (7 tests) 2477ms
+ ✓ supabase/tests/product-favorites.test.ts (7 tests) 2154ms
+ ✓ supabase/tests/sales-force.test.ts (10 tests) 2177ms
+ ✓ supabase/tests/channels.test.ts (12 tests) 2308ms
+   ✓ create_order decide el canal en servidor > el pedido nace en el canal por defecto de la tienda  388ms
+ ✓ supabase/tests/trade-assortments.test.ts (8 tests) 2168ms
+ ✓ supabase/tests/shopper-portal.test.ts (8 tests) 2378ms
+ ✓ supabase/tests/server-operations.test.ts (19 tests) 2162ms
+   ✓ bootstrap_tenant > crea tenant, membresia owner, tienda y settings de una vez  349ms
+ ✓ supabase/tests/trade-budgets.test.ts (8 tests) 2142ms
+ ✓ supabase/tests/ai-dashboard-facts.test.ts (12 tests) 2732ms
+ ✓ supabase/tests/ai-credit-payments-fulfillment-facts.test.ts (18 tests) 2863ms
+ ✓ supabase/tests/ai-ops-integrations-facts.test.ts (9 tests) 2591ms
+ ✓ supabase/tests/trade-quotes.test.ts (9 tests) 1698ms
+ ✓ supabase/tests/approval-inbox.test.ts (13 tests) 3242ms
+ ✓ supabase/tests/consumer-signup.test.ts (4 tests) 1546ms
+ ✓ supabase/tests/integration-framework.test.ts (21 tests) 2243ms
+ ✓ supabase/tests/order-lookup.test.ts (13 tests) 2006ms
+ ✓ supabase/tests/platform-entitlements-pilot.test.ts (11 tests) 1902ms
+ ✓ supabase/tests/sales-territories.test.ts (9 tests) 1932ms
+ ✓ supabase/tests/category-tree.test.ts (15 tests) 2160ms
+ ✓ supabase/tests/orders-advanced.test.ts (10 tests) 2182ms
+ ✓ supabase/tests/planning-demand.test.ts (12 tests) 2100ms
+ ✓ supabase/tests/store-identity-v3.test.ts (30 tests) 2465ms
+ ✓ supabase/tests/catalog-import.test.ts (19 tests) 2609ms
+ ✓ supabase/tests/consumer-addresses.test.ts (17 tests) 2341ms
+ ✓ supabase/tests/store-default-country.test.ts (9 tests) 2063ms
+ ✓ supabase/tests/storefront-public.test.ts (21 tests) 2274ms
+1:28:01 PM [vite] (ssr) warning: invalid import "../functions/_shared/${archivo}". A file extension must be included in the static part of the import. For example: import(`./foo/${bar}.js`).
+  Plugin: vite:dynamic-import-vars
+  File: /Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1/supabase/tests/ai-security.test.ts
+ ✓ supabase/tests/brand-logos.test.ts (38 tests) 2597ms
+ ✓ supabase/tests/ai-promotions-content-reviews.test.ts (31 tests) 36ms
+ ✓ supabase/tests/api-gateway.test.ts (59 tests) 82ms
+ ✓ supabase/tests/ai-ops-integrations.test.ts (57 tests) 24ms
+ ✓ supabase/tests/rls-initplan.test.ts (13 tests) 1798ms
+ ✓ supabase/tests/sales-performance.test.ts (12 tests) 1482ms
+ ✓ supabase/tests/payments-provider.test.ts (34 tests) 12ms
+ ✓ supabase/tests/capability-enforcement.test.ts (5 tests) 1344ms
+stderr | supabase/tests/checkout-orchestrator.test.ts > lo que falla, y lo que se deshace > si la propia compensación falla, el error original sigue siendo el que sale
+[checkout] compensacion fallida release_reservation:res-1 Error: la reserva ya no existe
+    at Object.releaseReservation [90m(/Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1/[39msupabase/tests/checkout-orchestrator.test.ts:628:48[90m)[39m
+    at Object.run [90m(/Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1/[39msupabase/functions/_shared/checkout/pipeline.ts:367:26[90m)[39m
+    at unwind [90m(/Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1/[39msupabase/functions/_shared/checkout/pipeline.ts:598:26[90m)[39m
+    at runCheckout [90m(/Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1/[39msupabase/functions/_shared/checkout/pipeline.ts:569:26[90m)[39m
+    at expectStageFailure [90m(/Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1/[39msupabase/tests/checkout-orchestrator.test.ts:200:5[90m)[39m
+    at [90m/Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1/[39msupabase/tests/checkout-orchestrator.test.ts:631:19
+    at file:///Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:752:20
+
+stderr | supabase/tests/checkout-orchestrator.test.ts > la aprobacion B2B > si el portal B2B no contesta, la compra sigue: la base impone el umbral
+[checkout] no se pudo resolver la autorizacion de compra Error: portal caido
+    at Object.resolveApproval [90m(/Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1/[39msupabase/tests/checkout-orchestrator.test.ts:870:45[90m)[39m
+    at [90m/Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1/[39msupabase/functions/_shared/checkout/pipeline.ts:429:34
+    at stage [90m(/Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1/[39msupabase/functions/_shared/checkout/pipeline.ts:210:25[90m)[39m
+    at runCheckout [90m(/Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1/[39msupabase/functions/_shared/checkout/pipeline.ts:408:37[90m)[39m
+    at [90m/Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1/[39msupabase/tests/checkout-orchestrator.test.ts:874:20
+    at file:///Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:752:20
+
+ ✓ supabase/tests/checkout-orchestrator.test.ts (45 tests) 16ms
+ ✓ supabase/tests/ai-security.test.ts (209 tests) 437ms
+ ✓ supabase/tests/taxes.test.ts (10 tests) 1405ms
+ ✓ supabase/tests/public-rpc-gates.test.ts (3 tests) 1212ms
+ ✓ supabase/tests/ai-copilot.test.ts (35 tests) 60ms
+ ✓ supabase/tests/integration-contract.test.ts (5 tests) 1175ms
+ ✓ supabase/tests/usage-outbox-sender.test.ts (42 tests) 608ms
+ ✓ supabase/tests/edge-security-headers.test.ts (46 tests) 11ms
+ ✓ supabase/tests/credit-invoices.test.ts (10 tests) 1430ms
+ ✓ supabase/tests/entitlements-fixtures-pin.test.ts (34 tests) 11ms
+ ✓ supabase/tests/ai-quotes.test.ts (21 tests) 15ms
+ ✓ supabase/tests/usage-outbox-rollback.test.ts (1 test) 1179ms
+ ✓ supabase/tests/ai-credit-payments-fulfillment.test.ts (28 tests) 22ms
+ ✓ supabase/tests/usage-outbox-pgtap.test.ts (1 test) 1269ms
+ ✓ supabase/tests/observability-edge.test.ts (27 tests) 17ms
+ ✓ supabase/tests/usage-fixtures-pin.test.ts (14 tests) 8ms
+ ✓ supabase/tests/ai-orders.test.ts (39 tests) 7ms
+ ✓ supabase/tests/ai-core.test.ts (33 tests) 9ms
+ ✓ supabase/tests/ai-pim.test.ts (34 tests) 10ms
+ ✓ supabase/tests/usage-outbox-db.test.ts (25 tests) 1590ms
+ ✓ supabase/tests/ai-customers.test.ts (25 tests) 10ms
+ ✓ supabase/tests/edge-shared.test.ts (72 tests) 12ms
+ ✓ supabase/tests/notifications-email.test.ts (36 tests) 16ms
+ ✓ supabase/tests/fulfillment-provider.test.ts (22 tests) 15ms
+ ✓ supabase/tests/ai-inventory-planning.test.ts (20 tests) 8ms
+ ✓ supabase/tests/storefront-seo.test.ts (34 tests) 6ms
+ ✓ supabase/tests/create-user.test.ts (33 tests) 7ms
+ ✓ supabase/tests/ai-insights.test.ts (29 tests) 6ms
+ ✓ supabase/tests/platform-context.test.ts (16 tests) 5ms
+ ✓ supabase/tests/bootstrap-authorization.test.ts (22 tests) 4ms
+ ✓ supabase/tests/checkout-buyer-link.test.ts (6 tests) 5ms
+ ✓ supabase/tests/ai-contract.test.ts (13 tests) 3ms
+ ✓ supabase/tests/ai-copy.test.ts (24 tests) 5ms
+ ✓ supabase/tests/commerce-audience-guard.test.ts (7 tests) 4ms
+ ✓ supabase/tests/cart-recovery-email.test.ts (9 tests) 4ms
+
+ Test Files  149 passed (149)
+      Tests  3928 passed (3928)
+   Start at  13:27:38
+   Duration  24.34s (transform 2.86s, setup 28.28s, collect 9.92s, tests 329.80s, environment 19ms, prepare 7.97s)
+

@@ -1,0 +1,111 @@
+{
+  "description": "Resultado por evento de POST usage-ingest con fixtures/ingest-batch.json sobre setup.json, en orden.",
+  "httpStatus": 200,
+  "results": [
+    {
+      "name": "accepted-with-provider-tokens",
+      "eventId": "00000000-0000-4ccc-8000-00000000e001",
+      "status": "ACCEPTED"
+    },
+    {
+      "name": "duplicate-identical",
+      "eventId": "00000000-0000-4ccc-8000-00000000e001",
+      "status": "DUPLICATE"
+    },
+    {
+      "name": "conflict-same-id-different-content",
+      "eventId": "00000000-0000-4ccc-8000-00000000e001",
+      "status": "REJECTED",
+      "code": "CONFLICT"
+    },
+    {
+      "name": "accepted-provider-returned-no-tokens",
+      "eventId": "00000000-0000-4ccc-8000-00000000e002",
+      "status": "ACCEPTED"
+    },
+    {
+      "name": "accepted-decimal-quantity",
+      "eventId": "00000000-0000-4ccc-8000-00000000e003",
+      "status": "ACCEPTED"
+    },
+    {
+      "name": "accepted-late-past-period",
+      "eventId": "00000000-0000-4ccc-8000-00000000e004",
+      "status": "ACCEPTED"
+    },
+    {
+      "name": "accepted-negative-on-compensating-meter",
+      "eventId": "00000000-0000-4ccc-8000-00000000e005",
+      "status": "ACCEPTED"
+    },
+    {
+      "name": "rejected-negative-quantity",
+      "eventId": "00000000-0000-4ccc-8000-00000000e006",
+      "status": "REJECTED",
+      "code": "NEGATIVE_QUANTITY"
+    },
+    {
+      "name": "rejected-unknown-meter",
+      "eventId": "00000000-0000-4ccc-8000-00000000e007",
+      "status": "REJECTED",
+      "code": "UNKNOWN_METER"
+    },
+    {
+      "name": "rejected-draft-meter",
+      "eventId": "00000000-0000-4ccc-8000-00000000e008",
+      "status": "REJECTED",
+      "code": "UNKNOWN_METER"
+    },
+    {
+      "name": "rejected-unit-mismatch",
+      "eventId": "00000000-0000-4ccc-8000-00000000e009",
+      "status": "REJECTED",
+      "code": "UNIT_MISMATCH"
+    },
+    {
+      "name": "rejected-tenant-not-mapped",
+      "eventId": "00000000-0000-4ccc-8000-00000000e00a",
+      "status": "REJECTED",
+      "code": "TENANT_NOT_MAPPED_FOR_PRODUCT"
+    },
+    {
+      "name": "rejected-tenant-of-other-product",
+      "eventId": "00000000-0000-4ccc-8000-00000000e00b",
+      "status": "REJECTED",
+      "code": "TENANT_NOT_MAPPED_FOR_PRODUCT"
+    },
+    {
+      "name": "rejected-occurred-in-future",
+      "eventId": "00000000-0000-4ccc-8000-00000000e00c",
+      "status": "REJECTED",
+      "code": "OCCURRED_AT_IN_FUTURE"
+    },
+    {
+      "name": "rejected-internal-with-content",
+      "eventId": "00000000-0000-4ccc-8000-00000000e00d",
+      "status": "REJECTED",
+      "code": "INTERNAL_METADATA_INVALID"
+    },
+    {
+      "name": "rejected-internal-negative-tokens",
+      "eventId": "00000000-0000-4ccc-8000-00000000e00e",
+      "status": "REJECTED",
+      "code": "INTERNAL_METADATA_INVALID"
+    },
+    {
+      "name": "rejected-invalid-event",
+      "eventId": "not-a-uuid",
+      "status": "REJECTED",
+      "code": "INVALID_EVENT"
+    },
+    {
+      "name": "rejected-extra-field",
+      "eventId": "00000000-0000-4ccc-8000-00000000e00f",
+      "status": "REJECTED",
+      "code": "INVALID_EVENT"
+    }
+  ],
+  "accepted": 5,
+  "duplicate": 1,
+  "rejected": 12
+}

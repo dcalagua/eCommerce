@@ -1,0 +1,9 @@
+EPERM: operation not permitted, open '/Users/edudavidmorenoccama/.supabase/telemetry.json.tmp.a1b56b87-9789-4e08-a7fb-6b94abc3d602'
+    path: "/Users/edudavidmorenoccama/.supabase/telemetry.json.tmp.a1b56b87-9789-4e08-a7fb-6b94abc3d602",
+ syscall: "open",
+   errno: -1,
+    code: "EPERM"
+
+
+Bun v1.4.0 (macOS arm64)
+permission denied while trying to connect to the docker API at unix:///Users/edudavidmorenoccama/.docker/run/docker.sock

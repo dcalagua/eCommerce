@@ -1,0 +1,120 @@
+{
+  "description": "Errores de LOTE (HTTP ≠ 200). Ninguno descarta eventos: el outbox reintenta con backoff y token nuevo. `when` describe la condición; `status`/`error` es la respuesta exacta.",
+  "cases": [
+    {
+      "when": "USAGE_INGEST_ENABLED != true (D-12) o kill-switch del producto apagado",
+      "status": 503,
+      "error": "USAGE_INGEST_DISABLED"
+    },
+    {
+      "when": "método distinto de POST",
+      "status": 405,
+      "error": "METHOD_NOT_ALLOWED"
+    },
+    {
+      "when": "content-type distinto de application/json",
+      "status": 415,
+      "error": "UNSUPPORTED_MEDIA_TYPE"
+    },
+    {
+      "when": "cuerpo > 262144 bytes",
+      "status": 413,
+      "error": "PAYLOAD_TOO_LARGE"
+    },
+    {
+      "when": "sin Authorization: Bearer",
+      "status": 401,
+      "error": "TOKEN_MISSING"
+    },
+    {
+      "when": "JWT mal formado, sin jti/iat/exp enteros",
+      "status": 401,
+      "error": "TOKEN_INVALID"
+    },
+    {
+      "when": "alg ≠ ES256",
+      "status": 401,
+      "error": "ALGORITHM_NOT_ALLOWED"
+    },
+    {
+      "when": "iss sin credencial registrada",
+      "status": 401,
+      "error": "ISSUER_UNKNOWN"
+    },
+    {
+      "when": "credencial deshabilitada",
+      "status": 403,
+      "error": "CREDENTIAL_DISABLED"
+    },
+    {
+      "when": "clave pública no configurada en el entorno de MasterAdmin",
+      "status": 503,
+      "error": "CREDENTIAL_NOT_CONFIGURED"
+    },
+    {
+      "when": "firma inválida",
+      "status": 401,
+      "error": "SIGNATURE_INVALID"
+    },
+    {
+      "when": "aud ≠ masteradmin.ebim",
+      "status": 401,
+      "error": "AUDIENCE_INVALID"
+    },
+    {
+      "when": "exp vencido (skew 60 s)",
+      "status": 401,
+      "error": "TOKEN_EXPIRED"
+    },
+    {
+      "when": "iat/nbf en el futuro (skew 60 s)",
+      "status": 401,
+      "error": "TOKEN_NOT_YET_VALID"
+    },
+    {
+      "when": "exp − iat > 300",
+      "status": 401,
+      "error": "TOKEN_TTL_TOO_LONG"
+    },
+    {
+      "when": "scope sin usage:ingest",
+      "status": 403,
+      "error": "SCOPE_MISSING"
+    },
+    {
+      "when": "jti ya usado por ese emisor",
+      "status": 401,
+      "error": "JTI_REPLAYED"
+    },
+    {
+      "when": "schema ≠ ebim.usage/v1",
+      "status": 400,
+      "error": "SCHEMA_UNSUPPORTED"
+    },
+    {
+      "when": "JSON inválido, batchId no UUID, events vacío o no arreglo",
+      "status": 400,
+      "error": "INVALID_BATCH"
+    },
+    {
+      "when": "más de 500 eventos",
+      "status": 400,
+      "error": "BATCH_TOO_LARGE"
+    },
+    {
+      "when": "environment ≠ ambiente de la credencial",
+      "status": 400,
+      "error": "ENVIRONMENT_MISMATCH"
+    },
+    {
+      "when": "productCode ≠ producto de la credencial",
+      "status": 400,
+      "error": "PRODUCT_MISMATCH"
+    },
+    {
+      "when": "error transitorio de la base",
+      "status": 503,
+      "error": "RETRYABLE"
+    }
+  ]
+}
