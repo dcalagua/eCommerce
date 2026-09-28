@@ -43,6 +43,10 @@ export function mapInventoryCode(code: string): MessageKey {
       return 'inventory.error.unknown'
     case 'STOCK_INSUFICIENTE':
       return 'inventory.error.insufficient'
+    // La existencia de la ficha es una sola: cargarla en un segundo almacén la
+    // duplicaría y la tienda vendería lo que no hay.
+    case 'INVENTARIO_YA_MIGRADO':
+      return 'inventory.error.alreadySeeded'
     case 'KIT_SIN_EXISTENCIA':
     case 'KIT_SIN_COMPONENTES':
     case 'KIT_UOM_INVALIDA':

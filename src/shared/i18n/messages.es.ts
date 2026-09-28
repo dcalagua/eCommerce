@@ -2486,6 +2486,8 @@ export const es = {
     'inventory.error.product': 'Elige una referencia válida',
     'inventory.error.movementKind': 'Ese movimiento no se registra a mano: lo hace el pedido',
     'inventory.error.insufficient': 'No hay existencia suficiente',
+    'inventory.error.alreadySeeded':
+      'La existencia del catálogo ya se cargó en otro almacén. Cargarla aquí la duplicaría: para repartirla, usa un traslado o un ajuste.',
     'inventory.error.unknown':
       'Ahora mismo no se puede confirmar la existencia. No es que no haya: es que tu sistema de gestión no ha respondido.',
     'inventory.error.bundle': 'Un kit no lleva existencia propia: la llevan sus componentes',

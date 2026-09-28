@@ -2841,6 +2841,8 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'inventory.error.product': 'Pick a valid reference',
     'inventory.error.movementKind': 'That movement is not recorded by hand: the order makes it',
     'inventory.error.insufficient': 'There is not enough stock',
+    'inventory.error.alreadySeeded':
+      'Catalog stock was already loaded into another warehouse. Loading it here would duplicate it: use a transfer or an adjustment to split it.',
     'inventory.error.unknown':
       'Stock cannot be confirmed right now. It is not that there is none: your management system has not answered.',
     'inventory.error.bundle': 'A kit holds no stock of its own: its components do',

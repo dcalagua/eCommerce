@@ -207,9 +207,13 @@ const STORE = [
   conteo('STORE', 'Bloques de portada activos', 1, 'supabase/home-compose-miquimica.sql',
     `select count(*)::int as n from public.content_blocks b join public.content_pages g on g.id = b.page_id
       join public.stores s on s.id = b.store_id where s.slug = ${lit(SLUG)} and g.kind = 'home' and b.is_active`),
+  // Por SOCIEDAD y con existencia de verdad: contando por organizacion, una
+  // tienda sin almacenes aprobaba con los de otra sociedad de la misma cuenta.
   conteo('STORE', 'Almacenes con existencias', 1, 'supabase/demo-data.sql (warehouses)',
-    `select count(*)::int as n from public.warehouses w join public.stores s on s.organization_id = w.organization_id
-      where s.slug = ${lit(SLUG)}`),
+    `select count(*)::int as n from public.warehouses w
+       join public.stores s on s.organization_id = w.organization_id and s.company_id = w.company_id
+      where s.slug = ${lit(SLUG)} and w.is_active
+        and exists (select 1 from public.inventory_levels l where l.warehouse_id = w.id and l.on_hand_qty > 0)`),
   {
     // Sin este addon, `ebim.active_price_lists` no devuelve NINGUNA lista y todo
     // se cotiza a catálogo en silencio: ni mayorista ni convenio.

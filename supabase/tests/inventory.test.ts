@@ -1180,6 +1180,28 @@ describe('transicion desde products.stock', () => {
     expect(Number(count?.n)).toBe(2)
   })
 
+  it('cargarla en un SEGUNDO almacen se niega: la existencia de la ficha es una sola', async () => {
+    await asMember(TENANT_A, (tx) =>
+      tx
+        .query(`select public.seed_inventory_from_catalog($1, $2)`, [lima, storeA])
+        .then((r) => r.rows as Row[]),
+    )
+    const message = await expectFailure(() =>
+      asMember(TENANT_A, (tx) =>
+        tx
+          .query(`select public.seed_inventory_from_catalog($1, $2)`, [arequipa, storeA])
+          .then((r) => r.rows as Row[]),
+      ),
+    )
+    expect(message).toMatch(/INVENTARIO_YA_MIGRADO/)
+
+    const [count] = await svc(
+      `select count(*)::int as n from public.inventory_movements where reference_kind = 'import'`,
+    )
+    expect(Number(count?.n)).toBe(2)
+    expect(Number((await level(lima, jabon)).on_hand)).toBe(100)
+  })
+
   it('la columna del catalogo sigue existiendo y no la toca nadie al vender por almacen', async () => {
     await receive(lima, jabon, 10)
     await checkout(STORE_A_SLUG, [{ product_id: jabon, quantity: 3 }], { email: 'mixto@compra.com' })

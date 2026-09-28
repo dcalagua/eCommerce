@@ -215,11 +215,18 @@ export function WarehousesSection() {
                             // tipo: sin esto, `activeStore.id` es un fallo en tiempo de
                             // ejecucion esperando a que alguien cambie el `disabled`.
                             if (!activeStore) return
-                            const seeded = await seed.mutateAsync({
-                              warehouseId: warehouse.id,
-                              storeId: activeStore.id,
-                            })
-                            notify(`${t('inventory.toast.seeded')} (${seeded})`)
+                            try {
+                              const seeded = await seed.mutateAsync({
+                                warehouseId: warehouse.id,
+                                storeId: activeStore.id,
+                              })
+                              notify(`${t('inventory.toast.seeded')} (${seeded})`)
+                            } catch (error) {
+                              notify(
+                                t(error instanceof InventoryError ? error.key : 'inventory.error.generic'),
+                                'error',
+                              )
+                            }
                           },
                         },
                         {
