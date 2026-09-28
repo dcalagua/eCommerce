@@ -1,0 +1,313 @@
+
+ RUN  v3.2.7 /Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1
+
+ ❯ supabase/tests/platform-entitlements-db.test.ts (34 tests | 32 failed) 749ms
+   × privacidad del receptor > las tablas viven en `platform_entitlements` con RLS activada y forzada 9ms
+     → expected [] to deeply equal [ 'applied', 'apply_audit', …(7) ]
+   × privacidad del receptor > ni anon ni authenticated tienen USAGE del esquema; nadie tiene GRANT de tabla 37ms
+     → schema "platform_entitlements" does not exist
+   × privacidad del receptor > las RPC del receptor solo las ejecuta service_role 4ms
+     → expected [] to deeply equal [ { …(5) }, { …(5) }, { …(5) }, …(2) ]
+   ✓ privacidad del receptor > las funciones internas del esquema no son ejecutables por PUBLIC 3ms
+   × privacidad del receptor > la auditoría es append-only (UPDATE, DELETE y TRUNCATE rechazados) 37ms
+     → function public.platform_apply_entitlements(uuid, jsonb, jsonb) does not exist
+   × privacidad del receptor > el registro de códigos del receptor = manifiesto (sellables + asignación IA) 1ms
+     → relation "platform_entitlements.known_codes" does not exist
+   × reglas de versión (FIX-ENT-v1 §3) > tenant sin provisioning → 404 TENANT_NOT_PROVISIONED 3ms
+     → function public.platform_apply_entitlements(uuid, jsonb, jsonb) does not exist
+   × reglas de versión (FIX-ENT-v1 §3) > tenant del path distinto del cuerpo → 422 SNAPSHOT_INVALID 8ms
+     → function public.platform_apply_entitlements(uuid, jsonb, jsonb) does not exist
+   × reglas de versión (FIX-ENT-v1 §3) > aplica, replay idempotente, stale, conflicto y salto de versión 4ms
+     → function public.platform_get_entitlements(uuid) does not exist
+   × reglas de versión (FIX-ENT-v1 §3) > código desconocido: se guarda, se devuelve en unknownCapabilities y NUNCA se concede 13ms
+     → function public.platform_apply_entitlements(uuid, jsonb, jsonb) does not exist
+   × reglas de versión (FIX-ENT-v1 §3) > jti de un solo uso por emisor 2ms
+     → function public.platform_entitlements_use_jti(unknown, unknown, timestamp with time zone) does not exist
+   × modos de enforcement > SHADOW (por defecto): guarda y compara, NO decide ni toca la caché legada 16ms
+     → function public.platform_apply_entitlements(uuid, jsonb, jsonb) does not exist
+   × modos de enforcement > un paso por vez, modos válidos y bitácora de cambios 5ms
+     → expected 'function public.platform_set_entitlem…' to match /UN_PASO/
+   × modos de enforcement > PRIMARY: decide SOLO el snapshot; `legacy_until_synced` queda resuelto 13ms
+     → function public.platform_apply_entitlements(uuid, jsonb, jsonb) does not exist
+   × modos de enforcement > PRIMARY: un miembro ve el veredicto del snapshot; otro tenant no ve nada 18ms
+     → function public.platform_apply_entitlements(uuid, jsonb, jsonb) does not exist
+   × modos de enforcement > kill switch local: solo resta, nunca concede 5ms
+     → function public.platform_apply_entitlements(uuid, jsonb, jsonb) does not exist
+   × modos de enforcement > appActive=false cierra el acceso operativo, incluido lo baseline, sin borrar datos 4ms
+     → function public.platform_apply_entitlements(uuid, jsonb, jsonb) does not exist
+   × modos de enforcement > alcance COMPANY con lista explícita de compañías de MasterAdmin: no se concede (fail-closed) 3ms
+     → function public.platform_apply_entitlements(uuid, jsonb, jsonb) does not exist
+   × modos de enforcement > PRIMARY sin haber recibido snapshot: solo baseline 2ms
+     → function public.platform_set_entitlement_enforcement_mode(unknown, unknown, unknown) does not exist
+   × modos de enforcement > volver atrás restaura el estado legado y conserva el snapshot aplicado 18ms
+     → function public.platform_apply_entitlements(uuid, jsonb, jsonb) does not exist
+   × modos de enforcement > el modo del PRODUCTO aplica a los tenants sin modo propio 5ms
+     → function public.platform_apply_entitlements(uuid, jsonb, jsonb) does not exist
+   ✓ camino legado frente al snapshot (H-ECO-1) > LEGACY/SHADOW: el hub y la clave estática siguen escribiendo igual que antes 8ms
+   × camino legado frente al snapshot (H-ECO-1) > PRIMARY: el camino legado queda BLOQUEADO en servidor 4ms
+     → function public.platform_apply_entitlements(uuid, jsonb, jsonb) does not exist
+   × camino legado frente al snapshot (H-ECO-1) > DUAL_READ con snapshot: la escritura legada se acepta, se ignora y alerta 6ms
+     → function public.platform_apply_entitlements(uuid, jsonb, jsonb) does not exist
+   × camino legado frente al snapshot (H-ECO-1) > DUAL_READ sin snapshot: cae a legado y alerta 3ms
+     → function public.platform_set_entitlement_enforcement_mode(unknown, unknown, unknown) does not exist
+   × camino legado frente al snapshot (H-ECO-1) > nadie escribe `source = masteradmin` fuera del receptor 3ms
+     → expected 'invalid input value for enum entitlem…' to match /FUENTE_RESERVADA/
+   × IA: capacidad + asignación del snapshot, hard gate intacto > la asignación `ecommerce.ai.credits` fija la cuota y `ai_consume_for` corta al agotarla 3ms
+     → function public.platform_apply_entitlements(uuid, jsonb, jsonb) does not exist
+   × IA: capacidad + asignación del snapshot, hard gate intacto > asignación sin la capacidad IA: DISABLED (la capacidad manda sobre la cuota) 4ms
+     → function public.platform_apply_entitlements(uuid, jsonb, jsonb) does not exist
+   × IA: capacidad + asignación del snapshot, hard gate intacto > PRIMARY sin asignación: cuota 0 (ausente nunca es ilimitado) 4ms
+     → function public.platform_apply_entitlements(uuid, jsonb, jsonb) does not exist
+   × IA: capacidad + asignación del snapshot, hard gate intacto > DUAL_READ sin asignación: se mantiene la cuota legada (valor no decidido, D-03) 4ms
+     → function public.platform_apply_entitlements(uuid, jsonb, jsonb) does not exist
+   × IA: capacidad + asignación del snapshot, hard gate intacto > SHADOW: la IA sigue decidiéndose como antes 3ms
+     → function public.platform_apply_entitlements(uuid, jsonb, jsonb) does not exist
+   × offline last-good y deriva > sin MasterAdmin: el gate sigue decidiendo con el último snapshot, y un push inválido no lo altera 3ms
+     → function public.platform_apply_entitlements(uuid, jsonb, jsonb) does not exist
+   × offline last-good y deriva > deriva local (caché tocada fuera del receptor) → reconcile la detecta y repara desde el último snapshot 3ms
+     → function public.platform_apply_entitlements(uuid, jsonb, jsonb) does not exist
+   × offline last-good y deriva > SHADOW: reconcile recalcula las diferencias sin tocar la decisión legada 3ms
+     → function public.platform_apply_entitlements(uuid, jsonb, jsonb) does not exist
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 32 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > privacidad del receptor > las tablas viven en `platform_entitlements` con RLS activada y forzada
+AssertionError: expected [] to deeply equal [ 'applied', 'apply_audit', …(7) ]
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- [[39m
+[32m-   "applied",[39m
+[32m-   "apply_audit",[39m
+[32m-   "enforcement_mode",[39m
+[32m-   "jti_replay",[39m
+[32m-   "legacy_backup",[39m
+[32m-   "legacy_write_alerts",[39m
+[32m-   "metered_codes",[39m
+[32m-   "mode_events",[39m
+[32m-   "shadow_diffs",[39m
+[32m- ][39m
+[31m+ [][39m
+
+ ❯ supabase/tests/platform-entitlements-db.test.ts:114:40
+    112|         from pg_class c join pg_namespace n on n.oid = c.relnamespace
+    113|        where n.nspname = 'platform_entitlements' and c.relkind = 'r' o…
+    114|     expect(rows.map((r) => r.relname)).toEqual([
+       |                                        ^
+    115|       'applied',
+    116|       'apply_audit',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/32]⎯
+
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > privacidad del receptor > ni anon ni authenticated tienen USAGE del esquema; nadie tiene GRANT de tabla
+error: schema "platform_entitlements" does not exist
+ ❯ pe.Ue ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:442:11
+ ❯ pe.tt ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:220:16
+ ❯ pe.parse ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:104:21
+ ❯ N.qe ../../node_modules/@electric-sql/pglite/src/pglite.ts:753:26
+ ❯ ../../node_modules/@electric-sql/pglite/src/pglite.ts:706:14
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:5922000
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2616044
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2648530
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2649134
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:5569870
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/32]⎯
+
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > privacidad del receptor > las RPC del receptor solo las ejecuta service_role
+AssertionError: expected [] to deeply equal [ { …(5) }, { …(5) }, { …(5) }, …(2) ]
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- [[39m
+[32m-   {[39m
+[32m-     "anon": false,[39m
+[32m-     "auth": false,[39m
+[32m-     "definer": true,[39m
+[32m-     "fn": "platform_apply_entitlements",[39m
+[32m-     "svc": true,[39m
+[32m-   },[39m
+[32m-   {[39m
+[32m-     "anon": false,[39m
+[32m-     "auth": false,[39m
+[32m-     "definer": true,[39m
+[32m-     "fn": "platform_entitlements_use_jti",[39m
+[32m-     "svc": true,[39m
+[32m-   },[39m
+[32m-   {[39m
+[32m-     "anon": false,[39m
+[32m-     "auth": false,[39m
+[32m-     "definer": true,[39m
+[32m-     "fn": "platform_get_entitlements",[39m
+[32m-     "svc": true,[39m
+[32m-   },[39m
+[32m-   {[39m
+[32m-     "anon": false,[39m
+[32m-     "auth": false,[39m
+[32m-     "definer": true,[39m
+[32m-     "fn": "platform_reconcile_entitlements",[39m
+[32m-     "svc": true,[39m
+[32m-   },[39m
+[32m-   {[39m
+[32m-     "anon": false,[39m
+[32m-     "auth": false,[39m
+[32m-     "definer": true,[39m
+[32m-     "fn": "platform_set_entitlement_enforcement_mode",[39m
+[32m-     "svc": true,[39m
+[32m-   },[39m
+[32m- ][39m
+[31m+ [][39m
+
+ ❯ supabase/tests/platform-entitlements-db.test.ts:146:18
+    144|         from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    145|        where n.nspname = 'public' and p.proname like 'platform\\_%enti…
+    146|     expect(rows).toEqual([
+       |                  ^
+    147|       { fn: 'platform_apply_entitlements', definer: true, anon: false,…
+    148|       { fn: 'platform_entitlements_use_jti', definer: true, anon: fals…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/32]⎯
+
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > privacidad del receptor > la auditoría es append-only (UPDATE, DELETE y TRUNCATE rechazados)
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > reglas de versión (FIX-ENT-v1 §3) > tenant sin provisioning → 404 TENANT_NOT_PROVISIONED
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > reglas de versión (FIX-ENT-v1 §3) > tenant del path distinto del cuerpo → 422 SNAPSHOT_INVALID
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > reglas de versión (FIX-ENT-v1 §3) > código desconocido: se guarda, se devuelve en unknownCapabilities y NUNCA se concede
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > modos de enforcement > SHADOW (por defecto): guarda y compara, NO decide ni toca la caché legada
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > modos de enforcement > PRIMARY: decide SOLO el snapshot; `legacy_until_synced` queda resuelto
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > modos de enforcement > PRIMARY: un miembro ve el veredicto del snapshot; otro tenant no ve nada
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > modos de enforcement > kill switch local: solo resta, nunca concede
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > modos de enforcement > appActive=false cierra el acceso operativo, incluido lo baseline, sin borrar datos
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > modos de enforcement > alcance COMPANY con lista explícita de compañías de MasterAdmin: no se concede (fail-closed)
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > modos de enforcement > volver atrás restaura el estado legado y conserva el snapshot aplicado
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > modos de enforcement > el modo del PRODUCTO aplica a los tenants sin modo propio
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > camino legado frente al snapshot (H-ECO-1) > PRIMARY: el camino legado queda BLOQUEADO en servidor
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > camino legado frente al snapshot (H-ECO-1) > DUAL_READ con snapshot: la escritura legada se acepta, se ignora y alerta
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > IA: capacidad + asignación del snapshot, hard gate intacto > la asignación `ecommerce.ai.credits` fija la cuota y `ai_consume_for` corta al agotarla
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > IA: capacidad + asignación del snapshot, hard gate intacto > asignación sin la capacidad IA: DISABLED (la capacidad manda sobre la cuota)
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > IA: capacidad + asignación del snapshot, hard gate intacto > PRIMARY sin asignación: cuota 0 (ausente nunca es ilimitado)
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > IA: capacidad + asignación del snapshot, hard gate intacto > DUAL_READ sin asignación: se mantiene la cuota legada (valor no decidido, D-03)
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > IA: capacidad + asignación del snapshot, hard gate intacto > SHADOW: la IA sigue decidiéndose como antes
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > offline last-good y deriva > sin MasterAdmin: el gate sigue decidiendo con el último snapshot, y un push inválido no lo altera
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > offline last-good y deriva > deriva local (caché tocada fuera del receptor) → reconcile la detecta y repara desde el último snapshot
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > offline last-good y deriva > SHADOW: reconcile recalcula las diferencias sin tocar la decisión legada
+error: function public.platform_apply_entitlements(uuid, jsonb, jsonb) does not exist
+ ❯ pe.Ue ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:442:11
+ ❯ pe.tt ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:220:16
+ ❯ pe.parse ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:104:21
+ ❯ N.qe ../../node_modules/@electric-sql/pglite/src/pglite.ts:753:26
+ ❯ ../../node_modules/@electric-sql/pglite/src/pglite.ts:706:14
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:5922000
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2616044
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2648530
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2649134
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:5569870
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/32]⎯
+
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > privacidad del receptor > el registro de códigos del receptor = manifiesto (sellables + asignación IA)
+error: relation "platform_entitlements.known_codes" does not exist
+ ❯ pe.Ue ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:442:11
+ ❯ pe.tt ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:220:16
+ ❯ pe.parse ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:104:21
+ ❯ N.qe ../../node_modules/@electric-sql/pglite/src/pglite.ts:753:26
+ ❯ ../../node_modules/@electric-sql/pglite/src/pglite.ts:706:14
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:5922000
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2616044
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2648530
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2649134
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:5569870
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/32]⎯
+
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > reglas de versión (FIX-ENT-v1 §3) > aplica, replay idempotente, stale, conflicto y salto de versión
+error: function public.platform_get_entitlements(uuid) does not exist
+ ❯ pe.Ue ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:442:11
+ ❯ pe.tt ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:220:16
+ ❯ pe.parse ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:104:21
+ ❯ N.qe ../../node_modules/@electric-sql/pglite/src/pglite.ts:753:26
+ ❯ ../../node_modules/@electric-sql/pglite/src/pglite.ts:706:14
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:5922000
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2616044
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2648530
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2649134
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:5569870
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/32]⎯
+
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > reglas de versión (FIX-ENT-v1 §3) > jti de un solo uso por emisor
+error: function public.platform_entitlements_use_jti(unknown, unknown, timestamp with time zone) does not exist
+ ❯ pe.Ue ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:442:11
+ ❯ pe.tt ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:220:16
+ ❯ pe.parse ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:104:21
+ ❯ N.qe ../../node_modules/@electric-sql/pglite/src/pglite.ts:753:26
+ ❯ ../../node_modules/@electric-sql/pglite/src/pglite.ts:706:14
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:5922000
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2616044
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2648530
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2649134
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:5569870
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/32]⎯
+
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > modos de enforcement > un paso por vez, modos válidos y bitácora de cambios
+AssertionError: expected 'function public.platform_set_entitlem…' to match /UN_PASO/
+
+[32m- Expected:[39m 
+/UN_PASO/
+
+[31m+ Received:[39m 
+"function public.platform_set_entitlement_enforcement_mode(unknown, unknown, unknown) does not exist"
+
+ ❯ supabase/tests/platform-entitlements-db.test.ts:296:68
+    294|   it('un paso por vez, modos válidos y bitácora de cambios', async () …
+    295|     const ids = await newTenant('steps')
+    296|     expect(await expectFailure(() => setMode(ids.cpt, 'PRIMARY'))).toM…
+       |                                                                    ^
+    297|     expect(await expectFailure(() => setMode(ids.cpt, 'TODO'))).toMatc…
+    298|     expect(await expectFailure(() => setMode('no-es-uuid', 'DUAL_READ'…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/32]⎯
+
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > modos de enforcement > PRIMARY sin haber recibido snapshot: solo baseline
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > camino legado frente al snapshot (H-ECO-1) > DUAL_READ sin snapshot: cae a legado y alerta
+error: function public.platform_set_entitlement_enforcement_mode(unknown, unknown, unknown) does not exist
+ ❯ pe.Ue ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:442:11
+ ❯ pe.tt ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:220:16
+ ❯ pe.parse ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:104:21
+ ❯ N.qe ../../node_modules/@electric-sql/pglite/src/pglite.ts:753:26
+ ❯ ../../node_modules/@electric-sql/pglite/src/pglite.ts:706:14
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:5922000
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2616044
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2648530
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2649134
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:5569870
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/32]⎯
+
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > camino legado frente al snapshot (H-ECO-1) > nadie escribe `source = masteradmin` fuera del receptor
+AssertionError: expected 'invalid input value for enum entitlem…' to match /FUENTE_RESERVADA/
+
+[32m- Expected:[39m 
+/FUENTE_RESERVADA/
+
+[31m+ Received:[39m 
+"invalid input value for enum entitlement_source: \"masteradmin\""
+
+ ❯ supabase/tests/platform-entitlements-db.test.ts:502:95
+    500|   it('nadie escribe `source = masteradmin` fuera del receptor', async …
+    501|     const ids = await newTenant('reserved')
+    502|     expect(await expectFailure(() => legacySync(ids, ['ecommerce.payme…
+       |                                                                                               ^
+    503|   })
+    504| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/32]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  32 failed | 2 passed (34)
+   Start at  01:18:18
+   Duration  1.45s (transform 111ms, setup 194ms, collect 38ms, tests 749ms, environment 0ms, prepare 36ms)
+
