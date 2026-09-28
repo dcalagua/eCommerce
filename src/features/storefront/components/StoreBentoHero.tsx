@@ -35,6 +35,7 @@ import { ProductMedia } from './ProductMedia'
 export function StoreBentoHero({
   products,
   promotion,
+  imageSrc = null,
   clockEndsAt,
   maxDiscount,
   storeSlug,
@@ -46,6 +47,13 @@ export function StoreBentoHero({
   products: readonly PublicProduct[]
   /** La campaña que da nombre y texto al bloque. Sin ella, se habla de las ofertas. */
   promotion: StorePromotion | null
+  /**
+   * La foto de esa campaña, ya firmada. Va de FONDO del bloque, bajo un velo
+   * del color de la tienda que deja leer el texto blanco. Antes el bloque la
+   * ignoraba: el comercio subía la foto, se guardaba, y la portada seguía
+   * pintando solo el degradado.
+   */
+  imageSrc?: string | null
   /** Fin REAL de la campaña que antes termina. Sin fecha, no hay reloj. */
   clockEndsAt: string | null
   /** El mayor descuento real a la vista. 0 = no se dice «hasta». */
@@ -88,6 +96,7 @@ export function StoreBentoHero({
         component="section"
         aria-label={kicker}
         data-feria-block
+        data-feria-image={imageSrc ? 'si' : undefined}
         sx={{
           position: 'relative',
           overflow: 'hidden',
@@ -98,13 +107,19 @@ export function StoreBentoHero({
           p: { xs: 2.5, md: 4 },
           minHeight: { md: 360 },
           borderRadius: 'var(--sf-radius)',
-          // El degradado de la tienda y, encima, una luz suave arriba a la
-          // izquierda: da volumen sin añadir un color que no sea suyo.
-          background:
-            'radial-gradient(120% 90% at 0% 0%, rgba(255,255,255,.14) 0%, transparent 55%), var(--hero-grad)',
+          // Sin foto: el degradado de la tienda y, encima, una luz suave arriba
+          // a la izquierda, que da volumen sin añadir un color que no sea suyo.
+          // Con foto: la foto de fondo bajo un velo del color de la tienda, más
+          // denso a la izquierda, donde va el texto blanco (contraste AA).
+          background: imageSrc
+            ? `linear-gradient(90deg, color-mix(in srgb, var(--accent-deep) 92%, transparent) 0%, color-mix(in srgb, var(--accent-deep) 72%, transparent) 55%, rgba(0,0,0,.28) 100%), url("${imageSrc.replace(/"/g, '%22')}") center / cover no-repeat`
+            : 'radial-gradient(120% 90% at 0% 0%, rgba(255,255,255,.14) 0%, transparent 55%), var(--hero-grad)',
           color: '#fff',
           boxShadow: '0 18px 40px -24px rgba(0,0,0,.55)',
           '&::before, &::after': {
+            // Los círculos decorativos se quitan sobre una foto: taparían lo
+            // que el comercio eligió enseñar.
+            display: imageSrc ? 'none' : 'block',
             content: '""',
             position: 'absolute',
             borderRadius: '50%',

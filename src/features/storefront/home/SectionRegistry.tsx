@@ -252,10 +252,19 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
     if (data.theme.style.heroVariant === 'bento') {
       const vistos = new Set(productos.map((producto) => producto.product_id))
       const cuatro = [...productos, ...data.ofertas.filter((producto) => !vistos.has(producto.product_id))].slice(0, 4)
+      const campana = data.promociones[0] ?? null
+      // La foto de la campaña viaja ya firmada en `promoAssets`; un https
+      // externo se usa tal cual. Sin foto, el bloque sigue con el degradado.
+      const fotoCampana = campana?.imageUrl
+        ? /^https:\/\//i.test(campana.imageUrl)
+          ? campana.imageUrl
+          : (data.promoAssets?.[campana.imageUrl] ?? null)
+        : null
       return (
         <StoreBentoHero
           products={cuatro}
-          promotion={data.promociones[0] ?? null}
+          promotion={campana}
+          imageSrc={fotoCampana}
           clockEndsAt={campanaQueTerminaAntes(data.promociones)?.endsAt ?? null}
           maxDiscount={mayorDescuento([...productos, ...data.ofertas], data.promociones)}
           storeSlug={data.storeSlug}
