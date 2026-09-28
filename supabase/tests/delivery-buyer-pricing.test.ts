@@ -23,7 +23,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { PGlite } from '@electric-sql/pglite'
-import { TENANT_A, asRole, claimsFor, createTestDatabase } from './harness.ts'
+import { TENANT_A, asRole, claimsFor, createTestDatabase, vaciarPagosYEntregas } from './harness.ts'
 import { createDbPorts, type RpcCaller } from '../functions/_shared/checkout/dbPorts.ts'
 import { runCheckout } from '../functions/_shared/checkout/pipeline.ts'
 import { parseCheckoutBody } from '../functions/_shared/checkout/request.ts'
@@ -192,6 +192,7 @@ beforeAll(async () => {
     TENANT_A.organizationId, TENANT_A.companyId, ENTITLEMENTS,
   ])
   storeA = await id(`update public.stores set status = 'active' where slug = $1 returning id`, [TENANT_A.storeSlug])
+  await vaciarPagosYEntregas(db, [storeA])
   await svc(`update public.store_settings set tax_rate = 0`)
 
   // Precio público 100: con 2 unidades el invitado (200) supera el umbral de

@@ -11,7 +11,14 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { PGlite } from '@electric-sql/pglite'
-import { TENANT_A, TENANT_B, asRole, createTestDatabase, expectFailure } from './harness.ts'
+import {
+  TENANT_A,
+  TENANT_B,
+  asRole,
+  createTestDatabase,
+  expectFailure,
+  vaciarPagosYEntregas,
+} from './harness.ts'
 
 type Row = Record<string, unknown>
 
@@ -56,6 +63,10 @@ beforeAll(async () => {
     )
     tiendas[tenant.storeSlug] = String(store?.id)
   }
+  // Una tienda en PEN nace con zonas de Peru (20260928100000, cubierto en
+  // store-default-payment-delivery.test.ts). Aqui se prueba la REGLA del pais
+  // partiendo de cero zonas.
+  await vaciarPagosYEntregas(db, Object.values(tiendas))
 }, 180_000)
 
 afterAll(async () => {
