@@ -1539,7 +1539,8 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'pricing.import.reason.invalidQuantity': 'Invalid quantity',
     'pricing.import.reason.unknownSku': 'SKU does not exist in this store',
     'pricing.import.reason.unknownVariant': 'That variant does not exist',
-    'pricing.import.reason.unknownUom': 'Selling unit not configured for that product',
+    'pricing.import.reason.unknownUom':
+      'Selling unit not configured for that product (leave uom_code empty for the per-unit price):',
     'pricing.import.reason.variantMismatch': 'That variant belongs to another product',
     'pricing.error.code': 'Use lowercase letters, digits, dashes and underscores',
     'pricing.error.name': 'Type a name',

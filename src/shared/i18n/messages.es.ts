@@ -1206,7 +1206,8 @@ export const es = {
     'pricing.import.reason.invalidQuantity': 'Cantidad inválida',
     'pricing.import.reason.unknownSku': 'SKU que no existe en esta tienda',
     'pricing.import.reason.unknownVariant': 'Variante que no existe',
-    'pricing.import.reason.unknownUom': 'Presentación no configurada para ese producto',
+    'pricing.import.reason.unknownUom':
+      'Presentación no configurada para ese producto (deja uom_code vacío para el precio por unidad):',
     'pricing.import.reason.variantMismatch': 'Esa variante es de otro producto',
     'pricing.error.code': 'Usa minúsculas, números, guiones y guiones bajos',
     'pricing.error.name': 'Escribe un nombre',
