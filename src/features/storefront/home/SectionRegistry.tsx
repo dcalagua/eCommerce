@@ -115,6 +115,20 @@ const ContentBlocks = lazy(() =>
  */
 
 /**
+ * La campaña que la portada en mosaico ya está anunciando, o `null`.
+ *
+ * Replica las condiciones con las que `hero` pinta `StoreBentoHero`: sección
+ * encendida, variante `bento`, sin cubierta del CMS y con algo rebajado. Si
+ * alguna falla, el mosaico no sale y la campaña tiene que verse en su franja.
+ */
+function campanaDelMosaico(data: HomeSectionData): string | null {
+  if (data.theme.style.heroVariant !== 'bento' || data.cmsTraePortada || data.hero.length === 0) return null
+  const hero = data.theme.layout.sections.find((seccion) => seccion.id === 'hero')
+  if (hero && !hero.enabled) return null
+  return data.promociones[0]?.id ?? null
+}
+
+/**
  * Las fotos del collage del hero (Storefront V3 · P04).
  *
  * ## De dónde salen, y por qué de ahí
@@ -341,7 +355,13 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
    * si está descontando, se anuncia; si caduca, desaparece sola.
    */
   promotions: (data, maxItems, presentation) => {
-    const promos = conTope(data.promociones, maxItems)
+    // Si la portada en mosaico ya anuncia la campaña —nombre, texto y reloj—,
+    // repetirla dos secciones más abajo es decir lo mismo dos veces.
+    const enPortada = campanaDelMosaico(data)
+    const promos = conTope(
+      enPortada ? data.promociones.filter((promo) => promo.id !== enPortada) : data.promociones,
+      maxItems,
+    )
     if (promos.length === 0) return null
     // Resumen v2 · `banners`: dos campañas lado a lado (Retail).
     if (presentation?.variant === 'banners') {

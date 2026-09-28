@@ -38,11 +38,15 @@ export function Countdown({
   const partes = useCountdown(endsAt)
   if (!partes) return null
 
+  // En cajas los segundos van SIEMPRE: un reloj que solo cambia cada minuto
+  // parece una fecha impresa, y lo que lo hace reloj es verlo avanzar. En la
+  // línea de la banda relámpago se quedan fuera con días, para que quepa.
+  const conSegundos = variant === 'boxes' || partes.dias === 0
   const unidades = [
     ...(partes.dias > 0 ? [{ valor: partes.dias, etiqueta: t('store.countdown.days') }] : []),
     { valor: partes.horas, etiqueta: t('store.countdown.hours') },
     { valor: partes.minutos, etiqueta: t('store.countdown.minutes') },
-    ...(partes.dias > 0 ? [] : [{ valor: partes.segundos, etiqueta: t('store.countdown.seconds') }]),
+    ...(conSegundos ? [{ valor: partes.segundos, etiqueta: t('store.countdown.seconds') }] : []),
   ]
   const leido = unidades.map((u) => `${u.valor} ${u.etiqueta}`).join(', ')
 
@@ -62,17 +66,26 @@ export function Countdown({
           aria-hidden
           sx={{
             alignItems: 'center',
-            minWidth: { xs: 48, md: 56 },
+            minWidth: { xs: 46, md: 58 },
             px: 1,
-            py: 0.75,
+            py: { xs: 0.625, md: 0.875 },
             borderRadius: 'var(--sf-radius-sm)',
-            bgcolor: 'rgba(0, 0, 0, 0.32)',
+            // Cristal sobre el degradado de la tienda: se lee en cualquier
+            // acento sin meter un color que no sea suyo.
+            bgcolor: 'rgba(255, 255, 255, 0.14)',
+            border: '1px solid rgba(255, 255, 255, 0.24)',
+            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.18)',
+            backdropFilter: 'blur(6px)',
           }}
         >
-          <Typography className="tnum" sx={{ fontSize: { xs: 20, md: 24 }, fontWeight: 800, lineHeight: 1.1 }}>
+          <Typography className="tnum" sx={{ fontSize: { xs: 20, md: 26 }, fontWeight: 800, lineHeight: 1.1 }}>
             {dos(u.valor)}
           </Typography>
-          <Typography sx={{ fontSize: 10.5, fontWeight: 600, opacity: 0.85 }}>{u.etiqueta}</Typography>
+          <Typography
+            sx={{ fontSize: 10, fontWeight: 700, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.06em' }}
+          >
+            {u.etiqueta}
+          </Typography>
         </Stack>
       ))}
     </Stack>

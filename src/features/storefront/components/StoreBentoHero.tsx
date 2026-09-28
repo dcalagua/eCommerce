@@ -93,24 +93,40 @@ export function StoreBentoHero({
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'center',
-          gap: { xs: 1.5, md: 2 },
+          justifyContent: 'space-between',
+          gap: { xs: 2, md: 2.5 },
           p: { xs: 2.5, md: 4 },
           minHeight: { md: 360 },
           borderRadius: 'var(--sf-radius)',
-          background: 'var(--hero-grad)',
+          // El degradado de la tienda y, encima, una luz suave arriba a la
+          // izquierda: da volumen sin añadir un color que no sea suyo.
+          background:
+            'radial-gradient(120% 90% at 0% 0%, rgba(255,255,255,.14) 0%, transparent 55%), var(--hero-grad)',
           color: '#fff',
+          boxShadow: '0 18px 40px -24px rgba(0,0,0,.55)',
           '&::before, &::after': {
             content: '""',
             position: 'absolute',
             borderRadius: '50%',
-            background: 'color-mix(in srgb, #fff 9%, transparent)',
             pointerEvents: 'none',
           },
-          '&::before': { width: 260, height: 260, right: -70, top: -90 },
-          '&::after': { width: 220, height: 220, right: 40, bottom: -120 },
+          '&::before': {
+            width: 280,
+            height: 280,
+            right: -80,
+            top: -100,
+            background: 'color-mix(in srgb, #fff 10%, transparent)',
+          },
+          '&::after': {
+            width: 200,
+            height: 200,
+            right: 60,
+            bottom: -110,
+            border: '28px solid color-mix(in srgb, #fff 8%, transparent)',
+          },
         }}
       >
+        <Stack sx={{ position: 'relative', gap: { xs: 1.25, md: 1.75 } }}>
         <Box
           sx={{
             alignSelf: 'flex-start',
@@ -135,11 +151,20 @@ export function StoreBentoHero({
 
         <Typography
           component="h1"
-          sx={{ position: 'relative', lineHeight: 0.95, fontWeight: 800, letterSpacing: '-0.03em' }}
+          sx={{
+            display: 'flex',
+            alignItems: 'baseline',
+            flexWrap: 'wrap',
+            columnGap: 1.25,
+            lineHeight: 0.95,
+            fontWeight: 800,
+            letterSpacing: '-0.03em',
+            textShadow: '0 2px 18px rgba(0,0,0,.18)',
+          }}
         >
           {maxDiscount > 0 ? (
             <>
-              <Box component="span" sx={{ fontSize: { xs: 20, md: 26 }, mr: 1, verticalAlign: 'bottom' }}>
+              <Box component="span" sx={{ fontSize: { xs: 20, md: 26 }, opacity: 0.95 }}>
                 {t('store.feria.upTo')}
               </Box>
               <Box component="span" className="tnum" sx={{ fontSize: { xs: 64, md: 96 } }}>
@@ -153,31 +178,69 @@ export function StoreBentoHero({
           )}
         </Typography>
 
-        <Typography sx={{ position: 'relative', fontSize: { xs: 14, md: 15.5 }, opacity: 0.92, maxWidth: 420 }}>
+        <Typography
+          sx={{
+            fontSize: { xs: 14, md: 15.5 },
+            opacity: 0.92,
+            maxWidth: 440,
+            display: '-webkit-box',
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}
+        >
           {texto}
         </Typography>
+        </Stack>
 
-        <Box sx={{ position: 'relative' }}>
-          <Countdown endsAt={clockEndsAt} />
-        </Box>
-
-        {vigencia ? (
-          <Stack
-            direction="row"
-            data-campaign-ends
-            sx={{ position: 'relative', alignItems: 'center', gap: 0.75, fontSize: 14, fontWeight: 700 }}
-          >
-            <EventRoundedIcon aria-hidden sx={{ fontSize: 18 }} />
-            {vigencia.texto}
-          </Stack>
-        ) : null}
+        {/* Abajo, en una fila: CUÁNTO queda y la PUERTA. Separados del
+            titular, que es lo que se lee primero. */}
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          sx={{
+            position: 'relative',
+            gap: { xs: 1.75, sm: 2.5 },
+            alignItems: { xs: 'flex-start', sm: 'flex-end' },
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+          }}
+        >
+          {clockEndsAt ? (
+            <Stack sx={{ gap: 0.75 }}>
+              <Typography
+                sx={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.85 }}
+              >
+                {t('store.feria.endsIn')}
+              </Typography>
+              <Countdown endsAt={clockEndsAt} />
+            </Stack>
+          ) : vigencia ? (
+            <Stack
+              direction="row"
+              data-campaign-ends
+              sx={{
+                alignItems: 'center',
+                gap: 0.75,
+                px: 1.5,
+                py: 0.75,
+                borderRadius: 'var(--sf-pill)',
+                bgcolor: 'rgba(255, 255, 255, 0.14)',
+                border: '1px solid rgba(255, 255, 255, 0.24)',
+                fontSize: 13.5,
+                fontWeight: 700,
+              }}
+            >
+              <EventRoundedIcon aria-hidden sx={{ fontSize: 17 }} />
+              {vigencia.texto}
+            </Stack>
+          ) : null}
 
         <Box
           component={Link}
           to={`/s/${storeSlug}?ver=todo&oferta=1`}
           sx={{
             position: 'relative',
-            alignSelf: 'flex-start',
+            alignSelf: { xs: 'flex-start', sm: 'flex-end' },
             display: 'inline-flex',
             alignItems: 'center',
             gap: 0.75,
@@ -198,6 +261,7 @@ export function StoreBentoHero({
           {t('store.feria.seeAll')}
           <ArrowForwardRoundedIcon aria-hidden sx={{ fontSize: 17 }} />
         </Box>
+        </Stack>
       </Box>
 
       <Box

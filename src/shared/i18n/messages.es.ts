@@ -369,6 +369,7 @@ export const es = {
     'store.feria.subtitle': 'Precios rebajados en productos seleccionados. Con tu cuenta de empresa, tu precio de convenio va encima de la oferta.',
     'store.feria.upTo': 'hasta',
     'store.feria.seeAll': 'Ver todas las ofertas',
+    'store.feria.endsIn': 'Termina en',
     'store.countdown.days': 'días',
     'store.countdown.hours': 'horas',
     'store.countdown.minutes': 'min',

@@ -85,6 +85,13 @@ function Banner({
       ? `/s/${storeSlug}?b=${encodeURIComponent(promo.brandCode)}`
       : `/s/${storeSlug}?ver=todo&oferta=1`
 
+  /*
+   * Una FRANJA, no un cartel. Antes era una caja de 184 px de alto con el
+   * texto a la izquierda, el medallón pegado al borde derecho y un descampado
+   * entre los dos: a ancho completo se leía como una sección vacía. Ahora el
+   * cuánto va primero —es lo que se mira—, luego de qué y hasta cuándo, y la
+   * puerta al final de la misma línea.
+   */
   return (
     <Stack
       direction="row"
@@ -93,58 +100,20 @@ function Banner({
         position: 'relative',
         overflow: 'hidden',
         alignItems: 'center',
-        gap: 2,
-        minHeight: { md: 184 },
-        p: { xs: 2, md: 3 },
+        gap: { xs: 1.5, md: 2.25 },
+        py: { xs: 1.5, md: 1.75 },
+        px: { xs: 1.5, md: 2.25 },
         borderRadius: 'var(--sf-radius)',
         bgcolor: oscuro ? 'var(--text)' : 'var(--accent-soft)',
         color: oscuro ? 'var(--card)' : 'var(--text)',
+        border: '1px solid',
+        borderColor: oscuro ? 'transparent' : 'color-mix(in srgb, var(--accent) 22%, transparent)',
+        transition: 'box-shadow .2s ease, transform .2s ease',
+        '&:hover': { boxShadow: 'var(--sf-shadow-hover)', transform: 'translateY(-1px)' },
+        '&:has(a:focus-visible)': { outline: '2px solid var(--accent)', outlineOffset: 2 },
+        '@media (prefers-reduced-motion: reduce)': { transition: 'none', '&:hover': { transform: 'none' } },
       }}
     >
-      <Stack sx={{ flex: 1, minWidth: 0, gap: 0.75, position: 'relative', zIndex: 1 }}>
-        {vigencia ? (
-          <Typography
-            sx={{
-              fontSize: 11,
-              fontWeight: 800,
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              color: oscuro ? 'inherit' : 'var(--accent-deep)',
-              opacity: oscuro ? 0.8 : 1,
-            }}
-          >
-            {vigencia.texto}
-          </Typography>
-        ) : null}
-        <Typography component="h3" sx={{ fontSize: { xs: 19, md: 24 }, fontWeight: 800, lineHeight: 1.15, letterSpacing: '-0.02em' }}>
-          {promo.name}
-        </Typography>
-        {promo.description ? (
-          <Typography sx={{ fontSize: 13.5, opacity: 0.85, maxWidth: 360 }}>{promo.description}</Typography>
-        ) : null}
-        <Box
-          component={Link}
-          to={destino}
-          sx={{
-            alignSelf: 'flex-start',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 0.5,
-            mt: 0.5,
-            fontSize: 13.5,
-            fontWeight: 800,
-            color: oscuro ? 'inherit' : 'var(--accent-deep)',
-            textDecoration: 'none',
-            '&::after': { content: '""', position: 'absolute', inset: 0 },
-            '&:hover': { textDecoration: 'underline' },
-            '&:focus-visible': { outline: '2px solid var(--accent)', outlineOffset: 3 },
-          }}
-        >
-          {t('store.promos.see')}
-          <ArrowForwardRoundedIcon aria-hidden sx={{ fontSize: 16 }} />
-        </Box>
-      </Stack>
-
       {imageSrc ? (
         <Box
           component="img"
@@ -152,8 +121,8 @@ function Banner({
           alt=""
           loading="lazy"
           sx={{
-            width: { xs: 96, md: 150 },
-            height: { xs: 96, md: 150 },
+            width: { xs: 56, md: 72 },
+            height: { xs: 56, md: 72 },
             objectFit: 'cover',
             borderRadius: 'var(--sf-radius-sm)',
             flexShrink: 0,
@@ -164,23 +133,91 @@ function Banner({
           aria-hidden
           sx={{
             flexShrink: 0,
-            width: { xs: 84, md: 112 },
-            height: { xs: 84, md: 112 },
+            width: { xs: 56, md: 72 },
+            height: { xs: 56, md: 72 },
             display: 'grid',
             placeItems: 'center',
             textAlign: 'center',
             borderRadius: '50%',
             background: 'var(--hero-grad)',
             color: '#fff',
-            fontSize: { xs: 18, md: 24 },
+            fontSize: { xs: 14, md: 18 },
             fontWeight: 800,
             lineHeight: 1.05,
-            px: 1,
+            letterSpacing: '-0.02em',
+            px: 0.75,
+            boxShadow: '0 8px 18px -10px rgba(0,0,0,.5)',
           }}
         >
           {badge}
         </Box>
       ) : null}
+
+      <Stack sx={{ flex: 1, minWidth: 0, gap: 0.25 }}>
+        <Stack direction="row" sx={{ alignItems: 'baseline', gap: 1, flexWrap: 'wrap', rowGap: 0 }}>
+          <Typography
+            component="h3"
+            sx={{ fontSize: { xs: 16, md: 18 }, fontWeight: 800, lineHeight: 1.2, letterSpacing: '-0.015em' }}
+          >
+            {promo.name}
+          </Typography>
+          {vigencia ? (
+            <Typography
+              sx={{
+                fontSize: 10.5,
+                fontWeight: 800,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                color: oscuro ? 'inherit' : 'var(--accent-deep)',
+                opacity: oscuro ? 0.8 : 1,
+              }}
+            >
+              {vigencia.texto}
+            </Typography>
+          ) : null}
+        </Stack>
+        {promo.description ? (
+          <Typography
+            sx={{
+              fontSize: 13,
+              opacity: 0.8,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {promo.description}
+          </Typography>
+        ) : null}
+      </Stack>
+
+      <Box
+        component={Link}
+        to={destino}
+        aria-label={`${t('store.promos.see')}: ${promo.name}`}
+        sx={{
+          flexShrink: 0,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 0.5,
+          px: { xs: 1, md: 1.75 },
+          py: { xs: 1, md: 0.875 },
+          borderRadius: 'var(--sf-pill)',
+          fontSize: 13.5,
+          fontWeight: 800,
+          bgcolor: oscuro ? 'var(--card)' : 'var(--accent-deep)',
+          color: oscuro ? 'var(--text)' : '#fff',
+          textDecoration: 'none',
+          // Toda la franja es la puerta; el botón es solo lo que se ve.
+          '&::after': { content: '""', position: 'absolute', inset: 0 },
+          '&:focus-visible': { outline: 'none' },
+        }}
+      >
+        <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+          {t('store.promos.see')}
+        </Box>
+        <ArrowForwardRoundedIcon aria-hidden sx={{ fontSize: 16 }} />
+      </Box>
     </Stack>
   )
 }

@@ -408,6 +408,7 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'store.feria.subtitle': 'Reduced prices on selected products. With your business account, your agreement price applies on top of the deal.',
     'store.feria.upTo': 'up to',
     'store.feria.seeAll': 'See all deals',
+    'store.feria.endsIn': 'Ends in',
     'store.countdown.days': 'days',
     'store.countdown.hours': 'hours',
     'store.countdown.minutes': 'min',

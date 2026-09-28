@@ -25,6 +25,7 @@ import { HomeComposer } from './home/HomeComposer'
 import type { HomeSectionData } from './home/types'
 import { campanaQueTerminaAntes } from './feria'
 import { resolveSectionPresentation } from './theme/presentation'
+import type { HomeSectionConfig, HomeSectionId } from './theme/types'
 import { useStorefrontTheme } from './theme/useStorefrontTheme'
 
 /**
@@ -119,7 +120,14 @@ const PAGE_SIZE = 24
  */
 const POCOS_RESULTADOS = 3
 
-const SORTS: readonly SearchSort[] = ['relevance', 'price-asc', 'price-desc', 'name', 'recent', 'discount']
+/**
+ * Por debajo de esto «Todo el catálogo» no lleva fila de más vendidos ni de
+ * novedades: el catálogo entero cabe en la primera pantalla de la rejilla y la
+ * fila enseñaría los mismos productos dos veces.
+ */
+const FILA_CATALOGO_MIN = 12
+
+const SORTS: readonly SearchSort[] =['relevance', 'price-asc', 'price-desc', 'name', 'recent', 'discount']
 
 /**
  * Portada de la vitrina: contenido administrable + catálogo buscable.
@@ -286,17 +294,24 @@ export function StoreHomePage() {
   )
 
   /**
-   * Novedades, solo para la portada.
+   * «Todo el catálogo» sin ningún filtro: la única vista de catálogo que lleva
+   * una fila encima de la rejilla (lo más vendido o, si no hay ventas, las
+   * novedades). Con un filtro puesto, quien mira ya dijo qué busca.
+   */
+  const vistaTodo = catalogo && !filtered
+
+  /**
+   * Novedades, para la portada y para «Todo el catálogo».
    *
-   * `storeSlug` a `undefined` en el catálogo es lo que APAGA esta consulta: la
-   * fila no se pinta ahí, y pedir doce productos que nadie va a ver es pagar
-   * una llamada por cada filtro que alguien toca.
+   * `storeSlug` a `undefined` en el resto del catálogo es lo que APAGA esta
+   * consulta: la fila no se pinta ahí, y pedir doce productos que nadie va a
+   * ver es pagar una llamada por cada filtro que alguien toca.
    */
   const novedadesQuery: SearchQuery = useMemo(
     () => ({ term: '', filters: {}, sort: 'recent', limit: 12, offset: 0 }),
     [],
   )
-  const novedadesPages = useCatalogPages(catalogo ? undefined : storeSlug, novedadesQuery)
+  const novedadesPages = useCatalogPages(catalogo && !vistaTodo ? undefined : storeSlug, novedadesQuery)
   const novedades = useMemo(
     () =>
       (novedadesPages.data?.pages[0]?.items ?? []).map((hit) =>
@@ -378,7 +393,7 @@ export function StoreHomePage() {
    * Apagada en el catálogo, como el resto de consultas de portada: pedir un
    * agregado de pedidos para una fila que no se pinta es pagar por nada.
    */
-  const masVendidos = useBestSellers(catalogo ? undefined : storeSlug, store.store_id)
+  const masVendidos = useBestSellers(catalogo && !vistaTodo ? undefined : storeSlug, store.store_id)
   const masVendidoThumbs = useSignedThumbnails(
     (masVendidos.data ?? []).map((producto) => producto.primary_image_path),
   )
@@ -863,18 +878,35 @@ export function StoreHomePage() {
    *
    * En el catálogo NO se pinta la portada: quien pidió «Ver todo» tendría que
    * volver a pasar por delante de todo lo que ya vio para llegar a la rejilla.
-   * Sobrevive una sola sección, `promotions`, y sobrevive porque ya lo hacía:
-   * una campaña vigente es igual de relevante mirando la rejilla que mirando la
-   * portada, y su sitio es arriba en las dos.
    *
-   * Se conserva la entrada TAL Y COMO la configuró el comercio —con su tope si
-   * lo tiene— en vez de fabricar una: si alguien apagó las promociones, están
-   * apagadas en los dos sitios.
+   * Hasta ahora sobrevivía `promotions`, y la franja de la campaña empujaba la
+   * rejilla hacia abajo con algo que la portada ya había contado. Ahora, solo
+   * en «Todo el catálogo» sin filtros, va UNA fila de producto: lo más vendido
+   * si hay ventas reales; si no, las novedades; si no hay ninguna, nada. Con un
+   * filtro puesto no va ninguna: quien filtra ya dijo qué busca.
    */
+  const hayMasVendidos = (masVendidos.data?.length ?? 0) > 0
+  const filaDelCatalogo: HomeSectionId | null =
+    // El directorio de marcas (`#marcas`) es su propia página: sin fila encima.
+    // Y con un catálogo que cabe en una pantalla la fila solo repetiría la
+    // rejilla que va justo debajo.
+    !vistaTodo || directorioMarcas || total <= FILA_CATALOGO_MIN || masVendidos.isPending
+      ? null
+      : hayMasVendidos
+        ? 'best-sellers'
+        : novedades.length > 0
+          ? 'new-arrivals'
+          : null
   const layoutAPintar = useMemo(() => {
     if (!catalogo && !cargandoPortada) return tema.layout
-    const promociones = tema.layout.sections.find((seccion) => seccion.id === 'promotions')
-    const secciones = promociones ? [promociones] : []
+    const secciones: HomeSectionConfig[] = []
+    // Mientras la portada carga se conserva la franja de campañas, como antes:
+    // es lo único que no depende de las consultas que se están esperando.
+    if (!catalogo) {
+      const promociones = tema.layout.sections.find((seccion) => seccion.id === 'promotions')
+      if (promociones) secciones.push(promociones)
+    }
+    if (filaDelCatalogo) secciones.push({ id: filaDelCatalogo, enabled: true, maxItems: 6 })
     // «Marcas» de la cabecera lleva a `?ver=todo#marcas`. Sin esto el ancla no
     // tenía destino en el catálogo y el enlace no hacía nada: el directorio de
     // marcas se pinta aquí, con la configuración del comercio si la tiene.
@@ -883,7 +915,7 @@ export function StoreHomePage() {
       secciones.push({ ...(marcas ?? { id: 'brands' as const }), enabled: true })
     }
     return { version: 1 as const, sections: secciones }
-  }, [catalogo, cargandoPortada, tema.layout, hash])
+  }, [catalogo, cargandoPortada, tema.layout, hash, filaDelCatalogo])
 
   /**
    * ¿Lo destacado se pinta como sección propia?
@@ -984,8 +1016,10 @@ export function StoreHomePage() {
     hero: secciones.hero,
     ofertas: secciones.ofertas,
     destacados: secciones.destacados,
-    novedades: secciones.novedades,
-    masVendido: secciones.masVendido,
+    // En «Todo el catálogo» la fila no compite con otras secciones por los
+    // productos: va la lista entera, sin el reparto de la portada.
+    novedades: vistaTodo ? novedades : secciones.novedades,
+    masVendido: vistaTodo && hayMasVendidos ? (masVendidos.data ?? []) : secciones.masVendido,
     /**
      * ¿La fila de más vendidos está SOSTENIDA por ventas?
      *
