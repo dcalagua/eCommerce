@@ -1,0 +1,27 @@
+
+ RUN  v3.2.7 /Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1
+
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  supabase/tests/entitlements-fixtures-pin.test.ts [ supabase/tests/entitlements-fixtures-pin.test.ts ]
+Error: Cannot find module '../functions/_shared/platformEntitlements/jcs.ts' imported from '/Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1/supabase/tests/entitlements-fixtures-pin.test.ts'
+ ❯ supabase/tests/entitlements-fixtures-pin.test.ts:19:1
+     17| import { fileURLToPath } from 'node:url'
+     18| import { describe, expect, it } from 'vitest'
+     19| import { canonicalize, sha256Hex } from '../functions/_shared/platform…
+       | ^
+     20| 
+     21| /** sha256 de CHECKSUMS.sha256 publicado por MasterAdmin (fase 08, FIX…
+
+Caused by: Error: Failed to load url ../functions/_shared/platformEntitlements/jcs.ts (resolved id: ../functions/_shared/platformEntitlements/jcs.ts) in /Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1/supabase/tests/entitlements-fixtures-pin.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  01:12:48
+   Duration  1.36s (transform 299ms, setup 548ms, collect 0ms, tests 0ms, environment 0ms, prepare 144ms)
+
