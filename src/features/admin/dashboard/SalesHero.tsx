@@ -148,7 +148,7 @@ export function SalesHero({
         overflow: 'hidden',
         height: '100%',
         border: 'none',
-        borderRadius: 4,
+        borderRadius: 1.25,
         background: C.heroGrad,
         color: C.white,
         boxShadow: SH.hero,

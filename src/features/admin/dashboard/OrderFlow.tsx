@@ -106,7 +106,7 @@ export function OrderFlow({ kpis, findings }: { kpis: DashboardKpis; findings: r
                   sx={{
                     flex: 1,
                     minWidth: 0,
-                    borderRadius: 3,
+                    borderRadius: 1,
                     bgcolor: tone.soft,
                     px: 2,
                     py: 1.75,

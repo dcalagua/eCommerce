@@ -180,7 +180,7 @@ export function WatchSection({ onSeeMore }: { onSeeMore?: () => void } = {}) {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        borderRadius: 4,
+        borderRadius: 1.25,
         border: '1px solid var(--border)',
         bgcolor: 'var(--card)',
         px: { xs: 2, md: 2.5 },

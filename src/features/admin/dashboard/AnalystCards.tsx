@@ -153,7 +153,7 @@ export function MetricTile({
         gap: compact ? 0.75 : 1.25,
         p: compact ? 1.25 : 1.75,
         pl: compact ? 1.5 : 2,
-        borderRadius: 3,
+        borderRadius: 1,
         bgcolor: C.card,
         border: `1px solid ${C.line}`,
         color: 'inherit',

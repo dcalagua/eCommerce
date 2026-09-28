@@ -292,7 +292,7 @@ function SignalsSection({ storeId }: { storeId: string | null }) {
       {signals.isPending && (
         <CardGrid min={170}>
           {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} variant="rounded" height={112} sx={{ borderRadius: 3 }} />
+            <Skeleton key={i} variant="rounded" height={112} sx={{ borderRadius: 1 }} />
           ))}
         </CardGrid>
       )}
