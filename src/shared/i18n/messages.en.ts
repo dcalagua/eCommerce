@@ -409,6 +409,8 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'store.feria.upTo': 'up to',
     'store.feria.seeAll': 'See all deals',
     'store.feria.endsIn': 'Ends in',
+    'promotions.campaigns.savedDraft':
+      'Campaign saved as a draft. Switch it to “Active” for it to show in the store.',
     'store.countdown.days': 'days',
     'store.countdown.hours': 'hours',
     'store.countdown.minutes': 'min',

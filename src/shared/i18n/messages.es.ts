@@ -370,6 +370,8 @@ export const es = {
     'store.feria.upTo': 'hasta',
     'store.feria.seeAll': 'Ver todas las ofertas',
     'store.feria.endsIn': 'Termina en',
+    'promotions.campaigns.savedDraft':
+      'Campaña guardada como borrador. Cámbiala a «Activa» para que se vea en la tienda.',
     'store.countdown.days': 'días',
     'store.countdown.hours': 'horas',
     'store.countdown.minutes': 'min',
