@@ -187,6 +187,17 @@ function backend(options: { entitlements?: string[]; links?: boolean } = {}): Fa
       products: [
         { id: PRODUCT, store_id: STORE_A, sku: 'A-JABON', name: 'Jabón', kind: 'simple' },
       ],
+      admin_product_masters: [
+        { id: PRODUCT, organization_id: ORG, company_id: COMPANY_A, sku: 'A-JABON', name: 'Jabón', kind: 'simple' },
+        {
+          id: '88888888-8888-4888-8888-888888888807',
+          organization_id: ORG,
+          company_id: COMPANY_A,
+          sku: 'B-TALADRO',
+          name: 'Taladro',
+          kind: 'simple',
+        },
+      ],
       product_variants: [],
     },
     rpc: {
@@ -277,6 +288,22 @@ describe('Inventario — la pantalla', () => {
     expect(screen.getByText('10')).toBeInTheDocument()
     expect(screen.getByText('4')).toBeInTheDocument()
     expect(screen.getByText('6')).toBeInTheDocument()
+  })
+
+  it('el movimiento elige el producto en UN campo que autocompleta por nombre o SKU', async () => {
+    const user = userEvent.setup()
+    renderInventory(backend())
+    await screen.findByText('CD Lima')
+    await user.click(screen.getByRole('tab', { name: 'Existencias' }))
+    await user.click(await screen.findByRole('button', { name: 'Registrar movimiento' }))
+
+    const campo = await screen.findByRole('combobox', { name: 'Producto' })
+    // Ya no hay un buscador aparte encima de un desplegable: el campo ES el buscador.
+    expect(screen.getByPlaceholderText('Buscar producto por SKU o nombre')).toBe(campo)
+
+    await user.type(campo, 'tala')
+    await user.click(await screen.findByRole('option', { name: /Taladro/ }))
+    expect(campo).toHaveValue('Taladro')
   })
 
   it('el libro mayor enseña el motivo y el saldo que dejó cada asiento', async () => {
