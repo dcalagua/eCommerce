@@ -1,0 +1,7 @@
+
+> ebim-ecommerce@0.1.0 check:edge
+> node scripts/check-edge.mjs
+
+check:edge — 117 archivos con PATH
+check:edge — sin errores de tipos ni de imports.
+exit=0
