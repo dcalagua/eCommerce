@@ -12,8 +12,10 @@ import { Suspense, lazy } from 'react'
  */
 import { BrandLogoWall } from '../components/BrandLogoWall'
 import { BrandRow } from '../components/BrandRow'
+import { BrandStrip } from '../components/BrandStrip'
 import { BrandTrustStrip } from '../components/BrandTrustStrip'
-import { Stack } from '@mui/material'
+import { Box, Stack } from '@mui/material'
+import { CAMPANAS_EN_PORTADA_CATALOGO, CatalogCampaignStack } from '../components/CatalogCampaignStack'
 import { FlashOffersBand } from '../components/FlashOffersBand'
 import { OffersFeaturedBand } from '../components/OffersFeaturedBand'
 import { ProductRow } from '../components/ProductRow'
@@ -126,6 +128,22 @@ function campanaDelMosaico(data: HomeSectionData): string | null {
   const hero = data.theme.layout.sections.find((seccion) => seccion.id === 'hero')
   if (hero && !hero.enabled) return null
   return data.promociones[0]?.id ?? null
+}
+
+/**
+ * Las campañas que la portada de Catálogo ya enseña al lado de su oferta.
+ *
+ * Misma idea que `campanaDelMosaico`: si la portada las pinta, la sección de
+ * campañas no las repite. Condiciones: tema Catálogo con portada de producto,
+ * sección encendida, sin cubierta del CMS y con algo rebajado. Si alguna falla,
+ * la portada no las lleva y tienen que verse en su sección.
+ */
+function campanasDePortadaCatalogo(data: HomeSectionData): readonly string[] {
+  if (data.theme.preset !== 'catalog' || data.theme.style.heroVariant !== 'product') return []
+  if (data.cmsTraePortada || data.hero.length === 0) return []
+  const hero = data.theme.layout.sections.find((seccion) => seccion.id === 'hero')
+  if (hero && !hero.enabled) return []
+  return data.promociones.slice(0, CAMPANAS_EN_PORTADA_CATALOGO).map((promo) => promo.id)
 }
 
 /**
@@ -275,13 +293,40 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
       )
     }
 
-    return (
+    const destacada = (
       <StoreFeaturedHero
         products={productos}
         storeSlug={data.storeSlug}
         thumbnails={data.thumbsOfertas}
       />
     )
+
+    // Catálogo · la oferta y las campañas en UNA fila (propuesta 29). Antes
+    // eran dos carruseles apilados, el segundo con media tarjeta vacía.
+    const enPortada = campanasDePortadaCatalogo(data)
+    if (enPortada.length > 0) {
+      return (
+        <Box
+          data-catalog-hero="true"
+          sx={{
+            display: 'grid',
+            gap: { xs: 1.5, md: 2 },
+            gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 400px' },
+            alignItems: 'stretch',
+          }}
+        >
+          {destacada}
+          <CatalogCampaignStack
+            promotions={data.promociones.filter((promo) => enPortada.includes(promo.id))}
+            storeSlug={data.storeSlug}
+            currency={data.store.currency}
+            assets={data.promoAssets}
+          />
+        </Box>
+      )
+    }
+
+    return destacada
   },
 
   /**
@@ -366,9 +411,12 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
   promotions: (data, maxItems, presentation) => {
     // Si la portada en mosaico ya anuncia la campaña —nombre, texto y reloj—,
     // repetirla dos secciones más abajo es decir lo mismo dos veces.
-    const enPortada = campanaDelMosaico(data)
+    // Y lo mismo con las que la portada de Catálogo lleva al lado de su oferta.
+    const enPortada = [campanaDelMosaico(data), ...campanasDePortadaCatalogo(data)].filter(
+      (id): id is string => Boolean(id),
+    )
     const promos = conTope(
-      enPortada ? data.promociones.filter((promo) => promo.id !== enPortada) : data.promociones,
+      data.promociones.filter((promo) => !enPortada.includes(promo.id)),
       maxItems,
     )
     if (promos.length === 0) return null
@@ -505,6 +553,24 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
      * limpio: sin caja, sin tinte y sin la cuenta al lado. Quien duda de una
      * tienda en línea deja de dudar cuando ve nombres que ya conoce.
      */
+    /**
+     * Catálogo · la tira compacta (propuesta 29). Es la forma que toma en este
+     * tema la presentación de tarjetas: cinco marcas con su cuenta y «Ver
+     * todas», en lugar de una fila que gira. Quien busca entre miles de
+     * referencias usa la marca para ACOTAR, y una tira fija se recorre de un
+     * vistazo.
+     */
+    if (data.theme.preset === 'catalog' && presentation?.variant !== 'logos') {
+      return (
+        <BrandStrip
+          brands={marcas}
+          selected={data.brandSelected}
+          onSelect={data.onSelectBrand}
+          seeAllHref={`/s/${data.storeSlug}?ver=todo`}
+        />
+      )
+    }
+
     if (presentation?.variant === 'logos') {
       return (
         <BrandLogoWall

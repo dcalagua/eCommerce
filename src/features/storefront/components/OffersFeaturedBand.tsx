@@ -112,21 +112,38 @@ export function OffersFeaturedBand({
     </Box>
   )
 
+  /**
+   * Cuántas ofertas caben, y en cuántas columnas.
+   *
+   * Compartiendo banda con lo destacado caben tres. Con el ancho ENTERO —lo
+   * destacado va aparte, o no hay— caben cinco.
+   *
+   * Las columnas NO bajan de cuatro con el ancho entero. Antes eran «tantas
+   * como ofertas»: con una sola, una columna de 1.344 px, y como la foto es
+   * cuadrada la tarjeta medía casi 1.500 px de alto (le pasó a `ferromax` con
+   * una manguera). Un hueco a la derecha se lee como «hay pocas ofertas»; una
+   * tarjeta gigante se lee como una tienda rota.
+   */
+  // Partida, las tarjetas comparten fila con el panel del mensaje: no es ancho entero.
+  const anchoEntero = !ambas && !partida
+  const tope = anchoEntero ? 5 : 3
+  const visibles = offers.slice(0, tope)
+  const columnas = anchoEntero ? Math.max(visibles.length, 4) : Math.min(Math.max(visibles.length, 2), 3)
+
   const tarjetasRebajadas = (
     <Box
+      data-offer-columns={columnas}
       sx={{
         display: 'grid',
         gap: 1.25,
-        // Tantas columnas como ofertas haya, hasta tres. Con una sola, un
-        // `repeat(3)` fijo dejaba dos huecos a su derecha — y con la banda ya
-        // en una columna, esos huecos ocupaban media pantalla.
         gridTemplateColumns: {
-          xs: offers.length === 1 ? '1fr' : 'repeat(2, minmax(0, 1fr))',
-          sm: `repeat(${Math.min(offers.length, 3)}, minmax(0, 1fr))`,
+          xs: 'repeat(2, minmax(0, 1fr))',
+          sm: `repeat(${Math.min(columnas, 3)}, minmax(0, 1fr))`,
+          md: `repeat(${columnas}, minmax(0, 1fr))`,
         },
       }}
     >
-      {offers.slice(0, 3).map((product) => (
+      {visibles.map((product) => (
         <OfferCard
           key={product.product_id}
           product={product}

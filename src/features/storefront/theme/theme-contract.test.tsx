@@ -500,8 +500,8 @@ describe('los presets usan lo que declaran', () => {
     expect((await heroPintado()).getAttribute('data-hero-variant')).toBe('statement')
   })
 
-  it('catalog declara `pills` y las familias lo obedecen', async () => {
-    expect(THEME_PRESETS.catalog.categoryVariant).toBe('pills')
+  it('catalog declara `icons` y las familias lo obedecen', async () => {
+    expect(THEME_PRESETS.catalog.categoryVariant).toBe('icons')
 
     holder.client = backend({
       theme_preset: 'catalog',
@@ -518,7 +518,7 @@ describe('los presets usan lo que declaran', () => {
     await screen.findByRole('banner')
 
     const seccion = await screen.findByRole('region', { name: 'Compra por categoría' })
-    expect(seccion.querySelectorAll('[data-category-pill]').length).toBe(2)
+    await waitFor(() => expect(seccion.querySelectorAll('[data-category-icon-card="true"]').length).toBe(2))
   })
 
   it('`circles` pinta las familias como una fila de círculos', async () => {

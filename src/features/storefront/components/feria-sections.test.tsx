@@ -88,7 +88,7 @@ describe('ofertas relámpago (Retail)', () => {
 
   it('sin fecha de fin no promete urgencia: otro título y sin reloj', async () => {
     banda(null)
-    const seccion = await screen.findByRole('region', { name: 'Ofertas vigentes' })
+    const seccion = await screen.findByRole('region', { name: 'Productos en oferta' })
     expect(within(seccion).queryByRole('timer')).toBeNull()
   })
 })

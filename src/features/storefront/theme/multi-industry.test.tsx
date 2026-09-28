@@ -1,4 +1,4 @@
-import { cleanup, screen, within } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Route, Routes } from 'react-router-dom'
@@ -547,11 +547,11 @@ describe('las puertas de categoría con fotografía', () => {
    * la COMPOSICIÓN y que, aun así, las dos familias siguen llegando a su
    * catálogo filtrado.
    */
-  it('en el tema catalog las familias son píldoras, y siguen llevando a su catálogo', async () => {
+  it('en el tema catalog las familias son tarjetas con icono, y siguen llevando a su catálogo', async () => {
     cleanup()
     const seccion = await portadaConCategorias('catalog')
 
-    expect(seccion.querySelectorAll('[data-category-pill]').length).toBe(2)
+    await waitFor(() => expect(seccion.querySelectorAll('[data-category-icon-card="true"]').length).toBe(2))
     expect(seccion.querySelector('[data-category-door]')).toBeNull()
     expect(within(seccion).getByRole('link', { name: /Abrigos/ })).toHaveAttribute(
       'href',

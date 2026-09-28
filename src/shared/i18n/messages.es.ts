@@ -2602,7 +2602,9 @@ export const es = {
     // Las dos puertas de la portada editorial (Storefront V2 · P04).
     'store.hero.browseCatalog': 'Ver el catálogo',
     'store.hero.seeOffers': 'Ver lo rebajado',
-    'store.promos.title': 'Ofertas vigentes',
+    // Campañas y productos rebajados son dos secciones: con el mismo título, la
+    // portada decía «Ofertas vigentes» dos veces seguidas.
+    'store.promos.title': 'Campañas vigentes',
     'store.promos.prev': 'Oferta anterior',
     'store.promos.next': 'Oferta siguiente',
     'store.promos.goTo': 'Ver la oferta: {name}',
@@ -2662,7 +2664,7 @@ export const es = {
     'store.row.newEyebrow': 'Recién publicado',
     'store.row.newSubtitle': 'Lo último que se ha publicado en esta tienda.',
     // P08 · «De la semana» afirmaba una vigencia semanal que nadie garantiza.
-    'store.row.weekDeals': 'Ofertas vigentes',
+    'store.row.weekDeals': 'Productos en oferta',
     'store.offers.upTo': 'Hasta -{n}%',
     'store.offers.count': '{n} productos con precio rebajado ahora mismo.',
     'store.offers.seeAll': 'Ver todas las ofertas',
@@ -2679,6 +2681,9 @@ export const es = {
     'store.row.recommendedEyebrow': 'Para empezar',
     'store.row.recommendedSubtitle': 'Una selección del catálogo de esta tienda.',
     'store.brands.count': '{count} productos',
+    'store.brands.total': '{n} marcas',
+    'store.brands.seeAll': 'Ver todas',
+    'store.brands.more': '{n} marcas más',
     'store.content.offer.save': 'Ahorro',
     'store.content.offer.tiers': 'Por volumen',
     'store.content.offer.bundle': 'Pack',

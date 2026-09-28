@@ -594,7 +594,7 @@ describe('las ofertas vigentes salen solas en la portada', () => {
       '/s/casa-verde',
     )
 
-    const ofertas = await screen.findByRole('region', { name: 'Ofertas vigentes' })
+    const ofertas = await screen.findByRole('region', { name: 'Campañas vigentes' })
     expect(within(ofertas).getByRole('heading', { name: 'Semana dermocosmetica' })).toBeInTheDocument()
     expect(within(ofertas).getByText('-20 %')).toBeInTheDocument()
     expect(within(ofertas).getByRole('link', { name: 'Ver los productos' })).toHaveAttribute(
@@ -607,6 +607,6 @@ describe('las ofertas vigentes salen solas en la portada', () => {
     renderStorefront(backend(), '/s/casa-verde')
     await screen.findByRole('banner')
 
-    expect(screen.queryByRole('region', { name: 'Ofertas vigentes' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Campañas vigentes' })).not.toBeInTheDocument()
   })
 })

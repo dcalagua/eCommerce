@@ -173,7 +173,8 @@ describe('los cuatro temas tienen personalidad propia', () => {
   it('Catalog sigue siendo el productivo y Retail el denso', () => {
     expect(THEME_PRESETS.catalog).toMatchObject({
       headerVariant: 'compact',
-      categoryVariant: 'pills',
+      // Propuesta 29 · tarjetas con icono: las píldoras eran una línea diminuta.
+      categoryVariant: 'icons',
       contentWidth: 'xl',
     })
     expect(THEME_PRESETS.catalog.gridColumns.lg).toBe(6)

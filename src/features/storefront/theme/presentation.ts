@@ -217,7 +217,19 @@ const AUTO_POR_TEMA: Readonly<
    * catálogo de miles de referencias, la marca es una forma de ACOTAR, y un muro
    * se recorre con la vista más rápido que una fila de tarjetas con su cuenta.
    */
-  catalog: { product: 'rail', brands: 'logos', offers: 'band', promotions: 'band', bleedOffers: false },
+  /**
+   * Propuesta 29 · Catálogo con poco contenido.
+   *
+   * `grid` en producto: el carrusel cortaba tarjetas en los bordes y, con
+   * productos sin foto, se leía como una fila rota. `cards` en marcas, que en
+   * este tema se pinta como la tira compacta (`BrandStrip`): el muro repartía
+   * cinco iniciales a lo ancho y parecía vacío. Quien prefiera el muro lo
+   * sigue eligiendo en la sección.
+   */
+  // Y `banners` en campañas: las dos primeras ya van en la portada, y las que
+  // sobran se leen mejor como franjas bajas que como un carrusel de una sola
+  // tarjeta con media pantalla en blanco.
+  catalog: { product: 'grid', brands: 'cards', offers: 'band', promotions: 'banners', bleedOffers: false },
 }
 
 /** Lo que `auto` resuelve para las familias: lo que el contrato del tema dice. */

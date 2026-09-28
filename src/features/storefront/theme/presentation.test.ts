@@ -116,7 +116,12 @@ describe('`auto` resuelve por tema, nunca por rubro', () => {
 
   it('Retail favorece descubrimiento y Catalog productividad', () => {
     expect(resolver('featured', 'retail').variant).toBe('grid')
-    expect(resolver('featured', 'catalog').variant).toBe('rail')
+    // Propuesta 29 · rejilla: el carrusel cortaba tarjetas en los bordes.
+    expect(resolver('featured', 'catalog').variant).toBe('grid')
+    // Y las marcas en tarjetas, que en Catálogo se pintan como la tira compacta.
+    expect(resolver('brands', 'catalog').variant).toBe('cards')
+    // Las campañas que sobran de la portada, en franjas y no en carrusel.
+    expect(resolver('promotions', 'catalog').variant).toBe('banners')
     // Catalog NO saca nada a sangre: la primera pantalla tiene que ser catálogo.
     expect(resolver('offers', 'catalog').width).toBe('contained')
   })

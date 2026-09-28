@@ -40,9 +40,9 @@ export * from './types'
  * Una prenda se mira; un envase se identifica.
  *
  * **catalog** es para quien tiene miles de referencias y sabe lo que busca:
- * ancho extra, cinco columnas, tarjeta compacta y las categorías en píldoras,
- * que ocupan una línea en vez de una parrilla. La cabecera se reduce para que
- * la primera pantalla sea catálogo y no navegación.
+ * ancho extra, cinco columnas, tarjeta compacta y las familias en tarjetas con
+ * icono. La cabecera se reduce para que la primera pantalla sea catálogo y no
+ * navegación, y la portada pone la oferta y las campañas en una sola fila.
  */
 export const THEME_PRESETS: Readonly<Record<ThemePreset, ThemeDefinition>> = {
   universal: {
@@ -142,7 +142,9 @@ export const THEME_PRESETS: Readonly<Record<ThemePreset, ThemeDefinition>> = {
     headerVariant: 'compact',
     heroVariant: 'product',
     productCardVariant: 'compact',
-    categoryVariant: 'pills',
+    // Propuesta 29 · Tarjetas con icono en vez de píldoras: con cinco familias
+    // las píldoras eran una línea diminuta que no parecía una puerta.
+    categoryVariant: 'icons',
     contentWidth: 'xl',
     imageRatio: 'square',
     sectionSpacing: 'compact',
