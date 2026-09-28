@@ -1,0 +1,218 @@
+{
+  "schema": "ebim.capabilities/v1",
+  "productCode": "ecommerce",
+  "manifestVersion": "2026-10-01.1",
+  "capabilities": [
+    {
+      "code": "ecommerce.ai.assist",
+      "name": "Asistente IA",
+      "kind": "AI_FEATURE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "introducedInContract": "entitlements.v1"
+    },
+    {
+      "code": "ecommerce.ai.catalog.copy",
+      "name": "IA · textos de catálogo",
+      "kind": "AI_FEATURE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "introducedInContract": "entitlements.v1"
+    },
+    {
+      "code": "ecommerce.ai.content",
+      "name": "IA · contenido",
+      "kind": "AI_FEATURE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "introducedInContract": "entitlements.v1"
+    },
+    {
+      "code": "ecommerce.ai.credits",
+      "name": "Créditos IA incluidos",
+      "kind": "ALLOWANCE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "unit": "credit",
+      "combineRule": "SUM",
+      "meterCode": "ai.credits",
+      "introducedInContract": "entitlements.v1"
+    },
+    {
+      "code": "ecommerce.ai.insights",
+      "name": "IA · insights",
+      "kind": "AI_FEATURE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "introducedInContract": "entitlements.v1"
+    },
+    {
+      "code": "ecommerce.analytics.advanced",
+      "name": "Analítica avanzada",
+      "kind": "FEATURE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "introducedInContract": "entitlements.v1"
+    },
+    {
+      "code": "ecommerce.catalog.advanced",
+      "name": "Catálogo avanzado (PIM)",
+      "kind": "FEATURE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "introducedInContract": "entitlements.v1"
+    },
+    {
+      "code": "ecommerce.content.cms",
+      "name": "CMS",
+      "kind": "FEATURE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "introducedInContract": "entitlements.v1"
+    },
+    {
+      "code": "ecommerce.content.white_label",
+      "name": "Marca blanca",
+      "kind": "FEATURE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "introducedInContract": "entitlements.v1"
+    },
+    {
+      "code": "ecommerce.credit.management",
+      "name": "Gestión de crédito",
+      "kind": "FEATURE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "introducedInContract": "entitlements.v1"
+    },
+    {
+      "code": "ecommerce.customers.b2b",
+      "name": "Clientes B2B",
+      "kind": "FEATURE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "introducedInContract": "entitlements.v1"
+    },
+    {
+      "code": "ecommerce.fulfillment",
+      "name": "Entregas",
+      "kind": "FEATURE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "introducedInContract": "entitlements.v1"
+    },
+    {
+      "code": "ecommerce.fulfillment.routing",
+      "name": "Ruteo de entregas",
+      "kind": "FEATURE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "introducedInContract": "entitlements.v1"
+    },
+    {
+      "code": "ecommerce.integrations.enterprise",
+      "name": "Integraciones enterprise",
+      "kind": "FEATURE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "introducedInContract": "entitlements.v1"
+    },
+    {
+      "code": "ecommerce.inventory.multiwarehouse",
+      "name": "Multi-almacén",
+      "kind": "FEATURE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "introducedInContract": "entitlements.v1"
+    },
+    {
+      "code": "ecommerce.invoicing",
+      "name": "Facturación a clientes",
+      "kind": "FEATURE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "introducedInContract": "entitlements.v1"
+    },
+    {
+      "code": "ecommerce.orders.advanced",
+      "name": "Pedidos avanzados",
+      "kind": "FEATURE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "introducedInContract": "entitlements.v1"
+    },
+    {
+      "code": "ecommerce.payments",
+      "name": "Cobros",
+      "kind": "FEATURE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "introducedInContract": "entitlements.v1"
+    },
+    {
+      "code": "ecommerce.planning.demand",
+      "name": "Planificación de demanda",
+      "kind": "FEATURE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "introducedInContract": "entitlements.v1"
+    },
+    {
+      "code": "ecommerce.pricing.lists",
+      "name": "Listas de precios",
+      "kind": "FEATURE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "introducedInContract": "entitlements.v1"
+    },
+    {
+      "code": "ecommerce.promotions",
+      "name": "Promociones",
+      "kind": "FEATURE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "introducedInContract": "entitlements.v1"
+    },
+    {
+      "code": "ecommerce.sales.force",
+      "name": "Fuerza de ventas",
+      "kind": "FEATURE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "introducedInContract": "entitlements.v1"
+    },
+    {
+      "code": "ecommerce.sales.performance",
+      "name": "Desempeño comercial",
+      "kind": "FEATURE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "introducedInContract": "entitlements.v1"
+    },
+    {
+      "code": "ecommerce.sales.territory",
+      "name": "Territorios de venta",
+      "kind": "FEATURE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "introducedInContract": "entitlements.v1"
+    },
+    {
+      "code": "ecommerce.trade.assortments",
+      "name": "Surtidos B2B",
+      "kind": "FEATURE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "introducedInContract": "entitlements.v1"
+    },
+    {
+      "code": "ecommerce.trade.quotes",
+      "name": "Cotizaciones B2B",
+      "kind": "FEATURE",
+      "scopeLevel": "TENANT",
+      "status": "ACTIVE",
+      "introducedInContract": "entitlements.v1"
+    }
+  ]
+}

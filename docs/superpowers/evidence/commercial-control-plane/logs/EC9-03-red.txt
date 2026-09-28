@@ -1,0 +1,27 @@
+
+ RUN  v3.2.7 /Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1
+
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  supabase/tests/platform-entitlements-contract.test.ts [ supabase/tests/platform-entitlements-contract.test.ts ]
+Error: Cannot find module '../functions/_shared/platformEntitlements/config.ts' imported from '/Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1/supabase/tests/platform-entitlements-contract.test.ts'
+ ❯ supabase/tests/platform-entitlements-contract.test.ts:23:1
+     21| import { asRole, createTestDatabase } from './harness.ts'
+     22| import { ecommerceSnapshot, provisionTenant } from './entitlements-hel…
+     23| import { loadEntitlementsConfig, type EntitlementsConfig } from '../fu…
+       | ^
+     24| import {
+     25|   handleEntitlementsRequest,
+
+Caused by: Error: Failed to load url ../functions/_shared/platformEntitlements/config.ts (resolved id: ../functions/_shared/platformEntitlements/config.ts) in /Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1/supabase/tests/platform-entitlements-contract.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  01:25:55
+   Duration  596ms (transform 163ms, setup 207ms, collect 0ms, tests 0ms, environment 0ms, prepare 41ms)
+
