@@ -94,6 +94,7 @@ export function StoreValueProps({
     <Box
       component="section"
       aria-label={t('store.valueProps.title')}
+      data-own-surface=""
       data-value-props={propuestas.length}
       sx={{
         display: 'grid',

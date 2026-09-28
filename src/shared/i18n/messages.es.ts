@@ -2660,6 +2660,9 @@ export const es = {
     'store.row.newSubtitle': 'Lo último que se ha publicado en esta tienda.',
     // P08 · «De la semana» afirmaba una vigencia semanal que nadie garantiza.
     'store.row.weekDeals': 'Ofertas vigentes',
+    'store.offers.upTo': 'Hasta -{n}%',
+    'store.offers.count': '{n} productos con precio rebajado ahora mismo.',
+    'store.offers.seeAll': 'Ver todas las ofertas',
     'store.row.highlighted': 'Productos destacados',
     'store.row.highlightedEyebrow': 'Del catálogo',
     'store.row.highlightedSubtitle': 'Una muestra de lo que esta tienda tiene publicado.',

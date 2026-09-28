@@ -144,7 +144,7 @@ export function ProductRow({
    * Va ANTES del retorno temprano, con los otros dos hooks: el orden de los
    * hooks no puede depender de si la fila tiene productos.
    */
-  const { style } = useStorefrontTheme()
+  const { style, definition } = useStorefrontTheme()
   const presentacion = style.productCardVariant
 
   if (!loading && products.length === 0) return null
@@ -164,6 +164,35 @@ export function ProductRow({
   const pocos = !loading && cuantos > 0 && (impuesto === 'spotlight' || cuantos <= POCOS)
   const rejilla =
     !loading && cuantos > 0 && (impuesto === 'grid' || pocos || cuantos <= TOPE_REJILLA)
+
+  /**
+   * Las columnas de la rejilla, por ancho: las del TEMA como techo.
+   *
+   * Antes la rejilla ponía una columna por producto. Con seis estaba bien; con
+   * `grid` y doce productos salían doce columnas de 90 px en una sola fila, con
+   * el nombre cortado y el botón «Agregar al carrito» partido. Ahora nunca hay
+   * más columnas que las que el tema pinta en su catálogo (4, 5, 3 o 6).
+   *
+   * Y solo FILAS COMPLETAS: con 12 productos y 5 columnas se enseñan 10. Una
+   * última fila con dos tarjetas y tres huecos se lee como un fallo, y lo que
+   * se quita sigue a un clic en «Ver todo». Con menos productos que columnas no
+   * se quita nada: la fila única ya está completa.
+   */
+  const columnas = {
+    xs: cuantos === 1 ? 1 : Math.min(cuantos, definition.gridColumns.xs),
+    sm: Math.min(cuantos, definition.gridColumns.sm),
+    lg: Math.min(cuantos, definition.gridColumns.lg),
+  }
+  // Y como mucho DOS filas: en Premium (3 columnas de foto vertical) doce
+  // productos eran cuatro filas de tarjetas de 500 px, una portada entera para
+  // una sola sección. Dos filas enseñan el surtido; el resto es «Ver todo».
+  const completas = (cols: number) =>
+    cuantos <= cols ? cuantos : Math.min(cuantos - (cuantos % cols), cols * 2)
+  const ocultaEn = (indice: number) => ({
+    xs: indice >= completas(columnas.xs) ? 'none' : 'flex',
+    sm: indice >= completas(columnas.sm) ? 'none' : 'flex',
+    lg: indice >= completas(columnas.lg) ? 'none' : 'flex',
+  })
 
   const tarjeta = (product: PublicProduct, anuncio: boolean) => (
     <ProductCard
@@ -186,6 +215,7 @@ export function ProductRow({
       aria-label={title}
       data-row-layout={loading ? 'loading' : pocos ? 'spotlight' : rejilla ? 'grid' : 'carousel'}
       data-row-count={cuantos}
+      {...(tone === 'tinted' ? { 'data-own-surface': '' } : {})}
       sx={{
         gap: 1.25,
         ...(tone === 'tinted'
@@ -243,15 +273,26 @@ export function ProductRow({
             // Con pocos productos entra una columna más: la puerta al catálogo.
             // Sin ella, dos tarjetas dejaban media fila en blanco debajo de un
             // título que prometía una sección.
-            gridTemplateColumns: {
-              xs: cuantos === 1 ? '1fr' : 'repeat(2, minmax(0, 1fr))',
-              md: `repeat(${pocos ? cuantos + 1 : cuantos}, minmax(0, 1fr))`,
-            },
+            gridTemplateColumns: pocos
+              ? {
+                  xs: cuantos === 1 ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+                  md: `repeat(${cuantos + 1}, minmax(0, 1fr))`,
+                }
+              : {
+                  xs: `repeat(${columnas.xs}, minmax(0, 1fr))`,
+                  sm: `repeat(${columnas.sm}, minmax(0, 1fr))`,
+                  lg: `repeat(${columnas.lg}, minmax(0, 1fr))`,
+                },
             gridAutoRows: '1fr',
           }}
         >
-          {visibles.map((product) => (
-            <Box key={product.product_id} sx={{ display: 'flex' }}>
+          {visibles.map((product, indice) => (
+            <Box
+              key={product.product_id}
+              // La tarjeta llena su celda: una con «Elegir opciones» (texto más
+              // corto) se quedaba más estrecha que sus vecinas.
+              sx={{ display: pocos ? 'flex' : ocultaEn(indice), '& > *': { flex: '1 1 auto', minWidth: 0 } }}
+            >
               {/* Tarjeta COMPLETA —con estado y botón de comprar— cuando hay
                   sitio: con tres productos en fila no se está ojeando un
                   escaparate, se está mirando lo que hay. La versión reducida es

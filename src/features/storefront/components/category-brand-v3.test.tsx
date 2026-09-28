@@ -132,30 +132,39 @@ describe('el mosaico reparte área según cuántas familias hay', () => {
     expect(celdas().map((celda) => celda.dataset.mosaicCell)).toEqual(['follow', 'follow'])
   })
 
-  it('con tres aparece la pieza principal', () => {
+  it('con tres o cuatro tampoco: la forma no cierra y quedaría un hueco', () => {
+    // Revisión visual: la destacada 2×2 con dos o tres piezas al lado dejaba
+    // media fila vacía. Por debajo de cinco va rejilla pareja.
     pintarMosaico(familias(3))
+    expect(celdas().map((celda) => celda.dataset.mosaicCell)).toEqual(['follow', 'follow', 'follow'])
+  })
+
+  it('con cinco aparece la pieza principal: 2×2 y cuatro a su lado', () => {
+    pintarMosaico(familias(5))
 
     expect(celdas().map((celda) => celda.dataset.mosaicCell)).toEqual([
       'lead',
       'follow',
       'follow',
+      'follow',
+      'follow',
     ])
   })
 
-  it('con seis sigue habiendo una sola pieza principal', () => {
-    pintarMosaico(familias(6))
+  it('con seis o siete se queda en cinco: una pieza sola en otra fila es un hueco', () => {
+    pintarMosaico(familias(7))
 
     const reparto = celdas().map((celda) => celda.dataset.mosaicCell)
-    expect(reparto).toHaveLength(6)
+    expect(reparto).toHaveLength(5)
     expect(reparto.filter((sitio) => sitio === 'lead')).toHaveLength(1)
     expect(reparto[0]).toBe('lead')
   })
 
-  it('con diez se queda en seis: un mosaico de diez piezas ya no tiene jerarquía', () => {
+  it('con diez se queda en nueve: la destacada, cuatro al lado y una fila completa', () => {
     pintarMosaico(familias(10))
 
-    expect(celdas()).toHaveLength(6)
-    expect(screen.getByLabelText('Categorías')).toHaveAttribute('data-category-mosaic', '6')
+    expect(celdas()).toHaveLength(9)
+    expect(screen.getByLabelText('Categorías')).toHaveAttribute('data-category-mosaic', '9')
   })
 
   it('no reordena: la principal es la primera que ordenó el comercio', () => {
@@ -168,6 +177,8 @@ describe('el mosaico reparte área según cuántas familias hay', () => {
       familia('Primera'),
       familia('Segunda', { imageUrl: FOTO }),
       familia('Tercera', { imageUrl: FOTO }),
+      familia('Cuarta', { imageUrl: FOTO }),
+      familia('Quinta', { imageUrl: FOTO }),
     ])
 
     const principal = celda(0)

@@ -80,8 +80,15 @@ export interface CategoryDoorItem {
   readonly imageAlt?: string | null
 }
 
-/** Cuantas puertas de categoria caben a lo ancho sin apretarse. */
-const PUERTAS_A_LO_ANCHO = 4
+/**
+ * Cuantas puertas de categoria caben a lo ancho sin apretarse.
+ *
+ * Seis y no cuatro: con cinco familias —lo normal en una tienda que empieza—
+ * la fila entraba en carrusel, giraba y enseñaba la primera puerta partida por
+ * el borde. A 1270 px caben seis puertas de más de 190 px, que siguen siendo
+ * puertas.
+ */
+const PUERTAS_A_LO_ANCHO = 6
 
 /**
  * Las puertas de categoría, sin cabecera.
@@ -122,7 +129,7 @@ export function CategoryDoorGrid({
             gridTemplateColumns: {
               xs: 'repeat(2, minmax(0, 1fr))',
               sm: 'repeat(3, minmax(0, 1fr))',
-              md: `repeat(${Math.min(Math.max(categories.length, 2), 4)}, minmax(0, 1fr))`,
+              md: `repeat(${Math.min(Math.max(categories.length, 2), PUERTAS_A_LO_ANCHO)}, minmax(0, 1fr))`,
             },
           }}
         >
@@ -288,6 +295,9 @@ export function CategoryDoor({
         display: 'flex',
         flexDirection: 'column',
         gap: 1,
+        // Llena su celda: en el mosaico la celda es un flex y, sin esto, la
+        // puerta se encogía a su texto y dejaba media rejilla en blanco.
+        width: '100%',
         p: { xs: 2, md: 2.5 },
         minHeight: { xs: 132, md: 168 },
         borderRadius: 'var(--sf-radius)',
@@ -569,8 +579,11 @@ export function CategoryIconCards({
   if (categories.length === 0) return null
 
   const tarjeta = {
-    flexShrink: 0,
-    width: { xs: 112, md: 136 },
+    // En escritorio crecen hasta llenar la fila: con cinco familias, 136 px
+    // fijos dejaban un tercio de la sección en blanco a la derecha.
+    flex: { xs: '0 0 auto', md: '1 1 136px' },
+    width: { xs: 112, md: 'auto' },
+    maxWidth: { md: 240 },
     minHeight: { xs: 88, md: 96 },
     display: 'flex',
     flexDirection: 'column',

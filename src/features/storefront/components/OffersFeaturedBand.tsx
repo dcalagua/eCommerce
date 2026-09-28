@@ -155,18 +155,69 @@ export function OffersFeaturedBand({
       />
     )
 
+    /**
+     * Partida, el mensaje es un PANEL y no un título suelto.
+     *
+     * Era la cabecera y un enlace en media pantalla: un título pequeño flotando
+     * sobre blanco al lado de tres tarjetas. Ahora la columna es una pieza con
+     * el degradado de la tienda y lo único que se puede afirmar sin inventar: el
+     * mayor descuento REAL de lo rebajado y cuántos productos lo están.
+     */
+    const mayor = offers.reduce((max, product) => Math.max(max, discountPercent(product) ?? 0), 0)
+    const panel = (
+      <Stack
+        data-offers-panel="true"
+        sx={{
+          height: '100%',
+          minHeight: { md: 260 },
+          justifyContent: 'center',
+          gap: 1.25,
+          p: { xs: 2.5, md: 4 },
+          borderRadius: 'var(--sf-radius)',
+          background: 'var(--hero-grad)',
+          color: '#FFFFFF',
+        }}
+      >
+        <Typography
+          component="h2"
+          sx={{ fontSize: TS.label, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.9 }}
+        >
+          {t('store.row.weekDeals')}
+        </Typography>
+        {mayor > 0 ? (
+          <Typography sx={{ fontSize: { xs: 40, md: 56 }, fontWeight: 900, lineHeight: 1, letterSpacing: '-0.03em' }}>
+            {t('store.offers.upTo').replace('{n}', String(mayor))}
+          </Typography>
+        ) : null}
+        <Typography sx={{ fontSize: TS.body, opacity: 0.92, maxWidth: 320 }}>
+          {t('store.offers.count').replace('{n}', String(offers.length))}
+        </Typography>
+        <Box
+          component={Link}
+          to={`/s/${storeSlug}?ver=todo&oferta=1`}
+          sx={{
+            alignSelf: 'flex-start',
+            mt: 0.5,
+            px: 2,
+            py: 1,
+            borderRadius: 'var(--sf-pill)',
+            bgcolor: '#FFFFFF',
+            color: 'var(--accent-deep)',
+            fontSize: TS.body,
+            fontWeight: 800,
+            textDecoration: 'none',
+            '&:hover': { opacity: 0.92 },
+          }}
+        >
+          {t('store.offers.seeAll')} →
+        </Box>
+      </Stack>
+    )
+
     return (
       <Stack component="section" aria-label={t('store.row.weekDeals')} sx={{ gap: 1.25 }}>
         {partida ? (
-          <StoreSplitBand
-            copy={
-              <>
-                {cabecera}
-                <Box>{verLoRebajado}</Box>
-              </>
-            }
-            content={tarjetasRebajadas}
-          />
+          <StoreSplitBand copy={panel} content={tarjetasRebajadas} />
         ) : (
           <>
             {cabecera}

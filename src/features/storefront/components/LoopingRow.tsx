@@ -109,7 +109,38 @@ export function LoopingRow<T>({
   const [arrastrando, setArrastrando] = useState(false)
   const [foco, setFoco] = useState(false)
 
-  const quieto = encima || arrastrando || foco
+  /**
+   * ¿Hace falta girar? Solo si la lista NO cabe.
+   *
+   * Cinco marcas en una pantalla ancha caben de sobra; duplicarlas para el
+   * bucle enseñaba «Voltix» dos veces en la misma fila, y la fila se movía sin
+   * nada que descubrir. Si cabe, se pinta una sola vez y quieta.
+   *
+   * Se mide solo con diseño real (`clientWidth > 0`): sin él —jsdom, una
+   * pestaña oculta— no se sabe, y se deja el bucle, que es lo de siempre.
+   */
+  const [gira, setGira] = useState(true)
+  useEffect(() => {
+    const nodo = pista.current
+    if (!nodo || typeof ResizeObserver !== 'function') return
+    const medir = () => {
+      if (nodo.clientWidth <= 0) return
+      const una = gira ? nodo.scrollWidth / 2 : nodo.scrollWidth
+      const debe = una > nodo.clientWidth + 2
+      // Quieta arranca por el principio, no donde la dejó la deriva.
+      if (!debe) {
+        posicion.current = 0
+        nodo.scrollLeft = 0
+      }
+      setGira(debe)
+    }
+    medir()
+    const observador = new ResizeObserver(medir)
+    observador.observe(nodo)
+    return () => observador.disconnect()
+  }, [gira, items])
+
+  const quieto = encima || arrastrando || foco || !gira
 
   const aplica = useCallback(() => {
     const nodo = pista.current
@@ -266,6 +297,14 @@ export function LoopingRow<T>({
         scrollbarWidth: 'none',
         '&::-webkit-scrollbar': { display: 'none' },
         py: 0.5,
+        // Mientras gira, los bordes se desvanecen: la tarjeta que entra o sale
+        // se lee como movimiento y no como una pieza cortada a tijera.
+        ...(gira
+          ? {
+              maskImage:
+                'linear-gradient(90deg, transparent 0, #000 32px, #000 calc(100% - 32px), transparent 100%)',
+            }
+          : {}),
         '@media (hover: hover)': {
           cursor: arrastrando ? 'grabbing' : 'grab',
         },
@@ -273,10 +312,12 @@ export function LoopingRow<T>({
     >
       {huecos(false)}
       {/* La copia que hace posible el bucle. Invisible para el lector de
-          pantalla: se ve, se pulsa, y no se cuenta. */}
-      <Box ref={clon} aria-hidden sx={{ display: 'contents' }}>
-        {huecos(true)}
-      </Box>
+          pantalla: se ve, se pulsa, y no se cuenta. Sin giro no hay copia. */}
+      {gira && (
+        <Box ref={clon} aria-hidden sx={{ display: 'contents' }}>
+          {huecos(true)}
+        </Box>
+      )}
     </Box>
   )
 }

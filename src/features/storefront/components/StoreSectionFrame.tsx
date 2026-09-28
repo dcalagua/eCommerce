@@ -93,6 +93,30 @@ export function StoreSectionFrame({
         // El aire vertical solo donde hay fondo: sin él, la banda se pega al
         // contenido de arriba y de abajo y deja de leerse como una banda.
         ...(fondo ? { py: { xs: 'var(--sf-section-gap)', md: 'var(--sf-section-gap-md)' } } : {}),
+        // Sin sangre, el fondo es una CAJA: esquinas del tema y aire a los
+        // lados. Sin esto el contenido tocaba el borde del tinte.
+        ...(fondo && !aSangre
+          ? { borderRadius: 'var(--sf-radius)', paddingInline: { xs: 2, md: 3 } }
+          : {}),
+        /**
+         * Una sola superficie por sección.
+         *
+         * Algunas piezas traen su propio fondo cuando van sueltas —la fila
+         * teñida, la caja de marcas, «Sobre la tienda», la franja de servicios—.
+         * Dentro de un marco con superficie, ese fondo se pintaba ENCIMA del del
+         * marco: dos rosas distintos uno dentro de otro. Aquí la pieza suelta el
+         * suyo y se queda el que eligió el comercio.
+         */
+        ...(fondo
+          ? {
+              '& [data-own-surface]': {
+                background: 'none',
+                border: 'none',
+                boxShadow: 'none',
+                p: 0,
+              },
+            }
+          : {}),
       }}
     >
       {children}

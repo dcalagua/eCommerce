@@ -121,16 +121,28 @@ export function StoreBusinessInfo({
   // título en blanco no es un enlace, es un destino invisible.
   const paginas = pages.filter((pagina) => pagina.title.trim() !== '').slice(0, 4)
 
+  /**
+   * Sin descripción ni páginas, la columna izquierda era un título y un nombre
+   * sobre media sección vacía. Entonces se compacta: título a la izquierda y los
+   * canales EN FILA a su lado, una banda de servicio en vez de un bloque hueco.
+   */
+  const compacta = descripcion === '' && paginas.length === 0
+
   return (
     <Box
       component="section"
       aria-label={t('store.business.title')}
       data-business-info={canales.length}
+      data-business-layout={compacta ? 'band' : 'split'}
+      data-own-surface=""
       sx={{
         display: 'grid',
         gap: { xs: 2.5, md: 4 },
-        gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1.1fr) minmax(0, 1fr)' },
-        alignItems: 'start',
+        gridTemplateColumns: {
+          xs: '1fr',
+          md: compacta ? 'minmax(180px, auto) minmax(0, 1fr)' : 'minmax(0, 1.1fr) minmax(0, 1fr)',
+        },
+        alignItems: compacta ? 'center' : 'start',
         p: { xs: 2.25, md: 3 },
         borderRadius: 'var(--sf-radius)',
         // Banda tintada y no tarjeta, por lo mismo que la franja de propuestas
@@ -190,7 +202,17 @@ export function StoreBusinessInfo({
         )}
       </Stack>
 
-      <Stack sx={{ gap: 1.25, minWidth: 0 }}>
+      <Box
+        sx={{
+          display: 'grid',
+          gap: compacta ? { xs: 1.25, md: 3 } : 1.25,
+          minWidth: 0,
+          gridTemplateColumns: {
+            xs: '1fr',
+            md: compacta ? `repeat(${canales.length}, minmax(0, 1fr))` : '1fr',
+          },
+        }}
+      >
         {canales.map((canal) => (
           <CanalDeContacto
             key={canal.clave}
@@ -201,7 +223,7 @@ export function StoreBusinessInfo({
             {canal.valor}
           </CanalDeContacto>
         ))}
-      </Stack>
+      </Box>
     </Box>
   )
 }
