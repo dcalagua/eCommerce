@@ -76,6 +76,8 @@ export const esBackoffice = {
   'diagnostics.source.hub': 'Configuración leída del hub de EBIM.',
   'diagnostics.source.provisioning':
       'Configuración cargada por el operador. Todavía no viene del hub de EBIM.',
+  'diagnostics.source.masteradmin':
+      'Configuración recibida de EBIM MasterAdmin (snapshot versionado). El hub ya no la decide.',
   'diagnostics.source.none':
       'Nunca se leyó la configuración del hub. Solo están activos los módulos incluidos.',
   'diagnostics.field.product': 'Producto y versión',

@@ -66,6 +66,7 @@ function Row({ label, value }: { label: string; value: string }) {
 const SOURCE_KEY: Record<PlatformContext['source'], MessageKey> = {
   hub: 'diagnostics.source.hub',
   provisioning: 'diagnostics.source.provisioning',
+  masteradmin: 'diagnostics.source.masteradmin',
   'sin-contexto': 'diagnostics.source.none',
 }
 
@@ -123,16 +124,20 @@ function ContextSection({ context }: { context: PlatformContext }) {
             <Row label={t('diagnostics.field.syncedAt')} value={synced ?? ''} />
           </Stack>
 
-          <Stack direction="row" spacing={1}>
-            <Button
-              variant="outlined"
-              startIcon={<RefreshRoundedIcon fontSize="small" />}
-              disabled={refresh.isPending}
-              onClick={() => refresh.mutate()}
-            >
-              {t('diagnostics.refresh')}
-            </Button>
-          </Stack>
+          {/* Con la configuración gobernada por MasterAdmin, releer del hub no
+              aplica: en PRIMARY el servidor rechaza esa escritura. */}
+          {context.source !== 'masteradmin' && (
+            <Stack direction="row" spacing={1}>
+              <Button
+                variant="outlined"
+                startIcon={<RefreshRoundedIcon fontSize="small" />}
+                disabled={refresh.isPending}
+                onClick={() => refresh.mutate()}
+              >
+                {t('diagnostics.refresh')}
+              </Button>
+            </Stack>
+          )}
         </Stack>
       </CardContent>
     </Card>

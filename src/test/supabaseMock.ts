@@ -493,7 +493,7 @@ export function makePlatformContext(
     entitlements?: string[]
     flags?: Record<string, boolean>
     appActive?: boolean
-    source?: 'hub' | 'provisioning' | 'sin-contexto'
+    source?: 'hub' | 'provisioning' | 'masteradmin' | 'sin-contexto'
     organizationId?: string
     companyId?: string
     plan?: string | null
