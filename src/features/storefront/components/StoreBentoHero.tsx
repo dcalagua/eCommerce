@@ -1,5 +1,6 @@
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import BoltRoundedIcon from '@mui/icons-material/BoltRounded'
+import EventRoundedIcon from '@mui/icons-material/EventRounded'
 import FavoriteBorderRoundedIcon from '@mui/icons-material/FavoriteBorderRounded'
 import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
@@ -8,6 +9,7 @@ import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
 import { useCatalogCommercialPrices, type CommercialPrice } from '../commerce/catalogPrices'
+import { vigenciaTexto } from '../offer'
 import type { StorePromotion } from '../promotions'
 import { discountPercent, type PublicProduct } from '../types'
 import { Countdown } from './Countdown'
@@ -53,19 +55,32 @@ export function StoreBentoHero({
   favorites?: ReadonlySet<string>
   onToggleFavorite?: (productId: string) => void
 }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const cuatro = products.slice(0, 4)
   const commercial = useCatalogCommercialPrices(storeSlug, cuatro)
   const kicker = promotion?.name ?? t('store.feria.kicker')
   const texto = promotion?.description ?? t('store.feria.subtitle')
+  // El reloj solo aparece en la recta final (`HORIZONTE_RELOJ_MS`). Antes de
+  // eso la fecha de fin sigue siendo un dato real y se dice en una línea:
+  // «Hasta el 30 de octubre». Sin fecha de fin, ni reloj ni línea.
+  const vigencia = clockEndsAt ? null : vigenciaTexto(promotion?.endsAt ?? null, t, locale)
+  const n = cuatro.length
+  // El reparto sigue a lo que HAY. La rejilla 2×2 con dos ofertas dejaba dos
+  // tarjetas altas y medio vacías; con una o dos, el bloque de la campaña se
+  // ensancha y las ofertas se apilan en una columna.
+  const pocas = n <= 2
 
   return (
     <Box
       data-hero-variant="bento"
+      data-offer-count={n}
       sx={{
         display: 'grid',
         gap: { xs: 1.5, md: 2 },
-        gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 5fr) minmax(0, 7fr)' },
+        gridTemplateColumns: {
+          xs: '1fr',
+          lg: pocas ? 'minmax(0, 7fr) minmax(0, 5fr)' : 'minmax(0, 5fr) minmax(0, 7fr)',
+        },
         alignItems: 'stretch',
       }}
     >
@@ -146,6 +161,17 @@ export function StoreBentoHero({
           <Countdown endsAt={clockEndsAt} />
         </Box>
 
+        {vigencia ? (
+          <Stack
+            direction="row"
+            data-campaign-ends
+            sx={{ position: 'relative', alignItems: 'center', gap: 0.75, fontSize: 14, fontWeight: 700 }}
+          >
+            <EventRoundedIcon aria-hidden sx={{ fontSize: 18 }} />
+            {vigencia.texto}
+          </Stack>
+        ) : null}
+
         <Box
           component={Link}
           to={`/s/${storeSlug}?ver=todo&oferta=1`}
@@ -178,13 +204,20 @@ export function StoreBentoHero({
         sx={{
           display: 'grid',
           gap: { xs: 1.25, md: 2 },
-          gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
+          gridTemplateColumns: {
+            xs: '1fr',
+            sm: n === 1 ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+            lg: pocas ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+          },
           gridAutoRows: '1fr',
+          // Con tres, la última ocupa la fila entera en vez de dejar un hueco.
+          ...(n === 3 ? { '& > :nth-of-type(3)': { gridColumn: { sm: '1 / -1' } } } : {}),
         }}
       >
         {cuatro.map((product) => (
           <FeriaOfferCard
             key={product.product_id}
+            vertical={n === 1}
             product={product}
             storeSlug={storeSlug}
             imageUrl={product.primary_image_path ? (thumbnails[product.primary_image_path] ?? null) : null}
@@ -210,7 +243,10 @@ function FeriaOfferCard({
   commercialPrice,
   favorite,
   onToggleFavorite,
+  vertical = false,
 }: {
+  /** Oferta única: foto arriba y más grande, para llenar la columna sin huecos. */
+  vertical?: boolean
   product: PublicProduct
   storeSlug: string
   imageUrl: string | null
@@ -225,13 +261,14 @@ function FeriaOfferCard({
 
   return (
     <Stack
-      direction="row"
+      direction={vertical ? { xs: 'row', sm: 'column' } : 'row'}
       data-feria-offer={product.product_id}
       sx={{
         position: 'relative',
         gap: 1.5,
         p: { xs: 1.25, md: 1.5 },
-        alignItems: 'center',
+        alignItems: vertical ? { xs: 'center', sm: 'stretch' } : 'center',
+        justifyContent: 'center',
         minWidth: 0,
         borderRadius: 'var(--sf-radius)',
         bgcolor: 'var(--card)',
@@ -243,7 +280,9 @@ function FeriaOfferCard({
       <Box
         sx={{
           position: 'relative',
-          width: { xs: 96, md: 120 },
+          width: vertical ? { xs: 96, sm: '100%' } : { xs: 96, md: 120 },
+          maxWidth: vertical ? { sm: 240 } : undefined,
+          alignSelf: vertical ? { sm: 'center' } : undefined,
           flexShrink: 0,
           borderRadius: 'var(--sf-radius-sm)',
           overflow: 'hidden',
