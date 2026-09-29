@@ -51,3 +51,7 @@ catalog-ingest.html
 
 # Logs de la fase de QA de la secuencia de IA: no son producto.
 .qa12/
+
+# Diseño local (Pencil: láminas e imágenes generadas) y borradores sueltos
+design/
+taller.html
