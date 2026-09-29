@@ -1,3 +1,4 @@
+import RateReviewRoundedIcon from '@mui/icons-material/RateReviewRounded'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
 import {
   Alert,
@@ -242,6 +243,14 @@ function ReviewForm({ storeSlug, productId }: { storeSlug: string; productId: st
   const [errors, setErrors] = useState<ReviewDraftErrors>({})
   const [serverError, setServerError] = useState<ReviewError | null>(null)
   const [sent, setSent] = useState(false)
+  /**
+   * Lámina 31 · El formulario se abre al pedirlo.
+   *
+   * Abierto de entrada eran 500 px de campos en un producto sin opiniones: lo
+   * primero que veía el comprador era una tarea, no una prueba social. Con
+   * reseña propia se abre solo, porque ahí hay un estado que contar.
+   */
+  const [abierto, setAbierto] = useState(false)
   const formId = useId()
 
   // La propia llega después de montar: se vuelca al formulario una vez.
@@ -264,6 +273,27 @@ function ReviewForm({ storeSlug, productId }: { storeSlug: string; productId: st
         <Typography sx={{ color: 'var(--muted)' }}>{t('store.reviews.form.signIn')}</Typography>
         <Button component={Link} to="/login" state={{ from: location.pathname }} variant="outlined" size="small">
           {t('auth.submit')}
+        </Button>
+      </Stack>
+    )
+  }
+
+  if (!own && !abierto && !mine.isPending) {
+    return (
+      <Stack data-review-invite sx={{ gap: 1.25, alignItems: 'flex-start' }}>
+        <Typography sx={{ fontWeight: 700 }}>{t('store.reviews.invite')}</Typography>
+        <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
+          {t('store.reviews.form.moderation')}
+        </Typography>
+        <Button
+          variant="outlined"
+          startIcon={<RateReviewRoundedIcon />}
+          onClick={() => setAbierto(true)}
+          aria-controls={formId}
+          aria-expanded={false}
+          sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 'var(--sf-radius-sm)' }}
+        >
+          {t('store.reviews.write')}
         </Button>
       </Stack>
     )

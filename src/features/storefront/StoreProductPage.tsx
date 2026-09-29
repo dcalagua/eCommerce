@@ -1,4 +1,5 @@
 import InventoryRoundedIcon from '@mui/icons-material/Inventory2Rounded'
+import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
 import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
 import LockRoundedIcon from '@mui/icons-material/LockRounded'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
@@ -34,6 +35,7 @@ import { StoreProductPurchaseBar } from './components/StoreProductPurchaseBar'
 import { QuantityStepper } from './components/QuantityStepper'
 import { VariantPicker } from './components/VariantPicker'
 import { useRelatedSections } from './relations'
+import { useFavorites } from './useFavorites'
 import { useVariantChoice } from './useVariantChoice'
 
 /**
@@ -79,6 +81,9 @@ export function StoreProductPage() {
 
   const product = usePublicProduct(store.store_id, productSlug)
   const gallery = useGallery(product.data?.product_id ?? null)
+  // Lámina 31 · El corazón también en la ficha, donde se decide guardar para
+  // luego. Es el mismo estado que el de las tarjetas.
+  const favorites = useFavorites(store.store_id)
   const variants = usePublicVariants(product.data)
 
   /**
@@ -203,6 +208,17 @@ export function StoreProductPage() {
   const discount = discountPercent(item)
   const available = item.in_stock !== false
   const hasVariants = item.kind === 'variant'
+  const esFavorito = favorites.ids.has(item.product_id)
+  /**
+   * Lámina 31 · Cuánto se ahorra, dicho en dinero y no solo en porcentaje.
+   *
+   * Solo con la oferta abierta a todos (`compare_at_price`) y sin variantes: con
+   * acuerdo el tachado es otro, y con variantes el precio aún es un «desde».
+   */
+  const ahorro =
+    !conAcuerdo && !hasVariants && discount !== null && item.compare_at_price
+      ? Number(item.compare_at_price) - Number(item.price)
+      : null
 
   /**
    * A dónde lleva el «ver todo» de las filas de sugerencias.
@@ -304,7 +320,16 @@ export function StoreProductPage() {
          * deja de dibujar un recuadro alrededor del producto.
          */}
         <Box data-pdp-gallery="true">
-          <ProductGallery images={gallery.data ?? []} alt={item.name} />
+          <ProductGallery
+            images={gallery.data ?? []}
+            alt={item.name}
+            badge={!conAcuerdo && !hasVariants && discount !== null ? `−${discount} %` : null}
+            favorite={{
+              active: esFavorito,
+              onToggle: () => void favorites.toggle(item.product_id),
+              label: `${esFavorito ? t('store.favorite.remove') : t('store.favorite.add')}: ${item.name}`,
+            }}
+          />
         </Box>
 
         {/* La compra y la ficha de datos, en la MISMA columna y pegadas arriba.
@@ -315,9 +340,14 @@ export function StoreProductPage() {
           data-pdp-purchase="true"
           sx={{ gap: 1.25, position: { md: 'sticky' }, top: { md: 88 } }}
         >
-          {item.brand_name && (
-            <Typography sx={{ fontSize: TS.label, fontWeight: 800, color: 'var(--accent-deep)' }}>
-              {item.brand_name}
+          {/* Marca y SKU en una línea: el comprador de empresa verifica por
+              código, y en Catálogo es lo primero que busca. */}
+          {(item.brand_name || item.sku) && (
+            <Typography
+              data-pdp-eyebrow
+              sx={{ fontSize: TS.label, fontWeight: 700, color: 'var(--accent-deep)', letterSpacing: '0.04em' }}
+            >
+              {[item.brand_name, item.sku ? `SKU ${item.sku}` : null].filter(Boolean).join('  ·  ')}
             </Typography>
           )}
           {/* La categoría YA la dicen las migas, y allí además es un enlace al
@@ -325,7 +355,10 @@ export function StoreProductPage() {
               veces en la misma pantalla —migas, encabezado y ficha de datos—,
               que es ruido, no énfasis. Aquí manda la marca, que no está en
               ningún otro sitio de esta columna. */}
-          <Typography component="h1" sx={{ fontSize: { xs: 22, md: 26 }, fontWeight: 800 }}>
+          <Typography
+            component="h1"
+            sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 700, lineHeight: 1.18, letterSpacing: '-0.015em' }}
+          >
             {item.name}
           </Typography>
 
@@ -398,20 +431,52 @@ export function StoreProductPage() {
             </Typography>
           )}
 
-          <Box
-            sx={{
-              alignSelf: 'flex-start',
-              px: 1,
-              py: 0.25,
-              borderRadius: 'var(--sf-pill)',
-              fontSize: TS.body,
-              fontWeight: 700,
-              bgcolor: available ? 'var(--accent-soft)' : 'var(--neutral-soft)',
-              color: available ? 'var(--accent-deep)' : 'var(--muted)',
-            }}
-          >
-            {available ? t('store.availability.inStock') : t('store.availability.outOfStock')}
-          </Box>
+          {ahorro !== null && ahorro > 0 && (
+            <Box
+              data-pdp-savings
+              sx={{
+                alignSelf: 'flex-start',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 0.75,
+                px: 1.25,
+                py: 0.5,
+                borderRadius: 'var(--sf-pill)',
+                bgcolor: 'var(--accent-soft)',
+                color: 'var(--accent-deep)',
+                fontSize: TS.body,
+                fontWeight: 700,
+              }}
+            >
+              <LocalOfferRoundedIcon aria-hidden sx={{ fontSize: 16 }} />
+              {t('store.product.youSave')
+                .replace('{amount}', formatMoney(ahorro, item.currency, locale))
+                .replace('{percent}', `−${discount} %`)}
+            </Box>
+          )}
+
+          {/* Disponible con un punto de color y no con una pastilla: la
+              pastilla competía con la de ahorro, que es la que vende. */}
+          <Stack direction="row" sx={{ alignItems: 'center', gap: 0.875 }}>
+            <Box
+              aria-hidden
+              sx={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                bgcolor: available ? 'var(--accent-deep)' : 'var(--muted)',
+              }}
+            />
+            <Typography
+              sx={{
+                fontSize: TS.body,
+                fontWeight: 700,
+                color: available ? 'var(--accent-deep)' : 'var(--muted)',
+              }}
+            >
+              {available ? t('store.availability.inStock') : t('store.availability.outOfStock')}
+            </Typography>
+          </Stack>
 
           <AddToCart
             product={item}
@@ -434,7 +499,23 @@ export function StoreProductPage() {
               Son afirmaciones sobre lo que la plataforma SI hace —entrega
               calculada al comprar, pago por medios de la tienda, stock real
               del almacen—: nada de politicas de devolucion que no existan. */}
-          <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1.5, pt: 0.5 }}>
+          {/* Lámina 31 · Un bloque legible y no tres etiquetas grises de 12 px.
+              Las mismas tres afirmaciones de siempre, que son lo que la
+              plataforma SÍ garantiza. Premium lo deja en una línea de texto
+              (ver `storefront.css`): allí manda la foto. */}
+          <Stack
+            component="ul"
+            data-pdp-trust
+            sx={{
+              listStyle: 'none',
+              m: 0,
+              mt: 1,
+              p: 0,
+              border: '1px solid var(--sf-line)',
+              borderRadius: 'var(--sf-radius-sm)',
+              bgcolor: 'var(--card)',
+            }}
+          >
             {([
               ['store.product.trust.delivery', LocalShippingRoundedIcon],
               ['store.product.trust.payment', LockRoundedIcon],
@@ -442,13 +523,32 @@ export function StoreProductPage() {
             ] as const).map(([clave, Icono]) => (
               <Stack
                 key={clave}
+                component="li"
                 direction="row"
-                sx={{ alignItems: 'center', gap: 0.625 }}
+                sx={{
+                  alignItems: 'center',
+                  gap: 1.25,
+                  px: 1.75,
+                  py: 1.25,
+                  '& + &': { borderTop: '1px solid var(--sf-line)' },
+                }}
               >
-                <Icono aria-hidden sx={{ fontSize: 16, color: 'var(--accent-deep)' }} />
-                <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
-                  {t(clave)}
-                </Typography>
+                <Box
+                  aria-hidden
+                  sx={{
+                    display: 'grid',
+                    placeItems: 'center',
+                    width: 32,
+                    height: 32,
+                    flexShrink: 0,
+                    borderRadius: '50%',
+                    bgcolor: 'var(--accent-soft)',
+                    color: 'var(--accent-deep)',
+                  }}
+                >
+                  <Icono sx={{ fontSize: 16 }} />
+                </Box>
+                <Typography sx={{ fontSize: TS.body, fontWeight: 600 }}>{t(clave)}</Typography>
               </Stack>
             ))}
           </Stack>
@@ -501,6 +601,9 @@ export function StoreProductPage() {
             title: t('store.product.sheet'),
             content: (
               <Stack sx={{ maxWidth: '60ch' }}>
+                {/* El SKU solo cuando llega: no todas las lecturas públicas lo
+                    traen, y una fila fija con «—» diría que no tiene código. */}
+                {item.sku ? <SheetRow label="SKU" value={item.sku} /> : null}
                 <SheetRow label={t('store.filter.brand')} value={item.brand_name} />
                 <SheetRow label={t('store.filter.category')} value={item.category_name} />
                 <SheetRow
@@ -755,11 +858,15 @@ function AddToCart({
 
         <Button
           variant="contained"
+          size="large"
           startIcon={
             pending ? <CircularProgress size={16} color="inherit" /> : <ShoppingCartRoundedIcon />
           }
           disabled={!canBuy || pending}
           onClick={añadirAlCarrito}
+          // Lámina 31 · El botón ocupa lo que queda de la fila: es la acción de
+          // la página y no puede medir lo mismo que el selector de cantidad.
+          sx={{ flex: 1, minWidth: 200, minHeight: 50, fontSize: 16, fontWeight: 700 }}
         >
           {t('store.product.addToCart')}
         </Button>

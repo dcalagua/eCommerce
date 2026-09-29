@@ -1590,6 +1590,80 @@ describe('el detalle de la ficha', () => {
   })
 })
 
+/**
+ * Lámina 31 · La ficha rediseñada.
+ *
+ * Lo que la ficha tiene que decir de un vistazo: cuánto se ahorra (en dinero,
+ * no solo en porcentaje), el favorito donde se decide, y en escritorio el
+ * detalle en pestañas centradas en vez de un acordeón a lo ancho.
+ */
+describe('la ficha rediseñada (lámina 31)', () => {
+  function pantallaDeEscritorio() {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((query: string) => ({
+        matches: query.includes('min-width'),
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        onchange: null,
+        dispatchEvent: vi.fn(),
+      })),
+    )
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('dice cuánto se ahorra en dinero y lleva el descuento sobre la foto', async () => {
+    renderStorefront(backend(), '/s/casa-nordica/product/silla-roble')
+    await screen.findByRole('heading', { level: 1, name: 'Silla de roble' })
+
+    const ahorro = document.querySelector('[data-pdp-savings]') as HTMLElement
+    expect(ahorro).not.toBeNull()
+    // 450.00 − 389.00 = 61.00
+    expect(ahorro.textContent).toMatch(/Ahorras .*61\.00/)
+    expect(document.querySelector('[data-gallery-badge]')?.textContent).toMatch(/−\d+ %/)
+  })
+
+  it('el corazón está en la ficha, sobre la foto, y se puede pulsar', async () => {
+    const user = userEvent.setup()
+    renderStorefront(backend(), '/s/casa-nordica/product/silla-roble')
+    await screen.findByRole('heading', { level: 1, name: 'Silla de roble' })
+
+    // El estado de favoritos vive fuera del componente y otra prueba puede
+    // haber guardado ya la silla: se comprueba que el botón CAMBIA, no desde
+    // dónde parte.
+    const galeria = document.querySelector('[data-pdp-gallery]') as HTMLElement
+    const corazon = within(galeria).getByRole('button', { name: /(Guardar en|Quitar de) favoritos: Silla de roble/ })
+    const antes = corazon.getAttribute('aria-pressed')
+    await user.click(corazon)
+    await waitFor(() =>
+      expect(
+        within(galeria).getByRole('button', { name: /(Guardar en|Quitar de) favoritos: Silla de roble/ }),
+      ).toHaveAttribute('aria-pressed', antes === 'true' ? 'false' : 'true'),
+    )
+  })
+
+  it('en escritorio el detalle va en pestañas centradas, no en acordeón', async () => {
+    pantallaDeEscritorio()
+    renderStorefront(backend(), '/s/casa-nordica/product/silla-roble')
+
+    const detalle = await waitFor(() => {
+      const zona = document.querySelector('[data-product-details]')
+      expect(zona).not.toBeNull()
+      return zona as HTMLElement
+    })
+    expect(detalle).toHaveAttribute('data-product-details-mode', 'tabs')
+    const pestanas = within(detalle).getAllByRole('tab')
+    expect(pestanas.map((tab) => tab.textContent)).toEqual(['Descripción', 'Datos del producto'])
+    expect(within(detalle).getByText(/Roble macizo/)).toBeInTheDocument()
+  })
+})
+
 describe('la ficha ya no es una suma de tarjetas', () => {
   it('la galería y la columna de compra no llevan borde ni sombra de tarjeta', async () => {
     renderStorefront(backend(), '/s/casa-nordica/product/silla-roble')

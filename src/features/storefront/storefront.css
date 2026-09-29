@@ -41,6 +41,10 @@
   --sf-radius: 20px;
   --sf-radius-sm: 14px;
   --sf-pill: 999px;
+  /* La foto principal de la ficha: cuadrada y ENTERA, porque ahi se viene a
+     mirar el producto. Premium la cambia (ver su bloque). */
+  --sf-pdp-ratio: 1 / 1;
+  --sf-pdp-fit: contain;
 
   /* La linea deja de ser el borde de la tarjeta y pasa a ser un apoyo: la
      separacion la da la sombra. En claro, un borde nitido alrededor de cada
@@ -246,6 +250,29 @@
 .sf-scope[data-store-theme='premium'] {
   --sf-radius: 24px;
   --sf-radius-sm: 16px;
+  /* Lamina 32 · En la ficha, la foto vertical y a sangre. */
+  --sf-pdp-ratio: 4 / 5;
+  --sf-pdp-fit: cover;
+}
+
+/* Lamina 32 · Premium: la confianza de la ficha en UNA linea de texto, sin
+   caja ni iconos en circulo. Alli manda la foto, y un bloque con tres filas
+   enmarcadas compite con ella. */
+.sf-scope[data-store-theme='premium'] [data-pdp-trust] {
+  flex-direction: row;
+  flex-wrap: wrap;
+  column-gap: 18px;
+  border: 0;
+  background: transparent;
+}
+.sf-scope[data-store-theme='premium'] [data-pdp-trust] > li {
+  padding: 0;
+  border-top: 0;
+}
+.sf-scope[data-store-theme='premium'] [data-pdp-trust] > li > [aria-hidden] {
+  width: auto;
+  height: auto;
+  background: transparent;
 }
 
 /* ---------------------------------------------------------------------------
