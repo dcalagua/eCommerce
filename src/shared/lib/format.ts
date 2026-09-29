@@ -39,8 +39,19 @@ export function formatCalendarDate(isoDate: string, style: 'day' | 'month', loca
   ).format(date)
 }
 
+/**
+ * Fecha con hora (`timestamptz`) o de calendario (`2026-09-30`). La de
+ * calendario se lee como día LOCAL: con `new Date('2026-09-30')` sería
+ * medianoche UTC y en Lima se pintaría el 29 —la vigencia de una cotización o
+ * la próxima fecha de un programado saldrían un día antes—.
+ */
 export function formatDate(value: string | Date, locale: Locale = 'es'): string {
-  const date = value instanceof Date ? value : new Date(value)
+  const calendario = typeof value === 'string' ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(value) : null
+  const date = value instanceof Date
+    ? value
+    : calendario
+      ? new Date(Number(calendario[1]), Number(calendario[2]) - 1, Number(calendario[3]))
+      : new Date(value)
   if (Number.isNaN(date.getTime())) return '—'
   return new Intl.DateTimeFormat(LOCALE_TAG[locale], { dateStyle: 'medium' }).format(date)
 }
