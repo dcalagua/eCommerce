@@ -32,8 +32,9 @@
  *   node scripts/seed-surtidora-andes.mjs                 (todo menos fotos)
  *   node scripts/seed-surtidora-andes.mjs --images <dir>  (sube <dir>/<SKU>.png)
  *
- * Contraseñas: SA_OWNER_PASSWORD y SA_BUYER_PASSWORD, o las de demo por
- * defecto. Las claves del proyecto se leen del `.env` y no se imprimen.
+ * Contraseñas: SA_OWNER_PASSWORD y SA_BUYER_PASSWORD, o una aleatoria que se
+ * imprime una sola vez al crear. Las claves del proyecto se leen del `.env` y
+ * no se imprimen.
  */
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { dirname, join, extname } from 'node:path'
@@ -88,8 +89,14 @@ const cfg = {
 if (!cfg.ref || !cfg.token || !cfg.secret) {
   throw new Error('Faltan VITE_SUPABASE_URL, SUPABASE_ACCESS_TOKEN o SUPABASE_SECRET_KEY en .env')
 }
-const OWNER_PASSWORD = E.SA_OWNER_PASSWORD ?? 'SurtidoraAndes2026!'
-const BUYER_PASSWORD = E.SA_BUYER_PASSWORD ?? 'HotelMiraflores2026!'
+/**
+ * Contraseñas: de SA_OWNER_PASSWORD / SA_BUYER_PASSWORD o, si no vienen, una
+ * aleatoria que se imprime UNA vez al crear el usuario. Nunca escritas aquí: un
+ * secreto en el repo deja de serlo en cuanto se sube.
+ */
+const randomPassword = () => `${randomUUID().replace(/-/g, '').slice(0, 14)}Aa1!`
+const OWNER_PASSWORD = E.SA_OWNER_PASSWORD ?? randomPassword()
+const BUYER_PASSWORD = E.SA_BUYER_PASSWORD ?? randomPassword()
 
 // ── Utilidades ────────────────────────────────────────────────────────────
 async function sql(query) {
@@ -163,6 +170,7 @@ async function ensureUser(email, password, appMetadata) {
     body: JSON.stringify({ email, password, email_confirm: true, app_metadata: appMetadata }),
   })
   if (!res.ok) throw new Error(`Auth ${res.status}: ${JSON.stringify(res.body).slice(0, 300)}`)
+  console.log(`  contraseña de ${email} (guárdala, no se vuelve a mostrar): ${password}`)
   return { id: res.body.id, created: true }
 }
 
