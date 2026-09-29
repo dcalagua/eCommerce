@@ -1,0 +1,197 @@
+
+ RUN  v3.2.7 /Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1
+
+ ❯ src/domain/capabilities.test.ts (20 tests | 2 failed) 9ms
+   ✓ registro de capacidades > el registro y las listas de ids no pueden separarse 1ms
+   ✓ registro de capacidades > no hay ids repetidos 0ms
+   ✓ registro de capacidades > toda capacidad pertenece a una frontera declarada 0ms
+   ✓ registro de capacidades > baseline y entitlement son excluyentes 0ms
+   ✓ registro de capacidades > todo código de addon lleva el prefijo de la app y es único 0ms
+   ✓ registro de capacidades > `capability` falla ruidosamente con un id que no existe 1ms
+   ✓ registro de capacidades > `entitlementFor` distingue baseline de vendible 0ms
+   ✓ resolución de capacidades efectivas > sin entitlements queda exactamente lo baseline 0ms
+   ✓ resolución de capacidades efectivas > un entitlement activo enciende su módulo y solo el suyo 0ms
+   × resolución de capacidades efectivas > `app_active: false` retira lo vendible y conserva lo baseline (D-14 regla 2) 4ms
+     → expected [] to deeply equal [ 'analytics.basic', 'catalog', …(4) ]
+   × resolución de capacidades efectivas > `app_active: false`: un flag tampoco apaga lo baseline 0ms
+     → expected [] to deeply equal [ 'analytics.basic', 'catalog', …(4) ]
+   ✓ resolución de capacidades efectivas > un flag encendido NO concede un módulo no contratado 0ms
+   ✓ resolución de capacidades efectivas > un flag apagado sí quita un módulo contratado, y lo dice 0ms
+   ✓ resolución de capacidades efectivas > un flag no puede apagar lo baseline 0ms
+   ✓ resolución de capacidades efectivas > un addon que esta versión no conoce se aparta, no rompe 0ms
+   ✓ resolución de capacidades efectivas > nunca sincronizada: el fallback legado concede exactamente los tres de ADR 017 0ms
+   ✓ resolución de capacidades efectivas > el fallback legado respeta el corte técnico y desaparece al sincronizar 0ms
+   ✓ resolución de capacidades efectivas > `hasCapability` sin resolución responde que no 0ms
+   ✓ flags técnicos > un flag ausente está encendido 0ms
+   ✓ flags técnicos > lo que no es booleano no se convierte, se descarta 0ms
+ ❯ supabase/tests/platform-entitlements-db.test.ts (35 tests | 1 failed) 848ms
+   ✓ privacidad del receptor > las tablas viven en `platform_entitlements` con RLS activada y forzada 4ms
+   ✓ privacidad del receptor > ni anon ni authenticated tienen USAGE del esquema; nadie tiene GRANT de tabla 23ms
+   ✓ privacidad del receptor > las RPC del receptor solo las ejecuta service_role 3ms
+   ✓ privacidad del receptor > las funciones internas del esquema no son ejecutables por PUBLIC 24ms
+   ✓ privacidad del receptor > la auditoría es append-only (UPDATE, DELETE y TRUNCATE rechazados) 71ms
+   ✓ privacidad del receptor > el registro de códigos del receptor = manifiesto (sellables + asignación IA) 2ms
+   ✓ reglas de versión (FIX-ENT-v1 §3) > tenant sin provisioning → 404 TENANT_NOT_PROVISIONED 7ms
+   ✓ reglas de versión (FIX-ENT-v1 §3) > tenant del path distinto del cuerpo → 422 SNAPSHOT_INVALID 7ms
+   ✓ reglas de versión (FIX-ENT-v1 §3) > aplica, replay idempotente, stale, conflicto y salto de versión 28ms
+   ✓ reglas de versión (FIX-ENT-v1 §3) > código desconocido: se guarda, se devuelve en unknownCapabilities y NUNCA se concede 19ms
+   ✓ reglas de versión (FIX-ENT-v1 §3) > jti de un solo uso por emisor 7ms
+   ✓ modos de enforcement > SHADOW (por defecto): guarda y compara, NO decide ni toca la caché legada 16ms
+   ✓ modos de enforcement > un paso por vez, modos válidos y bitácora de cambios 11ms
+   ✓ modos de enforcement > PRIMARY: decide SOLO el snapshot; `legacy_until_synced` queda resuelto 32ms
+   ✓ modos de enforcement > PRIMARY: un miembro ve el veredicto del snapshot; otro tenant no ve nada 19ms
+   ✓ modos de enforcement > kill switch local: solo resta, nunca concede 13ms
+   × modos de enforcement > appActive=false retira lo comercial y NO la operación: baseline sigue, sin borrar datos (D-14 regla 2) 12ms
+     → expected 'catalog: false' to be 'catalog: true' // Object.is equality
+   ✓ modos de enforcement > alcance COMPANY con lista explícita de compañías de MasterAdmin: no se concede (fail-closed) 7ms
+   ✓ modos de enforcement > PRIMARY sin haber recibido snapshot: solo baseline 5ms
+   ✓ modos de enforcement > volver atrás restaura el estado legado y conserva el snapshot aplicado 25ms
+   ✓ modos de enforcement > el modo del PRODUCTO aplica a los tenants sin modo propio 26ms
+   ✓ PRIMARY de PRODUCTO y tenants legados sin mapping (D-14 regla 4) > una sociedad legada (sin provisioning de MasterAdmin) decide y escribe igual en PRODUCT PRIMARY 32ms
+   ✓ camino legado frente al snapshot (H-ECO-1) > LEGACY/SHADOW: el hub y la clave estática siguen escribiendo igual que antes 4ms
+   ✓ camino legado frente al snapshot (H-ECO-1) > PRIMARY: el camino legado queda BLOQUEADO en servidor 10ms
+   ✓ camino legado frente al snapshot (H-ECO-1) > DUAL_READ con snapshot: la escritura legada se acepta, se ignora y alerta 8ms
+   ✓ camino legado frente al snapshot (H-ECO-1) > DUAL_READ sin snapshot: cae a legado y alerta 5ms
+   ✓ camino legado frente al snapshot (H-ECO-1) > nadie escribe `source = masteradmin` fuera del receptor 2ms
+   ✓ IA: capacidad + asignación del snapshot, hard gate intacto > la asignación `ecommerce.ai.credits` fija la cuota y `ai_consume_for` corta al agotarla 13ms
+   ✓ IA: capacidad + asignación del snapshot, hard gate intacto > asignación sin la capacidad IA: DISABLED (la capacidad manda sobre la cuota) 6ms
+   ✓ IA: capacidad + asignación del snapshot, hard gate intacto > PRIMARY sin asignación: cuota 0 (ausente nunca es ilimitado) 7ms
+   ✓ IA: capacidad + asignación del snapshot, hard gate intacto > DUAL_READ sin asignación: se mantiene la cuota legada (valor no decidido, D-03) 6ms
+   ✓ IA: capacidad + asignación del snapshot, hard gate intacto > SHADOW: la IA sigue decidiéndose como antes 4ms
+   ✓ offline last-good y deriva > sin MasterAdmin: el gate sigue decidiendo con el último snapshot, y un push inválido no lo altera 12ms
+   ✓ offline last-good y deriva > deriva local (caché tocada fuera del receptor) → reconcile la detecta y repara desde el último snapshot 18ms
+   ✓ offline last-good y deriva > SHADOW: reconcile recalcula las diferencias sin tocar la decisión legada 6ms
+ ❯ supabase/tests/capabilities.test.ts (39 tests | 1 failed) 1052ms
+   ✓ el esquema es el que el codigo cree que es > las tablas y la funcion que nombra `db-schema.ts` existen 25ms
+   ✓ el esquema es el que el codigo cree que es > la semilla de `app_capabilities` es exactamente el registro de TypeScript 15ms
+   ✓ el esquema es el que el codigo cree que es > la lista baseline de la base es la de TypeScript 11ms
+   ✓ la resolucion de SQL y la de TypeScript dicen lo mismo > tenant recien creado 44ms
+   ✓ la resolucion de SQL y la de TypeScript dicen lo mismo > nunca sincronizado (fallback legado) 29ms
+   ✓ la resolucion de SQL y la de TypeScript dicen lo mismo > nunca sincronizado, con un corte tecnico sobre un modulo legado 27ms
+   ✓ la resolucion de SQL y la de TypeScript dicen lo mismo > un addon 25ms
+   ✓ la resolucion de SQL y la de TypeScript dicen lo mismo > dos addons y un corte 30ms
+   ✓ la resolucion de SQL y la de TypeScript dicen lo mismo > flag encendido sin addon (no concede) 40ms
+   ✓ la resolucion de SQL y la de TypeScript dicen lo mismo > flag apagado sobre baseline (no apaga) 29ms
+   ✓ la resolucion de SQL y la de TypeScript dicen lo mismo > app no contratada 30ms
+   ✓ la resolucion de SQL y la de TypeScript dicen lo mismo > addon de otra app de la suite 26ms
+   ✓ nadie se concede un modulo a si mismo > un `owner` no puede escribir entitlements ni contexto 9ms
+   ✓ nadie se concede un modulo a si mismo > ni el backoffice ni anon pueden ejecutar la funcion de sincronizacion 6ms
+   ✓ nadie se concede un modulo a si mismo > un tenant no ve los entitlements del otro 11ms
+   ✓ nadie se concede un modulo a si mismo > anon no toca ninguna de las cuatro tablas 9ms
+   ✓ flags tecnicos: del tenant, y solo restan > un administrador enciende y apaga los suyos 8ms
+   ✓ flags tecnicos: del tenant, y solo restan > un `viewer` no escribe flags 6ms
+   ✓ flags tecnicos: del tenant, y solo restan > un administrador no escribe flags del tenant de al lado 5ms
+   ✓ flags tecnicos: del tenant, y solo restan > un flag encendido no concede nada 8ms
+   ✓ enforcement en el servidor: marca blanca (contrato §4.3) > sin el addon, encender la marca blanca se DENIEGA en la base 10ms
+   ✓ enforcement en el servidor: marca blanca (contrato §4.3) > con el addon activo, se puede encender — sin tocar una linea de codigo 11ms
+   ✓ enforcement en el servidor: marca blanca (contrato §4.3) > editar el resto de la marca sigue funcionando sin el addon 9ms
+   ✓ enforcement en el servidor: marca blanca (contrato §4.3) > retirar el addon apaga la marca blanca ya encendida 9ms
+   ✓ enforcement en el servidor: marca blanca (contrato §4.3) > retirar el addon de un tenant no toca la tienda del otro 13ms
+   ✓ enforcement en el servidor: integraciones enterprise > sin el addon, habilitar un conector se DENIEGA en la base 7ms
+   ✓ enforcement en el servidor: integraciones enterprise > con el addon activo, el mismo INSERT pasa 8ms
+   ✓ enforcement en el servidor: integraciones enterprise > el catalogo de proveedores se lee igual sin el addon 8ms
+   ✓ enforcement en el servidor: integraciones enterprise > un corte tecnico apaga el modulo aunque el addon siga contratado 12ms
+   ✓ effective_capabilities > devuelve lo efectivo de la sociedad del usuario, con su origen 18ms
+   ✓ effective_capabilities > sin sincronizar nunca, lo dice y deja lo baseline más el fallback legado 16ms
+   ✓ effective_capabilities > la primera sincronizacion retira el fallback legado 14ms
+   ✓ effective_capabilities > pedir la sociedad de otro tenant levanta SIN_PERMISO, no una lista vacia 7ms
+   ✓ effective_capabilities > anon no la puede ejecutar 5ms
+   × app_active: false retira lo comercial, no la operación (D-14 regla 2, 2026-09-29) > lo baseline sigue y lo vendible se retira aunque el addon esté contratado 9ms
+     → expected 'analytics.basic: false' to be 'analytics.basic: true' // Object.is equality
+   ✓ sincronizacion > reemplaza el conjunto: lo que el hub deja de mandar se apaga 11ms
+   ✓ sincronizacion > un addon retirado deja rastro en vez de desaparecer 13ms
+   ✓ sincronizacion > un codigo con forma invalida no entra 5ms
+   ✓ sincronizacion > sin organizacion o sociedad no sincroniza nada 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/domain/capabilities.test.ts > resolución de capacidades efectivas > `app_active: false` retira lo vendible y conserva lo baseline (D-14 regla 2)
+AssertionError: expected [] to deeply equal [ 'analytics.basic', 'catalog', …(4) ]
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- [[39m
+[32m-   "analytics.basic",[39m
+[32m-   "catalog",[39m
+[32m-   "checkout",[39m
+[32m-   "customers",[39m
+[32m-   "orders",[39m
+[32m-   "storefront",[39m
+[32m- ][39m
+[31m+ [][39m
+
+ ❯ src/domain/capabilities.test.ts:109:33
+    107|       synced: false,
+    108|     })
+    109|     expect(result.capabilities).toEqual([...BASELINE_CAPABILITY_IDS].s…
+       |                                 ^
+    110|     expect(result.entitled).toEqual([...BASELINE_CAPABILITY_IDS].sort(…
+    111|     expect(result.capabilities).not.toContain('payments')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/domain/capabilities.test.ts > resolución de capacidades efectivas > `app_active: false`: un flag tampoco apaga lo baseline
+AssertionError: expected [] to deeply equal [ 'analytics.basic', 'catalog', …(4) ]
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- [[39m
+[32m-   "analytics.basic",[39m
+[32m-   "catalog",[39m
+[32m-   "checkout",[39m
+[32m-   "customers",[39m
+[32m-   "orders",[39m
+[32m-   "storefront",[39m
+[32m- ][39m
+[31m+ [][39m
+
+ ❯ src/domain/capabilities.test.ts:122:33
+    120|       flags: { catalog: false, orders: false },
+    121|     })
+    122|     expect(result.capabilities).toEqual([...BASELINE_CAPABILITY_IDS].s…
+       |                                 ^
+    123|   })
+    124| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  supabase/tests/capabilities.test.ts > app_active: false retira lo comercial, no la operación (D-14 regla 2, 2026-09-29) > lo baseline sigue y lo vendible se retira aunque el addon esté contratado
+AssertionError: expected 'analytics.basic: false' to be 'analytics.basic: true' // Object.is equality
+
+Expected: [32m"analytics.basic: [7mtru[27me"[39m
+Received: [31m"analytics.basic: [7mfals[27me"[39m
+
+ ❯ supabase/tests/capabilities.test.ts:651:66
+    649|     await sync(TENANT_A, [WHITE_LABEL, INTEGRATIONS], { appActive: fal…
+    650|     for (const code of BASELINE_CAPABILITY_IDS) {
+    651|       expect(`${code}: ${await capabilityInDb(TENANT_A, code)}`).toBe(…
+       |                                                                  ^
+    652|     }
+    653|     expect(await capabilityInDb(TENANT_A, 'content.white_label')).toBe…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  supabase/tests/platform-entitlements-db.test.ts > modos de enforcement > appActive=false retira lo comercial y NO la operación: baseline sigue, sin borrar datos (D-14 regla 2)
+AssertionError: expected 'catalog: false' to be 'catalog: true' // Object.is equality
+
+Expected: [32m"catalog: [7mtru[27me"[39m
+Received: [31m"catalog: [7mfals[27me"[39m
+
+ ❯ supabase/tests/platform-entitlements-db.test.ts:394:63
+    392|     await toPrimary(ids)
+    393|     for (const baseline of ['catalog', 'storefront', 'checkout', 'orde…
+    394|       expect(`${baseline}: ${await entitled(ids, baseline)}`).toBe(`${…
+       |                                                               ^
+    395|     }
+    396|     expect(await entitled(ids, 'promotions')).toBe(false)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  4 failed | 90 passed (94)
+   Start at  03:42:24
+   Duration  1.51s (transform 180ms, setup 475ms, collect 100ms, tests 1.91s, environment 294ms, prepare 120ms)
+

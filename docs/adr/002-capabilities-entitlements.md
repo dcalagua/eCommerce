@@ -84,15 +84,18 @@ sea las dos cosas, porque entonces la resolución sería ambigua.
 ### 3. La regla de composición, escrita una vez y comprobada tres veces
 
 ```
-capacidad efectiva = app_active
-                 AND (baseline OR entitlement activo)
-                 AND (baseline OR flag ≠ false)
+capacidad efectiva = baseline
+                  OR ( app_active
+                       AND entitlement activo
+                       AND flag ≠ false )
 ```
 
 Tres consecuencias que son decisiones, no detalles:
 
-- **`app_active: false` no deja ni lo baseline.** Si el hub dice que la cuenta no tiene esta app, no
-  es un tenant con plan mínimo: es un tenant que no es cliente de eCommerce.
+- **`app_active: false` retira lo comercial, no la operación** (D-14 regla 2, 2026-09-29; ver
+  «Enmienda D-14» abajo). Lo vendible se apaga aunque el addon siga contratado; lo baseline
+  —catálogo, vitrina, checkout, pedidos, analítica básica— sigue. *Texto original (superado):* «no
+  deja ni lo baseline: es un tenant que no es cliente de eCommerce».
 - **Un flag JAMÁS concede.** `flags['payments'] = true` sin el addon no enciende nada. Si pudiera,
   la pantalla de ajustes del propio cliente sería un sistema de facturación en la sombra. Es la
   propiedad que hace que los dos conceptos puedan convivir sin que uno se coma al otro.
@@ -316,3 +319,28 @@ nominal de catálogos globales —que tiene su propia prueba de que la exención
 
 Bundle de entrada 764,32 kB (227,62 kB gzip) frente a 744,91 kB (221,15 kB): +19,4 kB, casi todo del
 registro de capacidades y de la tabla del diagnóstico, que es una ruta con carga diferida.
+
+## Enmienda D-14 regla 2 (2026-09-29)
+
+Decisión humana D-14 (aprobada para DEV/LOCAL): **`appActive=false` deshabilita las capacidades y
+entitlements comerciales del SaaS; no bloquea por sí sola la aplicación operativa.**
+
+- SQL: `20261003100000_app_active_commercial_only.sql` redefine `ebim.company_is_entitled` como
+  `baseline OR (app_active AND (entitlement OR fallback legado) AND flag ≠ false)`. `has_capability`,
+  `assert_capability`, `effective_capabilities` y las policies la heredan sin cambios.
+- TypeScript: `resolveCapabilities` conserva lo baseline con `appActive: false` (la paridad
+  SQL↔TypeScript de `supabase/tests/capabilities.test.ts` cubre el escenario «app no contratada»).
+- Lo que NO cambia: `ebim.active_price_lists` sigue exigiendo `app_active` (gatea `pricing.lists` y
+  `trade.quotes`, que son vendibles); `platform_entitlements.known_codes` excluye lo baseline, así
+  que `record_shadow_diffs` no ve diferencias nuevas; los flags siguen sin apagar lo baseline.
+- Tests reescritos (no borrados): `src/domain/capabilities.test.ts` («retira lo vendible y conserva
+  lo baseline»), `supabase/tests/capabilities.test.ts` (describe `app_active: false retira lo
+  comercial…`) y `supabase/tests/platform-entitlements-db.test.ts` («appActive=false retira lo
+  comercial y NO la operación»).
+- **Contradicción conocida con el contrato fijado**: el README y `fixtures/06-app-inactive.json` de
+  `supabase/tests/fixtures/entitlements-v1/` (FIX-ENT-v1, con checksum) dicen «appActive=false → el
+  SaaS bloquea el acceso operativo», y `reference-receiver.ts#isEntitled` niega lo baseline sin
+  `appActive`. No se editan (están fijados por checksum y son del emisor): la regla vigente para
+  eCommerce es la de D-14. Los tests de contrato solo comparan respuestas HTTP PUT/GET, que no
+  cambian. El dueño del contrato debe alinear ese texto en la próxima versión del fixture.
+

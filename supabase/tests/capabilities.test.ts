@@ -644,13 +644,14 @@ describe('effective_capabilities', () => {
   })
 })
 
-describe('app_active: si la cuenta no tiene eCommerce, no hay nada', () => {
-  it('ni siquiera lo baseline', async () => {
-    await sync(TENANT_A, [WHITE_LABEL], { appActive: false })
+describe('app_active: false retira lo comercial, no la operación (D-14 regla 2, 2026-09-29)', () => {
+  it('lo baseline sigue y lo vendible se retira aunque el addon esté contratado', async () => {
+    await sync(TENANT_A, [WHITE_LABEL, INTEGRATIONS], { appActive: false })
     for (const code of BASELINE_CAPABILITY_IDS) {
-      expect(`${code}: ${await capabilityInDb(TENANT_A, code)}`).toBe(`${code}: false`)
+      expect(`${code}: ${await capabilityInDb(TENANT_A, code)}`).toBe(`${code}: true`)
     }
     expect(await capabilityInDb(TENANT_A, 'content.white_label')).toBe(false)
+    expect(await capabilityInDb(TENANT_A, 'integrations.enterprise')).toBe(false)
   })
 })
 

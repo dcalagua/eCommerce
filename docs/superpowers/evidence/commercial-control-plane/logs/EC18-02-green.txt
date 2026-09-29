@@ -1,0 +1,12 @@
+
+ RUN  v3.2.7 /Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1
+
+ ✓ src/domain/capabilities.test.ts (20 tests) 3ms
+ ✓ supabase/tests/platform-entitlements-db.test.ts (35 tests) 864ms
+ ✓ supabase/tests/capabilities.test.ts (39 tests) 1006ms
+
+ Test Files  3 passed (3)
+      Tests  94 passed (94)
+   Start at  03:42:56
+   Duration  2.84s (transform 164ms, setup 324ms, collect 94ms, tests 1.87s, environment 139ms, prepare 103ms)
+

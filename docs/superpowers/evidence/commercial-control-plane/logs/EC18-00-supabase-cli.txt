@@ -1,0 +1,15 @@
+$ supabase --version
+2.116.0
+$ supabase migration new --help
+DESCRIPTION
+  Create an empty migration script.
+
+USAGE
+  supabase migration new [flags] <migration name>
+
+ARGUMENTS
+  migration name string    Name for the new migration file.
+
+GLOBAL FLAGS
+  --help, -h                                                          Show help information
+  --version, -v                                                       Show version information

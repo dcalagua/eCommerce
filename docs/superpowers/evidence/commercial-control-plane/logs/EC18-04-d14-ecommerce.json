@@ -1,0 +1,46 @@
+{
+  "schema": "ebim.ccp.d14-cutover/v1",
+  "environment": "LOCAL_DEV",
+  "writtenAt": "2026-09-29T08:46:57.039Z",
+  "product": "ecommerce",
+  "entitlements": {
+    "scope": "PRODUCT",
+    "productScopeMode": "PRIMARY",
+    "finalMode": "PRIMARY",
+    "transitions": [
+      "PRODUCT SHADOW→DUAL_READ (tenants=1)",
+      "PRODUCT DUAL_READ→PRIMARY (tenants=1)"
+    ],
+    "mappedTenants": 2,
+    "mappedTenantsPrimary": 2,
+    "getVerified": {
+      "appliedVersion": 5,
+      "appliedChecksum": "sha256:b5c253e3dbf1cfc21f097b0e2142248660bb7338cc576eaf2634e3a7f781be4b",
+      "enforcementMode": "PRIMARY",
+      "desiredChecksum": "sha256:b5c253e3dbf1cfc21f097b0e2142248660bb7338cc576eaf2634e3a7f781be4b"
+    },
+    "legacyWrite": {
+      "status": "BLOCKED",
+      "evidence": "estado final PRIMARY: public.sync_platform_context(source=hub|provisioning) → FUENTE_LEGADA_BLOQUEADA (42501, platform_entitlements.legacy_write_policy) para cert:hub, cert:provisioning, cohort:hub, cohort:provisioning"
+    },
+    "parityBlocking": 0
+  },
+  "appActiveFalse": {
+    "commercialDenied": true,
+    "operationalContinues": true,
+    "evidence": "v4 appActive=false: pricing.lists y ai.assist denegados, ai_consume_for no permitido; baseline catalog/storefront/checkout/orders/analytics.basic concedido (ebim.company_is_entitled, D-14 regla 2, migración eCommerce 20261003100000); v5 appActive=true restaura"
+  },
+  "legacyTenants": [
+    {
+      "id": "d0000000-0000-4000-8000-000000000001",
+      "label": "miquimica (seed DEV; company d0000000-0000-4000-8000-0000000000c1)",
+      "resolution": "UNRESOLVED",
+      "reason": "Sin mapping determinista en MasterAdmin (ninguna platform_provisioning.requests ACTIVE ni evidencia de controlPlaneTenantId). Sigue en su fuente legada; PRODUCT PRIMARY no la cambia (D14.10). La clave estática H-ECO-1 de platform-context sigue vigente SOLO para sociedades sin mapping."
+    }
+  ],
+  "billing": null,
+  "checks": {
+    "passed": 28,
+    "failed": 0
+  }
+}

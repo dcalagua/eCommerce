@@ -11,7 +11,9 @@
  *   · modos: SHADOW guarda y compara pero NO decide; DUAL_READ/PRIMARY deciden
  *     con el snapshot (materializado con `source = 'masteradmin'`); un paso por
  *     vez; volver atrás restaura el estado legado;
- *   · kill switches locales solo restan; appActive=false cierra hasta lo baseline;
+ *   · kill switches locales solo restan; appActive=false retira lo vendible y
+ *     conserva lo baseline (D-14 regla 2, 2026-09-29);
+ *   · PRIMARY de PRODUCTO no cambia a las sociedades legadas sin mapping;
  *   · IA: la capacidad Y la asignación del snapshot; el hard gate `ai_consume_for`
  *     sigue siendo el que corta;
  *   · H-ECO-1: en PRIMARY el camino legado (hub / clave estática) queda bloqueado;
@@ -386,12 +388,19 @@ describe('modos de enforcement', () => {
     expect(await entitled(ids, 'catalog')).toBe(true) // un flag no apaga lo baseline
   })
 
-  it('appActive=false cierra el acceso operativo, incluido lo baseline, sin borrar datos', async () => {
+  it('appActive=false retira lo comercial y NO la operación: baseline sigue, sin borrar datos (D-14 regla 2)', async () => {
     const ids = await newTenant('inactive')
-    await apply(ids, await snap(ids, 1, { enabled: ['ecommerce.promotions'], appActive: false }))
+    await apply(ids, await snap(ids, 1, { enabled: ['ecommerce.promotions', 'ecommerce.ai.assist'], appActive: false, aiCredits: 5 }))
     await toPrimary(ids)
-    expect(await entitled(ids, 'catalog')).toBe(false)
+    for (const baseline of ['catalog', 'storefront', 'checkout', 'orders', 'analytics.basic']) {
+      expect(`${baseline}: ${await entitled(ids, baseline)}`).toBe(`${baseline}: true`)
+    }
     expect(await entitled(ids, 'promotions')).toBe(false)
+    expect(await entitled(ids, 'ai.assist')).toBe(false)
+    // De vuelta a activa (versión siguiente): lo contratado vuelve.
+    await apply(ids, await snap(ids, 2, { enabled: ['ecommerce.promotions'], appActive: true }))
+    expect(await entitled(ids, 'promotions')).toBe(true)
+    expect(await entitled(ids, 'catalog')).toBe(true)
     const [tenant] = await su<{ n: number }>('select count(*)::int as n from public.tenants where organization_id = $1', [
       ids.org,
     ])
@@ -449,6 +458,40 @@ describe('modos de enforcement', () => {
       await setMode('PRODUCT', 'SHADOW')
     }
     expect(await entitled(ids, 'promotions')).toBe(false)
+  })
+})
+
+describe('PRIMARY de PRODUCTO y tenants legados sin mapping (D-14 regla 4)', () => {
+  it('una sociedad legada (sin provisioning de MasterAdmin) decide y escribe igual en PRODUCT PRIMARY', async () => {
+    const legacy = { org: '7e5eed00-0000-4000-8000-000000000001', company: '7e5eed00-0000-4000-8000-0000000000c1' }
+    await su(`insert into public.tenants (organization_id, slug, name, admin_email, status)
+              values ($1, 'legado-d14', 'Legado D14', 'admin@legado-d14.demo', 'active')`, [legacy.org])
+    // Como la semilla `miquimica`: entitlements del camino de aprovisionamiento, sin fila de contexto.
+    await su(`insert into public.tenant_entitlements (organization_id, company_id, entitlement_code, is_active, source)
+              values ($1, $2, 'ecommerce.trade.quotes', true, 'provisioning')`, [legacy.org, legacy.company])
+    const decisions = async () =>
+      svc<{ code: string; ok: boolean }>(
+        `select cap.code, ebim.company_is_entitled($1, $2, cap.code) as ok from public.app_capabilities cap order by cap.code`,
+        [legacy.org, legacy.company],
+      )
+    const before = await decisions()
+    expect(before.find((d) => d.code === 'trade.quotes')?.ok).toBe(true)
+    expect(before.find((d) => d.code === 'payments')?.ok).toBe(true) // fallback legado: nunca sincronizada
+
+    await setMode('PRODUCT', 'DUAL_READ')
+    await setMode('PRODUCT', 'PRIMARY')
+    try {
+      expect(await decisions()).toEqual(before)
+      const [policy] = await svc<{ p: string }>(
+        `select platform_entitlements.legacy_write_policy($1, $2, 'hub', '{}'::text[]) as p`,
+        [legacy.org, legacy.company],
+      )
+      expect(policy!.p).toBe('ALLOW')
+    } finally {
+      await setMode('PRODUCT', 'DUAL_READ')
+      await setMode('PRODUCT', 'SHADOW')
+    }
+    expect(await decisions()).toEqual(before)
   })
 })
 
