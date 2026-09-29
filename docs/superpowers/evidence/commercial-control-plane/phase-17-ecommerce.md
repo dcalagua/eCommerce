@@ -79,3 +79,21 @@ export async function runUsageOutboxSender(deps: UsageOutboxSenderDeps): Promise
 - Eventos `TENANT_NOT_MAPPED` quedan PENDING indefinidamente (sin RPC de re-atribución; decisión de producto).
 - Sin retención/purga de filas `SENT` (el hecho es inmutable; una purga necesita decisión y excepción controlada).
 - Operador (tras D-12 / GATE): secretos del worker, registrar la clave pública en MasterAdmin (`usage_ingest_credentials`), medidor `ecommerce.ai.calls` en MasterAdmin, planificador que invoque el worker. E2E cruzado contra `usage-ingest` real: no ejecutado en esta fase.
+
+## Reanudación de la fase 17: caracterización del bloqueo `storage_buckets`
+
+- **Sentencia:** `supabase/migrations/20260827090600_storage_buckets.sql:83`, `alter table storage.objects enable row level security;`.
+- **Origen:** commit `c5111cb` (2026-08-27, "add multitenant supabase foundation"), que ya está en la base DEV original `7da2ae4`. No lo introdujo el programa.
+- **Causa, comprobada en solo lectura** sobre la imagen local actual `supabase/postgres:17.6.1.165`:
+  - `storage.objects` y `storage.buckets` pertenecen a `supabase_storage_admin`;
+  - el rol de migraciones `postgres` no es superusuario (`rolsuper=f`);
+  - RLS ya viene activado (`relrowsecurity=t`).
+
+  Solo el dueño puede hacer `ALTER TABLE`, así que la sentencia falla con `must be owner of table objects` aunque sea redundante.
+- **Clasificación:** **defecto de portabilidad de la migración, preexistente**, no un problema de infraestructura local.
+  - Afecta a cualquier base nueva creada desde cero con las imágenes actuales de Supabase: stacks locales, `db reset` y un proyecto nuevo.
+  - No afecta a las bases que ya la tienen registrada como aplicada.
+  - No se relaciona con la fase 17: su migración y su pgTAP corren sobre PGlite con toda la cadena (39/39).
+- **Corrección propuesta (no aplicada; decide el dueño de eCommerce):** quitar la sentencia redundante o condicionarla con `if not relrowsecurity`. Cambiar una migración histórica exige revisar el historial remoto, así que queda fuera de este programa.
+- **Consecuencia para la fase 19 (QAS):** QAS no se puede recrear con `db reset` hasta resolver esto. La verificación en vivo tiene que usar la base QAS existente, sin reset, y aplicar solo las migraciones nuevas del programa.
+- No se cambió nada en QAS ni en PRD.
