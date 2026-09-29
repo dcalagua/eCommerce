@@ -559,8 +559,9 @@ describe('checkout', () => {
     renderStorefront(fake, '/s/casa-nordica/checkout')
 
     await rellenarContacto(user)
-    await user.type(screen.getByLabelText(/Cupón de descuento/), 'verano-25')
     await irAPagar(user)
+    // Resumen v2 · el cupón vive en el paso de pago, junto al total.
+    await user.type(screen.getByLabelText(/Cupón de descuento/), 'verano-25')
     await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
 
     await waitFor(() => expect(fake.state.invocations).toHaveLength(1))
@@ -862,6 +863,10 @@ describe('confirmación', () => {
     // Impuesto y total del servidor, no el subtotal que calculó el carrito.
     expect(screen.getByText(/^S\/ 36\.00$/)).toBeInTheDocument()
     expect(screen.getByText(/^S\/ 236\.00$/)).toBeInTheDocument()
+    // Resumen v2 · dónde está el pedido y qué se puede hacer con él.
+    expect(screen.getByRole('list', { name: 'Estado del pedido' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Descargar PDF' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Repetir este pedido' })).toBeInTheDocument()
 
     await waitFor(() =>
       expect(localStorage.getItem(`ebim.ecommerce.cart.v1:${STORE}`)).toBeNull(),
@@ -1615,6 +1620,48 @@ describe('orden de compra (N05)', () => {
     await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
     await waitFor(() => expect(fake.state.invocations).toHaveLength(1))
     expect(Object.keys(fake.state.invocations[0]!.body)).not.toContain('purchase_order_number')
+  })
+
+  it('con factura viajan el RUC y la razón social en billing_address; la razón social se propone', async () => {
+    const user = userEvent.setup()
+    const fake = conSesion({ ...CONTEXTO_EMPRESA, purchase_order_required: false })
+    await rellenarConSesion(user)
+    await irAPagar(user)
+
+    await user.click(await screen.findByRole('button', { name: 'Factura' }))
+    const razon = await screen.findByLabelText(/Razón social/)
+    // Se propone con el nombre de la cuenta de empresa, sin pisar nada.
+    expect(razon).toHaveValue('Corporación Andina SAC')
+
+    // Sin RUC no se puede emitir la factura: no deja confirmar.
+    await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+    expect(fake.state.invocations).toHaveLength(0)
+
+    await user.type(screen.getByLabelText(/RUC/), '20601234567')
+    await user.type(screen.getByLabelText(/Centro de costo/), 'CC-0412')
+    await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+    await waitFor(() => expect(fake.state.invocations).toHaveLength(1))
+    const { body } = fake.state.invocations[0]!
+    expect(body.billing_address).toMatchObject({
+      address: 'Av. Primavera 120',
+      document_type: 'invoice',
+      tax_id: '20601234567',
+      legal_name: 'Corporación Andina SAC',
+      cost_center: 'CC-0412',
+    })
+    for (const prohibida of CLAVES_PROHIBIDAS) expect(todasLasClaves(body)).not.toContain(prohibida)
+  })
+
+  it('con boleta y sin centro de costo no se manda dirección fiscal: se factura donde se entrega', async () => {
+    const user = userEvent.setup()
+    const fake = conSesion({ ...CONTEXTO_EMPRESA, purchase_order_required: false })
+    await rellenarConSesion(user)
+    await irAPagar(user)
+
+    expect(await screen.findByRole('button', { name: 'Boleta' })).toHaveAttribute('aria-pressed', 'true')
+    await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }))
+    await waitFor(() => expect(fake.state.invocations).toHaveLength(1))
+    expect(Object.keys(fake.state.invocations[0]!.body)).not.toContain('billing_address')
   })
 
   it('si el servidor la exige igualmente, el aviso dice qué falta', async () => {

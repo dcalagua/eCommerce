@@ -40,6 +40,7 @@ import { resolveShowThemeToggle } from './identity'
 import { StoreCategoryNav } from './components/StoreCategoryNav'
 import { StoreFooter } from './components/StoreFooter'
 import { StoreAnnouncementBar } from './components/StoreAnnouncementBar'
+import { CheckoutHeader } from './components/CheckoutHeader'
 import { StoreBrandLockup } from './components/StoreBrandLockup'
 import { StoreQuickSearch } from './components/StoreQuickSearch'
 import { CartDrawer } from './cart/CartDrawer'
@@ -53,6 +54,8 @@ import {
   type StorefrontOutlet,
 } from './hooks'
 import { useFavorites } from './useFavorites'
+import { useStorePreview } from './previewBridge'
+import { resolveStoreFont } from './theme/presets'
 import { StorefrontThemeProvider } from './theme/StorefrontThemeProvider'
 import { useStorefrontTheme } from './theme/useStorefrontTheme'
 import { themeCssVars, themeDataAttributes } from './theme/theme-context'
@@ -65,10 +68,7 @@ import type { PublicStore } from './types'
 // estan en `latin`, mientras que los ficheros genericos arrastran ademas
 // latin-ext, cirilico y vietnamita — tres alfabetos que esta tienda no escribe,
 // multiplicados por cada peso.
-import '@fontsource/plus-jakarta-sans/latin-400.css'
-import '@fontsource/plus-jakarta-sans/latin-500.css'
-import '@fontsource/plus-jakarta-sans/latin-700.css'
-import '@fontsource/plus-jakarta-sans/latin-800.css'
+import '@/theme/storefrontFonts'
 import './storefront.css'
 
 /**
@@ -114,7 +114,10 @@ export function StorefrontLayout() {
   const { storeSlug } = useParams<{ storeSlug: string }>()
   const { t, locale } = useI18n()
   const { pathname } = useLocation()
-  const { data: store, isPending, isError, error, refetch } = usePublicStore(storeSlug)
+  const { data: storeDeLaBase, isPending, isError, error, refetch } = usePublicStore(storeSlug)
+  // Resumen v2 · Abierta como vista previa del taller de diseño, la tienda se
+  // pinta con lo que el backoffice tenga SIN GUARDAR. Fuera de ahí, tal cual.
+  const store = useStorePreview(storeDeLaBase)
 
   // Antes de cualquier retorno temprano: el orden de los hooks no puede
   // depender de si la tienda cargo.
@@ -170,12 +173,12 @@ export function StorefrontLayout() {
     // que el encargo prohíbe.
     <AppearanceProvider
       tenantAccent={store.accent_color}
-      // Plus Jakarta Sans es la fuente POR DEFECTO de la vitrina; el token del
-      // tenant, cuando existe, manda sobre ella. El defecto vive aqui y no en
-      // la fila: una tienda con `font_family` en null es una tienda que no ha
-      // elegido, y asi el dia que la suite cambie de fuente cambian todas sin
-      // migrar un solo dato.
-      tenantFont={store.font_family ?? 'plus-jakarta'}
+      // Resumen v2 · Sin elección de la tienda, la tipografía la PROPONE su
+      // tema (`THEME_FONTS`); el token del tenant, cuando existe, manda. El
+      // defecto vive aquí y no en la fila: una tienda con `font_family` en null
+      // es una tienda que no ha elegido, y así cambiar la propuesta de un tema
+      // no exige migrar un solo dato.
+      tenantFont={resolveStoreFont(store.font_family, store.theme_preset)}
       tenantRadius={store.ui_radius}
       tenantDensity={store.ui_density}
     >
@@ -199,7 +202,12 @@ export function StorefrontLayout() {
               cuenta y el carrito en CADA página. El destino ya existía
               (`id="contenido"`) y el texto también; faltaba el enlace. */}
           <SkipToContentLink label={t('store.skipToContent')} />
-          <StoreHeader store={store} storeSlug={storeSlug as string} />
+          {/* En el pago, la cabecera enfocada: sin buscador ni categorías. */}
+          {enCheckout ? (
+            <CheckoutHeader store={store} storeSlug={storeSlug as string} />
+          ) : (
+            <StoreHeader store={store} storeSlug={storeSlug as string} />
+          )}
 
           <StoreMain>
             {/* Para quién se compra, cuando hay una cuenta de empresa activa en

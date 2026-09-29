@@ -11,7 +11,14 @@ import { getSupabaseClient } from '@/shared/lib/supabase'
  *
  * Ninguna consulta dice «de este usuario»: lo decide la RLS con el token. Lo
  * único que se filtra es DÓNDE se enseña —backoffice o tienda— y, en el
- * backoffice, la sociedad activa, que es alcance de pantalla y no autorización.
+ * backoffice, la sociedad y la TIENDA activas, que son alcance de pantalla y no
+ * autorización.
+ *
+ * Lo de la tienda no es un adorno: con dos tiendas en la misma sociedad, la
+ * campana enseñaba pedidos de la otra estando en una que no había vendido nada,
+ * y el listado de al lado decía «todavía no recibiste pedidos». Los avisos que
+ * no son de ninguna tienda —una integración caída, un acceso concedido— llevan
+ * `store_id` nulo y se siguen viendo siempre.
  *
  * ## Por qué se consulta cada minuto y no en tiempo real
  *
@@ -34,8 +41,11 @@ const notificationSchema = z.object({
 
 export type AppNotification = z.infer<typeof notificationSchema>
 
-export const notificationsKey = (audience: Audience, companyId: string | null) =>
-  ['notifications', audience, companyId] as const
+export const notificationsKey = (
+  audience: Audience,
+  companyId: string | null,
+  storeId: string | null = null,
+) => ['notifications', audience, companyId, storeId] as const
 
 /** Los últimos 30. Más que eso no se lee en una lista desplegable. */
 export const NOTIFICATIONS_LIMIT = 30
@@ -43,6 +53,7 @@ export const NOTIFICATIONS_LIMIT = 30
 export async function fetchNotifications(
   audience: Audience,
   companyId: string | null,
+  storeId: string | null = null,
 ): Promise<AppNotification[]> {
   let query = getSupabaseClient()
     .from(NOTIFICATIONS_TABLE)
@@ -50,21 +61,32 @@ export async function fetchNotifications(
     .eq('audience', audience)
     .is('archived_at', null)
   if (companyId) query = query.eq('company_id', companyId)
+  // Los de la tienda activa y los que no son de ninguna tienda.
+  if (storeId) query = query.or(`store_id.is.null,store_id.eq.${storeId}`)
   const { data, error } = await query.order('created_at', { ascending: false }).limit(NOTIFICATIONS_LIMIT)
   if (error) throw error
   return notificationSchema.array().parse(data ?? [])
 }
 
-export function useNotifications(audience: Audience, companyId: string | null, enabled = true) {
+export function useNotifications(
+  audience: Audience,
+  companyId: string | null,
+  enabled = true,
+  storeId: string | null = null,
+) {
   return useQuery({
-    queryKey: notificationsKey(audience, companyId),
-    queryFn: () => fetchNotifications(audience, companyId),
+    queryKey: notificationsKey(audience, companyId, storeId),
+    queryFn: () => fetchNotifications(audience, companyId, storeId),
     enabled,
     refetchInterval: 60_000,
   })
 }
 
-export function useMarkNotificationsRead(audience: Audience, companyId: string | null) {
+export function useMarkNotificationsRead(
+  audience: Audience,
+  companyId: string | null,
+  storeId: string | null = null,
+) {
   const queryClient = useQueryClient()
   return useMutation({
     /** Sin ids: todos los no leídos de esta bandeja. */
@@ -75,12 +97,15 @@ export function useMarkNotificationsRead(audience: Audience, companyId: string |
         .eq('audience', audience)
         .is('read_at', null)
       if (companyId) query = query.eq('company_id', companyId)
+      // «Marcar todo como leído» marca lo que se está VIENDO, no los avisos de
+      // otra tienda que esta pantalla ni siquiera enseña.
+      if (storeId) query = query.or(`store_id.is.null,store_id.eq.${storeId}`)
       if (ids && ids.length > 0) query = query.in('id', ids)
       const { error } = await query
       if (error) throw error
     },
     onSuccess: () =>
-      void queryClient.invalidateQueries({ queryKey: notificationsKey(audience, companyId) }),
+      void queryClient.invalidateQueries({ queryKey: notificationsKey(audience, companyId, storeId) }),
   })
 }
 

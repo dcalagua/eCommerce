@@ -1,4 +1,4 @@
-import { cleanup, screen, within } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Route, Routes } from 'react-router-dom'
@@ -508,10 +508,11 @@ describe('las puertas de categoría con fotografía', () => {
   }
 
   /**
-   * Los tres temas que piden AZULEJOS. `catalog` no está aquí y no es un olvido:
-   * desde P04 pide píldoras, y ahí la foto no cabe. Ver la prueba siguiente.
+   * Los temas que piden AZULEJOS. `catalog` no está aquí y no es un olvido:
+   * desde P04 pide píldoras, y ahí la foto no cabe. `retail` tampoco: desde el
+   * Resumen v2 pide tarjetas con icono. Ver las pruebas siguientes.
    */
-  it.each(['universal', 'retail', 'premium'])(
+  it.each(['universal', 'premium'])(
     'en el tema %s la que tiene foto la enseña y la que no cae al tinte',
     async (tema) => {
       cleanup()
@@ -528,6 +529,14 @@ describe('las puertas de categoría con fotografía', () => {
     },
   )
 
+  it('en el tema retail las familias son tarjetas con icono que llevan a su catálogo', async () => {
+    cleanup()
+    const seccion = await portadaConCategorias('retail')
+    const abrigos = within(seccion).getAllByRole('link', { name: /Abrigos/ })[0]
+    expect(abrigos).toHaveAttribute('data-category-icon-card', 'true')
+    expect(abrigos).toHaveAttribute('href', '/s/tienda?c=abrigos')
+  })
+
   /**
    * La otra mitad del contrato `categoryVariant`, cerrado en P04.
    *
@@ -538,11 +547,11 @@ describe('las puertas de categoría con fotografía', () => {
    * la COMPOSICIÓN y que, aun así, las dos familias siguen llegando a su
    * catálogo filtrado.
    */
-  it('en el tema catalog las familias son píldoras, y siguen llevando a su catálogo', async () => {
+  it('en el tema catalog las familias son tarjetas con icono, y siguen llevando a su catálogo', async () => {
     cleanup()
     const seccion = await portadaConCategorias('catalog')
 
-    expect(seccion.querySelectorAll('[data-category-pill]').length).toBe(2)
+    await waitFor(() => expect(seccion.querySelectorAll('[data-category-icon-card="true"]').length).toBe(2))
     expect(seccion.querySelector('[data-category-door]')).toBeNull()
     expect(within(seccion).getByRole('link', { name: /Abrigos/ })).toHaveAttribute(
       'href',

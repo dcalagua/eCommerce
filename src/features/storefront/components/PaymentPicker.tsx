@@ -7,7 +7,6 @@ import {
   Alert,
   Box,
   FormControl,
-  FormControlLabel,
   FormLabel,
   Radio,
   RadioGroup,
@@ -64,6 +63,7 @@ export function PaymentPicker({
   selectedCode,
   onSelect,
   error,
+  hints = {},
 }: {
   methods: readonly StorePaymentMethod[]
   loading: boolean
@@ -71,6 +71,12 @@ export function PaymentPicker({
   selectedCode: string
   onSelect: (code: string) => void
   error: string | null
+  /**
+   * Resumen v2 · La línea bajo el nombre, por código de medio: la pone quien
+   * SABE algo del comprador (p. ej. «30 días · disponible S/ 12,400» del
+   * crédito de su cuenta). Sin ella, la de su familia.
+   */
+  hints?: Readonly<Record<string, string>>
 }) {
   const { t } = useI18n()
   const selected = methods.find((method) => method.code === selectedCode) ?? null
@@ -95,30 +101,88 @@ export function PaymentPicker({
     <Stack spacing={1.5}>
       <FormControl error={Boolean(error)}>
         <FormLabel id="payment-methods">{t('store.payment.title')}</FormLabel>
+        {/* Resumen v2 · TARJETAS y no una lista de radios: cada medio con su
+            icono, su nombre y una línea que dice qué implica. El radio sigue
+            ahí —es lo que se enfoca y anuncia—, con el nombre exacto del medio
+            como nombre accesible; la tarjeta entera es su `<label>`. */}
         <RadioGroup
           aria-labelledby="payment-methods"
           value={selectedCode}
           onChange={(event) => onSelect(event.target.value)}
+          sx={{
+            mt: 1,
+            display: 'grid',
+            gap: 1.25,
+            gridTemplateColumns: {
+              xs: '1fr',
+              sm: 'repeat(2, minmax(0, 1fr))',
+              md: `repeat(${Math.min(methods.length, 3)}, minmax(0, 1fr))`,
+            },
+          }}
         >
           {methods.map((method) => {
             const Icono = ICONOS[method.kind] ?? PaymentsRoundedIcon
+            const activo = method.code === selectedCode
+            // La de su familia solo para las familias conocidas: una clave que no
+            // existe se pintaría tal cual.
+            const pista =
+              hints[method.code] ??
+              (method.kind in ICONOS ? t(`store.payment.hint.${method.kind}` as Parameters<typeof t>[0]) : null)
             return (
-              <FormControlLabel
+              <Box
                 key={method.code}
-                value={method.code}
-                control={<Radio />}
-                label={
-                  <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
-                    {/* Decorativo: el nombre que va al lado ya lo dice todo, y
-                        anunciarlo otra vez haría que el lector de pantalla
-                        leyera dos veces la misma opción. */}
-                    <Icono aria-hidden sx={{ fontSize: 20, color: 'var(--muted)' }} />
-                    <Typography sx={{ fontSize: TS.body, fontWeight: 600 }}>
-                      {method.display_name}
-                    </Typography>
-                  </Stack>
-                }
-              />
+                component="label"
+                data-payment-card={method.code}
+                data-selected={activo ? 'true' : 'false'}
+                sx={{
+                  position: 'relative',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 0.5,
+                  minWidth: 0,
+                  p: 1.75,
+                  pr: 5,
+                  borderRadius: 'var(--sf-radius-sm)',
+                  border: activo ? '2px solid var(--accent)' : '1px solid var(--sf-line)',
+                  bgcolor: activo ? 'var(--accent-soft)' : 'var(--card)',
+                  cursor: 'pointer',
+                  transition: 'border-color .15s ease, background-color .15s ease',
+                  '&:hover': { borderColor: 'var(--accent)' },
+                  '&:has(input:focus-visible)': { outline: '2px solid var(--accent-deep)', outlineOffset: 2 },
+                  '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
+                }}
+              >
+                <Radio
+                  value={method.code}
+                  size="small"
+                  inputProps={{ 'aria-label': method.display_name }}
+                  sx={{ position: 'absolute', top: 6, right: 6 }}
+                />
+                {/* Decorativo: el nombre que va al lado ya lo dice todo. */}
+                <Box
+                  aria-hidden
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    display: 'grid',
+                    placeItems: 'center',
+                    borderRadius: 'var(--sf-radius-sm)',
+                    bgcolor: activo ? 'var(--accent)' : 'var(--neutral-soft)',
+                    color: activo ? '#fff' : 'var(--muted)',
+                    mb: 0.5,
+                  }}
+                >
+                  <Icono sx={{ fontSize: 20 }} />
+                </Box>
+                <Typography sx={{ fontSize: TS.body, fontWeight: 800, lineHeight: 1.25 }}>
+                  {method.display_name}
+                </Typography>
+                {pista ? (
+                  <Typography sx={{ fontSize: TS.label, color: 'var(--muted)', lineHeight: 1.35 }}>
+                    {pista}
+                  </Typography>
+                ) : null}
+              </Box>
             )
           })}
         </RadioGroup>

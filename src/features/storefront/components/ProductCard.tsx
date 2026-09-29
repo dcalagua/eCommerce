@@ -1,7 +1,9 @@
 import FavoriteBorderRoundedIcon from '@mui/icons-material/FavoriteBorderRounded'
+import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded'
 import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded'
 import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
+import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
 import {
   Box,
   Button,
@@ -11,6 +13,8 @@ import {
   Stack,
   Typography,
 } from '@mui/material'
+import { visuallyHidden } from '@mui/utils'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
@@ -22,6 +26,7 @@ import { useStorefrontTheme } from '../theme/useStorefrontTheme'
 import type { ProductCardVariant } from '../theme/types'
 import { discountPercent, type PublicProduct } from '../types'
 import { ProductMedia } from './ProductMedia'
+import { QuantityStepper } from './QuantityStepper'
 
 /**
  * Tarjeta de catálogo: foto, categoría, nombre, precio, disponibilidad y compra.
@@ -72,6 +77,9 @@ export function ProductCard({
   reduced = false,
   variant,
   commercialPrice = null,
+  b2b = false,
+  rank,
+  purchased = false,
 }: {
   product: PublicProduct
   storeSlug: string
@@ -138,8 +146,21 @@ export function ProductCard({
    * cual y vuelve a cotizar con el servidor.
    */
   commercialPrice?: CommercialPrice | null
+  /**
+   * Comprador empresa: la tarjeta pide CUÁNTOS antes de agregar.
+   *
+   * Quien repone 24 cajas no debería pulsar 24 veces ni ir al carrito a
+   * corregir la cifra. El consumidor sigue con el botón de una unidad, que es
+   * lo que espera de una tienda.
+   */
+  b2b?: boolean
+  /** Puesto en un ranking de ventas (1 = el más vendido). Sin él, no hay insignia. */
+  rank?: number
+  /** Resumen v2 · Su empresa ya lo pidió en esta tienda. Solo se pinta con `b2b`. */
+  purchased?: boolean
 }) {
   const { t, locale } = useI18n()
+  const [cantidad, setCantidad] = useState(1)
   const { agregar, pending } = useAddToCart()
   /**
    * La presentación, resuelta una vez (Storefront V3 · P05).
@@ -168,7 +189,9 @@ export function ProductCard({
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        p: denso ? 1 : editorial ? 0 : { xs: 'var(--sf-card-pad)', md: 'var(--sf-card-pad-md)' },
+        // Editorial: sin caja, pero con un margen interior pequeño — sin él, el
+        // estado y el botón quedaban pegados al borde de la columna.
+        p: denso ? 1 : editorial ? { xs: 0.5, md: 0.75 } : { xs: 'var(--sf-card-pad)', md: 'var(--sf-card-pad-md)' },
         gap: denso ? 0.75 : 'var(--sf-card-gap)',
         borderRadius: 'var(--sf-radius)',
         /**
@@ -318,21 +341,25 @@ export function ProductCard({
           </IconButton>
         )}
 
+        {/* Resumen v2 · Las pastillas de la foto, en fila: el descuento y, para
+            la cuenta de empresa, «Ya comprado» (como en el diseño). */}
+        <Stack
+          direction="row"
+          sx={{ position: 'absolute', top: 10, left: 10, right: 46, zIndex: 1, gap: 0.5, flexWrap: 'wrap' }}
+        >
         {discount !== null && (
           // Pastilla plana y compacta, no un `Chip` con su alto de 24 px y su
           // sombra: sobre la foto lo que hace falta es una etiqueta que se lea,
           // no un control que parezca pulsable.
           <Box
             sx={{
-              position: 'absolute',
-              top: 10,
-              left: 10,
-              zIndex: 1,
               px: 1,
               py: 0.25,
               borderRadius: 'var(--sf-pill)',
-              bgcolor: 'var(--accent-deep)',
-              color: '#FFFFFF',
+              // El color de la oferta lo pone el tema con RESERVA al acento: en
+              // Retail es el amarillo de oferta; en los demás, lo de siempre.
+              bgcolor: 'var(--sf-discount-bg, var(--accent-deep))',
+              color: 'var(--sf-discount-fg, #FFFFFF)',
               fontSize: TS.label,
               fontWeight: 800,
               letterSpacing: '0.02em',
@@ -343,10 +370,72 @@ export function ProductCard({
             {`-${discount}%`}
           </Box>
         )}
+        {b2b && purchased ? (
+          <Box
+            data-purchased
+            sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 0.375,
+              px: 1,
+              py: 0.25,
+              borderRadius: 'var(--sf-pill)',
+              bgcolor: 'var(--text)',
+              color: 'var(--card)',
+              fontSize: TS.label,
+              fontWeight: 800,
+              lineHeight: 1.6,
+              boxShadow: '0 2px 8px rgba(0,0,0,.18)',
+            }}
+          >
+            <HistoryRoundedIcon aria-hidden sx={{ fontSize: 13 }} />
+            {t('store.product.purchasedBefore')}
+          </Box>
+        ) : null}
+        </Stack>
+
+        {/* Resumen v2 · El puesto en el ranking de ventas, cuando la fila es un
+            ranking. Es un dato (sale del agregado de pedidos), no un adorno. */}
+        {rank ? (
+          <Box
+            data-rank={rank}
+            title={t('store.ranking.position').replace('{n}', String(rank))}
+            sx={{
+              position: 'absolute',
+              bottom: 8,
+              left: 8,
+              zIndex: 1,
+              minWidth: 30,
+              height: 30,
+              px: 0.75,
+              display: 'grid',
+              placeItems: 'center',
+              borderRadius: '50%',
+              bgcolor: rank === 1 ? 'var(--sf-discount-bg, var(--accent-deep))' : 'var(--text)',
+              color: rank === 1 ? 'var(--sf-discount-fg, #FFFFFF)' : 'var(--card)',
+              fontSize: 12.5,
+              fontWeight: 800,
+              boxShadow: '0 2px 8px rgba(0,0,0,.2)',
+            }}
+          >
+            <Box component="span" aria-hidden>{`#${rank}`}</Box>
+            <Box component="span" sx={visuallyHidden}>
+              {t('store.ranking.position').replace('{n}', String(rank))}
+            </Box>
+          </Box>
+        ) : null}
       </Box>
 
       <Stack sx={{ gap: 0.5, flex: 1 }}>
-        {product.category_name && (
+        {b2b && (product.brand_name || product.category_name) ? (
+          <Typography
+            className="eb-card-brand"
+            noWrap
+            sx={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--muted)', lineHeight: 1.4 }}
+          >
+            {product.brand_name ?? product.category_name}
+          </Typography>
+        ) : product.category_name && (
           <Typography
             // La categoría es CONTEXTO, y cuánto contexto cabe depende del tema:
             // `compact` reparte cinco o seis columnas y ahí el nombre truncado
@@ -408,9 +497,60 @@ export function ProductCard({
             {product.name}
           </Box>
         </Typography>
+        {b2b ? (
+          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 1, minWidth: 0 }}>
+            <Typography
+              data-sku={product.sku ?? ''}
+              noWrap
+              sx={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}
+            >
+              {product.sku ?? ''}
+            </Typography>
+            <Stack
+              direction="row"
+              data-stock={available ? 'in' : 'out'}
+              sx={{ alignItems: 'center', gap: 0.5, flexShrink: 0, fontSize: 11, fontWeight: 700, color: available ? 'var(--accent-deep)' : 'var(--muted)' }}
+            >
+              <Box aria-hidden sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: 'currentColor' }} />
+              {available ? t('store.availability.inStock') : t('store.availability.outOfStock')}
+            </Stack>
+          </Stack>
+        ) : null}
       </Stack>
 
       <Stack sx={{ gap: 0.75, mt: 'auto' }}>
+        {b2b ? (
+          <Stack sx={{ gap: 0.25 }} data-b2b-price>
+            {commercialPrice || (discount !== null && product.compare_at_price) ? (
+              <Typography component="s" className="tnum" sx={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>
+                {formatMoney(
+                  commercialPrice ? Number(product.price) : Number(product.compare_at_price),
+                  product.currency,
+                  locale,
+                )}
+              </Typography>
+            ) : null}
+            <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 0.75, flexWrap: 'wrap' }}>
+              <Typography
+                className="tnum"
+                sx={{ fontSize: denso ? 18 : 'var(--sf-card-price)', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.15, color: 'var(--accent-deep)' }}
+              >
+                {formatMoney(commercialPrice ? commercialPrice.amount : Number(product.price), product.currency, locale)}
+              </Typography>
+              {commercialPrice ? (
+                <Stack
+                  direction="row"
+                  data-commercial-price={commercialPrice.label}
+                  sx={{ alignItems: 'center', gap: 0.375, px: 0.875, py: 0.125, borderRadius: 'var(--sf-pill)', bgcolor: 'var(--accent-soft)', color: 'var(--accent-deep)', fontSize: 11, fontWeight: 800 }}
+                >
+                  <VerifiedRoundedIcon aria-hidden sx={{ fontSize: 13 }} />
+                  {commercialPrice.label === 'enterprise' ? t('store.product.agreementPriceCard') : t('store.product.tradePriceCard')}
+                </Stack>
+              ) : null}
+            </Stack>
+          </Stack>
+        ) : (
+        <>
         <Stack direction="row" sx={{ alignItems: 'baseline', gap: 0.75, flexWrap: 'wrap', minWidth: 0 }}>
           {/* La cifra que decide. Sube a 19 px y el nombre baja a 15: antes
               pesaban lo mismo y la tarjeta no tenía protagonista. Con precio
@@ -455,11 +595,13 @@ export function ProductCard({
             {commercialPrice.label === 'enterprise' ? t('store.product.agreementPriceCard') : t('store.product.tradePriceCard')}
           </Typography>
         )}
+        </>
+        )}
 
         {/* El estado, en pastilla: en una línea de texto suelta se confunde con
             el resto de la ficha, y es lo que decide si el botón sirve. En la
             fila no se pinta: allí no hay botón al que condicionar. */}
-        {reduced ? null : (
+        {reduced || b2b ? null : (
         <Box
           className="eb-card-state"
           // `in` es el estado ESPERADO de un producto publicado, y por eso hay
@@ -487,53 +629,87 @@ export function ProductCard({
       {/* Por encima de la capa que hace pulsable la tarjeta: pulsar aquí compra,
           no navega. */}
       {reduced ? null : (
-      <Button
-        fullWidth
-        variant={available ? 'contained' : 'outlined'}
-        size="small"
-        disabled={!available || pending}
-        startIcon={
-          hasVariants ? (
-            <TuneRoundedIcon />
-          ) : pending ? (
-            <CircularProgress size={14} color="inherit" />
-          ) : (
-            <ShoppingCartRoundedIcon />
-          )
-        }
-        onClick={() => {
-          if (hasVariants) {
-            onQuickView?.(product.slug)
-            return
-          }
-          void agregar(product, 1, null)
-          // Se cuenta aquí igual que en la ficha: `add_to_cart` es una decisión,
-          // y si solo se contara desde la ficha, el embudo perdería a todo el
-          // que compra desde la rejilla.
-          track(storeSlug, {
-            type: 'add_to_cart',
-            product_id: product.product_id,
-            quantity: 1,
-          })
-        }}
+      <Stack
+        direction="row"
         sx={{
           position: 'relative',
           zIndex: 1,
+          gap: 0.75,
+          alignItems: 'center',
           mt: 0.25,
-          textTransform: 'none',
-          fontWeight: 700,
-          borderRadius: 'var(--sf-radius-sm)',
-          py: 0.75,
-          boxShadow: 'none',
-          '&:hover': { boxShadow: 'none' },
+          // Resumen v2 · Quien mide su ancho es la FILA del botón, no la
+          // tarjeta: una tarjeta con `container-type` deja de crecer con su
+          // contenido y en las filas con desplazamiento lateral (que miden a
+          // las tarjetas por su contenido) se quedaba en cero píxeles.
+          containerType: 'inline-size',
         }}
-        // Igual que el corazón: el texto visible se queda corto —la tarjeta
-        // entera dice de qué producto es— y el nombre accesible lleva el
-        // producto, porque un lector de pantalla anuncia el botón solo.
-        aria-label={`${hasVariants ? t('store.product.chooseOptions') : t('store.product.addToCart')}: ${product.name}`}
       >
-        {hasVariants ? t('store.product.chooseOptions') : t('store.product.addToCart')}
-      </Button>
+        {/* La cantidad, solo para empresa y solo cuando se puede comprar: con
+            variantes la cifra se elige en la vista rápida, junto a la opción. */}
+        {b2b && available && !hasVariants ? (
+          <QuantityStepper value={cantidad} onChange={setCantidad} size="sm" disabled={pending} />
+        ) : null}
+        <Button
+          fullWidth
+          variant={available ? 'contained' : 'outlined'}
+          size="small"
+          disabled={!available || pending}
+          startIcon={
+            hasVariants ? (
+              <TuneRoundedIcon />
+            ) : pending ? (
+              <CircularProgress size={14} color="inherit" />
+            ) : (
+              <ShoppingCartRoundedIcon />
+            )
+          }
+          onClick={() => {
+            if (hasVariants) {
+              onQuickView?.(product.slug)
+              return
+            }
+            void agregar(product, cantidad, null).then((ok) => {
+              if (ok) setCantidad(1)
+            })
+            // Se cuenta aquí igual que en la ficha: `add_to_cart` es una decisión,
+            // y si solo se contara desde la ficha, el embudo perdería a todo el
+            // que compra desde la rejilla.
+            track(storeSlug, {
+              type: 'add_to_cart',
+              product_id: product.product_id,
+              quantity: cantidad,
+            })
+          }}
+          sx={{
+            position: 'relative',
+            zIndex: 1,
+            mt: 0.25,
+            flex: 1,
+            minWidth: 0,
+            whiteSpace: 'nowrap',
+            textTransform: 'none',
+            fontWeight: 700,
+            borderRadius: 'var(--sf-radius-sm)',
+            py: 0.75,
+            boxShadow: 'none',
+            '&:hover': { boxShadow: 'none' },
+            '@container (max-width: 190px)': { '& .MuiButton-startIcon': { display: 'none' } },
+          }}
+          // Igual que el corazón: el texto visible se queda corto —la tarjeta
+          // entera dice de qué producto es— y el nombre accesible lleva el
+          // producto, porque un lector de pantalla anuncia el botón solo.
+          aria-label={`${hasVariants ? t('store.product.chooseOptions') : t('store.product.addToCart')}: ${product.name}`}
+        >
+          {hasVariants
+            ? t('store.product.chooseOptions')
+            : b2b
+              ? available
+                ? t('store.product.addShort')
+                : t('store.availability.outOfStock')
+              : t('store.product.addToCart')}
+        </Button>
+
+      </Stack>
       )}
     </Card>
   )

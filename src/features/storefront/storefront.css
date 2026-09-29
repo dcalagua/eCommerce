@@ -41,6 +41,10 @@
   --sf-radius: 20px;
   --sf-radius-sm: 14px;
   --sf-pill: 999px;
+  /* La foto principal de la ficha: cuadrada y ENTERA, porque ahi se viene a
+     mirar el producto. Premium la cambia (ver su bloque). */
+  --sf-pdp-ratio: 1 / 1;
+  --sf-pdp-fit: contain;
 
   /* La linea deja de ser el borde de la tarjeta y pasa a ser un apoyo: la
      separacion la da la sombra. En claro, un borde nitido alrededor de cada
@@ -246,6 +250,10 @@
 .sf-scope[data-store-theme='premium'] {
   --sf-radius: 24px;
   --sf-radius-sm: 16px;
+  /* Lamina 31 · En la ficha, la foto cuadrada y A SANGRE: en Premium la foto es
+     el argumento. (Una version vertical 4:5 dejaba la columna de compra
+     flotando junto a 800 px de foto.) */
+  --sf-pdp-fit: cover;
 }
 
 /* ---------------------------------------------------------------------------
@@ -277,8 +285,81 @@
 
 /* RETAIL: el precio es el protagonista. Sube por encima del nombre y el
    descuento pesa mas: quien compra jabon y paracetamol compara cifras. */
+/* Resumen v2 · VISTA PREVIA del taller: la sección que se está editando.
+   Solo existe dentro del iframe del taller (`data-preview-section` lo pone
+   `HomeComposer` en ese modo). El verde es el del EDITOR, no el de la tienda:
+   marca la herramienta, no forma parte del diseño del comercio. */
+[data-preview-section] {
+  position: relative;
+  border-radius: 14px;
+  transition: outline-color 0.15s ease;
+}
+[data-preview-section][data-preview-active] {
+  outline: 3px solid #5aa97f;
+  outline-offset: 6px;
+}
+[data-preview-section][data-preview-active]::before {
+  content: attr(data-preview-label);
+  position: absolute;
+  top: -30px;
+  left: 0;
+  z-index: 5;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: #5aa97f;
+  color: #fff;
+  font: 800 12px/1.4 'DM Sans', system-ui, sans-serif;
+}
+
+/* RETAIL «FERIA DE OFERTAS» · la cabecera (Resumen v2).
+   Todo sale del acento de la TIENDA: el tema pone la forma, nunca un color.
+   - La barra de familias se vuelve una banda del color de la tienda. Va en
+     `--accent-deep`, que es el tono que garantiza AA con texto blanco.
+   - El buscador gana protagonismo: borde de 2 px en el acento.
+   - El aviso superior pasa a la franja invertida del diseño.
+   - «Ofertas» deja de ser un enlace y se vuelve una pastilla blanca. */
+.sf-scope[data-store-theme='retail'] .sf-catnav {
+  background: var(--accent-deep);
+  border-top-color: transparent;
+}
+.sf-scope[data-store-theme='retail'] .sf-catnav .sf-catnav-item,
+.sf-scope[data-store-theme='retail'] .sf-catnav .sf-catnav-item:hover {
+  color: #fff;
+}
+.sf-scope[data-store-theme='retail'] .sf-catnav .sf-catnav-item[aria-current='true'],
+.sf-scope[data-store-theme='retail'] .sf-catnav .sf-catnav-item[aria-expanded='true'] {
+  border-bottom-color: #fff;
+}
+.sf-scope[data-store-theme='retail'] .sf-catnav .sf-catnav-icon {
+  background: color-mix(in srgb, #fff 18%, transparent);
+  color: #fff;
+}
+.sf-scope[data-store-theme='retail'] .sf-catnav .sf-catnav-door {
+  border-left-color: color-mix(in srgb, #fff 35%, transparent);
+  color: #fff;
+}
+.sf-scope[data-store-theme='retail'] .sf-catnav .sf-catnav-door[data-door='offers'] {
+  margin-left: auto;
+  align-self: center;
+  border: 0;
+  padding: 4px 14px;
+  border-radius: var(--sf-pill);
+  background: #fff;
+  color: var(--accent-deep);
+}
+.sf-scope[data-store-theme='retail'] .sf-search {
+  border: 2px solid var(--accent);
+}
+.sf-scope[data-store-theme='retail'] [data-announcement-bar] {
+  background: var(--text);
+  color: var(--card);
+}
+
 .sf-scope[data-store-theme='retail'] {
   --sf-card-price: 20px;
+  /* Resumen v2 · Ningun tema pone COLOR: el color es de la tienda (decision
+     del operador, 2026-09-26). La pastilla de oferta usa su reserva, el acento
+     del tenant; `--sf-discount-bg/fg` queda como punto de extension. */
 }
 
 /* ---------------------------------------------------------------------------
@@ -316,8 +397,52 @@
   box-shadow: none;
 }
 
-.sf-scope[data-store-theme='premium'] .eb-card:hover {
+/* Resumen v2 · EDITORIAL, rehecha (pedido del operador).
+   Antes, al apuntar aparecía de golpe un recuadro con sombra alrededor de una
+   tarjeta sin margen interior: el contenido quedaba pegado al borde y la
+   rejilla parecía rota. Ahora la tarjeta NUNCA se vuelve caja:
+   - la FOTO es la pieza: marco propio, fondo de tarjeta y sombra suave;
+   - al apuntar sube la foto (sombra más honda) y el nombre se subraya;
+   - el botón es contorneado en el color de la tienda y se rellena al apuntar:
+     pesa menos que un bloque rojo, y sigue siendo evidente.
+   Va por la VARIANTE de tarjeta y no por el tema: cualquier tema que elija
+   `editorial` la recibe igual. */
+.sf-scope .eb-card[data-card-variant='editorial'],
+.sf-scope .eb-card[data-card-variant='editorial']:hover {
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
+  background: transparent;
+}
+.sf-scope .eb-card[data-card-variant='editorial'] .eb-card-media {
+  padding: 0;
+  background: var(--card);
   box-shadow: var(--sf-shadow);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.sf-scope .eb-card[data-card-variant='editorial']:hover .eb-card-media {
+  box-shadow: var(--sf-shadow-hover);
+  transform: translateY(-3px);
+}
+.sf-scope .eb-card[data-card-variant='editorial']:hover h3 a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.sf-scope .eb-card[data-card-variant='editorial'] .MuiButton-contained {
+  background: transparent;
+  color: var(--accent-deep);
+  box-shadow: inset 0 0 0 1.5px currentColor;
+}
+.sf-scope .eb-card[data-card-variant='editorial'] .MuiButton-contained:hover {
+  background: var(--accent-deep);
+  color: #fff;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sf-scope .eb-card[data-card-variant='editorial'] .eb-card-media,
+  .sf-scope .eb-card[data-card-variant='editorial']:hover .eb-card-media {
+    transition: none;
+    transform: none;
+  }
 }
 
 /* Y tampoco pinta la pastilla de «disponible».

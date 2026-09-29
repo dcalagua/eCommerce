@@ -505,7 +505,11 @@ export const BOUNDARIES: readonly Boundary[] = [
     state: 'implemented',
     responsibility:
       'Que se pueda saber qué pasó: el hilo (correlation id) que cose una petición de punta a punta, la bitácora de operaciones sensibles y la salud operativa del tenant.',
-    paths: ['features/ops'],
+    // `features/watch` es el centro de vigilancia: junta en un panel las
+    // señales que cada módulo ya calcula. Vive aquí y no en `ai` porque no
+    // consulta a ningún modelo — es SQL con umbrales, igual que la salud
+    // operativa de al lado.
+    paths: ['features/ops', 'features/watch'],
     serverSide: [
       'ebim.correlation_id y ebim.request_id — el hilo, como DEFAULT de ocho tablas (160000)',
       'las guardas de PII: pii_json_keys, looks_like_email, jsonb_is_pii_free, redact_pii (160000)',

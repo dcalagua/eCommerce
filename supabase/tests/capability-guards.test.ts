@@ -33,6 +33,7 @@ import {
   claimsFor,
   createTestDatabase,
   expectFailure,
+  vaciarPagosYEntregas,
 } from './harness.ts'
 
 type Row = Record<string, unknown>
@@ -235,6 +236,7 @@ beforeAll(async () => {
 
   storeA = await bootstrap(TENANT_A)
   storeB = await bootstrap(TENANT_B)
+  await vaciarPagosYEntregas(db, [storeA, storeB])
 
   await svc(
     `insert into public.tenant_members (organization_id, company_id, user_id, email, role, status)

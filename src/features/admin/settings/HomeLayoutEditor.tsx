@@ -1,8 +1,10 @@
 import ArrowDownwardRoundedIcon from '@mui/icons-material/ArrowDownwardRounded'
 import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded'
 import DragIndicatorRoundedIcon from '@mui/icons-material/DragIndicatorRounded'
-import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
-import { Box, Button, IconButton, Stack, Switch, TextField, Typography } from '@mui/material'
+import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
+import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined'
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
+import { Box, Button, Checkbox, IconButton, Stack, TextField, Typography } from '@mui/material'
 import { useRef, useState } from 'react'
 import type { UseFormReturn } from 'react-hook-form'
 import { useI18n } from '@/shared/i18n/i18n-context'
@@ -14,7 +16,7 @@ import {
   SECTIONS_WITH_MAX_ITEMS,
   normalizeHomeLayout,
 } from '@/features/storefront/theme/presets'
-import { sanitizeSectionPresentation } from '@/features/storefront/theme/presentation'
+import { resolveSectionPresentation, sanitizeSectionPresentation } from '@/features/storefront/theme/presentation'
 import { versionDe } from '@/features/storefront/theme/normalize'
 import type {
   HomeSectionConfig,
@@ -23,6 +25,7 @@ import type {
   ThemePreset,
 } from '@/features/storefront/theme/types'
 import { SectionPresentationPopover } from './SectionPresentationPopover'
+import { ETIQUETA_VALOR } from './styleLabels'
 import type { StoreFormValues } from './types'
 
 /**
@@ -106,6 +109,7 @@ export function HomeLayoutEditor({
   busy = false,
   preset,
   style,
+  onEnfocar,
 }: {
   form: UseFormReturn<StoreFormValues>
   busy?: boolean
@@ -119,6 +123,8 @@ export function HomeLayoutEditor({
    */
   preset: ThemePreset
   style: StorefrontStyle
+  /** Resumen v2 · Qué sección se está tocando (para marcarla en la vista previa). */
+  onEnfocar?: (id: HomeSectionId | null, nombre: string) => void
 }) {
   const { t } = useI18n()
   const guardado = form.watch('home_layout')
@@ -135,7 +141,6 @@ export function HomeLayoutEditor({
 
   /** Las que se pueden ordenar, en su orden. Las pendientes no entran. */
   const activas = secciones.filter((s) => !SIN_IMPLEMENTAR.has(s.id))
-  const pendientes = secciones.filter((s) => SIN_IMPLEMENTAR.has(s.id))
 
   /**
    * Guarda el orden, con la VERSIÓN que le corresponde (V3 · P12).
@@ -265,57 +270,12 @@ export function HomeLayoutEditor({
         onLimitar={limitar}
         onPresentar={presentar}
         onDespersonalizar={despersonalizar}
+        {...(onEnfocar ? { onEnfocar } : {})}
       />
 
-      {pendientes.length > 0 && (
-        <Stack spacing={0.5} sx={{ pt: 1 }}>
-          <Typography
-            component="h3"
-            sx={{
-              fontSize: TS.label,
-              fontWeight: 800,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              color: 'var(--muted)',
-            }}
-          >
-            {t('settings.design.home.pendingGroup')}
-          </Typography>
-          <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
-            {t('settings.design.home.pendingGroupHelp')}
-          </Typography>
-          <Stack component="ul" sx={{ listStyle: 'none', m: 0, p: 0, gap: 1, mt: 0.5 }}>
-            {pendientes.map((seccion) => (
-              <Stack
-                key={seccion.id}
-                component="li"
-                direction="row"
-                data-pending-section={seccion.id}
-                sx={{
-                  alignItems: 'center',
-                  gap: 0.5,
-                  px: 1,
-                  py: 0.75,
-                  borderRadius: `${R.md}px`,
-                  border: '1px dashed var(--border)',
-                  // Sin fondo de tarjeta: no es una fila que se pueda tocar, y
-                  // parecerlo es lo que hacía que se intentara.
-                  color: 'var(--muted)',
-                }}
-              >
-                {/* Ni interruptor ni flechas: no hay nada que encender ni nada
-                    que ordenar. Un control desactivado invita a pulsarlo. */}
-                <Typography sx={{ fontSize: TS.body, fontWeight: 700 }}>
-                  {t(NOMBRE[seccion.id])}
-                </Typography>
-                <Typography sx={{ fontSize: TS.label }}>
-                  · {t('settings.design.home.pending')}
-                </Typography>
-              </Stack>
-            ))}
-          </Stack>
-        </Stack>
-      )}
+      {/* Resumen v2 · Lo que aún no tiene componente (el boletín) ya no se
+          enseña como «próximamente»: una sección que no existe no ayuda a
+          decidir. Aparecerá en la lista cuando se pueda encender. */}
     </Stack>
   )
 }
@@ -338,6 +298,7 @@ function ListaOrdenable({
   onLimitar,
   onPresentar,
   onDespersonalizar,
+  onEnfocar,
 }: {
   secciones: readonly HomeSectionConfig[]
   busy: boolean
@@ -348,9 +309,25 @@ function ListaOrdenable({
   onLimitar: (id: HomeSectionId, valor: string) => void
   onPresentar: (id: HomeSectionId, clave: 'variant' | 'surface' | 'width', valor: string) => void
   onDespersonalizar: (id: HomeSectionId) => void
+  onEnfocar?: (id: HomeSectionId | null, nombre: string) => void
 }) {
   const { t } = useI18n()
   const origen = useRef<number | null>(null)
+  /** «Relámpago · 6»: la composición que se ve hoy y, si lo hay, su tope. */
+  const comoSeEnsena = (seccion: HomeSectionConfig) => {
+    const resuelta = resolveSectionPresentation({
+      id: seccion.id,
+      presentation: seccion.presentation,
+      preset,
+      categoryVariant: style.categoryVariant,
+      productCardVariant: style.productCardVariant,
+    })
+    // La portada no elige composición aquí: la dice el tema (`heroVariant`).
+    const variante = seccion.id === 'hero' ? style.heroVariant : resuelta.variant
+    const nombre =
+      variante === 'fixed' ? t('settings.design.home.adjust') : t(ETIQUETA_VALOR[variante] ?? 'settings.design.home.adjust')
+    return seccion.maxItems ? `${nombre} · ${seccion.maxItems}` : nombre
+  }
   const [encima, setEncima] = useState<number | null>(null)
   /** Qué fila tiene el panel abierto, y desde qué botón. */
   const [afinando, setAfinando] = useState<{ id: HomeSectionId; anchor: HTMLElement } | null>(null)
@@ -375,6 +352,10 @@ function ListaOrdenable({
             data-section={seccion.id}
             data-drop-target={encima === indice ? 'true' : undefined}
             draggable={!busy}
+            // Resumen v2 · Apuntar o enfocar una fila la marca en la vista previa.
+            onMouseEnter={() => onEnfocar?.(seccion.id, nombre)}
+            onMouseLeave={() => !afinando && onEnfocar?.(null, '')}
+            onFocus={() => onEnfocar?.(seccion.id, nombre)}
             onDragStart={(evento) => {
               origen.current = indice
               evento.dataTransfer?.setData('text/plain', seccion.id)
@@ -398,14 +379,16 @@ function ListaOrdenable({
               alignItems: 'center',
               gap: 0.75,
               px: 0.75,
-              // Fila compacta (P12): trece filas a 56 px eran 730 px de lista en
-              // la columna de configuración del taller.
+              // Resumen v2 · UNA línea por sección, como en el diseño: asa,
+              // nombre, cómo se enseña y el ojo. Apagada, se ve apagada.
               py: 0.5,
               borderRadius: `${R.md}px`,
               border: '1px solid',
               borderColor: encima === indice ? 'var(--accent)' : 'var(--border)',
-              bgcolor: 'var(--card)',
-              flexWrap: 'wrap',
+              bgcolor: seccion.enabled ? 'var(--card)' : 'var(--neutral-soft)',
+              // Las flechas, discretas hasta que se apunta o se enfoca la fila.
+              '& .eb-flechas': { opacity: 0.35, transition: 'opacity .15s ease' },
+              '&:hover .eb-flechas, &:focus-within .eb-flechas': { opacity: 1 },
             }}
           >
             {/* El asa. Decorativa a propósito: quien no usa ratón tiene las dos
@@ -418,36 +401,14 @@ function ListaOrdenable({
               <DragIndicatorRoundedIcon fontSize="small" />
             </Box>
 
-            <Switch
-              size="small"
-              checked={seccion.enabled}
-              disabled={busy}
-              onChange={(event) => onEncender(seccion.id, event.target.checked)}
-              inputProps={{ 'aria-label': `${t('settings.design.home.enabled')}: ${nombre}` }}
-            />
-
-            <Typography sx={{ flex: 1, minWidth: 120, fontSize: TS.body, fontWeight: 700 }}>
+            <Typography
+              noWrap
+              sx={{ flex: 1, minWidth: 96, fontSize: TS.body, fontWeight: 700, color: seccion.enabled ? 'var(--text)' : 'var(--muted)' }}
+            >
               {nombre}
             </Typography>
 
-            {SECTIONS_WITH_MAX_ITEMS.has(seccion.id) && (
-              <TextField
-                size="small"
-                type="number"
-                label={t('settings.design.home.maxItems')}
-                disabled={busy}
-                value={seccion.maxItems ?? ''}
-                onChange={(event) => onLimitar(seccion.id, event.target.value)}
-                inputProps={{
-                  min: MAX_ITEMS_LIMITS.min,
-                  max: MAX_ITEMS_LIMITS.max,
-                  'aria-label': `${t('settings.design.home.maxItems')}: ${nombre}`,
-                }}
-                sx={{ width: 96 }}
-              />
-            )}
-
-            <Stack direction="row" sx={{ gap: 0.25 }}>
+            <Stack direction="row" sx={{ gap: 0.25, alignItems: 'center' }}>
               {/**
                * Cómo se enseña esta sección (V3 · P12).
                *
@@ -460,20 +421,56 @@ function ListaOrdenable({
                * si esa sección lleva algo personalizado, que es la respuesta a
                * «¿qué le he tocado yo a esto?» sin abrir nada.
                */}
-              <IconButton
+              {/* Resumen v2 · Cómo se enseña, DICHO en la pastilla («Relámpago ·
+                  6»): se lee sin abrir nada, y al pulsarla se abre el panel. */}
+              <Box
+                component="button"
                 type="button"
-                size="small"
                 disabled={busy}
                 data-presentation-open={seccion.id}
                 data-presentation-custom={seccion.presentation ? 'true' : undefined}
                 aria-label={`${t('settings.design.presentation.open')}: ${nombre}`}
-                onClick={(evento) =>
+                title={t('settings.design.presentation.open')}
+                onClick={(evento: React.MouseEvent<HTMLElement>) =>
                   setAfinando({ id: seccion.id, anchor: evento.currentTarget })
                 }
-                sx={{ color: seccion.presentation ? 'var(--accent-deep)' : undefined }}
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 0.25,
+                  maxWidth: 128,
+                  px: 1,
+                  py: 0.25,
+                  border: 0,
+                  borderRadius: 999,
+                  font: 'inherit',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: busy ? 'default' : 'pointer',
+                  bgcolor: seccion.presentation ? 'var(--accent-soft)' : 'var(--neutral-soft)',
+                  color: seccion.presentation ? 'var(--accent-deep)' : 'var(--text)',
+                  '&:focus-visible': { outline: '2px solid var(--accent-deep)', outlineOffset: 2 },
+                }}
               >
-                <TuneRoundedIcon fontSize="small" />
-              </IconButton>
+                <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {comoSeEnsena(seccion)}
+                </Box>
+                <ExpandMoreRoundedIcon aria-hidden sx={{ fontSize: 16, flexShrink: 0 }} />
+              </Box>
+
+              {/* El ojo: una casilla de verdad («Mostrar: Ofertas») con cara de ojo. */}
+              <Checkbox
+                size="small"
+                checked={seccion.enabled}
+                disabled={busy}
+                onChange={(event) => onEncender(seccion.id, event.target.checked)}
+                icon={<VisibilityOffOutlinedIcon fontSize="small" />}
+                checkedIcon={<VisibilityOutlinedIcon fontSize="small" />}
+                inputProps={{ 'aria-label': `${t('settings.design.home.enabled')}: ${nombre}` }}
+                sx={{ p: 0.5, color: 'var(--muted)', '&.Mui-checked': { color: 'var(--accent-deep)' } }}
+              />
+
+              <Stack direction="row" className="eb-flechas">
               <IconButton
                 type="button"
                 size="small"
@@ -492,6 +489,7 @@ function ListaOrdenable({
               >
                 <ArrowDownwardRoundedIcon fontSize="small" />
               </IconButton>
+              </Stack>
             </Stack>
           </Stack>
         )
@@ -503,13 +501,36 @@ function ListaOrdenable({
         <SectionPresentationPopover
           open
           anchorEl={afinando.anchor}
-          onClose={() => setAfinando(null)}
+          onClose={() => {
+            setAfinando(null)
+            onEnfocar?.(null, '')
+          }}
           sectionId={afinando.id}
           sectionName={t(NOMBRE[afinando.id])}
           preset={preset}
           style={style}
           presentation={secciones.find((s) => s.id === afinando.id)?.presentation}
           busy={busy}
+          // Resumen v2 · El tope de productos vive en el panel: la fila solo lo DICE.
+          extra={
+            SECTIONS_WITH_MAX_ITEMS.has(afinando.id) ? (
+              <TextField
+                size="small"
+                type="number"
+                fullWidth
+                label={t('settings.design.home.maxItems')}
+                disabled={busy}
+                value={secciones.find((s) => s.id === afinando.id)?.maxItems ?? ''}
+                onChange={(event) => onLimitar(afinando.id, event.target.value)}
+                inputProps={{
+                  min: MAX_ITEMS_LIMITS.min,
+                  max: MAX_ITEMS_LIMITS.max,
+                  'aria-label': `${t('settings.design.home.maxItems')}: ${t(NOMBRE[afinando.id])}`,
+                }}
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+            ) : null
+          }
           onChange={(clave, valor) => onPresentar(afinando.id, clave, valor)}
           onClear={() => {
             onDespersonalizar(afinando.id)

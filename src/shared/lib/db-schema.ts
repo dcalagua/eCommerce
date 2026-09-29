@@ -522,6 +522,10 @@ export const SET_DEFAULT_MY_CONSUMER_ADDRESS_RPC = 'set_default_my_consumer_addr
 // 20260913110000). Solo para PINTAR «cuenta comercial» o «comprando para»: la
 // misma cuenta que usa el motor de precios, sin un precio ni un id de lista.
 export const MY_COMMERCE_CONTEXT_RPC = 'my_commerce_context' satisfies FunctionName
+// «Ya comprado» (Resumen v2, migración 20260926140000): ids de producto que la
+// cuenta de empresa EFECTIVA ya pidió en esta tienda. Solo ids; la cuenta sale
+// del token, nunca de un parámetro.
+export const MY_PURCHASED_PRODUCTS_RPC = 'my_purchased_products_for_slug' satisfies FunctionName
 // Cuenta B2B efectiva y selector multi-cuenta (N01, migración 20260913130000).
 // El navegador PIDE comprar para una de sus cuentas; el servidor valida vínculo,
 // estado y sociedad antes de guardar. `my_effective_business_account_for_slug`
@@ -652,6 +656,12 @@ export const CATALOG_SEARCH_PUBLIC_RPC = 'catalog_search_for_slug'
  * «lo más vendido».
  */
 export const STORE_BEST_SELLERS_PUBLIC_RPC = 'store_best_sellers_for_slug'
+/**
+ * Lámina 31 · Las escalas PÚBLICAS de precio por cantidad de un producto, con
+ * la misma regla que cobra el carrito a un comprador anónimo. Solo listas de
+ * tienda o del canal público: las de segmento o cliente son privadas.
+ */
+export const PRODUCT_PRICE_TIERS_PUBLIC_RPC = 'product_price_tiers_for_slug'
 export const CATALOG_SUGGEST_PUBLIC_RPC = 'catalog_suggest_for_slug'
 export const CONTENT_PREVIEW_RPC = 'content_preview'
 export const CATALOG_SEARCH_RPC = 'catalog_search'
@@ -830,3 +840,14 @@ export const FULFILLMENT_WEBHOOK_FUNCTION = 'fulfillment-webhook'
 // que el nombre del despliegue viva en un sitio.
 export const API_FUNCTION = 'api'
 export const INTEGRATION_WORKER_FUNCTION = 'integration-worker'
+
+// Centro de vigilancia: los hallazgos y el silencio del equipo.
+export const WATCH_FINDINGS_RPC = 'watch_findings'
+export const WATCH_DISMISS_RPC = 'watch_dismiss'
+export const WATCH_RESTORE_RPC = 'watch_restore'
+export const WATCH_ASSISTANT_FUNCTION = 'watch-assistant'
+
+// Resumen v2: rendimiento de ventas por periodo. Sin `satisfies FunctionName`
+// hasta regenerar los tipos contra una base que ya tenga la migración
+// `20260926120000_dashboard_sales_trend.sql`.
+export const DASHBOARD_SALES_TREND_RPC = 'dashboard_sales_trend'

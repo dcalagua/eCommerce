@@ -45,6 +45,7 @@ export function BrandTrustStrip({
       // señalarla sin depender de cómo esté redactado hoy su título es lo que
       // hace comprobable esa regla (V3 · P07).
       data-brand-trust="true"
+      data-own-surface=""
       sx={{
         gap: 1.5,
         p: { xs: 2, md: 3 },

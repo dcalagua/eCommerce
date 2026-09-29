@@ -45,8 +45,9 @@ describe('el contrato creció donde tenía que crecer', () => {
     expect([...PRODUCT_CARD_VARIANTS]).toEqual(['comfortable', 'compact', 'editorial'])
   })
 
-  it('las familias tienen tres, con el mosaico', () => {
-    expect([...CATEGORY_VARIANTS]).toEqual(['tiles', 'pills', 'mosaic'])
+  it('las familias tienen el mosaico (y, desde V4, los círculos; desde V5, los iconos)', () => {
+    // La lista solo CRECE: V3 sumó `mosaic`, V4 `circles` y V5 `icons`.
+    expect([...CATEGORY_VARIANTS]).toEqual(['tiles', 'pills', 'mosaic', 'circles', 'icons'])
   })
 
   it('el encaje de la foto es una clave del contrato, no un valor cableado', () => {
@@ -172,7 +173,8 @@ describe('los cuatro temas tienen personalidad propia', () => {
   it('Catalog sigue siendo el productivo y Retail el denso', () => {
     expect(THEME_PRESETS.catalog).toMatchObject({
       headerVariant: 'compact',
-      categoryVariant: 'pills',
+      // Propuesta 29 · tarjetas con icono: las píldoras eran una línea diminuta.
+      categoryVariant: 'icons',
       contentWidth: 'xl',
     })
     expect(THEME_PRESETS.catalog.gridColumns.lg).toBe(6)

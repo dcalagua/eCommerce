@@ -54,6 +54,7 @@ export function BrandRow({
       // Destino del enlace «Marcas». `scroll-margin` por la cabecera pegajosa.
       id="marcas"
       aria-label={t('store.brands.title')}
+      data-own-surface=""
       sx={{
         gap: 1.25,
         // El alto real de la cabecera pegajosa, del tema. Estaba escrito a mano

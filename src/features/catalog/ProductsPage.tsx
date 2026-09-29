@@ -48,6 +48,7 @@ import { downloadCsv, productsToCsv } from './exportCsv'
 import { categoryDescendants, categoryTree } from './types'
 import type { ProductKind, ProductMaster, ProductStatus } from './types'
 import { CategoryPicker } from './CategoryPicker'
+import { BulkImagesAction } from './bulkImages/BulkImagesAction'
 import { CatalogImportAction } from './import/CatalogImportAction'
 import { useCategories } from './useCategories'
 import { useBrands } from './pim/hooks'
@@ -324,6 +325,11 @@ export function ProductsPage() {
               {t('common.export')}
             </Button>
             {canWrite && <CatalogImportAction kind="products" storeId={activeStore?.id ?? null} />}
+            {canWrite && (
+              <BulkImagesAction
+                scope={{ organizationId: tenant.organization_id, companyId: activeCompanyId, storeId }}
+              />
+            )}
             {canWrite && (
               <Button
                 variant="contained"

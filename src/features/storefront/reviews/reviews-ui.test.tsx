@@ -244,6 +244,8 @@ describe('el formulario', () => {
     renderFicha(fake)
 
     const seccion = await opiniones()
+    // Lámina 31: el formulario no viene abierto; se pide.
+    await user.click(await within(seccion).findByRole('button', { name: 'Escribir una opinión' }))
     await user.click(await within(seccion).findByRole('button', { name: 'Enviar opinión' }))
     expect(within(seccion).getByText('Elige de 1 a 5 estrellas.')).toBeInTheDocument()
     expect(within(seccion).getByText('Escribe entre 10 y 2000 caracteres, sin etiquetas.')).toBeInTheDocument()
@@ -260,6 +262,16 @@ describe('el formulario', () => {
     expect(enviados[0]?.p_review).toMatchObject({ rating: 4, body: 'Muy buena silla, recomendada.' })
     // Tras enviar, la propia pasa a «pendiente» con su compra verificada.
     expect(within(seccion).getByText('Pendiente de revisión')).toBeInTheDocument()
+  })
+
+  it('con sesión y sin reseña propia, invita a opinar sin abrir el formulario', async () => {
+    renderFicha(backend({ product_reviews_for_slug: () => pagina(), my_product_review: () => null }, true))
+
+    const seccion = await opiniones()
+    expect(await within(seccion).findByRole('button', { name: 'Escribir una opinión' })).toBeInTheDocument()
+    // Nada de 500 px de campos de entrada: ni estrellas ni caja de texto.
+    expect(within(seccion).queryByRole('button', { name: 'Enviar opinión' })).toBeNull()
+    expect(within(seccion).queryByLabelText(/¿Qué te pareció\?/)).toBeNull()
   })
 
   it('enseña la propia rechazada con su motivo, y ofrece actualizarla', async () => {
@@ -304,6 +316,7 @@ describe('el formulario', () => {
     )
 
     const seccion = await opiniones()
+    await user.click(await within(seccion).findByRole('button', { name: 'Escribir una opinión' }))
     fireEvent.click(await within(seccion).findByRole('radio', { name: '5 de 5 estrellas' }))
     await user.type(within(seccion).getByLabelText(/¿Qué te pareció\?/), 'La mejor silla que hay.')
     await user.click(within(seccion).getByRole('button', { name: 'Enviar opinión' }))

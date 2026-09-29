@@ -13,6 +13,7 @@ import type {
   ThemePreset,
 } from '@/features/storefront/theme/types'
 import { TS } from '@/theme/tokens'
+import type { ReactNode } from 'react'
 import { ETIQUETA_VALOR, HEREDAR } from './styleLabels'
 
 /**
@@ -58,6 +59,7 @@ export function SectionPresentationPopover({
   busy = false,
   onChange,
   onClear,
+  extra = null,
 }: {
   open: boolean
   anchorEl: HTMLElement | null
@@ -72,6 +74,8 @@ export function SectionPresentationPopover({
   /** `''` devuelve esa clave al tema. */
   onChange: (clave: 'variant' | 'surface' | 'width', valor: string) => void
   onClear: () => void
+  /** Resumen v2 · Lo que va antes de la composición (el tope de productos). */
+  extra?: ReactNode
 }) {
   const { t } = useI18n()
   const reglas = SECTION_PRESENTATION_RULES[sectionId]
@@ -162,6 +166,7 @@ export function SectionPresentationPopover({
           <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>{sectionName}</Typography>
         </Stack>
 
+        {extra}
         {campos.map((campo) => (
           <TextField
             key={campo.clave}
@@ -172,7 +177,9 @@ export function SectionPresentationPopover({
             disabled={busy}
             value={campo.guardado ?? HEREDAR}
             onChange={(evento) => onChange(campo.clave, evento.target.value)}
-            slotProps={{ inputLabel: { shrink: true } }}
+            // `displayEmpty`: sin él, MUI no pinta la opción de valor vacío y el
+                        // «Usar tema: …» salía EN BLANCO justo cuando se hereda.
+                        slotProps={{ inputLabel: { shrink: true }, select: { displayEmpty: true } }}
           >
             <MenuItem value={HEREDAR}>{heredado(campo.efectivo)}</MenuItem>
             {campo.valores.map((valor) => (

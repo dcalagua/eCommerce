@@ -327,6 +327,12 @@ class FakeQuery implements PromiseLike<QueryResult> {
         if (!column || !operator) return false
         const value = rest.join('.')
         const cell = row[column]
+        // `is.null` de PostgREST: lo usan los avisos que no son de ninguna
+        // tienda. Va ANTES del descarte de nulos, que es justo lo que busca.
+        if (operator === 'is') {
+          if (value === 'null') return cell === null || cell === undefined
+          return String(cell) === value
+        }
         if (cell === null || cell === undefined) return false
         if (operator === 'ilike') {
           const needle = value.replace(/^%|%$/g, '').toLowerCase()

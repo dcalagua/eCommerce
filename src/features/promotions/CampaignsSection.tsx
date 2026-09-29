@@ -17,7 +17,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
@@ -111,6 +111,21 @@ export function CampaignsSection() {
   )
 
   const list = promotions.data ?? []
+
+  /**
+   * La campaña recién creada, esperando a aparecer en la lista para abrirla
+   * en edición. Nace en borrador y la lista abre en «Vigentes»: sin cambiar a
+   * «Todas» desaparecía al guardarla.
+   */
+  const [recienCreada, setRecienCreada] = useState<string | null>(null)
+  useEffect(() => {
+    if (!recienCreada) return
+    const encontrada = promotions.data?.find((promotion) => promotion.id === recienCreada)
+    if (!encontrada) return
+    setEditing(encontrada)
+    setCreating(false)
+    setRecienCreada(null)
+  }, [recienCreada, promotions.data])
   const isEmpty = !promotions.isPending && !promotions.isError && list.length === 0
 
   async function run(action: () => Promise<unknown>, okKey: MessageKey) {
@@ -280,6 +295,12 @@ export function CampaignsSection() {
         onClose={() => {
           setCreating(false)
           setEditing(null)
+          setRecienCreada(null)
+        }}
+        onCreated={(id) => {
+          setTerm('')
+          setStatus('all')
+          setRecienCreada(id)
         }}
         onPause={(promotion) =>
           void run(

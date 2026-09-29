@@ -391,6 +391,33 @@ on conflict (id) do nothing;
 --
 -- La tarjeta se queda INACTIVA por lo mismo: en cuanto exista un adaptador de
 -- verdad, es encenderla y poner su `provider_code`.
+--
+-- Desde 20260928100000 toda tienda nace con medios de pago, metodos de entrega,
+-- zonas y tarifas por defecto (trigger `stores_default_payment_delivery`). La
+-- botica trae los suyos, con uuid fijo: se retiran los sembrados, que chocarian
+-- por codigo. Solo se borran filas SIN uuid fijo de demo y con codigo de los
+-- valores por defecto, asi que sobre una base ya cargada no borra nada.
+delete from public.delivery_rates
+ where store_id = 'd0000000-0000-4000-8000-0000000000a1'
+   and id::text not like 'd0000000-0000-4000-8000-f%'
+   and delivery_method_id in (
+         select m.id from public.delivery_methods m
+          where m.store_id = 'd0000000-0000-4000-8000-0000000000a1'
+            and m.id::text not like 'd0000000-0000-4000-8000-f%'
+            and m.code in ('estandar', 'express', 'agencia', 'reparto-propio', 'recojo'));
+delete from public.delivery_methods
+ where store_id = 'd0000000-0000-4000-8000-0000000000a1'
+   and id::text not like 'd0000000-0000-4000-8000-f%'
+   and code in ('estandar', 'express', 'agencia', 'reparto-propio', 'recojo');
+delete from public.delivery_zones
+ where store_id = 'd0000000-0000-4000-8000-0000000000a1'
+   and id::text not like 'd0000000-0000-4000-8000-f%'
+   and code in ('lima-callao', 'resto-peru');
+delete from public.payment_methods
+ where store_id = 'd0000000-0000-4000-8000-0000000000a1'
+   and id::text not like 'd0000000-0000-4000-8000-f%'
+   and code in ('transferencia', 'yape', 'plin', 'contraentrega', 'credito');
+
 insert into public.payment_methods (id, organization_id, company_id, store_id, code, kind, display_name, provider_code, capture_mode, is_active, position, instructions) values
   ('d0000000-0000-4000-8000-f00000000401','d0000000-0000-4000-8000-000000000001','d0000000-0000-4000-8000-0000000000c1','d0000000-0000-4000-8000-0000000000a1','tarjeta','card','Tarjeta de credito o debito',null,'manual',false,40,'Pendiente de conectar la pasarela'),
   ('d0000000-0000-4000-8000-f00000000402','d0000000-0000-4000-8000-000000000001','d0000000-0000-4000-8000-0000000000c1','d0000000-0000-4000-8000-0000000000a1','yape','wallet','Yape',null,'manual',true,10,'Yapea al 999 111 222 (MiQuimica) y envia la captura al confirmar el pedido.'),

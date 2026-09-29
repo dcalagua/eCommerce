@@ -112,21 +112,38 @@ export function OffersFeaturedBand({
     </Box>
   )
 
+  /**
+   * Cuántas ofertas caben, y en cuántas columnas.
+   *
+   * Compartiendo banda con lo destacado caben tres. Con el ancho ENTERO —lo
+   * destacado va aparte, o no hay— caben cinco.
+   *
+   * Las columnas NO bajan de cuatro con el ancho entero. Antes eran «tantas
+   * como ofertas»: con una sola, una columna de 1.344 px, y como la foto es
+   * cuadrada la tarjeta medía casi 1.500 px de alto (le pasó a `ferromax` con
+   * una manguera). Un hueco a la derecha se lee como «hay pocas ofertas»; una
+   * tarjeta gigante se lee como una tienda rota.
+   */
+  // Partida, las tarjetas comparten fila con el panel del mensaje: no es ancho entero.
+  const anchoEntero = !ambas && !partida
+  const tope = anchoEntero ? 5 : 3
+  const visibles = offers.slice(0, tope)
+  const columnas = anchoEntero ? Math.max(visibles.length, 4) : Math.min(Math.max(visibles.length, 2), 3)
+
   const tarjetasRebajadas = (
     <Box
+      data-offer-columns={columnas}
       sx={{
         display: 'grid',
         gap: 1.25,
-        // Tantas columnas como ofertas haya, hasta tres. Con una sola, un
-        // `repeat(3)` fijo dejaba dos huecos a su derecha — y con la banda ya
-        // en una columna, esos huecos ocupaban media pantalla.
         gridTemplateColumns: {
-          xs: offers.length === 1 ? '1fr' : 'repeat(2, minmax(0, 1fr))',
-          sm: `repeat(${Math.min(offers.length, 3)}, minmax(0, 1fr))`,
+          xs: 'repeat(2, minmax(0, 1fr))',
+          sm: `repeat(${Math.min(columnas, 3)}, minmax(0, 1fr))`,
+          md: `repeat(${columnas}, minmax(0, 1fr))`,
         },
       }}
     >
-      {offers.slice(0, 3).map((product) => (
+      {visibles.map((product) => (
         <OfferCard
           key={product.product_id}
           product={product}
@@ -155,18 +172,69 @@ export function OffersFeaturedBand({
       />
     )
 
+    /**
+     * Partida, el mensaje es un PANEL y no un título suelto.
+     *
+     * Era la cabecera y un enlace en media pantalla: un título pequeño flotando
+     * sobre blanco al lado de tres tarjetas. Ahora la columna es una pieza con
+     * el degradado de la tienda y lo único que se puede afirmar sin inventar: el
+     * mayor descuento REAL de lo rebajado y cuántos productos lo están.
+     */
+    const mayor = offers.reduce((max, product) => Math.max(max, discountPercent(product) ?? 0), 0)
+    const panel = (
+      <Stack
+        data-offers-panel="true"
+        sx={{
+          height: '100%',
+          minHeight: { md: 260 },
+          justifyContent: 'center',
+          gap: 1.25,
+          p: { xs: 2.5, md: 4 },
+          borderRadius: 'var(--sf-radius)',
+          background: 'var(--hero-grad)',
+          color: '#FFFFFF',
+        }}
+      >
+        <Typography
+          component="h2"
+          sx={{ fontSize: TS.label, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.9 }}
+        >
+          {t('store.row.weekDeals')}
+        </Typography>
+        {mayor > 0 ? (
+          <Typography sx={{ fontSize: { xs: 40, md: 56 }, fontWeight: 900, lineHeight: 1, letterSpacing: '-0.03em' }}>
+            {t('store.offers.upTo').replace('{n}', String(mayor))}
+          </Typography>
+        ) : null}
+        <Typography sx={{ fontSize: TS.body, opacity: 0.92, maxWidth: 320 }}>
+          {t('store.offers.count').replace('{n}', String(offers.length))}
+        </Typography>
+        <Box
+          component={Link}
+          to={`/s/${storeSlug}?ver=todo&oferta=1`}
+          sx={{
+            alignSelf: 'flex-start',
+            mt: 0.5,
+            px: 2,
+            py: 1,
+            borderRadius: 'var(--sf-pill)',
+            bgcolor: '#FFFFFF',
+            color: 'var(--accent-deep)',
+            fontSize: TS.body,
+            fontWeight: 800,
+            textDecoration: 'none',
+            '&:hover': { opacity: 0.92 },
+          }}
+        >
+          {t('store.offers.seeAll')} →
+        </Box>
+      </Stack>
+    )
+
     return (
       <Stack component="section" aria-label={t('store.row.weekDeals')} sx={{ gap: 1.25 }}>
         {partida ? (
-          <StoreSplitBand
-            copy={
-              <>
-                {cabecera}
-                <Box>{verLoRebajado}</Box>
-              </>
-            }
-            content={tarjetasRebajadas}
-          />
+          <StoreSplitBand copy={panel} content={tarjetasRebajadas} />
         ) : (
           <>
             {cabecera}
@@ -277,8 +345,8 @@ function OfferCard({
             zIndex: 1,
             px: 0.875,
             borderRadius: 'var(--sf-pill)',
-            bgcolor: 'var(--accent-deep)',
-            color: '#FFFFFF',
+            bgcolor: 'var(--sf-discount-bg, var(--accent-deep))',
+            color: 'var(--sf-discount-fg, #fff)',
             fontSize: TS.label,
             fontWeight: 800,
             lineHeight: 1.8,

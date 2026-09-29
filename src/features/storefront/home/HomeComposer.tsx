@@ -1,4 +1,5 @@
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
+import { isStorePreview } from '../previewBridge'
 import { StoreSectionFrame } from '../components/StoreSectionFrame'
 import { resolveSectionPresentation } from '../theme/presentation'
 import type { HomeLayout } from '../theme/types'
@@ -46,6 +47,7 @@ import type { HomeSectionData } from './types'
  * tiendas—: trece envoltorios que no hacen nada son trece nodos de más.
  */
 export function HomeComposer({ layout, data }: { layout: HomeLayout; data: HomeSectionData }) {
+  const [enVistaPrevia] = useState(isStorePreview)
   return (
     <>
       {layout.sections.map((section) => {
@@ -74,9 +76,19 @@ export function HomeComposer({ layout, data }: { layout: HomeLayout; data: HomeS
 
         return (
           <Fragment key={section.id}>
-            <StoreSectionFrame presentation={presentacion} sectionId={section.id}>
-              {contenido}
-            </StoreSectionFrame>
+            {enVistaPrevia ? (
+              // Resumen v2 · Solo en la vista previa del taller: una caja a la
+              // que el taller puede rodear con «Editando · …».
+              <div data-preview-section={section.id}>
+                <StoreSectionFrame presentation={presentacion} sectionId={section.id}>
+                  {contenido}
+                </StoreSectionFrame>
+              </div>
+            ) : (
+              <StoreSectionFrame presentation={presentacion} sectionId={section.id}>
+                {contenido}
+              </StoreSectionFrame>
+            )}
           </Fragment>
         )
       })}

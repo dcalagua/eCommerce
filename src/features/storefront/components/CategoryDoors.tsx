@@ -1,3 +1,4 @@
+import PercentRoundedIcon from '@mui/icons-material/PercentRounded'
 import { Box, Stack, Typography } from '@mui/material'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -79,8 +80,15 @@ export interface CategoryDoorItem {
   readonly imageAlt?: string | null
 }
 
-/** Cuantas puertas de categoria caben a lo ancho sin apretarse. */
-const PUERTAS_A_LO_ANCHO = 4
+/**
+ * Cuantas puertas de categoria caben a lo ancho sin apretarse.
+ *
+ * Seis y no cuatro: con cinco familias —lo normal en una tienda que empieza—
+ * la fila entraba en carrusel, giraba y enseñaba la primera puerta partida por
+ * el borde. A 1270 px caben seis puertas de más de 190 px, que siguen siendo
+ * puertas.
+ */
+const PUERTAS_A_LO_ANCHO = 6
 
 /**
  * Las puertas de categoría, sin cabecera.
@@ -121,7 +129,7 @@ export function CategoryDoorGrid({
             gridTemplateColumns: {
               xs: 'repeat(2, minmax(0, 1fr))',
               sm: 'repeat(3, minmax(0, 1fr))',
-              md: `repeat(${Math.min(Math.max(categories.length, 2), 4)}, minmax(0, 1fr))`,
+              md: `repeat(${Math.min(Math.max(categories.length, 2), PUERTAS_A_LO_ANCHO)}, minmax(0, 1fr))`,
             },
           }}
         >
@@ -287,6 +295,9 @@ export function CategoryDoor({
         display: 'flex',
         flexDirection: 'column',
         gap: 1,
+        // Llena su celda: en el mosaico la celda es un flex y, sin esto, la
+        // puerta se encogía a su texto y dejaba media rejilla en blanco.
+        width: '100%',
         p: { xs: 2, md: 2.5 },
         minHeight: { xs: 132, md: 168 },
         borderRadius: 'var(--sf-radius)',
@@ -438,5 +449,191 @@ export function CategoryDoor({
         </Box>
       </Stack>
     </Box>
+  )
+}
+
+/**
+ * Las familias en CÍRCULOS (Resumen v2 · contrato V4).
+ *
+ * Una fila de discos con la foto de la familia —o su icono sobre el tinte del
+ * acento— y el nombre debajo. Es la forma de explorar que no compite con la
+ * oferta: ocupa una franja baja, se recorre de un vistazo y cada disco es una
+ * puerta al catálogo filtrado, igual que las otras tres composiciones.
+ *
+ * Todos los discos van en el color del TENANT y no en tintes por nombre: seis
+ * colores por hash al lado del acento de la marca competían con él.
+ */
+export function CategoryCircles({
+  categories,
+  storeSlug,
+  ariaLabel,
+}: {
+  categories: readonly CategoryDoorItem[]
+  storeSlug: string
+  ariaLabel?: string
+}) {
+  if (categories.length === 0) return null
+
+  return (
+    <ScrollRow component="nav" ariaLabel={ariaLabel} gap={2}>
+      {categories.map((category) => {
+        const Icono = iconoDe(category.name)
+        return (
+          <Stack
+            key={category.category_id}
+            component={Link}
+            to={`/s/${storeSlug}?c=${encodeURIComponent(category.slug)}`}
+            data-category-circle="true"
+            sx={{
+              flexShrink: 0,
+              width: { xs: 88, md: 112 },
+              alignItems: 'center',
+              gap: 1,
+              textDecoration: 'none',
+              color: 'var(--text)',
+              '&:focus-visible': { outline: 'none' },
+              '&:focus-visible .eb-circle': { outline: '2px solid var(--accent)', outlineOffset: 3 },
+              '@media (hover: hover)': {
+                '&:hover .eb-circle': { transform: 'translateY(-3px)', boxShadow: 'var(--sf-shadow-hover)' },
+              },
+              '@media (prefers-reduced-motion: reduce)': {
+                '&:hover .eb-circle': { transform: 'none' },
+              },
+            }}
+          >
+            <Box
+              className="eb-circle"
+              sx={{
+                width: { xs: 76, md: 96 },
+                height: { xs: 76, md: 96 },
+                borderRadius: '50%',
+                overflow: 'hidden',
+                display: 'grid',
+                placeItems: 'center',
+                bgcolor: 'var(--card)',
+                border: '1px solid var(--sf-line)',
+                boxShadow: 'var(--sf-shadow)',
+                transition: 'transform .18s ease, box-shadow .18s ease',
+              }}
+            >
+              {category.imageUrl ? (
+                <Box
+                  component="img"
+                  src={category.imageUrl}
+                  alt=""
+                  loading="lazy"
+                  sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                <Box
+                  aria-hidden
+                  sx={{
+                    width: '72%',
+                    height: '72%',
+                    borderRadius: '50%',
+                    display: 'grid',
+                    placeItems: 'center',
+                    bgcolor: 'var(--accent-soft)',
+                    color: 'var(--accent-deep)',
+                  }}
+                >
+                  <Icono sx={{ fontSize: { xs: 26, md: 32 } }} />
+                </Box>
+              )}
+            </Box>
+            <Typography
+              sx={{ fontSize: TS.label + 1, fontWeight: 700, textAlign: 'center', lineHeight: 1.25 }}
+            >
+              {category.name}
+            </Typography>
+          </Stack>
+        )
+      })}
+    </ScrollRow>
+  )
+}
+/**
+ * Las familias en TARJETAS CON ICONO (Resumen v2 · contrato V5, `icons`).
+ *
+ * Los «accesos» de Retail: una fila de tarjetas bajas, cada una con el icono de
+ * su familia en el color de la tienda y el nombre debajo. Se recorren de un
+ * vistazo y no compiten con la portada.
+ *
+ * Al final, si hay algo rebajado, una tarjeta INVERTIDA que lleva a todas las
+ * ofertas: no es una familia —por eso no lleva tinte ni icono de familia— sino
+ * un corte transversal, y el fondo invertido lo dice sin inventar un color.
+ */
+export function CategoryIconCards({
+  categories,
+  storeSlug,
+  ariaLabel,
+  offersHref,
+}: {
+  categories: readonly CategoryDoorItem[]
+  storeSlug: string
+  ariaLabel?: string
+  /** Destino de la tarjeta final de ofertas. Sin él, no se pinta. */
+  offersHref?: string | null
+}) {
+  const { t } = useI18n()
+  if (categories.length === 0) return null
+
+  const tarjeta = {
+    // En escritorio crecen hasta llenar la fila: con cinco familias, 136 px
+    // fijos dejaban un tercio de la sección en blanco a la derecha.
+    flex: { xs: '0 0 auto', md: '1 1 136px' },
+    width: { xs: 112, md: 'auto' },
+    maxWidth: { md: 240 },
+    minHeight: { xs: 88, md: 96 },
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 1,
+    px: 1,
+    py: 1.5,
+    borderRadius: 'var(--sf-radius)',
+    border: '1px solid var(--sf-line)',
+    boxShadow: 'var(--sf-shadow)',
+    textDecoration: 'none',
+    transition: 'transform .18s ease, box-shadow .18s ease',
+    '@media (hover: hover)': { '&:hover': { transform: 'translateY(-2px)', boxShadow: 'var(--sf-shadow-hover)' } },
+    '@media (prefers-reduced-motion: reduce)': { transition: 'none', '&:hover': { transform: 'none' } },
+    '&:focus-visible': { outline: '2px solid var(--accent)', outlineOffset: 2 },
+  } as const
+
+  return (
+    <ScrollRow component="nav" ariaLabel={ariaLabel} gap={1.5}>
+      {categories.map((category) => {
+        const Icono = iconoDe(category.name)
+        return (
+          <Box
+            key={category.category_id}
+            component={Link}
+            to={`/s/${storeSlug}?c=${encodeURIComponent(category.slug)}`}
+            data-category-icon-card="true"
+            sx={{ ...tarjeta, bgcolor: 'var(--card)', color: 'var(--text)' }}
+          >
+            <Icono aria-hidden sx={{ fontSize: 28, color: 'var(--accent-deep)' }} />
+            <Typography sx={{ fontSize: TS.label + 1, fontWeight: 700, textAlign: 'center', lineHeight: 1.25 }}>
+              {category.name}
+            </Typography>
+          </Box>
+        )
+      })}
+      {offersHref ? (
+        <Box
+          component={Link}
+          to={offersHref}
+          data-category-icon-card="offers"
+          sx={{ ...tarjeta, bgcolor: 'var(--text)', color: 'var(--card)', borderColor: 'transparent' }}
+        >
+          <PercentRoundedIcon aria-hidden sx={{ fontSize: 28 }} />
+          <Typography sx={{ fontSize: TS.label + 1, fontWeight: 800, textAlign: 'center', lineHeight: 1.25 }}>
+            {t('store.nav.offers')}
+          </Typography>
+        </Box>
+      ) : null}
+    </ScrollRow>
   )
 }

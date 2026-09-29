@@ -73,10 +73,12 @@ export function ProductMedia({
         position: 'relative',
         aspectRatio: ratio,
         width: '100%',
-        // Con foto, el gris de siempre: solo se ve el instante anterior a que
-        // la imagen pinte. Sin foto, el tinte del producto.
+        // Con foto, el color de la TARJETA. Era gris, y con `contain` una foto
+        // que no es cuadrada dejaba dos franjas grises arriba y abajo: parecía
+        // una imagen rota. Las fotos de catálogo vienen sobre blanco, así que el
+        // sobrante se funde con la tarjeta. Sin foto, el tinte del producto.
         ...(url
-          ? { bgcolor: 'var(--neutral-soft)', color: 'var(--muted)' }
+          ? { bgcolor: 'var(--card)', color: 'var(--muted)' }
           : {
               background: `linear-gradient(150deg, ${tinte.bg} 0%, color-mix(in srgb, ${tinte.fg} 10%, ${tinte.bg}) 100%)`,
               color: tinte.fg,

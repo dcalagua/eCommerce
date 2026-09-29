@@ -92,8 +92,9 @@ describe('la lista de tokens es CERRADA', () => {
     expect(message).toMatch(/violates check/i)
   })
 
-  it('acepta los cinco tokens de tipografia que la app sabe pintar', async () => {
-    for (const font of ['dm-sans', 'system', 'grotesk', 'serif', 'mono']) {
+  it('acepta los tokens de tipografia que la app sabe pintar', async () => {
+    // Resumen v2 (20260927100000) suma las tres que proponen los temas.
+    for (const font of ['dm-sans', 'plus-jakarta', 'system', 'grotesk', 'serif', 'mono', 'archivo', 'fraunces', 'plex', 'jost']) {
       await svc(`update public.store_settings set font_family = $1 where store_id = $2`, [
         font, storeA,
       ])
@@ -150,9 +151,17 @@ describe('lo premium exige el addon; lo que no lo es, no', () => {
     expect(row.business_display_name).toBe('Comercial Norte S.A.C.')
   })
 
+  // Resumen v2 · la tipografia es TEMATIZACION desde 20260927100000: cada tema
+  // propone una y cualquier tienda la cambia, como el acento o el radio.
+  it('sin `content.white_label`, la tipografia tambien se edita', async () => {
+    await entitle([])
+    await asAdmin(`update public.store_settings set font_family = 'fraunces' where store_id = $1`, [storeA])
+    expect((await settings()).font_family).toBe('fraunces')
+    await svc(`update public.store_settings set font_family = null where store_id = $1`, [storeA])
+  })
+
   it.each([
     ['la marca blanca', `white_label = true`],
-    ['la tipografia', `font_family = 'serif'`],
     ['el remitente del correo', `email_from_name = 'Comercial Norte'`],
     ['el correo de respuesta', `email_reply_to = 'hola@norte.test'`],
   ])('sin el addon, %s se rechaza', async (_label, assignment) => {
@@ -186,6 +195,7 @@ describe('lo premium exige el addon; lo que no lo es, no', () => {
 
 describe('retirar el addon APAGA su efecto', () => {
   it('quitar `content.white_label` deja los tokens premium en nulo y conserva el resto', async () => {
+    // La tipografia ya no es premium: sobrevive a la baja, como el acento.
     await entitle([WHITE_LABEL])
     await asAdmin(
       `update public.store_settings
@@ -200,7 +210,7 @@ describe('retirar el addon APAGA su efecto', () => {
 
     const row = await settings()
     expect(row.white_label).toBe(false)
-    expect(row.font_family).toBeNull()
+    expect(row.font_family).toBe('mono')
     expect(row.email_from_name).toBeNull()
     expect(row.email_reply_to).toBeNull()
     expect(row.custom_domain_status).toBe('none')
@@ -234,10 +244,10 @@ describe('retirar el addon APAGA su efecto', () => {
 
   it('y al BORRAR la fila del entitlement', async () => {
     await entitle([WHITE_LABEL])
-    await asAdmin(`update public.store_settings set font_family = 'grotesk' where store_id = $1`, [
+    await asAdmin(`update public.store_settings set email_from_name = 'Norte' where store_id = $1`, [
       storeA,
     ])
-    expect((await settings()).font_family).toBe('grotesk')
+    expect((await settings()).email_from_name).toBe('Norte')
 
     await svc(
       `delete from public.tenant_entitlements
@@ -245,17 +255,19 @@ describe('retirar el addon APAGA su efecto', () => {
       [TENANT_A.organizationId, WHITE_LABEL],
     )
 
-    expect((await settings()).font_family).toBeNull()
+    expect((await settings()).email_from_name).toBeNull()
   })
 
   it('apagar el addon de A no toca la tienda de B', async () => {
     await entitle([WHITE_LABEL])
     await entitle([WHITE_LABEL], TENANT_B)
-    await svc(`update public.store_settings set font_family = 'serif' where store_id = $1`, [storeB])
+    // Con un token que SIGUE siendo premium: la tipografía ya sobrevive a la
+    // baja en cualquier tienda y no probaría el aislamiento.
+    await svc(`update public.store_settings set email_from_name = 'Tienda B' where store_id = $1`, [storeB])
 
     await entitle([])
 
-    expect((await settings(storeB)).font_family).toBe('serif')
+    expect((await settings(storeB)).email_from_name).toBe('Tienda B')
     await entitle([], TENANT_B)
   })
 })

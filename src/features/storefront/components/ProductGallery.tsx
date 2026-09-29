@@ -1,5 +1,7 @@
+import FavoriteBorderRoundedIcon from '@mui/icons-material/FavoriteBorderRounded'
+import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded'
 import ZoomInRoundedIcon from '@mui/icons-material/ZoomInRounded'
-import { Box, ButtonBase, Stack, Typography } from '@mui/material'
+import { Box, ButtonBase, IconButton, Stack } from '@mui/material'
 import { useEffect, useState } from 'react'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { R, TS } from '@/theme/tokens'
@@ -33,7 +35,19 @@ import { ProductMedia } from './ProductMedia'
  * tienda recién creada, y entonces no hay nada que ampliar: sin fotos la
  * imagen no es pulsable.
  */
-export function ProductGallery({ images, alt }: { images: GalleryImage[]; alt: string }) {
+export function ProductGallery({
+  images,
+  alt,
+  badge = null,
+  favorite,
+}: {
+  images: GalleryImage[]
+  alt: string
+  /** «−20 %» sobre la foto, arriba a la izquierda (lámina 31). */
+  badge?: string | null
+  /** El corazón sobre la foto: se guarda donde se decide. */
+  favorite?: { active: boolean; onToggle: () => void; label: string }
+}) {
   const { t } = useI18n()
   const [index, setIndex] = useState(0)
   const [zoomed, setZoomed] = useState<number | null>(null)
@@ -56,9 +70,19 @@ export function ProductGallery({ images, alt }: { images: GalleryImage[]; alt: s
     setZoomed(next)
   }
 
+  /**
+   * Lámina 31 · Las miniaturas a la IZQUIERDA en escritorio y debajo en el
+   * teléfono. En columna no le roban alto a la foto, que es lo que se ha venido
+   * a mirar; en el teléfono no hay ancho para una columna.
+   */
   return (
-    <Stack sx={{ gap: 1 }} aria-label={t('store.product.gallery')} component="section">
-      <Box sx={{ position: 'relative' }}>
+    <Stack
+      direction={{ xs: 'column', md: 'row' }}
+      sx={{ gap: { xs: 1, md: 1.5 }, alignItems: 'flex-start' }}
+      aria-label={t('store.product.gallery')}
+      component="section"
+    >
+      <Box sx={{ position: 'relative', flex: 1, minWidth: 0, width: '100%', order: { md: 1 } }}>
         <ButtonBase
           onClick={() => hasImages && open(position)}
           disabled={!hasImages}
@@ -66,49 +90,106 @@ export function ProductGallery({ images, alt }: { images: GalleryImage[]; alt: s
           sx={{
             width: '100%',
             display: 'block',
-            borderRadius: `${R.md}px`,
+            borderRadius: 'var(--sf-radius, 16px)',
             overflow: 'hidden',
+            bgcolor: 'var(--sf-media-bg, #fff)',
             cursor: hasImages ? 'zoom-in' : 'default',
           }}
         >
-          {/* `contain`: aquí se ha venido a mirar el producto, y recortarlo
-              esconde justo lo que se quería ver. */}
+          {/* La proporción y el encaje los pone el TEMA (`--sf-pdp-ratio`,
+              `--sf-pdp-fit`): cuadrada y entera por defecto —aquí se ha venido
+              a mirar el producto, y recortarlo esconde lo que se quería ver—;
+              vertical y a sangre en Premium, donde la foto es el argumento.
+              Antes era 4:3 fija, y un producto alto quedaba flotando en un
+              lienzo blanco. */}
           <ProductMedia
             url={current?.url ?? null}
             alt={current?.alt ?? alt}
-            ratio="4 / 3"
+            ratio="var(--sf-pdp-ratio, 1 / 1)"
             sizePx={40}
             eager
-            fit="contain"
+            fit="var(--sf-pdp-fit, contain)"
           />
         </ButtonBase>
 
+        {badge ? (
+          <Box
+            data-gallery-badge
+            sx={{
+              position: 'absolute',
+              top: 14,
+              left: 14,
+              px: 1.25,
+              py: 0.5,
+              borderRadius: 'var(--sf-pill)',
+              bgcolor: 'var(--accent-deep)',
+              color: '#FFFFFF',
+              fontSize: 13,
+              fontWeight: 800,
+              pointerEvents: 'none',
+            }}
+          >
+            {badge}
+          </Box>
+        ) : null}
+
+        {favorite ? (
+          // Hermano del botón de la foto, no hijo: un botón dentro de otro no
+          // es HTML válido y el lector de pantalla no sabría cuál pulsa.
+          <IconButton
+            aria-pressed={favorite.active}
+            aria-label={favorite.label}
+            onClick={favorite.onToggle}
+            sx={{
+              position: 'absolute',
+              top: 12,
+              right: 12,
+              width: 40,
+              height: 40,
+              bgcolor: 'var(--card)',
+              color: favorite.active ? 'var(--sf-heart, var(--accent-deep))' : 'var(--text)',
+              boxShadow: 'var(--sf-shadow)',
+              '&:hover': { bgcolor: 'var(--card)' },
+            }}
+          >
+            {favorite.active ? <FavoriteRoundedIcon sx={{ fontSize: 20 }} /> : <FavoriteBorderRoundedIcon sx={{ fontSize: 20 }} />}
+          </IconButton>
+        ) : null}
+
         {hasImages && (
-          // Decorativa: el botón que la contiene ya se anuncia con su
-          // `aria-label`, y anunciarla otra vez sería leer dos veces lo mismo.
+          // Cuántas fotos hay y que se amplía, en una pastilla sobre la foto.
+          // Antes era una línea suelta debajo que se leía como pie de foto.
           <Box
             aria-hidden
             sx={{
               position: 'absolute',
-              right: 8,
-              bottom: 8,
-              display: 'grid',
-              placeItems: 'center',
-              width: 32,
-              height: 32,
-              borderRadius: '999px',
-              color: '#FFFFFF',
-              bgcolor: 'rgba(0,0,0,0.45)',
+              left: 12,
+              bottom: 12,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 0.75,
+              px: 1.25,
+              py: 0.5,
+              borderRadius: 'var(--sf-pill)',
+              bgcolor: 'rgba(255,255,255,.9)',
+              color: 'var(--text)',
+              fontSize: TS.label,
+              fontWeight: 600,
               pointerEvents: 'none',
             }}
           >
-            <ZoomInRoundedIcon sx={{ fontSize: 20 }} />
+            <ZoomInRoundedIcon sx={{ fontSize: 16 }} />
+            {images.length > 1 ? `${position + 1} / ${images.length} · ` : ''}
+            {t('store.product.zoomHint')}
           </Box>
         )}
       </Box>
 
       {images.length > 1 && (
-        <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
+        <Stack
+          direction={{ xs: 'row', md: 'column' }}
+          sx={{ gap: 1, flexWrap: { xs: 'wrap', md: 'nowrap' }, flexShrink: 0, order: { md: 0 } }}
+        >
           {images.map((image, slot) => (
             <ButtonBase
               key={image.image_id}
@@ -116,11 +197,12 @@ export function ProductGallery({ images, alt }: { images: GalleryImage[]; alt: s
               aria-label={`${t('store.product.image')} ${slot + 1}`}
               aria-current={slot === position}
               sx={{
-                width: 64,
+                width: { xs: 64, md: 76 },
                 borderRadius: `${R.md}px`,
                 overflow: 'hidden',
                 border: '2px solid',
-                borderColor: slot === position ? 'var(--accent)' : 'var(--border)',
+                borderColor: slot === position ? 'var(--text)' : 'var(--border)',
+                bgcolor: 'var(--sf-media-bg, #fff)',
               }}
             >
               {/* `alt=""`: la miniatura es decorativa, el botón ya se anuncia
@@ -130,12 +212,6 @@ export function ProductGallery({ images, alt }: { images: GalleryImage[]; alt: s
             </ButtonBase>
           ))}
         </Stack>
-      )}
-
-      {hasImages && (
-        <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
-          {t('store.product.zoomHint')}
-        </Typography>
       )}
 
       <ImageLightbox

@@ -155,6 +155,19 @@ beforeAll(async () => {
       tenant.organizationId, tenant.companyId, tenant.slug, tenant.slug,
       tenant.adminEmail, tenant.ownerId, storeSlug,
     ])
+
+    // El alta deja el PAQUETE DE ARRANQUE (20260926100000): módulos, IA y cuota.
+    // Aquí se retira porque estos casos prueban el candado de módulo, y un
+    // candado no se puede probar sobre una sociedad que ya lo tiene todo.
+    await svc(
+      `with entitlements as (
+         delete from public.tenant_entitlements where organization_id = $1 returning 1
+       ), contexto as (
+         delete from public.tenant_platform_context where organization_id = $1 returning 1
+       )
+       delete from public.ai_quotas where organization_id = $1`,
+      [tenant.organizationId],
+    )
   }
   await svc(`update public.stores set status = 'active'`)
   await svc(`update public.store_settings set tax_rate = 0`)
@@ -1165,6 +1178,28 @@ describe('transicion desde products.stock', () => {
       `select count(*)::int as n from public.inventory_movements where reference_kind = 'import'`,
     )
     expect(Number(count?.n)).toBe(2)
+  })
+
+  it('cargarla en un SEGUNDO almacen se niega: la existencia de la ficha es una sola', async () => {
+    await asMember(TENANT_A, (tx) =>
+      tx
+        .query(`select public.seed_inventory_from_catalog($1, $2)`, [lima, storeA])
+        .then((r) => r.rows as Row[]),
+    )
+    const message = await expectFailure(() =>
+      asMember(TENANT_A, (tx) =>
+        tx
+          .query(`select public.seed_inventory_from_catalog($1, $2)`, [arequipa, storeA])
+          .then((r) => r.rows as Row[]),
+      ),
+    )
+    expect(message).toMatch(/INVENTARIO_YA_MIGRADO/)
+
+    const [count] = await svc(
+      `select count(*)::int as n from public.inventory_movements where reference_kind = 'import'`,
+    )
+    expect(Number(count?.n)).toBe(2)
+    expect(Number((await level(lima, jabon)).on_hand)).toBe(100)
   })
 
   it('la columna del catalogo sigue existiendo y no la toca nadie al vender por almacen', async () => {

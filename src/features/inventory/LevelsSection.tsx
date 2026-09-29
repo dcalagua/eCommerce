@@ -26,6 +26,7 @@ import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { FormDrawer } from '@/shared/ui/FormDrawer'
 import { SearchField } from '@/shared/ui/SearchField'
+import { EntityPicker, type PickerOption } from '@/shared/ui/EntityPicker'
 import { TableSkeleton } from '@/shared/ui/TableSkeleton'
 import { useDebouncedValue } from '@/shared/lib/useDebouncedValue'
 import { useFeedback } from '@/shared/ui/feedback-context'
@@ -268,15 +269,28 @@ function MovementDrawer({
   const productId = watch('product_id')
   const kind = watch('kind')
   const variants = useStockVariants(productId || null)
-  const selected = useMemo(
-    () => (products.data ?? []).find((p) => p.id === productId),
-    [products.data, productId],
+  /**
+   * Lo elegido se guarda aparte y no se busca en los resultados: al seguir
+   * escribiendo, la búsqueda cambia y el producto elegido puede no estar en
+   * ella, y el campo de variante desaparecía aunque la elección siguiera viva.
+   */
+  const [picked, setPicked] = useState<(PickerOption & { kind: string }) | null>(null)
+  const productOptions = useMemo(
+    () =>
+      (products.data ?? []).map((product) => ({
+        id: product.id,
+        primary: product.name,
+        secondary: product.sku,
+        kind: product.kind,
+      })),
+    [products.data],
   )
 
   useEffect(() => {
     if (!open) return
     setServerError(null)
     setProductTerm('')
+    setPicked(null)
     reset({
       warehouse_id: '',
       product_id: '',
@@ -334,32 +348,33 @@ function MovementDrawer({
           ))}
         </TextField>
 
-        <SearchField
-          value={productTerm}
-          onChange={setProductTerm}
-          placeholder={t('inventory.levels.searchProduct')}
-        />
-
-        <TextField
-          select
+        {/* Un solo campo: se escribe SKU o nombre y se elige de la lista. Abre
+            con los primeros por SKU, sin tener que escribir nada. */}
+        <EntityPicker
           label={t('inventory.field.product')}
-          value={productId}
-          onChange={(event) => {
-            setValue('product_id', event.target.value)
+          placeholder={t('inventory.levels.searchProduct')}
+          term={productTerm}
+          onTermChange={setProductTerm}
+          options={productOptions}
+          value={picked}
+          onPick={(option) => {
+            setPicked(productOptions.find((p) => p.id === option.id) ?? null)
+            setValue('product_id', option.id, { shouldValidate: true })
             setValue('variant_id', null)
           }}
+          onClear={() => {
+            setPicked(null)
+            setValue('product_id', '')
+            setValue('variant_id', null)
+          }}
+          loading={products.isFetching}
           error={Boolean(errors.product_id)}
           helperText={errors.product_id ? t(errors.product_id.message as MessageKey) : undefined}
-          fullWidth
-        >
-          {(products.data ?? []).map((product) => (
-            <MenuItem key={product.id} value={product.id}>
-              {product.sku} · {product.name}
-            </MenuItem>
-          ))}
-        </TextField>
+          minChars={0}
+          limit={30}
+        />
 
-        {selected?.kind === 'variant' && (
+        {picked?.kind === 'variant' && (
           <TextField
             select
             label={t('inventory.field.variant')}

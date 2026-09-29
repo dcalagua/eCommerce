@@ -105,3 +105,75 @@ describe('la tarjeta sigue siendo navegable', () => {
     expect(onQuickView).toHaveBeenCalledWith('silla-roble')
   })
 })
+
+describe('comprador empresa', () => {
+  it('elige cuántas unidades antes de agregar, y la tarjeta vuelve a uno', async () => {
+    // Quien repone 24 cajas no pulsa 24 veces: pone la cifra y agrega.
+    const user = userEvent.setup()
+    renderWithProviders(
+      <CartProvider storeId={STORE} storeSlug="casa-nordica" currency="PEN">
+        <ProductCard product={product()} storeSlug="casa-nordica" b2b />
+      </CartProvider>,
+    )
+
+    const mas = await screen.findByRole('button', { name: 'Sumar una unidad' })
+    await user.click(mas)
+    await user.click(mas)
+    expect(screen.getByLabelText('Cantidad')).toHaveTextContent('3')
+
+    await user.click(screen.getByRole('button', { name: /^Agregar al carrito: Silla de roble/ }))
+
+    const guardado = JSON.parse(localStorage.getItem(`ebim.ecommerce.cart.v1:${STORE}`) ?? '{}')
+    expect(guardado.lines?.[0]?.quantity).toBe(3)
+    expect(await screen.findByLabelText('Cantidad')).toHaveTextContent('1')
+  })
+
+  it('el consumidor no ve el selector: agrega de a uno como en cualquier tienda', async () => {
+    render(product())
+    await screen.findByRole('button', { name: /^Agregar al carrito/ })
+    expect(screen.queryByRole('button', { name: 'Sumar una unidad' })).not.toBeInTheDocument()
+  })
+})
+
+describe('SKU y «ya comprado» (Resumen v2)', () => {
+  it('el comprador empresa ve el SKU y si su empresa ya lo compró', async () => {
+    renderWithProviders(
+      <CartProvider storeId={STORE} storeSlug="casa-nordica" currency="PEN">
+        <ProductCard product={product({ sku: 'SIL-ROB-01' })} storeSlug="casa-nordica" b2b purchased />
+      </CartProvider>,
+    )
+    // Resumen v2 · el código solo, en monoespaciada, como en el diseño.
+    expect(await screen.findByText('SIL-ROB-01')).toBeInTheDocument()
+    expect(screen.getByText('Ya comprado')).toBeInTheDocument()
+  })
+
+  it('el consumidor no ve ni el SKU ni la marca de compra', async () => {
+    renderWithProviders(
+      <CartProvider storeId={STORE} storeSlug="casa-nordica" currency="PEN">
+        <ProductCard product={product({ sku: 'SIL-ROB-01' })} storeSlug="casa-nordica" purchased />
+      </CartProvider>,
+    )
+    await screen.findByRole('button', { name: /^Agregar al carrito/ })
+    expect(screen.queryByText('SIL-ROB-01')).not.toBeInTheDocument()
+    expect(screen.queryByText('Ya comprado')).not.toBeInTheDocument()
+  })
+})
+
+describe('ranking de ventas', () => {
+  it('en una fila de más vendidos, la tarjeta lleva su puesto dicho en texto', async () => {
+    renderWithProviders(
+      <CartProvider storeId={STORE} storeSlug="casa-nordica" currency="PEN">
+        <ProductCard product={product()} storeSlug="casa-nordica" rank={1} />
+      </CartProvider>,
+    )
+    expect(await screen.findByText('#1')).toBeInTheDocument()
+    // Para un lector de pantalla, el puesto con palabras y no un «#1» suelto.
+    expect(screen.getByText('Puesto 1 en ventas')).toBeInTheDocument()
+  })
+
+  it('sin ranking no hay insignia', async () => {
+    render(product())
+    await screen.findByRole('button', { name: /^Agregar al carrito/ })
+    expect(screen.queryByText('#1')).not.toBeInTheDocument()
+  })
+})

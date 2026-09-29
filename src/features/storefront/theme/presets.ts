@@ -4,6 +4,7 @@ import {
   normalizeThemePreset,
   sanitizeHomeLayout as sanitizeHomeLayoutCon,
 } from './normalize'
+import type { BrandFont } from '@/theme/tokens'
 import type { HomeLayout, HomeSectionConfig, StorefrontStyle, ThemeDefinition, ThemePreset } from './types'
 
 export {
@@ -39,9 +40,9 @@ export * from './types'
  * Una prenda se mira; un envase se identifica.
  *
  * **catalog** es para quien tiene miles de referencias y sabe lo que busca:
- * ancho extra, cinco columnas, tarjeta compacta y las categorías en píldoras,
- * que ocupan una línea en vez de una parrilla. La cabecera se reduce para que
- * la primera pantalla sea catálogo y no navegación.
+ * ancho extra, cinco columnas, tarjeta compacta y las familias en tarjetas con
+ * icono. La cabecera se reduce para que la primera pantalla sea catálogo y no
+ * navegación, y la portada pone la oferta y las campañas en una sola fila.
  */
 export const THEME_PRESETS: Readonly<Record<ThemePreset, ThemeDefinition>> = {
   universal: {
@@ -79,9 +80,16 @@ export const THEME_PRESETS: Readonly<Record<ThemePreset, ThemeDefinition>> = {
   retail: {
     id: 'retail',
     headerVariant: 'standard',
-    heroVariant: 'product',
+    /**
+     * Resumen v2 · Retail estrena la portada en MOSAICO: la oferta principal
+     * y, al lado, la siguiente y la puerta a todas las ofertas. Es la tienda
+     * que vive de rebajar, y el hueco central de la portada de producto era
+     * espacio de venta perdido. Sin ofertas cae a la portada de siempre.
+     */
+    heroVariant: 'bento',
     productCardVariant: 'compact',
-    categoryVariant: 'tiles',
+    // Resumen v2 · Accesos: tarjetas con icono y la puerta a las ofertas.
+    categoryVariant: 'icons',
     contentWidth: 'lg',
     imageRatio: 'square',
     sectionSpacing: 'compact',
@@ -134,7 +142,9 @@ export const THEME_PRESETS: Readonly<Record<ThemePreset, ThemeDefinition>> = {
     headerVariant: 'compact',
     heroVariant: 'product',
     productCardVariant: 'compact',
-    categoryVariant: 'pills',
+    // Propuesta 29 · Tarjetas con icono en vez de píldoras: con cinco familias
+    // las píldoras eran una línea diminuta que no parecía una puerta.
+    categoryVariant: 'icons',
     contentWidth: 'xl',
     imageRatio: 'square',
     sectionSpacing: 'compact',
@@ -146,6 +156,33 @@ export const THEME_PRESETS: Readonly<Record<ThemePreset, ThemeDefinition>> = {
 } as const
 
 export const DEFAULT_THEME_PRESET: ThemePreset = 'universal'
+
+/**
+ * Resumen v2 · La tipografía que PROPONE cada tema.
+ *
+ * El color es de la tienda, siempre: un tema cambia formas y propone una
+ * letra. Es una propuesta y no una imposición — la tienda elige otra en
+ * Configuración (`store_settings.font_family`) y la suya manda. Con la
+ * columna en nulo, la vitrina usa la de aquí.
+ *
+ *  · universal → Plus Jakarta Sans, la de siempre: quien nunca eligió tema no
+ *    ve cambiar su tienda.
+ *  · retail    → Archivo: grotesca de cifras firmes, para comparar precios.
+ *  · premium   → Jost: geométrica fina, de boutique (elegida por el operador
+ *    el 2026-09-27 en lugar de Fraunces, que se leía peor en textos chicos).
+ *  · catalog   → IBM Plex Sans: técnica y compacta, para SKU y listas.
+ */
+export const THEME_FONTS: Readonly<Record<ThemePreset, BrandFont>> = {
+  universal: 'plus-jakarta',
+  retail: 'archivo',
+  premium: 'jost',
+  catalog: 'plex',
+}
+
+/** La fuente que se pinta: la de la tienda si eligió; si no, la del tema. */
+export function resolveStoreFont(fontFamily: string | null | undefined, themePreset: unknown): string {
+  return fontFamily || THEME_FONTS[normalizeThemePreset(themePreset)]
+}
 
 /**
  * El orden heredado de la Home.

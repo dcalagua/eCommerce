@@ -1,7 +1,10 @@
-import { Box, Breadcrumbs, Button, Card, Link as MuiLink, Stack, Typography } from '@mui/material'
+import BoltRoundedIcon from '@mui/icons-material/BoltRounded'
+import { Box, Breadcrumbs, Button, Card, Link as MuiLink, Skeleton, Stack, Typography } from '@mui/material'
 import { visuallyHidden } from '@mui/utils'
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
+import { useSessionContext } from '@/features/auth/session-context'
+import { useCommerceContext } from './commerce/context'
 import { lazyPage } from '@/app/lazyPage'
 import type { SearchQuery, SearchSort } from '@/domain'
 import type { PublicProduct } from './types'
@@ -13,11 +16,16 @@ import { EmptyState, ErrorState } from '@/shared/ui/states'
 import { TS } from '@/theme/tokens'
 import { BackToTop } from './components/BackToTop'
 import { CategoryBar } from './components/CategoryBar'
-import { ProductGrid, ProductGridSkeleton } from './components/ProductGrid'
+import { CatalogOffersBand } from './components/CatalogOffersBand'
+import { CatalogViewToggle } from './components/CatalogViewToggle'
+import { ProductGrid, ProductGridSkeleton, type CatalogView } from './components/ProductGrid'
 import { useFavorites } from './useFavorites'
 import { StoreLandingSkeleton } from './components/StoreLandingSkeleton'
 import { HomeComposer } from './home/HomeComposer'
 import type { HomeSectionData } from './home/types'
+import { campanaQueTerminaAntes } from './feria'
+import { resolveSectionPresentation } from './theme/presentation'
+import type { HomeSectionConfig, HomeSectionId } from './theme/types'
 import { useStorefrontTheme } from './theme/useStorefrontTheme'
 
 /**
@@ -112,7 +120,14 @@ const PAGE_SIZE = 24
  */
 const POCOS_RESULTADOS = 3
 
-const SORTS: readonly SearchSort[] = ['relevance', 'price-asc', 'price-desc', 'name', 'recent']
+/**
+ * Por debajo de esto «Todo el catálogo» no lleva fila de más vendidos ni de
+ * novedades: el catálogo entero cabe en la primera pantalla de la rejilla y la
+ * fila enseñaría los mismos productos dos veces.
+ */
+const FILA_CATALOGO_MIN = 12
+
+const SORTS: readonly SearchSort[] =['relevance', 'price-asc', 'price-desc', 'name', 'recent', 'discount']
 
 /**
  * Portada de la vitrina: contenido administrable + catálogo buscable.
@@ -142,11 +157,25 @@ export function StoreHomePage() {
   // El tema trae el ORDEN de la portada. No trae los datos ni decide qué hay:
   // eso sigue resolviéndose aquí abajo, con las mismas consultas de siempre.
   const tema = useStorefrontTheme()
-  const { pathname } = useLocation()
+  const { pathname, hash } = useLocation()
   const [params, setParams] = useSearchParams()
 
   const categorySlug = params.get('c')
-  const brand = params.get('b')
+  /**
+   * Marcas elegidas (`?b=tecnofarma,quilab`): varias a la vez, sumadas con «o».
+   * `brand` sigue siendo la primera, para quien solo necesita saber si hay una.
+   */
+  const brandsParam = params.get('b') ?? ''
+  const brands = useMemo(
+    () => brandsParam.split(',').map((code) => code.trim()).filter(Boolean),
+    [brandsParam],
+  )
+  const brand = brands[0] ?? null
+  /** Rango de precio (`?pmin=&pmax=`), como texto: es dinero. */
+  const precioValido = (valor: string | null) =>
+    valor !== null && valor.trim() !== '' && Number.isFinite(Number(valor)) && Number(valor) >= 0 ? valor : null
+  const priceMin = precioValido(params.get('pmin'))
+  const priceMax = precioValido(params.get('pmax'))
   const availability = params.get('d') === '1' ? 'in-stock' : 'all'
   /**
    * Solo lo rebajado (`?oferta=1`).
@@ -206,19 +235,27 @@ export function StoreHomePage() {
       term: search,
       filters: {
         category: categorySlug,
-        brands: brand ? [brand] : [],
+        brands,
         availability,
         ...(soloOferta ? { discounted: true } : {}),
+        ...(priceMin ? { priceMin } : {}),
+        ...(priceMax ? { priceMax } : {}),
       },
       sort,
       limit: PAGE_SIZE,
       offset: 0,
     }),
-    [search, categorySlug, brand, availability, soloOferta, sort],
+    [search, categorySlug, brands, availability, soloOferta, sort, priceMin, priceMax],
   )
 
   const filtered = Boolean(
-    search.trim() || categorySlug || brand || availability === 'in-stock' || soloOferta,
+    search.trim() ||
+      categorySlug ||
+      brands.length > 0 ||
+      availability === 'in-stock' ||
+      soloOferta ||
+      priceMin ||
+      priceMax,
   )
 
   /**
@@ -239,17 +276,42 @@ export function StoreHomePage() {
   const results = useCatalogPages(storeSlug, query)
 
   /**
-   * Novedades, solo para la portada.
+   * Las marcas SIN el filtro de marcas, para poder elegir varias.
    *
-   * `storeSlug` a `undefined` en el catálogo es lo que APAGA esta consulta: la
-   * fila no se pinta ahí, y pedir doce productos que nadie va a ver es pagar
-   * una llamada por cada filtro que alguien toca.
+   * El buscador cuenta las facetas sobre el resultado ya filtrado: con
+   * «Tecnofarma» marcada, la lista de marcas volvía con una sola y no había
+   * forma de sumar «Quilab». Esta consulta pide lo mismo quitando las marcas y
+   * solo UNA fila —lo que interesa son sus facetas—. Solo corre cuando hay
+   * marcas marcadas; sin ellas, las facetas de la consulta principal ya valen.
+   */
+  const universoMarcasQuery: SearchQuery = useMemo(
+    () => ({ ...query, filters: { ...query.filters, brands: [] }, limit: 1 }),
+    [query],
+  )
+  const universoMarcas = useCatalogPages(
+    catalogo && brands.length > 0 ? storeSlug : undefined,
+    universoMarcasQuery,
+  )
+
+  /**
+   * «Todo el catálogo» sin ningún filtro: la única vista de catálogo que lleva
+   * una fila encima de la rejilla (lo más vendido o, si no hay ventas, las
+   * novedades). Con un filtro puesto, quien mira ya dijo qué busca.
+   */
+  const vistaTodo = catalogo && !filtered
+
+  /**
+   * Novedades, para la portada y para «Todo el catálogo».
+   *
+   * `storeSlug` a `undefined` en el resto del catálogo es lo que APAGA esta
+   * consulta: la fila no se pinta ahí, y pedir doce productos que nadie va a
+   * ver es pagar una llamada por cada filtro que alguien toca.
    */
   const novedadesQuery: SearchQuery = useMemo(
     () => ({ term: '', filters: {}, sort: 'recent', limit: 12, offset: 0 }),
     [],
   )
-  const novedadesPages = useCatalogPages(catalogo ? undefined : storeSlug, novedadesQuery)
+  const novedadesPages = useCatalogPages(catalogo && !vistaTodo ? undefined : storeSlug, novedadesQuery)
   const novedades = useMemo(
     () =>
       (novedadesPages.data?.pages[0]?.items ?? []).map((hit) =>
@@ -331,7 +393,7 @@ export function StoreHomePage() {
    * Apagada en el catálogo, como el resto de consultas de portada: pedir un
    * agregado de pedidos para una fila que no se pinta es pagar por nada.
    */
-  const masVendidos = useBestSellers(catalogo ? undefined : storeSlug, store.store_id)
+  const masVendidos = useBestSellers(catalogo && !vistaTodo ? undefined : storeSlug, store.store_id)
   const masVendidoThumbs = useSignedThumbnails(
     (masVendidos.data ?? []).map((producto) => producto.primary_image_path),
   )
@@ -390,6 +452,22 @@ export function StoreHomePage() {
   const heroReserva =
     tema.style.heroVariant === 'statement' || cmsTraePortada ? 0 : 4
 
+  /**
+   * Resumen v2 · Cuántas ofertas se reservan para la banda: tres para la de
+   * siempre, seis para la relámpago (`flash`), que las pinta en una fila de
+   * seis. Se resuelve con la MISMA regla que usa el compositor.
+   */
+  const ofertasEnBanda =
+    resolveSectionPresentation({
+      id: 'offers',
+      presentation: tema.layout.sections.find((section) => section.id === 'offers')?.presentation,
+      preset: tema.preset,
+      categoryVariant: tema.style.categoryVariant,
+      productCardVariant: tema.style.productCardVariant,
+    }).variant === 'flash'
+      ? 6
+      : 3
+
   const secciones = useMemo(() => {
     const usados = new Set<string>()
     const tomar = (lista: readonly PublicProduct[], cuantos: number) => {
@@ -421,12 +499,12 @@ export function StoreHomePage() {
      */
     return {
       hero: tomar(rebajados, heroReserva),
-      ofertas: tomar(rebajados, 3),
+      ofertas: tomar(rebajados, ofertasEnBanda),
       masVendido: tomar(ranking.length > 0 ? ranking : products, 12),
       destacados: tomar(products, 12),
       novedades: tomar(novedades, 12),
     }
-  }, [ofertasPorMedia, products, novedades, heroReserva, masVendidos.data])
+  }, [ofertasPorMedia, products, novedades, heroReserva, ofertasEnBanda, masVendidos.data])
 
 
   /**
@@ -452,7 +530,18 @@ export function StoreHomePage() {
   const assetsPromos = useSignedStoreAssets(promosVigentes.map((promo) => promo.imageUrl))
   const first = pages[0]
   const total = first?.total ?? 0
-  const brandFacets = first?.facets.brands ?? []
+  /**
+   * ¿Lo que hay en pantalla es la respuesta a lo que se está mirando AHORA?
+   *
+   * Con `keepPreviousData`, al cambiar de categoría o de filtro la consulta
+   * sigue devolviendo la página anterior (`isPlaceholderData`) hasta que llega
+   * la nueva. Esa página vieja no se pinta: se pinta el esqueleto.
+   */
+  const cargandoResultados = results.isPending || results.isPlaceholderData
+  const resultadosListos = results.isSuccess && !results.isPlaceholderData
+  const brandFacets =
+    (brands.length > 0 ? universoMarcas.data?.pages[0]?.facets.brands : first?.facets.brands) ?? []
+  const priceBounds = first?.facets.price ?? null
 
   /**
    * Opciones del panel lateral.
@@ -486,6 +575,8 @@ export function StoreHomePage() {
    * hijas al entrar en una, hermanas dentro de una hoja. Con treinta categorías
    * planas la barra era un muro; con el árbol es una ruta.
    */
+  /** ¿El buscador contó por familia? Sin cuentas, ni se enseñan ni se oculta nada. */
+  const hayCuentasDeFamilia = (first?.facets.categories.length ?? 0) > 0
   const categoryOptions = categoryBarItems(categories.data ?? [], categorySlug).map(
     (category) => ({
       code: category.slug,
@@ -516,7 +607,8 @@ export function StoreHomePage() {
    * El ORDEN manda el de las facetas (por tamaño): es el que ya tenía la fila,
    * y reordenar por nombre habría enterrado las marcas que de verdad se compran.
    */
-  const brandsConLogo = usePublicBrands(catalogo ? null : store.store_id)
+  const directorioMarcas = catalogo && hash === '#marcas'
+  const brandsConLogo = usePublicBrands(catalogo && !directorioMarcas ? null : store.store_id)
   const logosPorMarca = useMemo(() => {
     const mapa = new Map<string, string | null>()
     for (const marca of brandsConLogo.data ?? []) mapa.set(marca.code, marca.logo_url)
@@ -529,12 +621,26 @@ export function StoreHomePage() {
     useMemo(() => [...logosPorMarca.values()], [logosPorMarca]),
   )
 
+  // Con `#marcas` el directorio llega después de la rejilla: se baja a él en
+  // cuanto existe, sin animación si el comprador pidió menos movimiento.
+  const hayMarcas = brandFacets.length > 0
+  useEffect(() => {
+    if (!directorioMarcas || !hayMarcas) return
+    const marco = requestAnimationFrame(() => {
+      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+      document.getElementById('marcas')?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' })
+    })
+    return () => cancelAnimationFrame(marco)
+  }, [directorioMarcas, hayMarcas])
+
   const brandOptions = brandFacets.map((facet) => {
     const ref = logosPorMarca.get(facet.code) ?? null
     return {
       code: facet.code,
       name: facet.name,
-      count: brand ? null : facet.count,
+      // Con marcas marcadas el recuento viene de la consulta SIN ellas: es
+      // cierto para cada marca y se puede enseñar.
+      count: facet.count,
       // Una `https://` externa se pinta tal cual; una ruta, ya firmada. Si la
       // firma no ha llegado todavía, `null` y monograma: mejor el respaldo que
       // un hueco que se rellena a medio segundo.
@@ -589,7 +695,7 @@ export function StoreHomePage() {
    * mismo de otra forma, y devolver el scroll al principio haría perder el
    * sitio a quien solo quería reordenar.
    */
-  const listaVista = `${catalogo}|${categorySlug ?? ''}|${brand ?? ''}|${search.trim()}`
+  const listaVista = `${catalogo}|${categorySlug ?? ''}|${brands.join(',')}|${search.trim()}`
   const listaPrevia = useRef(listaVista)
   useEffect(() => {
     if (listaPrevia.current === listaVista) return
@@ -602,6 +708,22 @@ export function StoreHomePage() {
       // un error: es que no hay a dónde.
     }
   }, [listaVista])
+
+  // Resumen v2 · Quién compra: el comprador empresa ve «Pedido rápido por SKU».
+  const { status: estadoSesion } = useSessionContext()
+  const { audience: audiencia } = useCommerceContext(storeSlug, estadoSesion === 'authenticated')
+  /** El símbolo de la moneda de la tienda, para las cajas de precio del panel. */
+  const simboloMoneda = useMemo(() => {
+    try {
+      return (
+        new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'es-PE', { style: 'currency', currency: store.currency })
+          .formatToParts(0)
+          .find((parte) => parte.type === 'currency')?.value ?? ''
+      )
+    } catch {
+      return ''
+    }
+  }, [locale, store.currency])
 
   const resultCount = new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'es-PE').format(total)
   const cuentaDeResultados = `${resultCount} ${
@@ -635,11 +757,24 @@ export function StoreHomePage() {
         onRemove: () => update('c', null),
       })
     }
-    if (brand) {
+    for (const code of brands) {
       puestos.push({
-        id: `b:${brand}`,
-        label: brandOptions.find((opcion) => opcion.code === brand)?.name ?? brand,
-        onRemove: () => update('b', null),
+        id: `b:${code}`,
+        label: brandOptions.find((opcion) => opcion.code === code)?.name ?? code,
+        onRemove: () => update('b', brands.filter((otra) => otra !== code).join(',') || null),
+      })
+    }
+    if (priceMin || priceMax) {
+      puestos.push({
+        id: 'precio',
+        label: `${priceMin ?? '0'} – ${priceMax ?? '∞'}`,
+        onRemove: () =>
+          setParams((prev) => {
+            const next = new URLSearchParams(prev)
+            next.delete('pmin')
+            next.delete('pmax')
+            return next
+          }),
       })
     }
     if (availability === 'in-stock') {
@@ -655,7 +790,10 @@ export function StoreHomePage() {
     return puestos
   }, [
     categorySlug,
-    brand,
+    brands,
+    priceMin,
+    priceMax,
+    setParams,
     availability,
     soloOferta,
     trail,
@@ -679,8 +817,44 @@ export function StoreHomePage() {
   const tituloCatalogo = search.trim()
     ? `${t('store.catalog.resultsFor')} "${search.trim()}"`
     : (trail.at(-1)?.name ??
-       brandOptions.find((b) => b.code === brand)?.name ??
+       (brands.length === 1 ? brandOptions.find((b) => b.code === brand)?.name : undefined) ??
+       (directorioMarcas ? t('store.catalog.brandsTitle') : undefined) ??
        t('store.catalog.all'))
+
+  /** «Ofertas» es una página con nombre, no un interruptor sobre el catálogo. */
+  const paginaOfertas = soloOferta && !search.trim() && !categorySlug && brands.length === 0
+
+  /** Marca o desmarca una marca en la lista de la URL. */
+  const alternarMarca = (code: string) =>
+    update(
+      'b',
+      (brands.includes(code) ? brands.filter((otra) => otra !== code) : [...brands, code]).join(',') || null,
+    )
+
+  /** Pone o quita el rango de precio de una vez: dos `update` serían dos navegaciones. */
+  const ponerPrecio = (min: string | null, max: string | null) =>
+    setParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (min) next.set('pmin', min)
+      else next.delete('pmin')
+      if (max) next.set('pmax', max)
+      else next.delete('pmax')
+      return next
+    })
+
+  /**
+   * Rejilla o lista (`?vista=lista`). Sin elegir, lo decide el tema: Catálogo
+   * abre en lista, que es como compra quien tiene miles de referencias.
+   */
+  const vistaParam = params.get('vista')
+  const vista: CatalogView =
+    vistaParam === 'lista'
+      ? 'list'
+      : vistaParam === 'rejilla'
+        ? 'grid'
+        : tema.preset === 'catalog'
+          ? 'list'
+          : 'grid'
 
   // Metadatos de la portada. Cuelgan de la tienda YA RESUELTA, así que el
   // nombre, el banner y el contacto que se le enseñan a un buscador son los del
@@ -713,19 +887,44 @@ export function StoreHomePage() {
    *
    * En el catálogo NO se pinta la portada: quien pidió «Ver todo» tendría que
    * volver a pasar por delante de todo lo que ya vio para llegar a la rejilla.
-   * Sobrevive una sola sección, `promotions`, y sobrevive porque ya lo hacía:
-   * una campaña vigente es igual de relevante mirando la rejilla que mirando la
-   * portada, y su sitio es arriba en las dos.
    *
-   * Se conserva la entrada TAL Y COMO la configuró el comercio —con su tope si
-   * lo tiene— en vez de fabricar una: si alguien apagó las promociones, están
-   * apagadas en los dos sitios.
+   * Hasta ahora sobrevivía `promotions`, y la franja de la campaña empujaba la
+   * rejilla hacia abajo con algo que la portada ya había contado. Ahora, solo
+   * en «Todo el catálogo» sin filtros, va UNA fila de producto: lo más vendido
+   * si hay ventas reales; si no, las novedades; si no hay ninguna, nada. Con un
+   * filtro puesto no va ninguna: quien filtra ya dijo qué busca.
    */
+  const hayMasVendidos = (masVendidos.data?.length ?? 0) > 0
+  const filaDelCatalogo: HomeSectionId | null =
+    // El directorio de marcas (`#marcas`) es su propia página: sin fila encima.
+    // Y con un catálogo que cabe en una pantalla la fila solo repetiría la
+    // rejilla que va justo debajo.
+    !vistaTodo || directorioMarcas || total <= FILA_CATALOGO_MIN || masVendidos.isPending
+      ? null
+      : hayMasVendidos
+        ? 'best-sellers'
+        : novedades.length > 0
+          ? 'new-arrivals'
+          : null
   const layoutAPintar = useMemo(() => {
     if (!catalogo && !cargandoPortada) return tema.layout
-    const promociones = tema.layout.sections.find((seccion) => seccion.id === 'promotions')
-    return { version: 1 as const, sections: promociones ? [promociones] : [] }
-  }, [catalogo, cargandoPortada, tema.layout])
+    const secciones: HomeSectionConfig[] = []
+    // Mientras la portada carga se conserva la franja de campañas, como antes:
+    // es lo único que no depende de las consultas que se están esperando.
+    if (!catalogo) {
+      const promociones = tema.layout.sections.find((seccion) => seccion.id === 'promotions')
+      if (promociones) secciones.push(promociones)
+    }
+    if (filaDelCatalogo) secciones.push({ id: filaDelCatalogo, enabled: true, maxItems: 6 })
+    // «Marcas» de la cabecera lleva a `?ver=todo#marcas`. Sin esto el ancla no
+    // tenía destino en el catálogo y el enlace no hacía nada: el directorio de
+    // marcas se pinta aquí, con la configuración del comercio si la tiene.
+    if (catalogo && hash === '#marcas') {
+      const marcas = tema.layout.sections.find((seccion) => seccion.id === 'brands')
+      secciones.push({ ...(marcas ?? { id: 'brands' as const }), enabled: true })
+    }
+    return { version: 1 as const, sections: secciones }
+  }, [catalogo, cargandoPortada, tema.layout, hash, filaDelCatalogo])
 
   /**
    * ¿Lo destacado se pinta como sección propia?
@@ -826,8 +1025,10 @@ export function StoreHomePage() {
     hero: secciones.hero,
     ofertas: secciones.ofertas,
     destacados: secciones.destacados,
-    novedades: secciones.novedades,
-    masVendido: secciones.masVendido,
+    // En «Todo el catálogo» la fila no compite con otras secciones por los
+    // productos: va la lista entera, sin el reparto de la portada.
+    novedades: vistaTodo ? novedades : secciones.novedades,
+    masVendido: vistaTodo && hayMasVendidos ? (masVendidos.data ?? []) : secciones.masVendido,
     /**
      * ¿La fila de más vendidos está SOSTENIDA por ventas?
      *
@@ -858,6 +1059,7 @@ export function StoreHomePage() {
     brandSelected: brand,
     // Lo mismo que ya sabe la banda de ofertas, sin preguntarlo dos veces.
     hayOfertas: ofertas.length > 0,
+    ofertasTotal: ofertasPages.data?.pages[0]?.total ?? ofertas.length,
     favorites: favorites.ids,
     cargandoNovedades: novedadesPages.isPending,
     // El ranking cuenta como carga de esta fila: sin esto, la portada enseñaría
@@ -873,7 +1075,9 @@ export function StoreHomePage() {
   }
 
   return (
-    <Stack sx={{ gap: { xs: 2, md: 3 } }}>
+    // El aire entre secciones es el del tema (`sectionSpacing`): compacto en
+    // Retail y Catálogo, amplio en Premium. Universal resuelve 16/24, lo de antes.
+    <Stack sx={{ gap: { xs: 'var(--sf-section-gap, 16px)', md: 'var(--sf-section-gap-md, 24px)' } }}>
       {cargandoPortada ? <StoreLandingSkeleton /> : null}
 
       {/* El `<h1>` cuando la cubierta es un carrusel.
@@ -913,12 +1117,24 @@ export function StoreHomePage() {
           >
             {`\u2190 ${t('store.catalog.back')}`}
           </MuiLink>
-          <Typography
-            component="h1"
-            sx={{ fontSize: { xs: 22, md: 26 }, fontWeight: 800, letterSpacing: '-0.02em' }}
-          >
-            {tituloCatalogo}
-          </Typography>
+          {paginaOfertas ? (
+            <CatalogOffersBand
+              // Resumen v2 · La campaña que antes termina, con su reloj REAL.
+              kicker={campanaQueTerminaAntes(promotions.data ?? [])?.name ?? null}
+              endsAt={campanaQueTerminaAntes(promotions.data ?? [])?.endsAt ?? null}
+              title={t('store.catalog.offersTitle')}
+              subtitle={
+                results.isSuccess ? t('store.catalog.offersSubtitle').replace('{n}', resultCount) : null
+              }
+            />
+          ) : (
+            <Typography
+              component="h1"
+              sx={{ fontSize: { xs: 22, md: 26 }, fontWeight: 800, letterSpacing: '-0.02em' }}
+            >
+              {tituloCatalogo}
+            </Typography>
+          )}
       </Stack>
       ) : null}
 
@@ -980,9 +1196,31 @@ export function StoreHomePage() {
             </Breadcrumbs>
           )}
           <CategoryBar
-            categories={categoryBarItems(categories.data ?? [], categorySlug)}
+            categories={categoryBarItems(categories.data ?? [], categorySlug).filter(
+              // Resumen v2 · Con las cantidades a la vista, una familia a CERO es
+              // una puerta a una lista vacía: no se enseña (como en el diseño).
+              (category) => categorySlug !== null || !hayCuentasDeFamilia || (categoryCounts.get(category.slug) ?? 1) > 0,
+            )}
             selected={categorySlug}
             onSelect={(slug) => update('c', slug)}
+            // Las cantidades solo sin familia elegida: con una puesta, las
+            // facetas de las demás salen a cero y dirían algo falso.
+            counts={categorySlug || !hayCuentasDeFamilia ? null : categoryCounts}
+            total={categorySlug || !results.isSuccess ? null : total}
+            trailing={
+              audiencia !== 'consumer' ? (
+                <Button
+                  component={Link}
+                  to={`/s/${storeSlug}/pedido-rapido`}
+                  variant="outlined"
+                  size="small"
+                  startIcon={<BoltRoundedIcon />}
+                  sx={{ borderRadius: 'var(--sf-pill)', textTransform: 'none', fontWeight: 800, whiteSpace: 'nowrap' }}
+                >
+                  {t('store.catalog.quickOrderSku')}
+                </Button>
+              ) : null
+            }
           />
         </Stack>
       ) : null}
@@ -1022,6 +1260,12 @@ export function StoreHomePage() {
                 ) : null
               }
               sortMenu={<StoreSortMenu value={sort} onChange={(next) => update('sort', next)} />}
+              viewToggle={
+                <CatalogViewToggle
+                  value={vista}
+                  onChange={(next) => update('vista', next === 'list' ? 'lista' : 'rejilla')}
+                />
+              }
               activeFilters={filtrosPuestos}
               onOpenFilters={() => setCajonAbierto(true)}
               onClearFilters={quitarFiltros}
@@ -1046,21 +1290,31 @@ export function StoreHomePage() {
                   marco="hoja"
                   brands={brandOptions}
                   categories={categoryOptions}
-                  selectedBrand={brand}
+                  selectedBrands={brands}
                   selectedCategory={categorySlug}
                   inStockOnly={availability === 'in-stock'}
                   discountedOnly={soloOferta}
-                  onBrand={(code) => update('b', code)}
+                  priceMin={priceMin}
+                  priceMax={priceMax}
+                  priceBounds={priceBounds}
+                  onPrice={ponerPrecio}
+                  onBrand={alternarMarca}
                   onCategory={(slug) => update('c', slug)}
                   onInStock={(only) => update('d', only ? '1' : null)}
                   onDiscounted={(only) => update('oferta', only ? '1' : null)}
                   onClear={quitarFiltros}
+                  currencySymbol={simboloMoneda}
                 />
               </StoreFilterDrawer>
             </Suspense>
           ) : null}
 
-          {results.isPending && <ProductGridSkeleton />}
+          {/* Esqueleto también al CAMBIAR de filtro, no solo la primera vez.
+              La consulta guarda la página anterior mientras llega la nueva
+              (`keepPreviousData`) y eso dejaba en pantalla los productos de la
+              categoría de antes, sin ninguna señal de que algo estaba
+              cargando: se pulsaba «Selladores» y parecía que no pasaba nada. */}
+          {cargandoResultados && <ProductGridSkeleton />}
 
           {results.isError && (
             <Card>
@@ -1068,14 +1322,16 @@ export function StoreHomePage() {
             </Card>
           )}
 
-          {results.isSuccess && total === 0 && (
+          {resultadosListos && total === 0 && (
             <Card>
               <EmptyState
                 title={filtered ? t('store.catalog.noResults') : t('store.catalog.empty')}
                 description={filtered ? t('store.catalog.noResultsBody') : t('store.catalog.emptyBody')}
                 action={
                   filtered ? (
-                    <Button variant="contained" onClick={() => setParams(new URLSearchParams())}>
+                    // Quitar filtros deja al comprador en el catálogo completo: la
+                    // URL vacía era la portada y lo sacaba de donde estaba.
+                    <Button variant="contained" onClick={() => setParams(new URLSearchParams({ ver: 'todo' }))}>
                       {t('store.catalog.clear')}
                     </Button>
                   ) : undefined
@@ -1084,8 +1340,13 @@ export function StoreHomePage() {
             </Card>
           )}
 
-          {results.isSuccess && total > 0 && (
-            <Box>
+          {resultadosListos && total > 0 && (
+            <Box
+              // Resumen v2 · Con la columna de filtros al lado, el ancho útil es
+              // ~1000 px: cuatro columnas como en el diseño, sea cual sea el tema.
+              // Con cinco o seis, la tarjeta de empresa cortaba «Agregar».
+              sx={vista === 'grid' ? { '--sf-grid-sm': 3, '--sf-grid-lg': 4 } : undefined}
+            >
               <ProductGrid
                 products={products}
                 storeSlug={storeSlug}
@@ -1094,6 +1355,7 @@ export function StoreHomePage() {
                 onQuickView={(slug) => update('p', slug)}
                 favorites={favorites.ids}
                 onToggleFavorite={(productId) => void favorites.toggle(productId)}
+                view={vista}
               />
 
           {/* La siguiente página se PIDE al servidor: 24 filas, no las 48 o 72
@@ -1104,11 +1366,24 @@ export function StoreHomePage() {
                   vale la pena pedir la siguiente pagina. */}
               <Box ref={sentinel} aria-hidden sx={{ height: 1, width: '100%' }} />
 
+              {/* Resumen v2 · Cuánto se ha visto y cuánto queda, como en el diseño. */}
+              <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
+                {t('store.catalog.showing')
+                  .replace('{n}', String(products.length))
+                  .replace('{total}', resultCount)}
+              </Typography>
+              <Box aria-hidden sx={{ width: 260, maxWidth: '80%', height: 4, borderRadius: 999, bgcolor: 'var(--neutral-soft)', overflow: 'hidden' }}>
+                <Box sx={{ height: '100%', width: `${Math.min(100, (products.length / Math.max(total, 1)) * 100)}%`, background: 'var(--hero-grad)' }} />
+              </Box>
               {results.isFetchingNextPage ? (
                 <BrandLoader label={t('store.catalog.loadingMore')} compact />
               ) : (
-                <Button variant="outlined" onClick={() => void results.fetchNextPage()}>
-                  {t('store.catalog.more')}
+                <Button
+                  variant="outlined"
+                  onClick={() => void results.fetchNextPage()}
+                  sx={{ borderRadius: 'var(--sf-pill)', textTransform: 'none', fontWeight: 800, px: 2.5 }}
+                >
+                  {t('store.catalog.loadN').replace('{n}', String(Math.min(PAGE_SIZE, Math.max(total - products.length, 0))))}
                 </Button>
               )}
             </Stack>
@@ -1134,7 +1409,7 @@ export function StoreHomePage() {
 
               El umbral es el mismo que usa la fila de la portada para crecer:
               hasta tres, la pantalla se queda corta. */}
-          {results.isSuccess && total > 0 && total <= POCOS_RESULTADOS && (
+          {resultadosListos && total > 0 && total <= POCOS_RESULTADOS && (
             <Suspense fallback={null}>
               <ExploreMore
                 storeSlug={storeSlug}
@@ -1149,7 +1424,7 @@ export function StoreHomePage() {
           {/* Y sin NINGÚN resultado, la misma salida bajo el estado vacío: el
               botón de quitar filtros arregla el caso de quien filtró de más,
               pero no el de quien buscó algo que esta tienda no vende. */}
-          {results.isSuccess && total === 0 && (
+          {resultadosListos && total === 0 && (
             <Suspense fallback={null}>
               <ExploreMore
                 storeSlug={storeSlug}
@@ -1186,21 +1461,26 @@ export function StoreHomePage() {
             order: { md: -1 },
           }}
         >
-          <Suspense fallback={null}>
+          <Suspense fallback={<FilterPanelSkeleton />}>
             <StoreFilterPanel
               marco="columna"
               brands={brandOptions}
               categories={categoryOptions}
-              selectedBrand={brand}
+              selectedBrands={brands}
               selectedCategory={categorySlug}
               inStockOnly={availability === 'in-stock'}
               discountedOnly={soloOferta}
-              onBrand={(code) => update('b', code)}
+              priceMin={priceMin}
+              priceMax={priceMax}
+              priceBounds={priceBounds}
+              onPrice={ponerPrecio}
+              onBrand={alternarMarca}
               onCategory={(slug) => update('c', slug)}
               onInStock={(only) => update('d', only ? '1' : null)}
               onDiscounted={(only) => update('oferta', only ? '1' : null)}
               // Quien pulsa «limpiar» quiere verlo todo, no volver a la portada.
               onClear={quitarFiltros}
+              currencySymbol={simboloMoneda}
             />
           </Suspense>
         </Box>
@@ -1224,6 +1504,41 @@ export function StoreHomePage() {
           />
         </Suspense>
       )}
+    </Stack>
+  )
+}
+
+/**
+ * La columna de filtros mientras llega su módulo.
+ *
+ * Antes el hueco quedaba en blanco y la rejilla se veía desplazada a la
+ * derecha sin nada a su izquierda. Mismas piezas que el panel real —título,
+ * dos interruptores, precio y dos listas— para que al llegar no salte nada.
+ */
+function FilterPanelSkeleton() {
+  return (
+    <Stack aria-hidden data-testid="filters-skeleton" sx={{ gap: 2.25, pt: 0.5 }}>
+      <Skeleton variant="text" width="45%" height={28} />
+      <Stack sx={{ gap: 1 }}>
+        <Skeleton variant="rounded" height={22} />
+        <Skeleton variant="rounded" height={22} />
+      </Stack>
+      <Stack sx={{ gap: 1 }}>
+        <Skeleton variant="text" width="30%" />
+        <Skeleton variant="rounded" height={6} />
+        <Stack direction="row" sx={{ gap: 1 }}>
+          <Skeleton variant="rounded" height={38} sx={{ flex: 1 }} />
+          <Skeleton variant="rounded" height={38} sx={{ flex: 1 }} />
+        </Stack>
+      </Stack>
+      {[0, 1].map((grupo) => (
+        <Stack key={grupo} sx={{ gap: 1 }}>
+          <Skeleton variant="text" width="35%" />
+          {[0, 1, 2, 3].map((fila) => (
+            <Skeleton key={fila} variant="text" width={`${70 - fila * 8}%`} />
+          ))}
+        </Stack>
+      ))}
     </Stack>
   )
 }

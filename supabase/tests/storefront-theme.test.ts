@@ -268,6 +268,30 @@ describe('E2 · el contrato V3, en la lista blanca de la base', () => {
   })
 })
 
+describe('E3 · el contrato V4 (Resumen v2): portada bento y familias en círculos', () => {
+  it('acepta la portada bento y las familias en círculos', async () => {
+    const filas = await guardar('storefront_style', JSON.stringify({ heroVariant: 'bento', categoryVariant: 'circles' }))
+    expect(filas).toHaveLength(1)
+  })
+
+  it('la sección de familias acepta presentarse en círculos', async () => {
+    const filas = await guardar(
+      'home_layout',
+      JSON.stringify({ version: 2, sections: [{ id: 'categories', enabled: true, presentation: { variant: 'circles' } }] }),
+    )
+    expect(filas).toHaveLength(1)
+  })
+
+  it('sigue cerrada: bento no vale para las familias ni círculos para el hero', async () => {
+    await rechazado('storefront_style', JSON.stringify({ categoryVariant: 'bento' }))
+    await rechazado('storefront_style', JSON.stringify({ heroVariant: 'circles' }))
+    await rechazado(
+      'home_layout',
+      JSON.stringify({ version: 2, sections: [{ id: 'brands', enabled: true, presentation: { variant: 'circles' } }] }),
+    )
+  })
+})
+
 describe('E · un estilo fuera del contrato', () => {
   const FUERA: Array<[string, unknown]> = [
     // Las cuatro formas de intentar meter presentación arbitraria. Ninguna
@@ -809,5 +833,34 @@ describe('L · el formulario de Configuración puede guardar lo que enseña', ()
     )
 
     expect(error).toMatch(/permission denied|denegado/i)
+  })
+})
+describe('E4 · el contrato V5 (Retail «Feria de ofertas»)', () => {
+  const seccion = (id: string, variant: string) =>
+    JSON.stringify({ version: 2, sections: [{ id, enabled: true, presentation: { variant } }] })
+
+  it('acepta las familias en tarjetas con icono, como estilo y como presentación', async () => {
+    expect(await guardar('storefront_style', JSON.stringify({ categoryVariant: 'icons' }))).toHaveLength(1)
+    expect(await guardar('home_layout', seccion('categories', 'icons'))).toHaveLength(1)
+  })
+
+  it('acepta la banda relámpago en ofertas y los banners en campañas', async () => {
+    expect(await guardar('home_layout', seccion('offers', 'flash'))).toHaveLength(1)
+    expect(await guardar('home_layout', seccion('promotions', 'banners'))).toHaveLength(1)
+  })
+
+  it('cada una solo donde significa algo: ni banners en ofertas, ni relámpago en campañas', async () => {
+    await rechazado('home_layout', seccion('offers', 'banners'))
+    await rechazado('home_layout', seccion('promotions', 'flash'))
+    await rechazado('home_layout', seccion('brands', 'icons'))
+    await rechazado('storefront_style', JSON.stringify({ heroVariant: 'icons' }))
+  })
+
+  it('lo que ya valía sigue valiendo: band y split en las dos', async () => {
+    for (const id of ['offers', 'promotions']) {
+      for (const variant of ['band', 'split']) {
+        expect(await guardar('home_layout', seccion(id, variant))).toHaveLength(1)
+      }
+    }
   })
 })

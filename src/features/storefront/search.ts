@@ -42,6 +42,8 @@ const hitSchema = z.object({
   product_id: z.string().uuid(),
   slug: z.string().min(1),
   name: z.string().min(1),
+  // Resumen v2 · `default` y no obligatorio: el motor anterior no lo devolvía.
+  sku: z.string().nullable().default(null),
   description: z.string().nullable().default(null),
   kind: z.enum(['simple', 'variant', 'bundle']).default('simple'),
   brand_name: z.string().nullable().default(null),
@@ -63,7 +65,7 @@ const responseSchema = z.object({
   total: z.number().int().default(0),
   limit: z.number().int().default(24),
   offset: z.number().int().default(0),
-  sort: z.enum(['relevance', 'price-asc', 'price-desc', 'name', 'recent']).default('relevance'),
+  sort: z.enum(['relevance', 'price-asc', 'price-desc', 'name', 'recent', 'discount']).default('relevance'),
   mode: z.enum(['fts', 'fuzzy', 'browse', 'empty']).default('browse'),
   query: z.string().nullable().default(null),
   facets: z
@@ -161,6 +163,7 @@ function toHits(raw: z.infer<typeof responseSchema>['items']): SearchHit[] {
     productId: item.product_id,
     slug: item.slug,
     name: item.name,
+    sku: item.sku,
     description: item.description ?? '',
     kind: item.kind,
     brandName: item.brand_name,
@@ -248,6 +251,7 @@ export function hitToPublicProduct(hit: SearchHit, storeId: string): PublicProdu
     category_id: null,
     slug: hit.slug,
     name: hit.name,
+    sku: hit.sku,
     description: hit.description || null,
     price: hit.price ?? '0',
     compare_at_price: hit.compareAtPrice,

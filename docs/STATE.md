@@ -3,13 +3,99 @@
 GUIDELINES_STATUS: VERIFIED (**por lectura directa** en la 2ª pasada de P00-SaaS: contrato v1.15,
 `PROTOCOLO.md`, `BANDEJA.md` y `EBIM-CREW-ROSTER.md`). La unidad montada es `G:`, no `H:`.
 Fuentes: ver `docs/EBIM_GUIDELINES_TRACE.md`.
-Última actualización: 2026-08-30 (**P17-SaaS terminada — quality gate final y línea base releaseable**;
+Última actualización: 2026-09-26 (Resumen v2 · vitrina B2B). Antes: 2026-08-30 (**P17-SaaS terminada — quality gate final y línea base releaseable**;
 el recorrido SaaS P00–P17 queda cerrado)
 
 > **Dos numeraciones de fase.** Lo que sigue como «P00…P12» es el trabajo histórico de este repo. A
 > partir del 2026-08-27 arranca un segundo recorrido, **P00–P17 de productización SaaS**
 > (`claude-saas-opus/config/phases.json`), que se identifica siempre como «P0x-SaaS». No son la misma
 > serie: el P12 histórico es el framework de integraciones; el P12-SaaS es fulfillment y devoluciones.
+
+## Resumen v2 (2026-09-26)
+
+Rediseño del dashboard a partir del diseño en pen.dev (`design/storefront.pen`, frame «Resumen —
+Propuesta v2»). Tres filas: **ventas del periodo** (7d / 30d / 12m, variación contra el periodo
+anterior, barras por día o mes, ticket, pedidos y mejor día) + **centro de vigilancia** con un botón
+por aviso («Cobrar», «Despachar»…); **flujo de pedidos** (Pendiente → Pagado → Entregado, lo atascado
+sale de `watch_findings`) + salud de la tienda; **últimos pedidos** + ranking de lo que más vende.
+«Ver N más» abre el cajón de vigilancia, que gana pestañas por severidad y grupos por módulo. Fuera el
+banner de avisos (duplicaba la vigilancia) y las tarjetas KPI sueltas.
+
+Servicio nuevo: `public.dashboard_sales_trend(p_store_id, p_period, p_tz)` (migración
+`20260926120000_dashboard_sales_trend.sql`, SECURITY INVOKER, sin anon, dinero como texto, null con
+monedas mezcladas, cero afirmado con la moneda de la tienda). **No aplicada en QAS**: hasta aplicarla,
+la tarjeta cae a las ventas acumuladas de `dashboard_kpis` y lo dice. Tests: 11 de base
+(`supabase/tests/dashboard-sales-trend.test.ts`, aislamiento incluido) y 23 de pantalla.
+
+## Resumen v2 · Retail «Feria de ofertas» (2026-09-27)
+
+La vitrina en tema Retail sigue el frame `07 · Propuesta — Retail «Feria de ofertas»` de
+`design/storefront.pen` (verificado con captura a 1440 y 390 px contra la demo, sin tocar datos):
+
+- **Cabecera** (solo CSS del tema, `storefront.css`): banda de familias en `--accent-deep` con texto blanco,
+  «Ofertas» como pastilla, buscador con borde del acento, aviso superior invertido.
+- **Portada `bento` rehecha** (`StoreBentoHero`): bloque de la campaña en `--hero-grad` —nombre de la
+  campaña, «hasta −N %» con el mayor descuento real, cuenta regresiva solo si una campaña vigente termina
+  en ≤ 7 días— y 2×2 ofertas con corazón, tachado y «Convenio».
+- **Contrato V5** (migración `20260927110000_theme_contract_v5.sql`, **sin aplicar en QAS**):
+  `categoryVariant`/presentación `icons` (`CategoryIconCards`, con tarjeta final a las ofertas);
+  `offers: 'flash'` (`FlashOffersBand`, 6 ofertas, reloj y «Ver las N»); `promotions: 'banners'`
+  (`PromoBanners`, dos campañas, la segunda invertida). `offers` y `promotions` dejan de compartir lista.
+  Retail resuelve `auto` a estas tres. Sin la migración, la vitrina las pinta igual (el tema las resuelve
+  sin guardar nada) pero el backoffice no puede GUARDARLAS explícitamente.
+- No se pinta: «% vendido» (el stock no es público) ni un reloj sin fecha de fin real.
+- Helpers puros en `storefront/feria.ts` (`campanaQueTerminaAntes`, `mayorDescuento`, `partesRestantes`).
+
+## Resumen v2 · Temas: forma y tipografía, el color es de la tienda (2026-09-26)
+
+Decisión del operador: **el color es 100 % de la tienda**; un tema solo cambia formas (radios, columnas,
+aire, cabecera, tarjeta) y **propone una tipografía que la tienda puede cambiar**. Fuera el amarillo de
+oferta de Retail (la pastilla vuelve al acento del tenant).
+
+- `THEME_FONTS` (`storefront/theme/presets.ts`): Universal → Plus Jakarta Sans (sin cambio), Retail →
+  Archivo, Premium → Fraunces, Catálogo → IBM Plex Sans. `resolveStoreFont`: `font_family` de la tienda si
+  eligió; si no, la del tema. Fuentes auto-alojadas con `@fontsource` en `src/theme/storefrontFonts.ts`
+  (vitrina y muestra de marca del backoffice).
+- La tipografía pasa de **premium a tematización**: selector fuera de `CapabilityFeature`, se envía siempre;
+  opción vacía «La del tema · {fuente}».
+- Migración `20260927100000_storefront_theme_fonts.sql`: CHECK `store_settings_font` suma `archivo`,
+  `fraunces`, `plex`; policies de escritura de `store_settings` sin `font_family` en lo premium (forma
+  InitPlan); `reset_premium_branding` ya no borra la fuente. **Aplicada en QAS** (2026-09-27, a pedido del
+  operador).
+- Instalación local con `--engine-strict=false`: el Node de la máquina (22.12) choca con
+  `eslint-visitor-keys` (pide 22.13); el contrato es Node 24 (`.nvmrc`).
+
+## Resumen v2 · Vitrina B2B (2026-09-26)
+
+Implementación de los diseños de `design/storefront.pen` (temas, catálogo, carrito, checkout y
+confirmación). Reglas del operador aplicadas en todas las piezas: **B2B primero**, precio en oferta
+**tachado** y **corazón de favorito** en cada producto. Commits en `dev` (sin push):
+
+1. `5d3db97` fix(vitrina): ritmo de secciones por tema, «Quitar filtros» vuelve a «Todo el catálogo», `#marcas`.
+2. `0a59852` feat(catalogo): multi-marca (`?b=a,b`), rango de precio (`?pmin/?pmax`), vista lista/rejilla
+   (`?vista=`, `catalog` abre en lista), banda de ofertas y cantidad en la tarjeta para B2B.
+3. `944ea42` feat(carrito): precio tachado y «Convenio» por línea, favorito, total con impuesto, crédito
+   disponible y aviso de aprobación (`BuyerTermsNotice`, sobre `my_account_statement`/`purchase_approval`).
+4. `3fd6d49` feat(checkout): cabecera enfocada, comprobante Boleta/Factura (RUC, razón social) y centro de
+   costo en `billing_address` (lista blanca en `_shared/orders.ts`). **Requiere redesplegar la Edge
+   Function `checkout`**; sin eso el servidor ignora los campos nuevos.
+5. `753884f` + `cafc6ef` feat(pedido): línea de tiempo (aprobación → pago → despacho), «Descargar PDF»
+   (impresión) y «Repetir este pedido».
+6. `36d971d` feat(portada): contrato del tema V4 — `heroVariant: 'bento'` (Retail) y `categoryVariant`/
+   presentación `circles`; amarillo de oferta en Retail (`--sf-discount-bg/fg`); insignia de ranking.
+   Migración `20260926130000_theme_contract_v4.sql`.
+7. `c5dd1c0` feat(catalogo-b2b): SKU en tarjeta y lista, orden «Mayor descuento», «Ya comprado»
+   (`my_purchased_products_for_slug`, cuenta efectiva del token, sin anon) y barra comercial con crédito
+   y «Pedido rápido». Migración `20260926140000_catalog_b2b_extras.sql`; tests
+   `supabase/tests/catalog-b2b-extras.test.ts` (aislamiento por cuenta y tenant).
+
+**Pendiente de operador:** aplicar en QAS (`20260926120000` ya figura aplicada; `db push --dry-run`
+confirma solo estas dos) `20260926130000_theme_contract_v4.sql` y `20260926140000_catalog_b2b_extras.sql` (la vitrina degrada
+sin ellas: sin SKU, `discount` cae a relevancia, «ya comprado» vacío, el CHECK rechaza `bento`/`circles`)
+y redesplegar `checkout`. **No implementado a propósito:** boletín (sin almacén ni consentimiento),
+valoraciones (sin datos), «vendido %» en ofertas relámpago (el stock no se expone), testimonio Premium,
+cabecera oscura «pro», «Guardar como lista» y «Enviar al aprobador»; tipografía serif y superficies
+marfil de Premium (fuente y color son del tenant según el contrato del tema).
 
 ## Rendimiento de la RLS: membresía una vez por consulta (2026-09-23)
 

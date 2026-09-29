@@ -72,7 +72,11 @@ export type HeaderVariant = (typeof HEADER_VARIANTS)[number]
  * Es una PREFERENCIA, no una orden: sin productos rebajados no hay portada de
  * producto que pintar, y la regla actual de caer al lema se conserva.
  */
-export const HERO_VARIANTS = ['product', 'statement'] as const
+/**
+ * `bento` llega con el Resumen v2 (contrato V4): la oferta principal grande y
+ * dos piezas al lado. Llena el centro que la portada de producto dejaba vacío.
+ */
+export const HERO_VARIANTS = ['product', 'statement', 'bento'] as const
 export type HeroVariant = (typeof HERO_VARIANTS)[number]
 
 /**
@@ -96,7 +100,12 @@ export type ProductCardVariant = (typeof PRODUCT_CARD_VARIANTS)[number]
  * familia manda; un mosaico dice cuál manda, que es lo que hace una portada
  * editorial.
  */
-export const CATEGORY_VARIANTS = ['tiles', 'pills', 'mosaic'] as const
+/**
+ * `circles` llega con el contrato V4: las familias en una fila de círculos.
+ * `icons` con el V5 (Retail «Feria de ofertas»): tarjetas con icono y, al final,
+ * la puerta a todas las ofertas.
+ */
+export const CATEGORY_VARIANTS = ['tiles', 'pills', 'mosaic', 'circles', 'icons'] as const
 export type CategoryVariant = (typeof CATEGORY_VARIANTS)[number]
 
 /** Los valores de `Container` que la vitrina usa hoy. */

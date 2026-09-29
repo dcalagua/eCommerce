@@ -1,173 +1,71 @@
 import SpaceDashboardRoundedIcon from '@mui/icons-material/SpaceDashboardRounded'
-import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
-import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded'
-import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded'
 import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
-import QueryStatsRoundedIcon from '@mui/icons-material/QueryStatsRounded'
-import PendingActionsRoundedIcon from '@mui/icons-material/PendingActionsRounded'
-import VisibilityOffRoundedIcon from '@mui/icons-material/VisibilityOffRounded'
-import LocalMallRoundedIcon from '@mui/icons-material/LocalMallRounded'
-import PaidRoundedIcon from '@mui/icons-material/PaidRounded'
-import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
-import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
-import { Card, CardContent, Grid, Stack, Typography } from '@mui/material'
-import type { ReactNode } from 'react'
+import { Box, Button, Card, Stack } from '@mui/material'
+import { useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
-import { Button } from '@mui/material'
 import { useTenant } from '@/features/tenant/tenant-context'
+import { WatchDrawer } from '@/features/watch/WatchDrawer'
+import { WatchSection } from '@/features/watch/WatchSection'
+import { useWatch } from '@/features/watch/useWatch'
 import { useI18n } from '@/shared/i18n/i18n-context'
-import type { MessageKey } from '@/shared/i18n/messages'
-import { formatMoney } from '@/shared/lib/format'
-import { AppIcon } from '@/shared/ui/AppIcon'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/states'
-import { T } from '@/theme/tokens'
-import { BarList, type BarRow } from './BarList'
-import { AiAnalystPanel } from './dashboard/AiAnalystPanel'
-import { InsightBanner, type Insight } from './dashboard/InsightBanner'
+import { OrderFlow } from './dashboard/OrderFlow'
 import { RecentOrders } from './dashboard/RecentOrders'
-import { SectionHeader } from './dashboard/SectionHeader'
-import { Meter } from './Meter'
+import { SalesHero } from './dashboard/SalesHero'
+import { StoreHealth } from './dashboard/StoreHealth'
+import { TopProducts } from './dashboard/TopProducts'
 import { useDashboardKpis, useRecentOrders, type DashboardKpis } from './useDashboardKpis'
+import { DEFAULT_SALES_PERIOD, useSalesTrend, type SalesPeriod } from './useSalesTrend'
+
+/** Dos columnas en escritorio: la ancha para leer, la estrecha para actuar. */
+const ROW_SX = {
+  display: 'grid',
+  gap: 2.5,
+  gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 2fr) minmax(340px, 1fr)' },
+  alignItems: 'stretch',
+} as const
 
 /**
- * Tarjeta de cifra del resumen.
+ * Resumen del backoffice (v2).
  *
- * Una sola forma para las cuatro. La protagonista (`emphasis`) se distingue por
- * el borde de acento y por el cuerpo de la cifra, NO por ocupar media pantalla:
- * antes ventas se llevaba la mitad del ancho para un numero de doce caracteres
- * y el resto de la tarjeta era aire. Con cuatro columnas iguales la fila se lee
- * como una fila y la jerarquia sigue estando donde tiene que estar.
+ * Se lee en tres filas, de lo que más importa a lo que menos:
  *
- * El icono es DECORATIVO (`aria-hidden`, lo pone `AppIcon`): la etiqueta ya
- * nombra la cifra, y anunciarlo seria ruido repetido.
+ *  1. **Cómo voy** (ventas del periodo contra el anterior) y **qué hago ahora**
+ *     (el centro de vigilancia, con un botón por aviso). Los avisos del banner
+ *     de antes —pedidos por cobrar, catálogo sin publicar— ya los levanta la
+ *     vigilancia: dos sitios diciendo lo mismo con cifras distintas es peor que
+ *     uno solo.
+ *  2. **Dónde se atascan los pedidos** (flujo) y la salud de la tienda.
+ *  3. **Qué pasó** (últimos pedidos) y qué es lo que más vende.
  *
- * El enlace va anclado abajo (`mt: 'auto'`): asi las dos tarjetas que lo llevan
- * lo tienen a la misma altura, y el hueco que deja el texto desigual queda en
- * un solo sitio en vez de repartido por toda la tarjeta.
- */
-function KpiTile({
-  label,
-  value,
-  hint,
-  icon,
-  to,
-  actionLabel,
-  emphasis = false,
-}: {
-  label: string
-  value: string
-  hint?: string
-  icon?: ReactNode
-  /** Adonde lleva la cifra: una cifra sin salida obliga a buscarla en el menu. */
-  to?: string
-  actionLabel?: string
-  emphasis?: boolean
-}) {
-  return (
-    <Card sx={{ height: '100%', ...(emphasis ? { borderColor: 'var(--accent)' } : {}) }}>
-      <CardContent
-        sx={{
-          // `CardContent` reserva 24 px de fondo para el ultimo hijo: en una
-          // tarjeta de una cifra eso es una franja vacia bajo el numero.
-          p: 2,
-          '&:last-child': { pb: 2 },
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 0.25,
-        }}
-      >
-        <Stack direction="row" sx={{ alignItems: 'center', gap: 0.75, minWidth: 0 }}>
-          <AppIcon tone={emphasis ? 'accent' : 'neutral'} size="sm">
-            {icon}
-          </AppIcon>
-          <Typography
-            sx={{
-              fontSize: T.label,
-              fontWeight: 800,
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              color: 'var(--muted)',
-              lineHeight: 1.3,
-            }}
-          >
-            {label}
-          </Typography>
-        </Stack>
-        <Typography
-          className="tnum"
-          sx={{
-            fontSize: emphasis ? T.kpiBig : T.kpiCard,
-            fontWeight: 800,
-            letterSpacing: '-0.02em',
-            lineHeight: 1.15,
-            // Una cifra partida en dos lineas dentro de una tarjeta estrecha se
-            // lee como dos numeros.
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          {value}
-        </Typography>
-        {hint && (
-          <Typography sx={{ fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.35 }}>
-            {hint}
-          </Typography>
-        )}
-        {to && actionLabel && (
-          <Button
-            component={RouterLink}
-            to={to}
-            size="small"
-            endIcon={<ArrowForwardRoundedIcon />}
-            sx={{ mt: 'auto', ml: -1, alignSelf: 'flex-start' }}
-          >
-            {actionLabel}
-          </Button>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-/** Panel con titulo, para que cada desglose diga que responde. */
-function Panel({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <Card sx={{ height: '100%' }}>
-      <CardContent>
-        <Typography component="h2" sx={{ fontSize: T.cardTitle, fontWeight: 800, mb: 2 }}>
-          {title}
-        </Typography>
-        {children}
-      </CardContent>
-    </Card>
-  )
-}
-
-/**
- * Resumen del backoffice.
- *
- * Cuatro cifras y todas reales: salen de `dashboard_kpis`, que cuenta bajo la
- * RLS del usuario. Lo que la base no puede afirmar —ventas cuando la tienda
- * mezcla monedas o cuando todavía no hay pedidos— se muestra como guion. Un
- * cero inventado en un panel se lee como un dato.
+ * Todas las cifras son reales: `dashboard_kpis` (estado acumulado),
+ * `dashboard_sales_trend` (el periodo) y `watch_findings`, las tres bajo la
+ * RLS de quien mira. Lo que la base no puede afirmar se muestra como guion:
+ * un cero inventado en un panel se lee como un dato.
  */
 export function DashboardPage() {
-  const { t, locale } = useI18n()
+  const { t } = useI18n()
   const { activeStore, tenant } = useTenant()
   const storeId = activeStore?.id ?? null
+  const [period, setPeriod] = useState<SalesPeriod>(DEFAULT_SALES_PERIOD)
+  const [watchOpen, setWatchOpen] = useState(false)
   const { data, isPending, isError, error, refetch } = useDashboardKpis(storeId)
+  const trend = useSalesTrend(storeId, period)
   const recentOrders = useRecentOrders(storeId)
+  // Misma consulta (y misma caché) que el carril: decide si la fila tiene dos
+  // columnas y alimenta los «atascados» del flujo sin otra lectura.
+  const watch = useWatch()
+  const findings = watch.data?.items ?? []
 
   const subtitle = [tenant?.name, activeStore?.name].filter(Boolean).join(' · ')
+  const header = <PageHeader icon={<SpaceDashboardRoundedIcon />} title={t('admin.dashboard.title')} subtitle={subtitle || tenant?.name} />
 
   if (!storeId) {
     return (
       <>
-        <PageHeader icon={<SpaceDashboardRoundedIcon />} title={t('admin.dashboard.title')} subtitle={tenant?.name} />
+        {header}
         <Card>
           <EmptyState
             title={t('admin.store.none')}
@@ -183,7 +81,7 @@ export function DashboardPage() {
   if (isError) {
     return (
       <>
-        <PageHeader icon={<SpaceDashboardRoundedIcon />} title={t('admin.dashboard.title')} subtitle={subtitle} />
+        {header}
         <Card>
           <ErrorState error={error} onRetry={() => void refetch()} />
         </Card>
@@ -192,190 +90,25 @@ export function DashboardPage() {
   }
 
   const kpis: DashboardKpis = data
-  const money = (raw: string | null) =>
-    raw !== null && kpis.currency ? formatMoney(Number(raw), kpis.currency, locale) : '—'
-
-  type Tile = {
-    key: string
-    label: MessageKey
-    value: string
-    hint?: string
-    icon: ReactNode
-    /** Adonde lleva la cifra. Una cifra sin salida obliga a buscarla en el menu. */
-    to?: string
-    actionLabel?: MessageKey
-  }
-
-  const hero: Tile = {
-    key: 'sales',
-    label: 'admin.kpi.sales',
-    value: money(kpis.sales),
-    icon: <PaidRoundedIcon fontSize="small" />,
-    ...(kpis.sales === null ? { hint: t('admin.kpi.sales.none') } : {}),
-  }
-
-  const cards: Tile[] = [
-    {
-      key: 'avgTicket',
-      label: 'admin.kpi.avgTicket',
-      value: money(kpis.avg_ticket),
-      icon: <TrendingUpRoundedIcon fontSize="small" />,
-      hint: t('admin.kpi.avgTicket.hint'),
-    },
-    {
-      key: 'orders',
-      label: 'admin.kpi.orders',
-      value: String(kpis.orders),
-      icon: <ReceiptLongRoundedIcon fontSize="small" />,
-      to: '/app/orders',
-      actionLabel: 'admin.dashboard.seeOrders',
-    },
-    {
-      key: 'products',
-      label: 'admin.kpi.products',
-      value: String(kpis.products),
-      icon: <LocalMallRoundedIcon fontSize="small" />,
-      to: '/app/products',
-      actionLabel: 'admin.dashboard.seeProducts',
-      // Publicados deja de ser una tarjeta propia: como cifra suelta no dice
-      // nada, y junto a total responde «cuanto catalogo esta vivo».
-      hint: `${kpis.published} ${t('admin.kpi.publishedTotal')}`,
-    },
-  ]
-
-  // Se deriva del desglose, no de otra consulta: dos fuentes para la misma
-  // cifra acaban siempre discrepando.
-  const paidOrders = kpis.by_status.find((row) => row.status === 'paid')?.count ?? 0
-
-  const statusRows: BarRow[] = kpis.by_status.map((row) => ({
-    id: row.status,
-    label: t(`orders.status.${row.status}` as MessageKey),
-    value: row.count,
-    display: String(row.count),
-  }))
-
-  const productRows: BarRow[] = kpis.top_products.map((row) => ({
-    id: row.sku,
-    label: row.name,
-    value: Number(row.revenue),
-    display: kpis.currency
-      ? formatMoney(Number(row.revenue), kpis.currency, locale)
-      : String(row.units),
-  }))
-
   const isFresh = kpis.products === 0 && kpis.orders === 0
-
-  const pending = kpis.by_status.find((row) => row.status === 'pending')?.count ?? 0
-  const unpublished = Math.max(kpis.products - kpis.published, 0)
-
-  // Los avisos se CALCULAN de lo que ya hay; no hay una tabla de avisos que
-  // alguien tenga que mantener al dia. Y solo aparecen cuando hay algo que
-  // decir: un banner permanente de «todo va bien» ensena a ignorar esa zona.
-  const insights: Insight[] = []
-  if (pending > 0) {
-    insights.push({
-      id: 'pending',
-      tone: 'warning',
-      icon: <PendingActionsRoundedIcon />,
-      title: t('admin.dashboard.insight.pending'),
-      body: `${pending} ${t('admin.dashboard.insight.pending.body')}`,
-      action: { label: t('admin.dashboard.review'), to: '/app/orders' },
-    })
-  }
-  if (unpublished > 0) {
-    insights.push({
-      id: 'unpublished',
-      tone: 'info',
-      icon: <VisibilityOffRoundedIcon />,
-      title: t('admin.dashboard.insight.unpublished'),
-      body: `${unpublished} ${t('admin.dashboard.insight.unpublished.body')}`,
-      action: { label: t('admin.dashboard.review'), to: '/app/products' },
-    })
-  }
 
   return (
     <>
-      <PageHeader icon={<SpaceDashboardRoundedIcon />} title={t('admin.dashboard.title')} subtitle={subtitle} />
+      {header}
       <Stack spacing={2.5}>
-        <InsightBanner insights={insights} />
+        <Box sx={findings.length > 0 ? ROW_SX : undefined}>
+          <SalesHero
+            kpis={kpis}
+            trend={trend.data}
+            trendFailed={trend.isError}
+            period={period}
+            onPeriodChange={setPeriod}
+          />
+          {/* Se calla sola cuando no hay avisos; entonces la venta ocupa la fila. */}
+          <WatchSection onSeeMore={() => setWatchOpen(true)} />
+        </Box>
 
-        {/* Analista IA (fase 02): COMPLEMENTA los avisos y KPIs deterministas,
-            no los sustituye. Se oculta solo para roles sin la funcionalidad
-            `insights`; en una tienda recien creada no hay nada que analizar. */}
-        {!isFresh && <AiAnalystPanel storeId={storeId} />}
-
-        <SectionHeader icon={<QueryStatsRoundedIcon fontSize="small" />} title={t('admin.dashboard.section.sales')} />
-        {/* Cuatro columnas iguales: la cifra protagonista manda por el borde y
-            el cuerpo, no por el ancho. */}
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} md={3}>
-            <KpiTile
-              emphasis
-              label={t(hero.label)}
-              value={hero.value}
-              icon={hero.icon}
-              {...(hero.hint ? { hint: hero.hint } : {})}
-            />
-          </Grid>
-          {cards.map((card) => (
-            <Grid item xs={12} sm={6} md={3} key={card.key}>
-              <KpiTile
-                label={t(card.label)}
-                value={card.value}
-                icon={card.icon}
-                {...(card.hint ? { hint: card.hint } : {})}
-                {...(card.to ? { to: card.to, actionLabel: t(card.actionLabel as MessageKey) } : {})}
-              />
-            </Grid>
-          ))}
-        </Grid>
-
-        {!isFresh && (
-          <>
-            <SectionHeader
-              icon={<InsightsRoundedIcon fontSize="small" />}
-              title={t('admin.dashboard.section.breakdown')}
-            />
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={4}>
-                <Panel title={t('admin.dashboard.byStatus')}>
-                  <BarList rows={statusRows} emptyLabel={t('admin.dashboard.noOrders')} />
-                </Panel>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Panel title={t('admin.dashboard.topProducts')}>
-                  <BarList rows={productRows} emptyLabel={t('admin.dashboard.noSales')} />
-                </Panel>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Panel title={t('admin.dashboard.health')}>
-                  <Stack sx={{ gap: 2.5 }}>
-                    <Meter
-                      label={t('admin.dashboard.meter.published')}
-                      value={kpis.published}
-                      total={kpis.products}
-                      caption={`${kpis.published} / ${kpis.products}`}
-                    />
-                    <Meter
-                      label={t('admin.dashboard.meter.paid')}
-                      value={paidOrders}
-                      total={kpis.orders}
-                      caption={`${paidOrders} / ${kpis.orders}`}
-                    />
-                  </Stack>
-                </Panel>
-              </Grid>
-            </Grid>
-
-            <SectionHeader
-              icon={<HistoryRoundedIcon fontSize="small" />}
-              title={t('admin.dashboard.section.activity')}
-            />
-            <RecentOrders orders={recentOrders.data ?? []} />
-          </>
-        )}
-
-        {isFresh && (
+        {isFresh ? (
           <Card>
             <EmptyState
               title={t('admin.dashboard.fresh.title')}
@@ -388,8 +121,21 @@ export function DashboardPage() {
               }
             />
           </Card>
+        ) : (
+          <>
+            <Box sx={ROW_SX}>
+              <OrderFlow kpis={kpis} findings={findings} />
+              <StoreHealth kpis={kpis} />
+            </Box>
+            <Box sx={ROW_SX}>
+              <RecentOrders orders={recentOrders.data ?? []} />
+              <TopProducts kpis={kpis} />
+            </Box>
+          </>
         )}
       </Stack>
+
+      <WatchDrawer open={watchOpen} onClose={() => setWatchOpen(false)} />
     </>
   )
 }

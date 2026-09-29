@@ -1,4 +1,6 @@
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
+import FavoriteBorderRoundedIcon from '@mui/icons-material/FavoriteBorderRounded'
+import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded'
 import { Box, IconButton, Stack, Typography } from '@mui/material'
 import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
@@ -7,7 +9,9 @@ import { R, TS } from '@/theme/tokens'
 import { ProductMedia } from '../components/ProductMedia'
 import { QuantityStepper } from '../components/QuantityStepper'
 import { useSignedThumbnails } from '../hooks'
+import { useFavorites } from '../useFavorites'
 import type { PriceQuote } from '@/domain'
+import { esAcuerdoDelComprador } from './agreement'
 import { MAX_LINE_QUANTITY, lineKey, type Cart, type CartLine } from './cart'
 import { useCart } from './cart-context'
 
@@ -42,6 +46,8 @@ export function CartLineList({
   quoted?: PriceQuote | null
 }) {
   const thumbs = useSignedThumbnails(cart.lines.map((line) => line.image_path))
+  // Una lectura para todas las líneas: el corazón de cada una sale del mismo conjunto.
+  const favorites = useFavorites(cart.store_id)
 
   return (
     <Stack component="ul" sx={{ listStyle: 'none', m: 0, p: 0, gap: compact ? 1.5 : 2 }}>
@@ -54,21 +60,46 @@ export function CartLineList({
           onNavigate={onNavigate}
           compact={compact}
           precio={precioDe(line, quoted)}
+          favorite={favorites.isFavorite(line.product_id)}
+          onToggleFavorite={() => void favorites.toggle(line.product_id)}
         />
       ))}
     </Stack>
   )
 }
 
-/** Lo que se va a cobrar por una unidad, con su moneda. */
-function precioDe(line: CartLine, quoted: PriceQuote | null): { amount: number; currency: string } {
+interface PrecioLinea {
+  amount: number
+  currency: string
+  /** El precio de antes, si hay uno que tachar. */
+  before: number | null
+  /** Por qué baja: una oferta del catálogo o el acuerdo de este comprador. */
+  motivo: 'offer' | 'agreement' | null
+}
+
+/**
+ * Lo que se va a cobrar por una unidad, y lo que costaba antes si bajó.
+ *
+ * Dos fuentes para el tachado, en este orden:
+ *  1. `compareAtPrice` de la cotización: el «antes» de una oferta del catálogo.
+ *  2. Con un acuerdo del comprador, el precio de escaparate que guardó el
+ *     carrito, si es mayor que el del acuerdo. La cotización no devuelve el de
+ *     catálogo cuando gana una lista, y sin esto la rebaja del convenio no se
+ *     veía en ninguna parte del carrito.
+ */
+function precioDe(line: CartLine, quoted: PriceQuote | null): PrecioLinea {
   const cotizada = quoted?.lines.find(
     (item) => item.productId === line.product_id && (item.variantId ?? null) === line.variant_id,
   )
-  return {
-    amount: Number(cotizada?.unitPrice.amount ?? line.unit_price),
-    currency: quoted?.currency ?? line.currency,
+  const amount = Number(cotizada?.unitPrice.amount ?? line.unit_price)
+  const currency = quoted?.currency ?? line.currency
+  const antes = cotizada?.compareAtPrice ? Number(cotizada.compareAtPrice.amount) : null
+  if (antes !== null && antes > amount) return { amount, currency, before: antes, motivo: 'offer' }
+  const escaparate = Number(line.unit_price)
+  if (cotizada && esAcuerdoDelComprador(cotizada) && escaparate > amount) {
+    return { amount, currency, before: escaparate, motivo: 'agreement' }
   }
+  return { amount, currency, before: null, motivo: null }
 }
 
 function CartLineRow({
@@ -78,13 +109,17 @@ function CartLineRow({
   onNavigate,
   compact,
   precio,
+  favorite,
+  onToggleFavorite,
 }: {
   line: CartLine
   storeSlug: string
   imageUrl: string | null
   onNavigate?: () => void
   compact: boolean
-  precio: { amount: number; currency: string }
+  precio: PrecioLinea
+  favorite: boolean
+  onToggleFavorite: () => void
 }) {
   const { t, locale } = useI18n()
   const { setQuantity, remove } = useCart()
@@ -141,9 +176,43 @@ function CartLineRow({
             </Typography>
           )}
         </Box>
-        <Typography sx={{ fontSize: TS.label, color: 'var(--muted)', fontWeight: 600 }}>
-          {formatMoney(precio.amount, precio.currency, locale)} · {t('store.cart.each')}
-        </Typography>
+        {/* El precio de antes se TACHA al lado del de ahora: la oferta o el
+            convenio no pueden perderse al entrar al carrito. */}
+        <Stack direction="row" sx={{ alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
+          {precio.before !== null ? (
+            <Typography component="s" className="tnum" sx={{ fontSize: TS.label, color: 'var(--muted)', fontWeight: 600 }}>
+              {formatMoney(precio.before, precio.currency, locale)}
+            </Typography>
+          ) : null}
+          <Typography
+            className="tnum"
+            sx={{
+              fontSize: TS.label,
+              fontWeight: precio.before !== null ? 800 : 600,
+              color: precio.before !== null ? 'var(--accent-deep)' : 'var(--muted)',
+            }}
+          >
+            {formatMoney(precio.amount, precio.currency, locale)} · {t('store.cart.each')}
+          </Typography>
+          {precio.motivo ? (
+            <Box
+              component="span"
+              data-line-discount={precio.motivo}
+              sx={{
+                px: 0.75,
+                borderRadius: 'var(--sf-pill, 999px)',
+                fontSize: 10.5,
+                fontWeight: 800,
+                bgcolor: precio.motivo === 'offer' ? 'var(--accent-deep)' : 'var(--accent-soft)',
+                color: precio.motivo === 'offer' ? '#fff' : 'var(--accent-deep)',
+              }}
+            >
+              {precio.motivo === 'offer' && precio.before
+                ? `-${Math.round((1 - precio.amount / precio.before) * 100)}%`
+                : t('store.cart.agreementTag')}
+            </Box>
+          ) : null}
+        </Stack>
 
         <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5, mt: 0.5 }}>
           {/* El MISMO selector que la ficha y la vista rapida. Con `min` a
@@ -161,6 +230,18 @@ function CartLineRow({
               dedo torpe en una linea borrada, y deshacer eso es volver a
               buscar el producto. */}
           <Box sx={{ flex: 1 }} />
+          {/* Guardar para después sin perderlo: el corazón deja el producto en
+              favoritos y la línea sigue donde estaba. */}
+          <IconButton
+            size="small"
+            aria-pressed={favorite}
+            aria-label={`${favorite ? t('store.favorite.remove') : t('store.favorite.add')}: ${line.name}`}
+            title={favorite ? t('store.favorite.remove') : t('store.favorite.add')}
+            onClick={onToggleFavorite}
+            sx={{ color: favorite ? 'var(--sf-heart, #E23E57)' : 'var(--muted)' }}
+          >
+            {favorite ? <FavoriteRoundedIcon fontSize="small" /> : <FavoriteBorderRoundedIcon fontSize="small" />}
+          </IconButton>
           <IconButton
             size="small"
             aria-label={`${t('store.cart.remove')}: ${line.name}${line.variant_name ? ` ${line.variant_name}` : ''}`}

@@ -54,6 +54,9 @@ function Anfitrion({
     <>
       <StorefrontDesignSection
         form={form}
+        // Resumen v2 · el taller va por pasos; estas pruebas miran el CONTENIDO
+        // de todos, así que se monta con los cinco abiertos.
+        pasosAbiertos={[0, 1, 2, 3, 4]}
         {...(conTienda
           ? { storeId: 'aaaa1111-1111-4111-8111-111111111111', storeSlug: 'botica' }
           : {})}
@@ -88,7 +91,20 @@ const tema = (nombre: string) => screen.getByRole('radio', { name: new RegExp(no
  * pantalla que la elección del tema — que es LA decisión.
  */
 async function abrirGrupo(user: ReturnType<typeof userEvent.setup>, nombre: string) {
-  await user.click(screen.getByRole('button', { name: new RegExp(nombre, 'i') }))
+  // La cabecera del GRUPO (la única con `aria-expanded`): desde el Resumen v2
+  // hay opciones con nombres parecidos —la portada «Producto»— en los grupos.
+  const cabecera = screen
+    .getAllByRole('button', { name: new RegExp(nombre, 'i') })
+    .find((boton) => boton.hasAttribute('aria-expanded'))
+  if (!cabecera) throw new Error(`no hay grupo ${nombre}`)
+  await user.click(cabecera)
+}
+
+/** Pulsa una opción de un ajuste (Resumen v2: opciones a la vista). */
+async function elegir(user: ReturnType<typeof userEvent.setup>, ajuste: string, opcion: string) {
+  await user.click(
+    within(screen.getByRole('group', { name: ajuste })).getByRole('button', { name: new RegExp(`^${opcion}`) }),
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -165,11 +181,16 @@ describe('ajustar el tema', () => {
 
     expect(valores().storefront_style).toEqual({})
 
-    // Los siete siguen ahí; lo que cambia en P10 es que hay que abrir su grupo.
+    // Los ocho siguen ahí; hay que abrir su grupo. Resumen v2: cada ajuste es
+    // un grupo de opciones a la vista, con UNA en uso.
     for (const grupo of ['Estructura', 'Producto', 'Espaciado y ancho']) {
       await abrirGrupo(user, grupo)
     }
-    expect(screen.getAllByRole('combobox').length).toBeGreaterThanOrEqual(7)
+    const ajustes = screen.getAllByRole('group')
+    expect(ajustes.length).toBeGreaterThanOrEqual(8)
+    for (const ajuste of ajustes) {
+      expect(within(ajuste).getAllByRole('button', { pressed: true })).toHaveLength(1)
+    }
   })
 
   /**
@@ -220,10 +241,13 @@ describe('ajustar el tema', () => {
     pintar()
 
     await abrirGrupo(user, 'Espaciado y ancho')
-    await user.click(screen.getByLabelText('Ancho del contenido'))
+    const ancho = screen.getByRole('group', { name: 'Ancho del contenido' })
 
-    // universal hereda `lg`, que en la pantalla se llama «Normal».
-    expect(screen.getByRole('option', { name: 'Usar tema: Normal' })).toBeInTheDocument()
+    // universal hereda `lg`, que en la pantalla se llama «Normal»: está en uso
+    // y lo dice («del tema»), sin abrir nada.
+    const normal = within(ancho).getByRole('button', { name: /^Normal/ })
+    expect(normal).toHaveAttribute('aria-pressed', 'true')
+    expect(normal).toHaveTextContent('del tema')
   })
 
   it('y lo que dice cambia con el tema elegido', async () => {
@@ -231,11 +255,11 @@ describe('ajustar el tema', () => {
     pintar({ theme_preset: 'premium' })
 
     await abrirGrupo(user, 'Producto')
-    await user.click(screen.getByLabelText('Tarjeta de producto'))
+    const tarjeta = screen.getByRole('group', { name: 'Tarjeta de producto' })
 
     // premium hereda tarjeta EDITORIAL desde V3 · P02 —la que suelta el
     // recuadro y deja mandar a la fotografía—; retail sigue compacta.
-    expect(screen.getByRole('option', { name: 'Usar tema: Editorial' })).toBeInTheDocument()
+    expect(within(tarjeta).getByRole('button', { name: /^Editorial/ })).toHaveTextContent('del tema')
   })
 
   it('pisar un ajuste guarda ese y solo ese', async () => {
@@ -243,18 +267,23 @@ describe('ajustar el tema', () => {
     pintar()
 
     await abrirGrupo(user, 'Espaciado y ancho')
-    await user.click(screen.getByLabelText('Ancho del contenido'))
-    await user.click(screen.getByRole('option', { name: 'Extra ancho' }))
+    await user.click(
+      within(screen.getByRole('group', { name: 'Ancho del contenido' })).getByRole('button', { name: /^Extra ancho/ }),
+    )
 
     expect(valores().storefront_style).toEqual({ contentWidth: 'xl' })
+    // Y el ajuste lo dice: «Cambiado por ti».
+    expect(screen.getByText('Cambiado por ti')).toBeInTheDocument()
   })
 
   it('volver a heredar borra el valor en vez de guardar uno vacío', async () => {
     const user = userEvent.setup()
     pintar({ storefront_style: { contentWidth: 'xl' } })
 
-    await user.click(screen.getByLabelText('Ancho del contenido'))
-    await user.click(screen.getByRole('option', { name: 'Usar tema: Normal' }))
+    // Pulsar la opción DEL TEMA vuelve a heredar: borra la clave.
+    await user.click(
+      within(screen.getByRole('group', { name: 'Ancho del contenido' })).getByRole('button', { name: /^Normal/ }),
+    )
 
     expect(valores().storefront_style).toEqual({})
   })
@@ -290,10 +319,11 @@ describe('ajustar el tema', () => {
 // ---------------------------------------------------------------------------
 
 describe('ordenar la portada', () => {
-  it('se listan todas las secciones conocidas', () => {
+  it('se listan todas las secciones que se pueden encender', () => {
     pintar()
 
-    expect(screen.getAllByRole('listitem')).toHaveLength(HOME_SECTION_IDS.length)
+    // Resumen v2 · El boletín (sin componente) ya no sale como «próximamente».
+    expect(screen.getAllByRole('listitem')).toHaveLength(HOME_SECTION_IDS.length - 1)
   })
 
   it('cada botón dice a qué sección pertenece', () => {
@@ -367,14 +397,14 @@ describe('ordenar la portada', () => {
     expect(screen.queryByRole('button', { name: /Boletín/ })).not.toBeInTheDocument()
   })
 
-  it('pero se sigue enseñando, y se dice por qué', () => {
-    // Esconderla sería más limpio y peor: quien busca «boletín» y no lo
-    // encuentra no sabe si no existe o si no lo ha visto.
+  it('y no se enseña hasta que exista (Resumen v2)', () => {
+    // Decisión del diseño: una sección que no existe no ayuda a decidir nada, y
+    // el bloque «Próximamente» ocupaba el paso de la portada. Aparecerá en la
+    // lista, con su ojo, cuando tenga componente.
     pintar()
 
-    expect(screen.getByText('Próximamente')).toBeInTheDocument()
-    expect(screen.getByText('Boletín')).toBeInTheDocument()
-    expect(screen.getAllByText(/Todavía no disponible/).length).toBeGreaterThan(0)
+    expect(screen.queryByText('Próximamente')).not.toBeInTheDocument()
+    expect(screen.queryByText('Boletín')).not.toBeInTheDocument()
   })
 
   it('reordenar las activas no mueve a las pendientes de su sitio', () => {
@@ -390,20 +420,33 @@ describe('ordenar la portada', () => {
     expect(valores().home_layout.sections.findIndex((s) => s.id === 'newsletter')).toBe(antes)
   })
 
-  it('el tope solo aparece donde significa algo', () => {
+  // Resumen v2 · El tope vive en el panel de la sección (la fila solo lo dice,
+  // «Relámpago · 6»). Se abre el panel por la pastilla de la fila.
+  async function abrirPanelDe(user: ReturnType<typeof userEvent.setup>, nombre: string) {
+    await user.click(screen.getByRole('button', { name: new RegExp(`Cómo se enseña: ${nombre}`) }))
+    await waitFor(() => expect(document.querySelector('[data-presentation-popover]')).not.toBeNull())
+  }
+
+  it('el tope solo aparece donde significa algo', async () => {
+    const user = userEvent.setup()
     pintar()
 
+    await abrirPanelDe(user, 'Ofertas')
     expect(screen.getByLabelText('Máximo: Ofertas')).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(document.querySelector('[data-presentation-popover]')).toBeNull())
+
     // El hero enseña una cosa y los servicios cuatro fijas: un tope ahí es
     // ruido que alguien tendría que interpretar.
+    await abrirPanelDe(user, 'Portada')
     expect(screen.queryByLabelText('Máximo: Portada')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('Máximo: Servicios')).not.toBeInTheDocument()
   })
 
   it('un tope fuera de rango se acota en vez de guardarse mal', async () => {
     const user = userEvent.setup()
     pintar()
 
+    await abrirPanelDe(user, 'Ofertas')
     const campo = screen.getByLabelText('Máximo: Ofertas')
     await user.clear(campo)
     await user.type(campo, '99')
@@ -453,8 +496,8 @@ describe('la vista previa', () => {
     const user = userEvent.setup()
     pintar()
 
-    await user.click(screen.getByLabelText('Aire entre secciones'))
-    await user.click(screen.getByRole('option', { name: 'Amplio' }))
+    await abrirGrupo(user, 'Espaciado y ancho')
+    await elegir(user, 'Aire entre secciones', 'Amplio')
 
     expect(marco()).toHaveAttribute('data-store-spacing', 'spacious')
   })
@@ -503,8 +546,8 @@ describe('lo que sale de esta pantalla es válido', () => {
     pintar()
 
     await user.click(tema('premium'))
-    await user.click(screen.getByLabelText('Proporción de las fotos'))
-    await user.click(screen.getByRole('option', { name: 'Vertical' }))
+    await abrirGrupo(user, 'Producto')
+    await elegir(user, 'Proporción de las fotos', 'Vertical')
     await user.click(screen.getByRole('button', { name: 'Bajar: Portada' }))
 
     expect(storeFormSchema.safeParse(valores()).success).toBe(true)

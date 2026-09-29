@@ -119,6 +119,10 @@ export function StoreCategoryNav({
   return (
     <Box
       ref={contenedor}
+      // `sf-catnav*`: los enganches con los que un TEMA viste la barra desde
+      // `storefront.css` (Retail la pinta en el color de la tienda) sin un `if`
+      // por tema aquí dentro.
+      className="sf-catnav"
       sx={{ position: 'relative', borderTop: '1px solid var(--sf-line)', bgcolor: 'var(--card)' }}
     >
       {/* El ancho es el del TEMA, no `lg` a secas.
@@ -153,6 +157,7 @@ export function StoreCategoryNav({
             return (
               <Box
                 key={category.category_id}
+                className="sf-catnav-item"
                 component={desplegable ? 'button' : Link}
                 type={desplegable ? 'button' : undefined}
                 to={desplegable ? undefined : `/s/${storeSlug}?c=${encodeURIComponent(category.slug)}`}
@@ -187,6 +192,7 @@ export function StoreCategoryNav({
               >
                 <Box
                   aria-hidden
+                  className="sf-catnav-icon"
                   sx={{
                     width: 24,
                     height: 24,
@@ -232,9 +238,9 @@ export function StoreCategoryNav({
               hace la portada para su banda: misma clave de TanStack, cero
               peticiones nuevas. */}
           {showOffers ? (
-            <PuertaFija to={`/s/${storeSlug}?ver=todo&oferta=1`} label={t('store.nav.offers')} />
+            <PuertaFija to={`/s/${storeSlug}?ver=todo&oferta=1`} label={t('store.nav.offers')} door="offers" />
           ) : null}
-          <PuertaFija to={`/s/${storeSlug}?ver=todo#marcas`} label={t('store.nav.brands')} />
+          <PuertaFija to={`/s/${storeSlug}?ver=todo#marcas`} label={t('store.nav.brands')} door="brands" />
         </Stack>
       </Container>
 
@@ -401,11 +407,13 @@ function RamaDeCategorias({
  * distingue es el peso y el color de acento, que es el idioma de la acción en
  * el resto de la tienda.
  */
-function PuertaFija({ to, label }: { to: string; label: string }) {
+function PuertaFija({ to, label, door }: { to: string; label: string; door: 'offers' | 'brands' }) {
   return (
     <Box
       component={Link}
       to={to}
+      className="sf-catnav-door"
+      data-door={door}
       sx={{
         flexShrink: 0,
         display: 'flex',

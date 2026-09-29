@@ -1,5 +1,6 @@
-import { Chip } from '@mui/material'
+import { Box, Chip } from '@mui/material'
 import type { SxProps, Theme } from '@mui/material'
+import type { ReactNode } from 'react'
 import { ScrollRow } from './ScrollRow'
 import { useT } from '@/shared/i18n/i18n-context'
 import type { PublicCategory } from '../types'
@@ -37,38 +38,76 @@ function pillSx(active: boolean): SxProps<Theme> {
     '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
   }
 }
+/**
+ * Resumen v2 · La cantidad, pegada al nombre en una pastilla tenue: se compara
+ * de un vistazo cuánto hay en cada familia sin abrirla.
+ */
+function Etiqueta({ nombre, cuenta }: { nombre: string; cuenta: number | undefined }) {
+  return (
+    <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
+      {nombre}
+      {/* El espacio no se ve (contenedor flex) pero separa el nombre de la
+          cifra al leerlo: «Mesas 3» y no «Mesas3». */}
+      {cuenta !== undefined ? ' ' : null}
+      {cuenta !== undefined ? (
+        <Box
+          component="span"
+          className="tnum"
+          sx={{ px: 0.75, borderRadius: 'var(--sf-pill)', bgcolor: 'var(--neutral-soft)', color: 'var(--muted)', fontSize: 11.5, fontWeight: 700, lineHeight: 1.6 }}
+        >
+          {cuenta}
+        </Box>
+      ) : null}
+    </Box>
+  )
+}
+
 export function CategoryBar({
   categories,
   selected,
   onSelect,
+  counts,
+  total,
+  trailing,
 }: {
   categories: PublicCategory[]
   selected: string | null
   onSelect: (slug: string | null) => void
+  /** Cuántos hay por familia, si se saben. Sin ellos no se inventa ninguno. */
+  counts?: ReadonlyMap<string, number | null> | null
+  /** Cuántos hay en total, para «Todos». */
+  total?: number | null
+  /** Lo que va al final de la fila (p. ej. «Pedido rápido por SKU»). */
+  trailing?: ReactNode
 }) {
   const t = useT()
   if (categories.length === 0) return null
 
   return (
-    <ScrollRow component="nav" ariaLabel={t('store.categories.title')} gap={1}>
-      <Chip
-        label={t('store.categories.all')}
-        onClick={() => onSelect(null)}
-        aria-pressed={selected === null}
-        sx={pillSx(selected === null)}
-      />
-      {categories.map((category) => {
-        const active = selected === category.slug
-        return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <ScrollRow component="nav" ariaLabel={t('store.categories.title')} gap={1}>
           <Chip
-            key={category.category_id}
-            label={category.name}
-            onClick={() => onSelect(active ? null : category.slug)}
-            aria-pressed={active}
-            sx={pillSx(active)}
+            label={<Etiqueta nombre={t('store.categories.all')} cuenta={total ?? undefined} />}
+            onClick={() => onSelect(null)}
+            aria-pressed={selected === null}
+            sx={pillSx(selected === null)}
           />
-        )
-      })}
-    </ScrollRow>
+          {categories.map((category) => {
+            const active = selected === category.slug
+            return (
+              <Chip
+                key={category.category_id}
+                label={<Etiqueta nombre={category.name} cuenta={counts?.get(category.slug) ?? undefined} />}
+                onClick={() => onSelect(active ? null : category.slug)}
+                aria-pressed={active}
+                sx={pillSx(active)}
+              />
+            )
+          })}
+        </ScrollRow>
+      </Box>
+      {trailing ? <Box sx={{ flexShrink: 0, display: { xs: 'none', md: 'block' } }}>{trailing}</Box> : null}
+    </Box>
   )
 }

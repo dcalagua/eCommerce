@@ -255,7 +255,11 @@ describe('las cuatro disposiciones de una colección de familias', () => {
   })
 
   it('`mosaic` destaca la primera y `tiles` no', () => {
-    const { unmount } = pintar(familias('mosaic'))
+    // Cinco familias: es la cantidad mínima con la que el mosaico cierra.
+    const cinco = [...FAMILIAS, familia('Familia cuatro', 4), familia('Familia cinco', 5)]
+    const { unmount } = pintar(
+      bloque({ type: 'category_collection', settings: { layout: 'mosaic' }, items: cinco }),
+    )
     expect(document.querySelector('[data-mosaic-cell="lead"]')).not.toBeNull()
     unmount()
 

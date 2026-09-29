@@ -112,6 +112,31 @@ export const checkoutSchema = z.object({
    * lo decide la cuenta en el servidor; la pantalla solo lo avisa antes.
    */
   purchaseOrderNumber: z.string().trim().max(60, 'store.checkout.error.purchaseOrder').optional(),
+  /**
+   * Resumen v2 · El comprobante: boleta o factura.
+   *
+   * Con FACTURA el RUC y la razón social son obligatorios —una factura sin
+   * ellos no se puede emitir— y viajan en `billing_address`, que el servidor
+   * valida con su propia puerta (`normalizeBillingAddress`). El centro de costo
+   * es opcional: a qué partida del comprador se carga el pedido.
+   */
+  invoiceType: z.enum(['receipt', 'invoice']).optional(),
+  taxId: z
+    .string()
+    .trim()
+    .max(20, 'store.checkout.error.taxId')
+    .regex(/^[0-9A-Za-z-]*$/, 'store.checkout.error.taxId')
+    .optional(),
+  legalName: z.string().trim().max(200, 'store.checkout.error.legalName').optional(),
+  costCenter: z.string().trim().max(60, 'store.checkout.error.costCenter').optional(),
+}).superRefine((values, ctx) => {
+  if (values.invoiceType !== 'invoice') return
+  if (!values.taxId || values.taxId.length < 3) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['taxId'], message: 'store.checkout.error.taxId' })
+  }
+  if (!values.legalName || values.legalName.length < 2) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['legalName'], message: 'store.checkout.error.legalName' })
+  }
 })
 export type CheckoutValues = z.infer<typeof checkoutSchema>
 
@@ -171,6 +196,12 @@ export const orderResultSchema = z.object({
   replay: z.boolean().default(false),
   intent_id: z.string().uuid().optional(),
   payment_status: z.string().optional(),
+  /**
+   * Resumen v2 · Si el pedido quedó esperando aprobación. El checkout ya lo
+   * devolvía y el esquema lo tiraba: sin él, la confirmación no podía decir
+   * «tu jefatura tiene que aprobarlo».
+   */
+  approval_status: z.string().nullable().optional(),
   /** N05: la orden de compra con la que quedó firmado. Ausente en respuestas anteriores. */
   purchase_order_number: z.string().nullable().optional(),
 })
@@ -405,6 +436,28 @@ export function shippingAddressOf(values: CheckoutValues): Record<string, string
   return address
 }
 
+/**
+ * La dirección fiscal, solo cuando dice algo que la de entrega no dice.
+ *
+ * Boleta sin centro de costo es «se factura donde se entrega», que es lo que
+ * el servidor ya entiende con `null`: mandar un objeto igual a la dirección de
+ * entrega cambiaría el `request_hash` de todas las compras de siempre sin
+ * aportar nada.
+ */
+export function billingAddressOf(values: CheckoutValues): Record<string, string> | null {
+  const factura = values.invoiceType === 'invoice'
+  const centro = values.costCenter?.trim()
+  if (!factura && !centro) return null
+  const billing: Record<string, string> = {
+    ...shippingAddressOf(values),
+    document_type: factura ? 'invoice' : 'receipt',
+  }
+  if (factura && values.taxId) billing.tax_id = values.taxId.trim()
+  if (factura && values.legalName) billing.legal_name = values.legalName.trim()
+  if (centro) billing.cost_center = centro
+  return billing
+}
+
 export async function startCheckout(input: StartCheckoutInput): Promise<OrderResult> {
   // Con sesión hace falta el cliente que la lleva: es lo único que permite al
   // servidor resolver la cuenta B2B del comprador (`my_business_accounts()`).
@@ -430,6 +483,8 @@ export async function startCheckout(input: StartCheckoutInput): Promise<OrderRes
       customer_email: input.customerEmail,
       customer_phone: input.customerPhone,
       shipping_address: shippingAddressOf(input),
+      // Resumen v2. Solo con factura o centro de costo: ver `billingAddressOf`.
+      ...(billingAddressOf(input) ? { billing_address: billingAddressOf(input) } : {}),
       // P12. La ELECCIÓN de entrega, sin un solo importe dentro. `null` cuando
       // la tienda no tiene métodos: el pedido nace con transporte cero, que es
       // exactamente lo que hacía antes de esta fase.

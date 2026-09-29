@@ -591,6 +591,8 @@ describe('catálogo', () => {
 
     await user.click(screen.getByRole('button', { name: 'Quitar filtros' }))
     expect(await screen.findByText('Silla de roble')).toBeInTheDocument()
+    // Sigue en el catálogo: antes la URL vacía lo devolvía a la portada.
+    expect(screen.getByRole('heading', { name: 'Todo el catálogo', level: 1 })).toBeInTheDocument()
   })
 
   it('filtra por categoría desde las píldoras y marca cuál está activa', async () => {
@@ -601,12 +603,13 @@ describe('catálogo', () => {
     renderStorefront(backend(), '/s/casa-nordica?ver=todo')
     await screen.findByText('Silla de roble')
 
-    await user.click(screen.getByRole('button', { name: 'Mesas' }))
+    // Resumen v2 · la píldora lleva su cantidad al lado del nombre: «Mesas 1».
+    await user.click(screen.getByRole('button', { name: /^Mesas( \d+)?$/ }))
 
     await waitFor(() => expect(screen.queryByText('Silla de roble')).not.toBeInTheDocument())
     expect(screen.getByText('Mesa extensible')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Mesas' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'Todo' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: /^Mesas( \d+)?$/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: /^Todo( \d+)?$/ })).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('volver a pulsar la categoría activa la quita', async () => {
@@ -614,7 +617,7 @@ describe('catálogo', () => {
     renderStorefront(backend(), '/s/casa-nordica?c=mesas')
     await screen.findByText('Mesa extensible')
 
-    await user.click(screen.getByRole('button', { name: 'Mesas' }))
+    await user.click(screen.getByRole('button', { name: /^Mesas( \d+)?$/ }))
 
     expect(await screen.findByText('Silla de roble')).toBeInTheDocument()
   })
@@ -796,7 +799,9 @@ describe('ficha de producto', () => {
       'href',
       '/s/casa-nordica?c=sillas',
     )
-    expect(within(contenido).getAllByText('Sillas')).toHaveLength(2)
+    // Tres: las migas, la ficha de datos junto a la descripción (lámina 31) y
+    // la pestaña «Datos del producto».
+    expect(within(contenido).getAllByText('Sillas')).toHaveLength(3)
     expect(screen.getAllByText('Disponible').length).toBeGreaterThan(0)
 
     // Bucket privado: la imagen llega por URL firmada, no por URL pública.
@@ -1587,6 +1592,80 @@ describe('el detalle de la ficha', () => {
   })
 })
 
+/**
+ * Lámina 31 · La ficha rediseñada.
+ *
+ * Lo que la ficha tiene que decir de un vistazo: cuánto se ahorra (en dinero,
+ * no solo en porcentaje), el favorito donde se decide, y en escritorio el
+ * detalle en pestañas centradas en vez de un acordeón a lo ancho.
+ */
+describe('la ficha rediseñada (lámina 31)', () => {
+  function pantallaDeEscritorio() {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((query: string) => ({
+        matches: query.includes('min-width'),
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        onchange: null,
+        dispatchEvent: vi.fn(),
+      })),
+    )
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('dice cuánto se ahorra en dinero y lleva el descuento sobre la foto', async () => {
+    renderStorefront(backend(), '/s/casa-nordica/product/silla-roble')
+    await screen.findByRole('heading', { level: 1, name: 'Silla de roble' })
+
+    const ahorro = document.querySelector('[data-pdp-savings]') as HTMLElement
+    expect(ahorro).not.toBeNull()
+    // 450.00 − 389.00 = 61.00
+    expect(ahorro.textContent).toMatch(/Ahorras .*61\.00/)
+    expect(document.querySelector('[data-gallery-badge]')?.textContent).toMatch(/−\d+ %/)
+  })
+
+  it('el corazón está en la ficha, sobre la foto, y se puede pulsar', async () => {
+    const user = userEvent.setup()
+    renderStorefront(backend(), '/s/casa-nordica/product/silla-roble')
+    await screen.findByRole('heading', { level: 1, name: 'Silla de roble' })
+
+    // El estado de favoritos vive fuera del componente y otra prueba puede
+    // haber guardado ya la silla: se comprueba que el botón CAMBIA, no desde
+    // dónde parte.
+    const galeria = document.querySelector('[data-pdp-gallery]') as HTMLElement
+    const corazon = within(galeria).getByRole('button', { name: /(Guardar en|Quitar de) favoritos: Silla de roble/ })
+    const antes = corazon.getAttribute('aria-pressed')
+    await user.click(corazon)
+    await waitFor(() =>
+      expect(
+        within(galeria).getByRole('button', { name: /(Guardar en|Quitar de) favoritos: Silla de roble/ }),
+      ).toHaveAttribute('aria-pressed', antes === 'true' ? 'false' : 'true'),
+    )
+  })
+
+  it('en escritorio el detalle va en pestañas centradas, no en acordeón', async () => {
+    pantallaDeEscritorio()
+    renderStorefront(backend(), '/s/casa-nordica/product/silla-roble')
+
+    const detalle = await waitFor(() => {
+      const zona = document.querySelector('[data-product-details]')
+      expect(zona).not.toBeNull()
+      return zona as HTMLElement
+    })
+    expect(detalle).toHaveAttribute('data-product-details-mode', 'tabs')
+    const pestanas = within(detalle).getAllByRole('tab')
+    expect(pestanas.map((tab) => tab.textContent)).toEqual(['Descripción', 'Datos del producto'])
+    expect(within(detalle).getByText(/Roble macizo/)).toBeInTheDocument()
+  })
+})
+
 describe('la ficha ya no es una suma de tarjetas', () => {
   it('la galería y la columna de compra no llevan borde ni sombra de tarjeta', async () => {
     renderStorefront(backend(), '/s/casa-nordica/product/silla-roble')
@@ -1767,5 +1846,60 @@ describe('ningún comentario de código se pinta en la vitrina', () => {
      */
     const sinUrls = visible.replace(/https?:\/\//g, '')
     expect(sinUrls).not.toContain('//')
+  })
+})
+
+describe('catálogo: varias marcas, precio, lista y ofertas', () => {
+  it('varias marcas y el rango de precio viajan al buscador desde la URL', async () => {
+    const fake = backend()
+    renderStorefront(fake, '/s/casa-nordica?ver=todo&b=nordica,lumen&pmin=20&pmax=150')
+    await screen.findByText('Silla de roble')
+
+    const llamada = fake.state.rpcCalls.find(
+      (call) => call.name === 'catalog_search_for_slug' && Number(call.args.p_limit) === 24,
+    )
+    expect(llamada?.args.p_filters).toMatchObject({
+      brands: ['nordica', 'lumen'],
+      price_min: '20',
+      price_max: '150',
+    })
+  })
+
+  it('con marcas marcadas pide las marcas SIN ese filtro, para poder sumar otra', async () => {
+    // El buscador cuenta sobre lo ya filtrado: sin esta segunda consulta, al
+    // marcar una marca desaparecían las demás del panel.
+    const fake = backend()
+    renderStorefront(fake, '/s/casa-nordica?ver=todo&b=nordica')
+    await screen.findByText('Silla de roble')
+
+    await waitFor(() =>
+      expect(
+        fake.state.rpcCalls.some(
+          (call) =>
+            call.name === 'catalog_search_for_slug' &&
+            Number(call.args.p_limit) === 1 &&
+            !('brands' in ((call.args.p_filters ?? {}) as Record<string, unknown>)),
+        ),
+      ).toBe(true),
+    )
+  })
+
+  it('la vista de lista pinta filas con favorito y precio, y se elige desde la barra', async () => {
+    const user = userEvent.setup()
+    const { container } = renderStorefront(backend(), '/s/casa-nordica?ver=todo')
+    await screen.findByText('Silla de roble')
+    expect(container.querySelector('[data-catalog-view="list"]')).toBeNull()
+
+    await user.click(screen.getAllByRole('button', { name: 'Vista en lista' })[0]!)
+
+    await waitFor(() => expect(container.querySelector('[data-catalog-view="list"]')).not.toBeNull())
+    const fila = container.querySelector('[data-list-row]') as HTMLElement
+    expect(within(fila).getByRole('button', { name: /Guardar en favoritos|favoritos/i })).toBeInTheDocument()
+  })
+
+  it('«Ver todo» de ofertas es una página con nombre: el título es «Ofertas»', async () => {
+    renderStorefront(backend(), '/s/casa-nordica?ver=todo&oferta=1')
+    expect(await screen.findByRole('heading', { name: 'Ofertas', level: 1 })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Todo el catálogo', level: 1 })).not.toBeInTheDocument()
   })
 })

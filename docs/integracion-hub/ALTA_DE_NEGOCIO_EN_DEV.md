@@ -67,9 +67,15 @@ select email, raw_app_meta_data from auth.users where email = lower('owner@biel.
 
 Queda creado: el negocio, el owner y la tienda en estado borrador.
 
-## Paso 5 · Activar los módulos contratados
+## Paso 5 · Ajustar los módulos, solo si hacen falta otros
 
-SQL Editor, con los mismos uuid. Ajusta la lista a lo que ese negocio contrata:
+**Desde la migración `20260926100000`, este paso es opcional.** El alta aplica un *paquete de
+arranque* dentro de la misma transacción: los módulos que un negocio necesita para vender, las cuatro
+capacidades de IA y la cuota de IA. El negocio entra funcionando, sin SQL.
+
+El paquete lo declara `ebim.starter_entitlements()` y se cambia reemplazando esa función. Lo de abajo
+sirve cuando **este** negocio concreto contrata algo distinto: la lista reemplaza a la anterior, así que
+va completa, incluidos los códigos de IA si quieres conservarla.
 
 ```sql
 select public.sync_platform_context(
@@ -86,7 +92,11 @@ select public.sync_platform_context(
     'ecommerce.promotions',
     'ecommerce.content.cms',
     'ecommerce.fulfillment',
-    'ecommerce.analytics.advanced'
+    'ecommerce.analytics.advanced',
+    'ecommerce.ai.assist',
+    'ecommerce.ai.catalog.copy',
+    'ecommerce.ai.insights',
+    'ecommerce.ai.content'
   ]::text[],
   'provisioning'::public.entitlement_source,
   'demo'                       -- plan, informativo
@@ -104,6 +114,26 @@ where company_id = 'PEGA-AQUI-EL-COMPANY-ID'::uuid order by 1;
 ```
 
 Recarga la aplicación después; el menú lateral se arma con esto.
+
+### La IA ya viene activa
+
+Las cuatro capacidades de IA **no son de base**, pero el paquete de arranque las incluye, así que un
+negocio dado de alta hoy entra con IA y con cuota mensual. Antes no era así: a `biel` le tocó la época
+en la que había que activarla a mano, y nació sin un solo botón.
+
+Dos casos en los que sí hay que tocarla. Si reemplazas la lista del paso 5, incluye los cuatro códigos o
+la apagas. Y si la sociedad ya existía antes del paquete de arranque, dale cuota:
+
+```sql
+insert into public.ai_quotas (organization_id, company_id, plan, monthly_quota)
+values ('PEGA-AQUI-EL-ORGANIZATION-ID'::uuid, 'PEGA-AQUI-EL-COMPANY-ID'::uuid, 'active', 2000)
+on conflict (organization_id, company_id) do update
+   set plan = excluded.plan, monthly_quota = excluded.monthly_quota;
+```
+
+La IA de cada módulo exige además **ese** módulo contratado: la de cobranza no existe sin
+`ecommerce.credit.management`. El recorrido completo está en
+[`FLUJO_COMPLETO_IA.md`](../demo/FLUJO_COMPLETO_IA.md).
 
 ## Paso 6 · Todo lo demás, ya sin SQL
 

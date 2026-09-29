@@ -31,7 +31,8 @@ import { SectionHeading } from './SectionHeading'
  * se ofrece, será una opción explícita del comercio, no un defecto.
  *
  * **No se inventan.** La marca sin logotipo no se esconde ni se rellena con una
- * imagen de archivo: se pinta su monograma, que es lo que ya hace `BrandLogo`.
+ * imagen de archivo: se escribe su NOMBRE en versalitas (lámina 33). Ya no el
+ * monograma en un círculo de color, porque esos colores no eran de la tienda.
  */
 export function BrandLogoWall({
   brands,
@@ -89,21 +90,26 @@ export function BrandLogoWall({
 
       <Box
         sx={{
-          display: 'grid',
-          gap: { xs: 1, md: 1.5 },
           /**
-           * Columnas que se adaptan al ancho, no un número fijo.
+           * Filas CENTRADAS, no una rejilla que rellena por la izquierda.
            *
-           * `auto-fit` con un mínimo es lo que hace que el muro se lea con tres
-           * marcas y con treinta: con un número fijo, tres marcas dejan dos
-           * huecos vacíos y treinta salen a cinco por fila en un teléfono.
+           * Con `auto-fit` y 9 marcas quedaban 8 + 1, y la novena se quedaba
+           * sola pegada al borde izquierdo: se leía como un error. En filas
+           * centradas de 2 / 3 / 5 (según el ancho) quedan 5 + 4 centradas.
+           *
+           * Filetes finos entre celdas en lugar de cajas: es un muro, no una
+           * lista de tarjetas. `marginLeft: -1px` colapsa los dos bordes que se
+           * tocan en uno solo.
            */
-          gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(88px, 22vw, 132px), 1fr))',
-          alignItems: 'stretch',
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          borderTop: '1px solid var(--sf-line)',
         }}
       >
         {brands.map((brand) => {
           const activa = selected === brand.code
+          const conLogo = Boolean(brand.logoUrl)
           return (
             <Box
               key={brand.code}
@@ -126,54 +132,78 @@ export function BrandLogoWall({
               onClick={() => onSelect(activa ? null : brand.code)}
               data-brand-tile={brand.code}
               sx={{
+                flex: { xs: '0 0 50%', sm: '0 0 33.333%', md: '0 0 20%' },
                 display: 'grid',
                 placeItems: 'center',
-                gap: 0.5,
-                px: 1,
-                py: 1.25,
-                minHeight: 76,
-                border: '1px solid',
-                // Sin caja cuando hay logotipo de verdad: la caja compite con
-                // la identidad que la marca ya trae. Se marca solo la activa y
-                // el foco, que sí tienen que verse.
-                borderColor: activa ? 'var(--accent)' : 'transparent',
-                borderRadius: 'var(--sf-radius-sm)',
+                alignContent: 'center',
+                gap: 0.75,
+                px: 1.5,
+                py: 2,
+                minHeight: { xs: 84, md: 104 },
+                ml: '-1px',
+                border: 0,
+                borderLeft: '1px solid var(--sf-line)',
+                borderRight: '1px solid var(--sf-line)',
+                borderBottom: '1px solid var(--sf-line)',
+                borderRadius: 0,
+                // La activa y el paso del ratón toman el fondo suave del
+                // acento: el color sigue siendo el de la tienda.
                 bgcolor: activa ? 'var(--accent-soft)' : 'transparent',
                 cursor: 'pointer',
                 font: 'inherit',
                 color: 'inherit',
                 textDecoration: 'none',
-                transition: 'border-color .15s ease, background-color .15s ease',
+                transition: 'background-color .15s ease',
                 '@media (hover: hover)': {
-                  '&:hover': { borderColor: 'var(--sf-line-strong)' },
+                  '&:hover': { bgcolor: 'var(--accent-soft)' },
                 },
-                '&:focus-visible': { outline: '2px solid var(--accent)', outlineOffset: 2 },
+                '&:focus-visible': { outline: '2px solid var(--accent)', outlineOffset: -2 },
                 '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
               }}
             >
-              <BrandLogo name={brand.name} url={brand.logoUrl ?? null} size={44} marco="limpio" />
-              {/**
-               * El nombre, pequeño y debajo.
-               *
-               * Con logotipo es una ayuda —no todos los logotipos se leen a 44
-               * px— y sin logotipo es lo único que identifica la marca, porque
-               * el monograma son dos letras. En las dos situaciones hace falta,
-               * así que no se esconde por tener imagen.
-               */}
-              <Typography
-                sx={{
-                  fontSize: TS.label,
-                  fontWeight: 700,
-                  textAlign: 'center',
-                  color: activa ? 'var(--accent-deep)' : 'var(--muted)',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  maxWidth: '100%',
-                }}
-              >
-                {brand.name}
-              </Typography>
+              {conLogo ? (
+                <>
+                  <BrandLogo name={brand.name} url={brand.logoUrl ?? null} size={44} marco="limpio" />
+                  {/* Con logotipo, el nombre pequeño debajo: no todos los
+                      logotipos se leen a 44 px. */}
+                  <Typography
+                    sx={{
+                      fontSize: TS.label,
+                      fontWeight: 700,
+                      textAlign: 'center',
+                      color: activa ? 'var(--accent-deep)' : 'var(--muted)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      maxWidth: '100%',
+                    }}
+                  >
+                    {brand.name}
+                  </Typography>
+                </>
+              ) : (
+                /**
+                 * Sin logotipo, el NOMBRE es la marca: en versalitas espaciadas
+                 * y en la tinta del texto. Antes era un monograma en un círculo
+                 * de color, y esos colores no eran de la tienda — seis tonos que
+                 * nadie eligió en una vitrina cuyo color es del comercio.
+                 */
+                <Typography
+                  data-brand-wordmark
+                  sx={{
+                    fontSize: { xs: 14, md: 16 },
+                    fontWeight: 500,
+                    letterSpacing: '0.18em',
+                    textTransform: 'uppercase',
+                    textAlign: 'center',
+                    lineHeight: 1.25,
+                    color: activa ? 'var(--accent-deep)' : 'var(--text)',
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  {brand.name}
+                </Typography>
+              )}
               {/* Y no va la cuenta de productos: en un muro de reconocimiento,
                   «12 productos» es ruido. Quien quiera ese dato lo tiene en el
                   catálogo, donde la marca sí es un filtro. */}

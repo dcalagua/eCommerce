@@ -1,6 +1,15 @@
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
-import { Accordion, AccordionDetails, AccordionSummary, Stack, Typography } from '@mui/material'
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Box,
+  Stack,
+  Typography,
+  useMediaQuery,
+} from '@mui/material'
 import type { ReactNode } from 'react'
+import { SectionTabs } from '@/shared/ui/SectionTabs'
 import { TS } from '@/theme/tokens'
 
 /** Un apartado de la zona de detalle. Sin contenido no se pinta. */
@@ -57,7 +66,31 @@ export function StoreProductDetails({
   ariaLabel: string
 }) {
   const visibles = panels.filter((panel) => panel.content !== null && panel.content !== undefined)
+  /**
+   * Lámina 31 · En ESCRITORIO, pestañas centradas (`SectionTabs`, la pieza de
+   * suite). Allí sobra ancho, el acordeón a lo ancho de la página dejaba dos
+   * líneas de descripción en 1300 px, y las pestañas no obligan a desplazarse
+   * para pasar de una a otra. En el teléfono sigue el acordeón, por lo que
+   * explica la cabecera.
+   */
+  const ancho = useMediaQuery('(min-width:900px)', { noSsr: true })
   if (visibles.length === 0) return null
+
+  if (ancho && visibles.length > 1) {
+    return (
+      <Box
+        component="section"
+        aria-label={ariaLabel}
+        data-product-details={visibles.length}
+        data-product-details-mode="tabs"
+      >
+        <SectionTabs
+          ariaLabel={ariaLabel}
+          items={visibles.map((panel) => ({ id: panel.id, label: panel.title, content: panel.content }))}
+        />
+      </Box>
+    )
+  }
 
   return (
     <Stack

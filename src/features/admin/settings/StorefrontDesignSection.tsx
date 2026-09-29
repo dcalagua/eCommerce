@@ -1,21 +1,32 @@
-import { Alert, Box, Stack, Typography } from '@mui/material'
+import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
+import { Alert, Box, Link as MuiLink, Stack, Typography } from '@mui/material'
+import { useMemo, useState } from 'react'
 import type { UseFormReturn } from 'react-hook-form'
+import { useCatalogSearch, useSignedThumbnails } from '@/features/storefront/hooks'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
-import { R, TS } from '@/theme/tokens'
+import { formatMoney } from '@/shared/lib/format'
+import { tenantAccentVars } from '@/theme/appearance'
+import { useAppearance } from '@/theme/appearance-context'
+import '@/theme/storefrontFonts'
+import { R, TS, brandFontStack } from '@/theme/tokens'
 import {
   THEME_PRESET_IDS,
+  type HomeSectionId,
   type StorefrontStyle,
   type ThemePreset,
 } from '@/features/storefront/theme/types'
-import { THEME_PRESETS } from '@/features/storefront/theme/presets'
+import { THEME_FONTS, THEME_PRESETS, normalizeHomeLayout, resolveStoreFont } from '@/features/storefront/theme/presets'
 import { AdvancedStyleSettings } from './AdvancedStyleSettings'
 import { themeColumnsReady } from './api'
+import { DesignStep } from './DesignStep'
 import { HomeLayoutEditor } from './HomeLayoutEditor'
+import { LiveStorePreview } from './LiveStorePreview'
 import { StoreReadiness } from './StoreReadiness'
-import { StorefrontPreview } from './StorefrontPreview'
+import { StorefrontPreview, type PreviewData } from './StorefrontPreview'
 import { ThemeMiniPreview } from './ThemeMiniPreview'
 import type { StoreFormValues } from './types'
+import { ValuePropsSection } from './ValuePropsSection'
 
 /**
  * «Diseño de tienda»: el taller donde se compone la vitrina (Storefront V2 · P10).
@@ -100,6 +111,12 @@ const ETIQUETA_VALOR: Record<string, MessageKey> = {
   brand: 'settings.design.value.brand',
   editorial: 'settings.design.value.editorial',
   mosaic: 'settings.design.value.mosaic',
+  bento: 'settings.design.value.bento',
+  circles: 'settings.design.value.circles',
+  // Resumen v2 · contrato V5 (Retail «Feria de ofertas»)
+  icons: 'settings.design.value.icons',
+  flash: 'settings.design.value.flash',
+  banners: 'settings.design.value.banners',
   cover: 'settings.design.value.cover',
   contain: 'settings.design.value.contain',
   lg: 'settings.design.value.lg',
@@ -109,11 +126,15 @@ const ETIQUETA_VALOR: Record<string, MessageKey> = {
 /** El valor que significa «no lo piso, lo hereda del tema». */
 const HEREDAR = ''
 
+/** Resumen v2 · Los pasos del taller, en orden (sirven de ancla: `#diseno-tema`…). */
+const ORDEN_PASOS = ['tema', 'portada', 'forma', 'confianza', 'revisar'] as const
+
 export function StorefrontDesignSection({
   form,
   busy = false,
   storeId = null,
   storeSlug = null,
+  pasosAbiertos = [0],
 }: {
   form: UseFormReturn<StoreFormValues>
   busy?: boolean
@@ -127,6 +148,8 @@ export function StorefrontDesignSection({
    */
   storeId?: string | null
   storeSlug?: string | null
+  /** Resumen v2 · Qué pasos empiezan abiertos (por índice). En la app, el primero. */
+  pasosAbiertos?: readonly number[]
 }) {
   const { t } = useI18n()
   const preset = form.watch('theme_preset')
@@ -141,6 +164,109 @@ export function StorefrontDesignSection({
    * hace el motor al leer la fila.
    */
   const estiloEfectivo = { ...THEME_PRESETS[preset], ...estilo }
+
+  /**
+   * Resumen v2 · Qué pasos están abiertos. Uno a la vez en la app; quien monta
+   * el taller puede abrir varios (los tests, que miran el contenido y no el
+   * plegado).
+   */
+  const [abiertos, setAbiertos] = useState<ReadonlySet<number>>(() => new Set(pasosAbiertos))
+  const [visto, setVisto] = useState(() => Math.max(0, ...pasosAbiertos))
+  /** Resumen v2 · La sección de la portada que se está tocando. */
+  const [resaltada, setResaltada] = useState<{ id: HomeSectionId; nombre: string } | null>(null)
+  function abrir(indice: number) {
+    setAbiertos(new Set([indice]))
+    setVisto((previo) => Math.max(previo, indice))
+    const quieto = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    requestAnimationFrame(() =>
+      document.getElementById(`diseno-${ORDEN_PASOS[indice]}`)?.scrollIntoView?.({ block: 'start', behavior: quieto ? 'auto' : 'smooth' }),
+    )
+  }
+  function alternar(indice: number) {
+    if (abiertos.has(indice)) setAbiertos(new Set())
+    else abrir(indice)
+  }
+  const fuenteDelTema = resolveStoreFont(form.watch('font_family'), preset)
+  /** El nombre de la letra, sin el «(Retail)» que lleva en el selector de Marca. */
+  const nombreDeLetra = (fuente: string) =>
+    t(`settings.font.${fuente}` as MessageKey).replace(/\s*\([^)]*\)\s*$/, '')
+
+  /**
+   * Resumen v2 · Lo que la vista previa en vivo pinta encima de la tienda: los
+   * campos del formulario, con los textos vacíos como `null` (así los lee la
+   * vitrina: vacío = «usa lo de siempre»).
+   */
+  const vacioANulo = (valor: unknown) => (typeof valor === 'string' && valor.trim() === '' ? null : valor)
+  const encima = useMemo(
+    () => ({
+      name: form.watch('name'),
+      accent_color: vacioANulo(form.watch('accent_color')),
+      font_family: vacioANulo(form.watch('font_family')),
+      ui_radius: vacioANulo(form.watch('ui_radius')),
+      ui_density: vacioANulo(form.watch('ui_density')),
+      theme_preset: preset,
+      storefront_style: estilo,
+      home_layout: form.watch('home_layout'),
+      hero_title: vacioANulo(form.watch('hero_title')),
+      hero_subtitle: vacioANulo(form.watch('hero_subtitle')),
+      hero_kicker: vacioANulo(form.watch('hero_kicker')),
+      store_description: vacioANulo(form.watch('store_description')),
+      brand_lockup: form.watch('brand_lockup'),
+      show_theme_toggle: form.watch('show_theme_toggle'),
+      announcement_messages: form.watch('announcement_messages'),
+      value_props: form.watch('value_props'),
+    }),
+    // `watch` devuelve valores nuevos en cada render; se compara por contenido.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(form.watch())],
+  )
+  const encendidas = normalizeHomeLayout(form.watch('home_layout')).sections.filter((seccion) => seccion.enabled).length
+  const cambiados = Object.keys(estilo ?? {}).length
+
+  /**
+   * Resumen v2 · LA TIENDA DE VERDAD en la vista previa.
+   *
+   * Hasta aquí la vista previa salía en el verde de la suite, con «Producto de
+   * ejemplo 1» y «Aquí va la frase de tu portada»: se elegía un tema mirando una
+   * tienda que no era la suya. Ahora lleva, SIN GUARDAR:
+   *  - el color del formulario, como variables en línea SOLO en su zona (el
+   *    backoffice de alrededor sigue en el suyo);
+   *  - la letra que se va a pintar (la elegida o la que propone el tema);
+   *  - el titular y el mensaje de la portada;
+   *  - los seis productos más recientes, con su foto y su precio.
+   */
+  const { locale } = useI18n()
+  const { appearance } = useAppearance()
+  const acento = form.watch('accent_color')
+  const tinta = useMemo(
+    () => (/^#[0-9a-f]{6}$/i.test(acento ?? '') ? tenantAccentVars(acento as string, appearance.mode) : {}),
+    [acento, appearance.mode],
+  )
+  const letra = brandFontStack(resolveStoreFont(form.watch('font_family'), preset))
+  const muestra = useCatalogSearch(
+    storeSlug ?? undefined,
+    { term: '', filters: {}, sort: 'recent', limit: 6, offset: 0 },
+    Boolean(storeSlug),
+  )
+  const hits = muestra.data?.items ?? []
+  const miniaturas = useSignedThumbnails(hits.map((hit) => hit.imagePath ?? null))
+  const datos: PreviewData = useMemo(
+    () => ({
+      products: hits.map((hit) => ({
+        name: hit.name,
+        price: formatMoney(Number(hit.price ?? 0), hit.currency ?? 'PEN', locale),
+        compareAt:
+          hit.compareAtPrice && Number(hit.compareAtPrice) > Number(hit.price ?? 0)
+            ? formatMoney(Number(hit.compareAtPrice), hit.currency ?? 'PEN', locale)
+            : null,
+        imageUrl: hit.imagePath ? (miniaturas[hit.imagePath] ?? null) : null,
+      })),
+      heroTitle: form.watch('hero_title') || null,
+      heroSubtitle: form.watch('hero_subtitle') || null,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [hits, miniaturas, locale, form.watch('hero_title'), form.watch('hero_subtitle')],
+  )
 
   /**
    * La base puede ir por detrás del código.
@@ -202,14 +328,23 @@ export function StorefrontDesignSection({
         spacing={2.5}
         sx={{ minWidth: 0 }}
       >
-        <Stack spacing={1}>
-          <Typography sx={{ fontSize: TS.bodyStrong, fontWeight: 700 }}>
-            {t('settings.design.theme.title')}
-          </Typography>
+        {/* Resumen v2 · EL TALLER EN CINCO PASOS.
+            Antes, tema, ajustes, portada y preparación iban seguidos en un solo
+            scroll, sin orden ni final. Ahora son pasos con su resumen: cerrado,
+            cada uno dice lo que se eligió; abierto, lleva el borde del acento. */}
+        <DesignStep
+          id="tema"
+          numero={1}
+          titulo={t('settings.design.step.theme')}
+          resumen={`${t(ETIQUETA_TEMA[preset])} · ${nombreDeLetra(fuenteDelTema)}`}
+          abierto={abiertos.has(0)}
+          hecho={visto > 0}
+          onAlternar={() => alternar(0)}
+          siguiente={{ etiqueta: t('settings.design.step.next').replace('{step}', t('settings.design.step.home')), onClick: () => abrir(1) }}
+        >
           <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
             {t('settings.design.theme.help')}
           </Typography>
-
           {/* `radiogroup` y no cuatro botones: son cuatro opciones EXCLUYENTES, y
               un lector de pantalla necesita saber que elegir una descarta las
               otras tres. Con botones sueltos anunciaría cuatro acciones. */}
@@ -258,18 +393,49 @@ export function StorefrontDesignSection({
                       visual, y hasta P12 se tomaba leyendo cuatro frases. Se
                       dibuja con la definición del preset, así que no se
                       desincroniza de la tienda. */}
-                  <ThemeMiniPreview preset={id} />
+                  {/* Resumen v2 · La miniatura en el color de la TIENDA, no en el
+                      de la suite: se elige mirando la propia tienda. */}
+                  <Box style={tinta}>
+                    <ThemeMiniPreview preset={id} />
+                  </Box>
 
-                  <Typography
-                    sx={{
-                      fontSize: TS.bodyStrong,
-                      fontWeight: 800,
-                      mt: 1,
-                      color: elegido ? 'var(--accent-deep)' : 'var(--text)',
-                    }}
-                  >
-                    {t(ETIQUETA_TEMA[id])}
-                  </Typography>
+                  <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 1, mt: 1 }}>
+                    <Typography
+                      sx={{
+                        fontSize: TS.bodyStrong,
+                        fontWeight: 800,
+                        color: elegido ? 'var(--accent-deep)' : 'var(--text)',
+                      }}
+                    >
+                      {t(ETIQUETA_TEMA[id])}
+                    </Typography>
+                    {/* Resumen v2 · «En uso», como en el diseño: se ve cuál es sin
+                        comparar bordes. (El estado ya lo anuncia `aria-checked`.) */}
+                    {elegido ? (
+                      <Stack
+                        aria-hidden
+                        direction="row"
+                        sx={{ alignItems: 'center', gap: 0.25, px: 1, py: 0.125, borderRadius: 999, bgcolor: 'var(--accent)', color: '#fff' }}
+                      >
+                        <CheckRoundedIcon sx={{ fontSize: 13 }} />
+                        <Typography component="span" sx={{ fontSize: 11, fontWeight: 800 }}>
+                          {t('settings.design.theme.inUse')}
+                        </Typography>
+                      </Stack>
+                    ) : null}
+                  </Stack>
+                  {/* Y la letra que propone, escrita en esa letra. */}
+                  <Stack direction="row" sx={{ alignItems: 'baseline', gap: 0.75, mt: 0.25 }}>
+                    <Typography
+                      aria-hidden
+                      sx={{ fontFamily: brandFontStack(THEME_FONTS[id]), fontSize: 20, fontWeight: 700, lineHeight: 1 }}
+                    >
+                      Aa
+                    </Typography>
+                    <Typography sx={{ fontSize: TS.label, fontWeight: 700, color: 'var(--muted)' }}>
+                      {nombreDeLetra(THEME_FONTS[id])}
+                    </Typography>
+                  </Stack>
                   <Typography sx={{ fontSize: TS.label, color: 'var(--muted)', mt: 0.5 }}>
                     {t(AYUDA_TEMA[id])}
                   </Typography>
@@ -284,22 +450,85 @@ export function StorefrontDesignSection({
               )
             })}
           </Box>
-        </Stack>
+        </DesignStep>
 
-        <AdvancedStyleSettings
-          preset={preset}
-          style={estilo}
-          busy={busy}
-          onChange={pisar}
-          onReset={() => form.setValue('storefront_style', {}, { shouldDirty: true })}
-        />
+        <DesignStep
+          id="portada"
+          numero={2}
+          titulo={t('settings.design.step.home')}
+          resumen={t('settings.design.step.homeSummary').replace('{n}', String(encendidas))}
+          abierto={abiertos.has(1)}
+          hecho={visto > 1}
+          onAlternar={() => alternar(1)}
+          siguiente={{ etiqueta: t('settings.design.step.next').replace('{step}', t('settings.design.step.style')), onClick: () => abrir(2) }}
+        >
+          {/* El tema efectivo baja al editor: el panel de presentación por
+              sección necesita saber qué significa `auto` hoy para poder
+              escribirlo en el desplegable (V3 · P12). */}
+          <HomeLayoutEditor form={form} busy={busy} preset={preset} style={estiloEfectivo} onEnfocar={(id, nombre) => setResaltada(id ? { id, nombre } : null)} />
+        </DesignStep>
 
-        {/* El tema efectivo baja al editor: el panel de presentación por
-            sección necesita saber qué significa `auto` hoy para poder
-            escribirlo en el desplegable (V3 · P12). */}
-        <HomeLayoutEditor form={form} busy={busy} preset={preset} style={estiloEfectivo} />
+        <DesignStep
+          id="forma"
+          numero={3}
+          titulo={t('settings.design.step.style')}
+          resumen={
+            cambiados === 0
+              ? t('settings.design.step.styleInherit')
+              : t('settings.design.step.styleSummary').replace('{n}', String(cambiados))
+          }
+          abierto={abiertos.has(2)}
+          hecho={visto > 2}
+          onAlternar={() => alternar(2)}
+          siguiente={{ etiqueta: t('settings.design.step.next').replace('{step}', t('settings.design.step.trust')), onClick: () => abrir(3) }}
+        >
+          <AdvancedStyleSettings
+            preset={preset}
+            style={estilo}
+            busy={busy}
+            onChange={pisar}
+            onReset={() => form.setValue('storefront_style', {}, { shouldDirty: true })}
+          />
+        </DesignStep>
 
-        {storeId && storeSlug && (
+        <DesignStep
+          id="confianza"
+          numero={4}
+          titulo={t('settings.design.step.trust')}
+          resumen={t('settings.design.step.trustSummary')}
+          abierto={abiertos.has(3)}
+          hecho={visto > 3}
+          onAlternar={() => alternar(3)}
+          siguiente={{ etiqueta: t('settings.design.step.next').replace('{step}', t('settings.design.step.review')), onClick: () => abrir(4) }}
+        >
+          {/* Las garantías («Por qué comprarnos») viven aquí desde el Resumen
+              v2. Iban en General para no obligar a bajar por los ajustes de
+              diseño hasta llegar a escribirlas; con pasos, tienen el suyo. */}
+          <Stack sx={{ gap: 0.5 }}>
+            <Typography sx={{ fontSize: TS.bodyStrong, fontWeight: 700 }}>{t('settings.valueProps.title')}</Typography>
+            <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>{t('settings.valueProps.help')}</Typography>
+          </Stack>
+          <ValuePropsSection form={form} busy={busy} />
+          {/* La barra de avisos, el logotipo y el interruptor claro/oscuro NO
+              se editan aquí: tienen UN sitio, Marca. Aquí se dice dónde. */}
+          <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
+            {t('settings.design.step.trustBrandHint')}{' '}
+            <MuiLink href="#branding" sx={{ fontWeight: 800 }}>
+              {t('settings.design.step.goToBrand')}
+            </MuiLink>
+          </Typography>
+        </DesignStep>
+
+        <DesignStep
+          id="revisar"
+          numero={5}
+          titulo={t('settings.design.step.review')}
+          resumen={t('settings.design.step.reviewSummary')}
+          abierto={abiertos.has(4)}
+          hecho={false}
+          onAlternar={() => alternar(4)}
+        >
+        {storeId && storeSlug ? (
           <StoreReadiness
             storeId={storeId}
             storeSlug={storeSlug}
@@ -309,21 +538,16 @@ export function StorefrontDesignSection({
               support_email: form.watch('support_email'),
               contact_phone: form.watch('contact_phone'),
               contact_address: form.watch('contact_address'),
-              /**
-               * Identidad V3 (P11): sin estos tres, dos señales preguntarían
-               * mal.
-               *
-               * Con `brand_lockup` en `name`, el logotipo no es un hueco — el
-               * comercio eligió su nombre escrito como marca. Y la descripción
-               * es una señal nueva, con la bajada del hero como respaldo de
-               * compatibilidad para las tiendas anteriores a V3.
-               */
               brand_lockup: form.watch('brand_lockup'),
               store_description: form.watch('store_description'),
               hero_subtitle: form.watch('hero_subtitle'),
             }}
           />
-        )}
+        ) : null}
+          <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
+            {t('settings.design.step.reviewHint')}
+          </Typography>
+        </DesignStep>
       </Stack>
 
       {/**
@@ -355,7 +579,31 @@ export function StorefrontDesignSection({
           pr: { lg: 0.5 },
         }}
       >
+        {/* Resumen v2 · Con tienda, la vista previa ES la tienda (iframe con
+            lo del formulario encima). Sin tienda —cuenta nueva— queda el
+            dibujo de siempre, con el color y la letra del formulario. */}
+        {storeSlug ? (
+          <LiveStorePreview
+            storeSlug={storeSlug}
+            overrides={encima}
+            productSlug={hits[0]?.slug ?? null}
+            highlight={
+              resaltada
+                ? {
+                    section: resaltada.id,
+                    label: t('settings.design.live.editing').replace('{section}', resaltada.nombre),
+                  }
+                : null
+            }
+          />
+        ) : (
+        <Box
+          data-preview-tenant
+          style={{ ...tinta, fontFamily: letra }}
+          sx={{ '& .MuiTypography-root': { fontFamily: 'inherit' } }}
+        >
         <StorefrontPreview
+          data={datos}
           storeName={form.watch('name') || form.watch('business_display_name')}
           themePreset={preset}
           style={estilo}
@@ -374,6 +622,8 @@ export function StorefrontDesignSection({
             announcements: form.watch('announcement_messages'),
           }}
         />
+        </Box>
+        )}
       </Box>
     </Box>
   )

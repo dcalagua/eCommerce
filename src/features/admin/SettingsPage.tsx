@@ -10,7 +10,6 @@ import PhotoLibraryRoundedIcon from '@mui/icons-material/PhotoLibraryRounded'
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
-import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded'
 import WorkspacePremiumRoundedIcon from '@mui/icons-material/WorkspacePremiumRounded'
 import {
   Alert,
@@ -51,13 +50,14 @@ import RemoveShoppingCartRoundedIcon from '@mui/icons-material/RemoveShoppingCar
 import { StorefrontDesignSection } from './settings/StorefrontDesignSection'
 import { TaxesSection } from './settings/TaxesSection'
 import { StoreIdentitySection } from './settings/StoreIdentitySection'
-import { ValuePropsSection } from './settings/ValuePropsSection'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import { EmptyState, ErrorState, LoadingState, UnauthorizedState } from '@/shared/ui/states'
+import { THEME_FONTS, normalizeThemePreset } from '@/features/storefront/theme/presets'
 import { useAppearance } from '@/theme/appearance-context'
 import {
   BRAND_FONTS,
   BRAND_RADII,
+  brandFontStack,
   COLOR_MODES,
   DENSITIES,
   R,
@@ -65,6 +65,7 @@ import {
   type Density,
 } from '@/theme/tokens'
 import { SettingsError } from './settings/api'
+import { zonasCambiadas } from './settings/changes'
 import { BrandPreview } from './settings/BrandPreview'
 import { StoreAssetField } from './settings/StoreAssetField'
 import { storeFormSchema, toForm, type StoreFormValues } from './settings/types'
@@ -246,6 +247,9 @@ export function SettingsPage() {
   const previewAccent = form.watch('accent_color')
   const previewRadius = form.watch('ui_radius')
   const previewFont = form.watch('font_family')
+  // Resumen v2 · La que propone el tema elegido AHORA en el formulario, para
+  // que la muestra y la opción «la del tema» digan la verdad antes de guardar.
+  const themeFont = THEME_FONTS[normalizeThemePreset(form.watch('theme_preset'))]
 
   async function onSubmit(values: StoreFormValues) {
     if (!storeId || !activeCompanyId || !tenant) return
@@ -376,6 +380,23 @@ export function SettingsPage() {
                             {...form.register('store_description')}
                           />
                         </Grid>
+                        {/* Resumen v2 · El titular de la portada, por fin editable. */}
+                        <Grid item xs={12} md={8}>
+                          <TextField
+                            fullWidth
+                            slotProps={SHRINK}
+                            label={t('settings.heroTitle')}
+                            placeholder={form.watch('name')}
+                            helperText={
+                              fieldError(form.formState.errors.hero_title?.message, t) ??
+                              t('settings.heroTitleHelp')
+                            }
+                            error={Boolean(form.formState.errors.hero_title)}
+                            disabled={busy}
+                            inputProps={{ maxLength: 120 }}
+                            {...form.register('hero_title')}
+                          />
+                        </Grid>
                         <Grid item xs={12} md={4}>
                           <TextField
                             fullWidth
@@ -461,22 +482,8 @@ export function SettingsPage() {
                       </Grid>
                     </SectionCard>
 
-                    {/* Storefront V2 · P01 · Las promesas de la franja de
-                        portada.
-                        Va en General, junto al contacto y la descripción,
-                        porque es CONTENIDO del comercio y no disposición: en
-                        Diseño se elige cómo se presenta lo que se vende, aquí
-                        se escribe una afirmación sobre el negocio. Mezclarlas
-                        obligaría a bajar por un selector de proporción de
-                        imagen para llegar a escribir «Garantía de 12 meses». */}
-                    <SectionCard
-                      icon={<VerifiedUserRoundedIcon />}
-                      title={t('settings.valueProps.title')}
-                      subtitle={t('settings.valueProps.help')}
-                      padded
-                    >
-                      <ValuePropsSection form={form} busy={busy} />
-                    </SectionCard>
+                    {/* Resumen v2 · Las garantías («Por qué comprarnos») se mudaron al
+                        paso 4 de Diseño de tienda, «Confianza y avisos». */}
 
                     {/* P18 · Quién puede comprar.
                         Va en General y no en Marca porque no es apariencia: es
@@ -599,7 +606,7 @@ export function SettingsPage() {
                           <BrandPreview
                             color={previewAccent}
                             radius={previewRadius}
-                            font={previewFont}
+                            font={previewFont || themeFont}
                             storeName={previewName}
                           />
                         </Grid>
@@ -743,35 +750,38 @@ export function SettingsPage() {
                           />
                         </Grid>
 
-                        {/* Tipografía: PREMIUM. Es de las que hacen que la
-                            tienda deje de parecer de la suite. */}
-                        <CapabilityFeature capability="content.white_label">
-                          <Grid item xs={12} md={4}>
-                            <Controller
-                              control={form.control}
-                              name="font_family"
-                              render={({ field }) => (
-                                <TextField
-                                  select
-                                  fullWidth
-                                  slotProps={SHRINK}
-                                  label={t('settings.font')}
-                                  helperText={t('settings.fontHelp')}
-                                  value={field.value}
-                                  disabled={busy}
-                                  onChange={(event) => field.onChange(event.target.value)}
-                                >
-                                  <MenuItem value="">{t('settings.tokenDefault')}</MenuItem>
-                                  {BRAND_FONTS.map((value) => (
-                                    <MenuItem key={value} value={value}>
-                                      {t(`settings.font.${value}` as MessageKey)}
-                                    </MenuItem>
-                                  ))}
-                                </TextField>
-                              )}
-                            />
-                          </Grid>
-                        </CapabilityFeature>
+                        {/* Tipografía: TEMATIZACIÓN desde Resumen v2, como el
+                            radio y la densidad. Vacío = la que propone el tema. */}
+                        <Grid item xs={12} md={4}>
+                          <Controller
+                            control={form.control}
+                            name="font_family"
+                            render={({ field }) => (
+                              <TextField
+                                select
+                                fullWidth
+                                slotProps={SHRINK}
+                                label={t('settings.font')}
+                                helperText={t('settings.fontHelp')}
+                                value={field.value}
+                                disabled={busy}
+                                onChange={(event) => field.onChange(event.target.value)}
+                              >
+                                <MenuItem value="">
+                                  {t('settings.fontThemeDefault').replace(
+                                    '{font}',
+                                    t(`settings.font.${themeFont}` as MessageKey),
+                                  )}
+                                </MenuItem>
+                                {BRAND_FONTS.map((value) => (
+                                  <MenuItem key={value} value={value} sx={{ fontFamily: brandFontStack(value) }}>
+                                    {t(`settings.font.${value}` as MessageKey)}
+                                  </MenuItem>
+                                ))}
+                              </TextField>
+                            )}
+                          />
+                        </Grid>
                       </Grid>
                     </SectionCard>
 
@@ -1009,9 +1019,16 @@ export function SettingsPage() {
         }}
       >
         {form.formState.isDirty && (
-          <Box sx={{ mr: 'auto' }}>
+          <Stack direction="row" sx={{ mr: 'auto', alignItems: 'center', gap: 1.25, minWidth: 0, flexWrap: 'wrap' }}>
             <StatusChip tone="warning" label={t('settings.unsaved')} />
-          </Box>
+            {/* Resumen v2 · QUÉ se va a publicar, por zonas, y que la tienda
+                cambia al guardar: antes la barra no decía ni lo uno ni lo otro. */}
+            <Typography data-testid="cambios" sx={{ fontSize: 12.5, color: 'var(--muted)', minWidth: 0 }}>
+              {zonasCambiadas(form.formState.dirtyFields).map((zona) => t(zona)).join(' · ')}
+              {' — '}
+              {t('settings.changes.publishHint')}
+            </Typography>
+          </Stack>
         )}
         <GhostButton
           type="button"

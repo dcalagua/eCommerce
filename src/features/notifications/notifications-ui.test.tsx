@@ -8,6 +8,7 @@ import {
   COMPANY_B,
   FunctionsHttpErrorLike,
   ORG,
+  STORE_A,
   USER,
   createFakeSupabase,
   makeSession,
@@ -55,7 +56,22 @@ const aviso = (over: Record<string, unknown>) => ({
   ...over,
 })
 
-function backend(notifications: Array<Record<string, unknown>>): FakeSupabase {
+const STORE_B = '55555555-5555-4555-8555-5555555555bb'
+
+const tienda = (id: string, slug: string, name: string) => ({
+  id,
+  organization_id: ORG,
+  company_id: COMPANY_A,
+  slug,
+  name,
+  status: 'active',
+  currency: 'PEN',
+})
+
+function backend(
+  notifications: Array<Record<string, unknown>>,
+  stores: Array<Record<string, unknown>> = [],
+): FakeSupabase {
   return createFakeSupabase({
     session: makeSession(),
     tables: {
@@ -63,7 +79,7 @@ function backend(notifications: Array<Record<string, unknown>>): FakeSupabase {
       tenant_members: [
         { organization_id: ORG, company_id: COMPANY_A, user_id: USER, role: 'admin', status: 'active' },
       ],
-      stores: [],
+      stores,
       notifications,
     },
   })
@@ -123,6 +139,27 @@ describe('la campanita', () => {
     ]))
 
     expect(await screen.findByRole('button', { name: 'Abrir avisos: 1 sin leer' })).toBeInTheDocument()
+  })
+
+  /**
+   * Con dos tiendas en la misma sociedad, la campana enseñaba pedidos de la
+   * otra estando en una que no había vendido nada, y el listado de al lado
+   * decía «todavía no recibiste pedidos». Lo que no es de ninguna tienda —una
+   * integración caída— se sigue viendo siempre.
+   */
+  it('no mezcla tiendas: solo la activa y lo que no es de ninguna', async () => {
+    pintar(
+      backend(
+        [
+          aviso({ store_id: STORE_A }),
+          aviso({ store_id: STORE_B }),
+          aviso({ store_id: null, kind: 'integration.failed', params: {} }),
+        ],
+        [tienda(STORE_A, 'primera', 'Primera'), tienda(STORE_B, 'segunda', 'Segunda')],
+      ),
+    )
+
+    expect(await screen.findByRole('button', { name: 'Abrir avisos: 2 sin leer' })).toBeInTheDocument()
   })
 
   it('abre la lista con frases, no con claves', async () => {

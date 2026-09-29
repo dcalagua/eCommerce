@@ -43,7 +43,19 @@ import { CategoryDoor, type CategoryDoorItem } from './CategoryDoors'
  * convierte en una cuadrícula irregular. Lo que pase de seis se queda fuera del
  * mosaico, y la sección sigue teniendo su enlace al catálogo.
  */
-const TOPE_MOSAICO = 6
+/**
+ * Cuántas piezas CIERRAN el mosaico sin huecos, en cuatro columnas.
+ *
+ * La destacada ocupa 2×2; a su lado caben cuatro (5 en total) y cada fila de
+ * debajo suma cuatro más (9). Con 6 o 7 sobraba una pieza sola en una fila
+ * nueva, que es justo el hueco que un mosaico no puede tener. Así que se enseña
+ * la forma completa más cercana por debajo, y el resto sigue en el catálogo.
+ */
+function piezasQueCierran(total: number): number {
+  if (total >= 9) return 9
+  if (total >= 5) return 5
+  return total
+}
 
 export function CategoryMosaic({
   categories,
@@ -54,8 +66,9 @@ export function CategoryMosaic({
   storeSlug: string
   ariaLabel?: string
 }) {
-  const visibles = categories.slice(0, TOPE_MOSAICO)
-  const destacada = visibles.length >= 3
+  const visibles = categories.slice(0, piezasQueCierran(categories.length))
+  // Con menos de cinco la forma no cierra: rejilla pareja, sin destacada.
+  const destacada = visibles.length >= 5
 
   return (
     <Box
@@ -71,7 +84,7 @@ export function CategoryMosaic({
          */
         gridTemplateColumns: {
           xs: 'repeat(2, minmax(0, 1fr))',
-          md: 'repeat(4, minmax(0, 1fr))',
+          md: destacada ? 'repeat(4, minmax(0, 1fr))' : `repeat(${Math.max(visibles.length, 2)}, minmax(0, 1fr))`,
         },
         // Filas de alto igual: sin esto, la pieza destacada estira su fila y las
         // pequeñas de al lado se deforman.

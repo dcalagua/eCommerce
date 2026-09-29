@@ -17,7 +17,12 @@
  * segundo pedido que todo esto existe para impedir.
  */
 import { badRequest } from '../errors.ts'
-import { normalizeOrderItems, normalizeShippingAddress, type OrderItemInput } from '../orders.ts'
+import {
+  normalizeBillingAddress,
+  normalizeOrderItems,
+  normalizeShippingAddress,
+  type OrderItemInput,
+} from '../orders.ts'
 import {
   optionalText,
   rejectUnknownFields,
@@ -367,7 +372,7 @@ export async function parseCheckoutBody(
   const billingAddress =
     body.billing_address === undefined || body.billing_address === null
       ? null
-      : normalizeShippingAddress(body.billing_address)
+      : normalizeBillingAddress(body.billing_address)
   const notes = optionalText(body, 'notes', 1000)
   const paymentMethodCode = optionalPaymentMethodCode(body)
   const paymentToken = optionalPaymentToken(body)

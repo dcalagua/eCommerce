@@ -106,7 +106,8 @@ export function ThemeMiniPreview({ preset }: { preset: ThemePreset }) {
           sx={{
             height: ALTO_PORTADA.statement,
             borderRadius: 0.5,
-            bgcolor: 'var(--accent-soft)',
+            // Resumen v2 · el degradado de la tienda, como su portada de verdad.
+            background: 'var(--hero-grad)',
             display: 'grid',
             alignContent: 'center',
             justifyItems: 'center',
@@ -114,12 +115,12 @@ export function ThemeMiniPreview({ preset }: { preset: ThemePreset }) {
             px: 1,
           }}
         >
-          <Box sx={{ height: 5, width: '62%', borderRadius: 4, bgcolor: 'var(--accent)' }} />
-          <Box sx={{ height: 3, width: '40%', borderRadius: 4, bgcolor: 'var(--accent)', opacity: 0.5 }} />
+          <Box sx={{ height: 5, width: '62%', borderRadius: 4, bgcolor: '#fff' }} />
+          <Box sx={{ height: 3, width: '40%', borderRadius: 4, bgcolor: '#fff', opacity: 0.6 }} />
         </Box>
       ) : (
         <Stack direction="row" sx={{ gap: `${aire}px`, height: ALTO_PORTADA.product }}>
-          <Box sx={{ flex: 1, borderRadius: 0.5, bgcolor: 'var(--accent-soft)' }} />
+          <Box sx={{ flex: 1, borderRadius: 0.5, background: 'var(--hero-grad)' }} />
           <Box
             sx={{
               width: '28%',

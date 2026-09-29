@@ -140,12 +140,15 @@ export function PromotionDrawer({
   onPause,
   onArchive,
   onDelete,
+  onCreated,
 }: {
   open: boolean
   promotion: Promotion | null
   scope: PromotionScopeIds | null
   currency: string
   onClose: () => void
+  /** Tras crear: quien abre el panel lo pasa a editar la campaña nueva. */
+  onCreated?: (id: string) => void
   onPause: (promotion: Promotion) => void
   onArchive: (promotion: Promotion) => void
   onDelete: (promotion: Promotion) => void
@@ -238,7 +241,7 @@ export function PromotionDrawer({
     setErrors(found)
     if (Object.keys(found).length > 0) return
     try {
-      await save.mutateAsync({
+      const id = await save.mutateAsync({
         id: promotion?.id ?? null,
         values,
         previa: promotion ? { image_url: promotion.image_url ?? null } : null,
@@ -255,8 +258,23 @@ export function PromotionDrawer({
       if (promotion && scopeKind !== 'all' && scopeTarget !== '' && alcanceListo) {
         await submitScope()
       }
-      notify(t('promotions.campaigns.saved'), 'success')
-      if (!promotion) onClose()
+      // En borrador no sale en la tienda, y eso se dice al guardar: «Campaña
+      // guardada» a secas hacía pensar que ya estaba publicada.
+      notify(
+        t(values.status === 'draft' ? 'promotions.campaigns.savedDraft' : 'promotions.campaigns.saved'),
+        'success',
+      )
+      /**
+       * Al CREAR, el panel no se cierra: pasa a editar la campaña recién
+       * creada. El alcance (a qué productos aplica) solo existe cuando la
+       * campaña ya tiene id, así que cerrar aquí dejaba la tarea a medias y la
+       * campaña fuera de la vista —nace en borrador y la lista abre en
+       * «Vigentes»—: parecía que no se había guardado nada.
+       */
+      if (!promotion) {
+        if (onCreated) onCreated(id)
+        else onClose()
+      }
     } catch (error) {
       // El panel se queda abierto a propósito: lo que se escribió no se pierde.
       const key: MessageKey =

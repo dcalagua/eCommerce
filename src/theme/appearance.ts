@@ -114,6 +114,39 @@ const TENANT_ACCENT_VARS = [
   '--badge-grad',
 ] as const
 
+/**
+ * Las variables del color del tenant, como DATO (Resumen v2).
+ *
+ * La misma cuenta que pinta la vitrina, separada de dónde se aplica: el
+ * `<html>` en la tienda, o una ZONA concreta —la vista previa del taller de
+ * diseño— como estilo en línea, sin repintar el backoffice de alrededor.
+ */
+export function tenantAccentVars(hex: string, mode: ColorMode): Record<(typeof TENANT_ACCENT_VARS)[number], string> {
+  const deep =
+    mode === 'dark'
+      ? `color-mix(in srgb, ${hex} 72%, #FFFFFF)`
+      : `color-mix(in srgb, ${hex} 78%, #071A16)`
+  return {
+    '--accent': hex,
+    '--accent-deep': deep,
+    '--accent-soft': `color-mix(in srgb, ${hex} 14%, var(--card))`,
+    // Segundo acento: el mas oscuro de la familia, para textos sobre relleno
+    // tenue y para el extremo de los degradados.
+    '--accent2': `color-mix(in srgb, ${hex} 60%, #071A16)`,
+    // El HERO y las pastillas de campana tambien son del tenant.
+    //
+    // Sin estas dos, una tienda que elegia rojo se quedaba con el degradado verde
+    // de la suite ocupando media portada, y con los chips de descuento en verde
+    // sobre botones rojos: el color cambiaba en los botones y en nada mas. Es
+    // texto claro sobre fondo oscuro en los dos casos, asi que el degradado
+    // arranca del acento muy oscurecido y termina en el acento.
+    '--hero-grad':
+      `linear-gradient(135deg, color-mix(in srgb, ${hex} 30%, #06120f) 0%, ` +
+      `color-mix(in srgb, ${hex} 70%, #000) 55%, ${hex} 100%)`,
+    '--badge-grad': `linear-gradient(135deg, ${hex} 0%, color-mix(in srgb, ${hex} 68%, #000) 100%)`,
+  }
+}
+
 export function applyTenantAccentToDom(
   hex: string | null,
   mode: ColorMode,
@@ -123,34 +156,7 @@ export function applyTenantAccentToDom(
     for (const name of TENANT_ACCENT_VARS) root.style.removeProperty(name)
     return
   }
-
-  const deep =
-    mode === 'dark'
-      ? `color-mix(in srgb, ${hex} 72%, #FFFFFF)`
-      : `color-mix(in srgb, ${hex} 78%, #071A16)`
-
-  root.style.setProperty('--accent', hex)
-  root.style.setProperty('--accent-deep', deep)
-  root.style.setProperty('--accent-soft', `color-mix(in srgb, ${hex} 14%, var(--card))`)
-  // Segundo acento: el mas oscuro de la familia, para textos sobre relleno
-  // tenue y para el extremo de los degradados.
-  root.style.setProperty('--accent2', `color-mix(in srgb, ${hex} 60%, #071A16)`)
-  // El HERO y las pastillas de campana tambien son del tenant.
-  //
-  // Sin estas dos, una tienda que elegia rojo se quedaba con el degradado verde
-  // de la suite ocupando media portada, y con los chips de descuento en verde
-  // sobre botones rojos: el color cambiaba en los botones y en nada mas. Es
-  // texto claro sobre fondo oscuro en los dos casos, asi que el degradado
-  // arranca del acento muy oscurecido y termina en el acento.
-  root.style.setProperty(
-    '--hero-grad',
-    `linear-gradient(135deg, color-mix(in srgb, ${hex} 30%, #06120f) 0%, ` +
-      `color-mix(in srgb, ${hex} 70%, #000) 55%, ${hex} 100%)`,
-  )
-  root.style.setProperty(
-    '--badge-grad',
-    `linear-gradient(135deg, ${hex} 0%, color-mix(in srgb, ${hex} 68%, #000) 100%)`,
-  )
+  for (const [name, value] of Object.entries(tenantAccentVars(hex, mode))) root.style.setProperty(name, value)
 }
 
 export function applyAppearanceToDom(next: Appearance, root: HTMLElement = document.documentElement): void {

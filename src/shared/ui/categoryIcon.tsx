@@ -6,6 +6,13 @@ import ChildCareRoundedIcon from '@mui/icons-material/ChildCareRounded'
 import ContentCutRoundedIcon from '@mui/icons-material/ContentCutRounded'
 import DevicesOtherRoundedIcon from '@mui/icons-material/DevicesOtherRounded'
 import DirectionsCarRoundedIcon from '@mui/icons-material/DirectionsCarRounded'
+import ElectricalServicesRoundedIcon from '@mui/icons-material/ElectricalServicesRounded'
+import FormatPaintRoundedIcon from '@mui/icons-material/FormatPaintRounded'
+import FoundationRoundedIcon from '@mui/icons-material/FoundationRounded'
+import HandymanRoundedIcon from '@mui/icons-material/HandymanRounded'
+import HealthAndSafetyRoundedIcon from '@mui/icons-material/HealthAndSafetyRounded'
+import PlumbingRoundedIcon from '@mui/icons-material/PlumbingRounded'
+import YardRoundedIcon from '@mui/icons-material/YardRounded'
 import ElderlyRoundedIcon from '@mui/icons-material/ElderlyRounded'
 import FitnessCenterRoundedIcon from '@mui/icons-material/FitnessCenterRounded'
 import HealingRoundedIcon from '@mui/icons-material/HealingRounded'
@@ -65,6 +72,31 @@ import type { ComponentType } from 'react'
  * dentro de medio catálogo.
  */
 const ICONOS: readonly (readonly [readonly string[], ComponentType<{ sx?: object }>])[] = [
+  // --- Ferretería, lo ESPECÍFICO primero ----------------------------------
+  // Va arriba porque sus familias usan palabras que otras entradas atrapan
+  // antes: «Accesorios sanitarios» caía en relojes por «accesorio» y «Bombas de
+  // agua» en bebidas por «agua». «Seguridad» lleva el escudo, que sirve igual
+  // para EPP que para alarmas y cerraduras.
+  [
+    ['gasfiter', 'plomer', 'fontaner', 'tuberia', 'griferia', 'valvula', 'sifon', 'bomba de agua', 'bombas de agua',
+      'accesorio sanitario', 'accesorios sanitarios', 'plumbing'],
+    PlumbingRoundedIcon,
+  ],
+  [
+    ['electricidad', 'electric', 'cable', 'interruptor', 'tomacorriente', 'breaker', 'tablero electr', 'canaleta',
+      'foco', 'iluminacion', 'lighting'],
+    ElectricalServicesRoundedIcon,
+  ],
+  [['construc', 'cemento', 'albanil', 'agregado', 'fierro', 'ladrillo', 'building'], FoundationRoundedIcon],
+  [['pintura', 'brocha', 'rodillo', 'barniz', 'paint'], FormatPaintRoundedIcon],
+  [
+    ['seguridad', 'epp', 'casco', 'guante', 'arnes', 'chaleco', 'protector auditivo', 'mascarilla',
+      'botas de seguridad', 'lentes de seguridad', 'safety'],
+    HealthAndSafetyRoundedIcon,
+  ],
+  [['herramient', 'ferreter', 'taladro', 'esmeril', 'martillo', 'destornillador', 'alicate', 'tool', 'hardware'],
+    HandymanRoundedIcon],
+  [['jardin', 'jardineria', 'garden'], YardRoundedIcon],
   // --- Salud y farmacia ---------------------------------------------------
   [['medicamento', 'farmac', 'etico', 'generico', 'drug'], LocalPharmacyRoundedIcon],
   [['vitamina', 'suplemento', 'nutric', 'vitamin'], VaccinesRoundedIcon],
@@ -97,10 +129,7 @@ const ICONOS: readonly (readonly [readonly string[], ComponentType<{ sx?: object
   // --- Hogar, ferretería y electrodomésticos ------------------------------
   [['electrodomestic', 'cocina', 'appliance'], BlenderRoundedIcon],
   [['mueble', 'hogar', 'decoracion', 'colchon', 'furnitur', 'home'], ChairRoundedIcon],
-  [
-    ['herramient', 'ferreter', 'pintura', 'electricidad', 'construc', 'tool', 'hardware'],
-    BuildRoundedIcon,
-  ],
+  [['bricolaje', 'reparacion', 'mantenimiento', 'repair'], BuildRoundedIcon],
   // --- Tecnología, deporte, juguetes, mascotas, papelería, auto -----------
   [
     ['celular', 'computador', 'laptop', 'audio', 'tecnolog', 'electronic', 'phone', 'tv'],

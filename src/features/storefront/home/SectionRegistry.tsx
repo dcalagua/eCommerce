@@ -12,16 +12,23 @@ import { Suspense, lazy } from 'react'
  */
 import { BrandLogoWall } from '../components/BrandLogoWall'
 import { BrandRow } from '../components/BrandRow'
+import { BrandStrip } from '../components/BrandStrip'
 import { BrandTrustStrip } from '../components/BrandTrustStrip'
-import { Stack } from '@mui/material'
+import { Box, Stack } from '@mui/material'
+import { CAMPANAS_EN_PORTADA_CATALOGO, CatalogCampaignStack } from '../components/CatalogCampaignStack'
+import { FlashOffersBand } from '../components/FlashOffersBand'
 import { OffersFeaturedBand } from '../components/OffersFeaturedBand'
 import { ProductRow } from '../components/ProductRow'
+import { PromoBanners } from '../components/PromoBanners'
 import { PromoCarousel } from '../components/PromoCarousel'
+import { PromoEditorial } from '../components/PromoEditorial'
 import { SectionHeading } from '../components/SectionHeading'
+import { StoreBentoHero } from '../components/StoreBentoHero'
 import { StoreFeaturedHero } from '../components/StoreFeaturedHero'
 import { StoreHero } from '../components/StoreHero'
 import { StoreBusinessInfo } from '../components/StoreBusinessInfo'
 import { StoreValueProps } from '../components/StoreValueProps'
+import { campanaQueTerminaAntes, mayorDescuento } from '../feria'
 import type { ResolvedPresentation } from '../theme/presentation'
 import type { HomeSectionData, HomeSectionRegistry } from './types'
 
@@ -57,6 +64,12 @@ const CategoryDoorGrid = lazy(() =>
 )
 const CategoryPills = lazy(() =>
   import('../components/CategoryDoors').then((modulo) => ({ default: modulo.CategoryPills })),
+)
+const CategoryCircles = lazy(() =>
+  import('../components/CategoryDoors').then((modulo) => ({ default: modulo.CategoryCircles })),
+)
+const CategoryIconCards = lazy(() =>
+  import('../components/CategoryDoors').then((modulo) => ({ default: modulo.CategoryIconCards })),
 )
 /**
  * El mosaico también por `lazy` (Storefront V3 · P07), por lo mismo que las
@@ -103,6 +116,36 @@ const ContentBlocks = lazy(() =>
  * desde fuera y no son lo mismo: una es una sección sin construir y la otra es
  * una sección que se calla porque no tiene nada cierto que decir.
  */
+
+/**
+ * La campaña que la portada en mosaico ya está anunciando, o `null`.
+ *
+ * Replica las condiciones con las que `hero` pinta `StoreBentoHero`: sección
+ * encendida, variante `bento`, sin cubierta del CMS y con algo rebajado. Si
+ * alguna falla, el mosaico no sale y la campaña tiene que verse en su franja.
+ */
+function campanaDelMosaico(data: HomeSectionData): string | null {
+  if (data.theme.style.heroVariant !== 'bento' || data.cmsTraePortada || data.hero.length === 0) return null
+  const hero = data.theme.layout.sections.find((seccion) => seccion.id === 'hero')
+  if (hero && !hero.enabled) return null
+  return data.promociones[0]?.id ?? null
+}
+
+/**
+ * Las campañas que la portada de Catálogo ya enseña al lado de su oferta.
+ *
+ * Misma idea que `campanaDelMosaico`: si la portada las pinta, la sección de
+ * campañas no las repite. Condiciones: tema Catálogo con portada de producto,
+ * sección encendida, sin cubierta del CMS y con algo rebajado. Si alguna falla,
+ * la portada no las lleva y tienen que verse en su sección.
+ */
+function campanasDePortadaCatalogo(data: HomeSectionData): readonly string[] {
+  if (data.theme.preset !== 'catalog' || data.theme.style.heroVariant !== 'product') return []
+  if (data.cmsTraePortada || data.hero.length === 0) return []
+  const hero = data.theme.layout.sections.find((seccion) => seccion.id === 'hero')
+  if (hero && !hero.enabled) return []
+  return data.promociones.slice(0, CAMPANAS_EN_PORTADA_CATALOGO).map((promo) => promo.id)
+}
 
 /**
  * Las fotos del collage del hero (Storefront V3 · P04).
@@ -223,13 +266,68 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
     const productos = conTope(data.hero, maxItems)
     if (productos.length === 0) return editorial
 
-    return (
+    // Resumen v2 · «Feria de ofertas»: el bloque de la campaña y cuatro
+    // ofertas. Completa con lo rebajado que no esté ya en la portada.
+    if (data.theme.style.heroVariant === 'bento') {
+      const vistos = new Set(productos.map((producto) => producto.product_id))
+      const cuatro = [...productos, ...data.ofertas.filter((producto) => !vistos.has(producto.product_id))].slice(0, 4)
+      const campana = data.promociones[0] ?? null
+      // La foto de la campaña viaja ya firmada en `promoAssets`; un https
+      // externo se usa tal cual. Sin foto, el bloque sigue con el degradado.
+      const fotoCampana = campana?.imageUrl
+        ? /^https:\/\//i.test(campana.imageUrl)
+          ? campana.imageUrl
+          : (data.promoAssets?.[campana.imageUrl] ?? null)
+        : null
+      return (
+        <StoreBentoHero
+          products={cuatro}
+          promotion={campana}
+          imageSrc={fotoCampana}
+          clockEndsAt={campanaQueTerminaAntes(data.promociones)?.endsAt ?? null}
+          maxDiscount={mayorDescuento([...productos, ...data.ofertas], data.promociones)}
+          storeSlug={data.storeSlug}
+          thumbnails={data.thumbsOfertas}
+          favorites={data.favorites}
+          onToggleFavorite={data.onToggleFavorite}
+        />
+      )
+    }
+
+    const destacada = (
       <StoreFeaturedHero
         products={productos}
         storeSlug={data.storeSlug}
         thumbnails={data.thumbsOfertas}
       />
     )
+
+    // Catálogo · la oferta y las campañas en UNA fila (propuesta 29). Antes
+    // eran dos carruseles apilados, el segundo con media tarjeta vacía.
+    const enPortada = campanasDePortadaCatalogo(data)
+    if (enPortada.length > 0) {
+      return (
+        <Box
+          data-catalog-hero="true"
+          sx={{
+            display: 'grid',
+            gap: { xs: 1.5, md: 2 },
+            gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 400px' },
+            alignItems: 'stretch',
+          }}
+        >
+          {destacada}
+          <CatalogCampaignStack
+            promotions={data.promociones.filter((promo) => enPortada.includes(promo.id))}
+            storeSlug={data.storeSlug}
+            currency={data.store.currency}
+            assets={data.promoAssets}
+          />
+        </Box>
+      )
+    }
+
+    return destacada
   },
 
   /**
@@ -244,7 +342,23 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
    */
   services: (data) => <StoreValueProps store={data.store} />,
 
-  offers: (data, maxItems, presentation) => (
+  offers: (data, maxItems, presentation) =>
+    /**
+     * Resumen v2 · `flash`: la banda de «Ofertas relámpago» (Retail). Reloj
+     * solo si una campaña vigente tiene fecha de fin próxima.
+     */
+    presentation?.variant === 'flash' ? (
+      <FlashOffersBand
+        offers={conTope(data.ofertas, maxItems)}
+        total={data.ofertasTotal}
+        clockEndsAt={campanaQueTerminaAntes(data.promociones)?.endsAt ?? null}
+        storeSlug={data.storeSlug}
+        thumbnails={data.thumbsOfertas}
+        favorites={data.favorites}
+        onToggleFavorite={data.onToggleFavorite}
+        onQuickView={data.onQuickView}
+      />
+    ) : (
     <OffersFeaturedBand
       /**
        * `band` o `split` (V3 · P08).
@@ -266,7 +380,7 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
       onToggleFavorite={data.onToggleFavorite}
       onQuickView={data.onQuickView}
     />
-  ),
+    ),
 
   cms: (data) => {
     // Sin bloques no se monta nada, y así una tienda sin contenido tampoco
@@ -295,9 +409,43 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
    * Las promociones vigentes salen del motor, no de un cartel escrito a mano:
    * si está descontando, se anuncia; si caduca, desaparece sola.
    */
-  promotions: (data, maxItems) => {
-    const promos = conTope(data.promociones, maxItems)
+  promotions: (data, maxItems, presentation) => {
+    // Si la portada en mosaico ya anuncia la campaña —nombre, texto y reloj—,
+    // repetirla dos secciones más abajo es decir lo mismo dos veces.
+    // Y lo mismo con las que la portada de Catálogo lleva al lado de su oferta.
+    const enPortada = [campanaDelMosaico(data), ...campanasDePortadaCatalogo(data)].filter(
+      (id): id is string => Boolean(id),
+    )
+    const promos = conTope(
+      data.promociones.filter((promo) => !enPortada.includes(promo.id)),
+      maxItems,
+    )
     if (promos.length === 0) return null
+    // Resumen v2 · `banners`: dos campañas lado a lado (Retail).
+    if (presentation?.variant === 'banners') {
+      return (
+        <PromoBanners
+          promotions={promos}
+          storeSlug={data.storeSlug}
+          currency={data.store.currency}
+          assets={data.promoAssets}
+        />
+      )
+    }
+    // Premium · el banner editorial (lámina 33): la campaña a todo el ancho,
+    // con su foto o con la cifra como imagen. Es la forma que toma en este
+    // tema la presentación de siempre; `banners` sigue valiendo si el
+    // comercio la elige.
+    if (data.theme.preset === 'premium') {
+      return (
+        <PromoEditorial
+          promotions={promos}
+          storeSlug={data.storeSlug}
+          currency={data.store.currency}
+          assets={data.promoAssets}
+        />
+      )
+    }
     return (
       <PromoCarousel
         promotions={promos}
@@ -344,6 +492,8 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
     const comoSeEnsenan = presentation?.variant ?? data.theme.style.categoryVariant
     const pills = comoSeEnsenan === 'pills'
     const mosaico = comoSeEnsenan === 'mosaic'
+    const circulos = comoSeEnsenan === 'circles'
+    const iconos = comoSeEnsenan === 'icons'
 
     // Las puertas llegan por `lazy`, sin fallback: lo que hay debajo no se
     // mueve de sitio —la sección ya tiene su título— y un esqueleto de cuatro
@@ -352,7 +502,20 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
       <Suspense fallback={null}>
         <Stack component="section" aria-label={data.t('store.categories.shopBy')} sx={{ gap: 1.5 }}>
           <SectionHeading title={data.t('store.categories.shopBy')} />
-          {mosaico ? (
+          {iconos ? (
+            <CategoryIconCards
+              categories={familias}
+              storeSlug={data.storeSlug}
+              ariaLabel={data.t('store.categories.shopBy')}
+              offersHref={data.hayOfertas ? `/s/${data.storeSlug}?ver=todo&oferta=1` : null}
+            />
+          ) : circulos ? (
+            <CategoryCircles
+              categories={familias}
+              storeSlug={data.storeSlug}
+              ariaLabel={data.t('store.categories.shopBy')}
+            />
+          ) : mosaico ? (
             /**
              * El MOSAICO (Storefront V3 · P07): la primera familia ocupa el doble.
              *
@@ -405,6 +568,24 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
      * limpio: sin caja, sin tinte y sin la cuenta al lado. Quien duda de una
      * tienda en línea deja de dudar cuando ve nombres que ya conoce.
      */
+    /**
+     * Catálogo · la tira compacta (propuesta 29). Es la forma que toma en este
+     * tema la presentación de tarjetas: cinco marcas con su cuenta y «Ver
+     * todas», en lugar de una fila que gira. Quien busca entre miles de
+     * referencias usa la marca para ACOTAR, y una tira fija se recorre de un
+     * vistazo.
+     */
+    if (data.theme.preset === 'catalog' && presentation?.variant !== 'logos') {
+      return (
+        <BrandStrip
+          brands={marcas}
+          selected={data.brandSelected}
+          onSelect={data.onSelectBrand}
+          seeAllHref={`/s/${data.storeSlug}?ver=todo`}
+        />
+      )
+    }
+
     if (presentation?.variant === 'logos') {
       return (
         <BrandLogoWall
@@ -498,6 +679,7 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
         favorites={data.favorites}
         onToggleFavorite={data.onToggleFavorite}
         presentation={repartoDeFila(presentation)}
+        ranked={real}
       />
     )
   },

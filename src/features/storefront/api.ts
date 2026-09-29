@@ -2,7 +2,11 @@ import { z } from 'zod'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { AppError } from '@/domain/errors'
 import { codeFromDbError, type PostgrestLike } from '@/shared/lib/appError'
-import { ORDER_BY_TOKEN_RPC, STORE_BEST_SELLERS_PUBLIC_RPC } from '@/shared/lib/db-schema'
+import {
+  ORDER_BY_TOKEN_RPC,
+  PRODUCT_PRICE_TIERS_PUBLIC_RPC,
+  STORE_BEST_SELLERS_PUBLIC_RPC,
+} from '@/shared/lib/db-schema'
 import { buildTextSearchFilter } from '@/shared/lib/search'
 import { tryGetStorefrontClient } from '@/shared/lib/supabase'
 import {
@@ -603,4 +607,42 @@ export async function fetchOrderByToken(input: {
 
   if (error) throw new OrderNotFoundError()
   return trackedOrderSchema.parse(data)
+}
+
+/** Una escala de precio: desde `minQuantity` unidades, `unitPrice` cada una. */
+export interface PriceTier {
+  readonly minQuantity: number
+  readonly unitPrice: number
+}
+
+const priceTiersSchema = z.object({
+  currency: z.string(),
+  tiers: z
+    .array(z.object({ min_quantity: z.string(), unit_price: z.string() }))
+    .default([]),
+})
+
+/**
+ * Las escalas públicas de un producto (lámina 31 · precio por volumen).
+ *
+ * Devuelve lista vacía ante cualquier fallo o si el producto no tiene más de
+ * una escala: el bloque es una AYUDA para decidir, y una ficha que no carga su
+ * tabla de volumen tiene que seguir vendiendo a precio unitario.
+ */
+export async function fetchPriceTiers(
+  storeSlug: string | undefined,
+  productId: string | null,
+): Promise<PriceTier[]> {
+  if (!storeSlug || !productId) return []
+  const { data, error } = await storefront().rpc(PRODUCT_PRICE_TIERS_PUBLIC_RPC, {
+    p_store_slug: storeSlug,
+    p_product_id: productId,
+  })
+  if (error) return []
+  const parsed = priceTiersSchema.safeParse(data)
+  if (!parsed.success) return []
+  const tiers = parsed.data.tiers
+    .map((tier) => ({ minQuantity: Number(tier.min_quantity), unitPrice: Number(tier.unit_price) }))
+    .filter((tier) => Number.isFinite(tier.minQuantity) && Number.isFinite(tier.unitPrice))
+  return tiers.length > 1 ? tiers : []
 }
