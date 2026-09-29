@@ -72,7 +72,7 @@ export type CspInput = {
    * fuera de esta aplicación—.
    *
    * Va como ENTRADA y no como constante para que un despliegue sin pasarela
-   * conserve `script-src 'self'` y `frame-src 'none'`. Abrirlo para todos porque
+   * conserve `script-src 'self'` y `frame-src 'self'`. Abrirlo para todos porque
    * un tenant cobra con tarjeta sería pagar el riesgo entre todos.
    */
   paymentGatewayOrigins?: readonly string[]
@@ -105,7 +105,7 @@ export function contentSecurityPolicy(input: CspInput): string {
   const sockets = api.map(websocketOrigin)
 
   // Vacío mientras no haya pasarela configurada: sin ella, `script-src` sigue
-  // siendo `'self'` y `frame-src` sigue siendo `'none'`.
+  // siendo `'self'` y `frame-src` solo admite este origen.
   const gateway = [...new Set(input.paymentGatewayOrigins ?? [])]
 
   const directives: Array<[string, string[]]> = [
@@ -123,13 +123,15 @@ export function contentSecurityPolicy(input: CspInput): string {
     ['connect-src', ["'self'", ...api, ...sockets, ...gateway]],
     ['manifest-src', ["'self'"]],
     ['worker-src', ["'self'", 'blob:']],
-    // Ni un `<iframe>`, ni un `<object>`, ni un `<embed>`. La aplicación no
-    // incrusta nada de terceros; el día que incruste una pasarela, se declara
-    // ese origen aquí y el cambio se ve en la revisión.
-    // El iframe de la pasarela es la única excepción, y solo si hay pasarela:
-    // ahí se teclea la tarjeta, y ese aislamiento es lo que mantiene el número
-    // fuera de esta aplicación. Sin pasarela configurada sigue siendo `'none'`.
-    ['frame-src', gateway.length > 0 ? gateway : ["'none'"]],
+    // Ni un `<iframe>` de terceros, ni un `<object>`, ni un `<embed>`. `'self'`
+    // es el taller de diseño del backoffice: enmarca la vitrina REAL
+    // (`/s/:slug?vista_previa=1`), que vive en este mismo origen. Con `'none'`
+    // la vista previa sale bloqueada en cuanto hay build (en `vite dev` no hay
+    // CSP y no se nota).
+    // El iframe de la pasarela es la única excepción de fuera, y solo si hay
+    // pasarela: ahí se teclea la tarjeta, y ese aislamiento es lo que mantiene
+    // el número fuera de esta aplicación.
+    ['frame-src', ["'self'", ...gateway]],
     ['object-src', ["'none'"]],
     // `base-uri` es el que casi nadie pone y el que convierte un XSS de DOM en
     // reescritura de TODAS las rutas relativas del documento.
@@ -140,7 +142,9 @@ export function contentSecurityPolicy(input: CspInput): string {
   ]
 
   if (input.includeFrameAncestors !== false) {
-    directives.splice(directives.length - 1, 0, ['frame-ancestors', ["'none'"]])
+    // `'self'` y no `'none'`: el taller de diseño enmarca la vitrina desde este
+    // mismo origen. Ningún otro sitio puede enmarcarla (clickjacking cerrado).
+    directives.splice(directives.length - 1, 0, ['frame-ancestors', ["'self'"]])
   }
 
   return directives
@@ -163,7 +167,7 @@ export function securityHeaders(input: CspInput): Record<string, string> {
     'X-Content-Type-Options': 'nosniff',
     // `X-Frame-Options` es redundante con `frame-ancestors` en un navegador
     // actual y sigue siendo lo que mira media herramienta de auditoría.
-    'X-Frame-Options': 'DENY',
+    'X-Frame-Options': 'SAMEORIGIN',
     // Al salir a otro origen viaja el origen, no la ruta: la ruta de esta
     // aplicación lleva el slug de la tienda y, en `/order/`, el token del pedido.
     'Referrer-Policy': 'strict-origin-when-cross-origin',
