@@ -13,6 +13,7 @@ import { useOutletContext } from 'react-router-dom'
 import type { SearchQuery, SearchResult, Suggestion } from '@/domain'
 import {
   fetchBestSellers,
+  fetchPriceTiers,
   fetchGallery,
   fetchPublicBrands,
   fetchPublicCategories,
@@ -533,4 +534,18 @@ export function usePrefetchProduct(storeId: string | null): (slug: string) => vo
     },
     [client, storeId],
   )
+}
+
+/**
+ * Lámina 31 · Las escalas de precio por cantidad de la ficha. Solo para
+ * productos sin variantes: con variantes el precio aún es un «desde».
+ */
+export function usePriceTiers(storeSlug: string | undefined, productId: string | null) {
+  return useQuery({
+    queryKey: ['storefront', 'price-tiers', storeSlug ?? '', productId ?? ''] as const,
+    queryFn: () => fetchPriceTiers(storeSlug, productId),
+    enabled: Boolean(storeSlug && productId),
+    staleTime: 60_000,
+    retry: false,
+  })
 }

@@ -409,8 +409,6 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'store.feria.upTo': 'up to',
     'store.feria.seeAll': 'See all deals',
     'store.feria.endsIn': 'Ends in',
-    'promotions.campaigns.savedDraft':
-      'Campaign saved as a draft. Switch it to “Active” for it to show in the store.',
     'store.countdown.days': 'days',
     'store.countdown.hours': 'hours',
     'store.countdown.minutes': 'min',
@@ -499,6 +497,11 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'store.reviews.none': 'No reviews yet',
     'store.reviews.beFirst': 'Be the first to review',
     'store.reviews.readAll': 'Read the reviews',
+    'store.product.tiers.title': 'Volume pricing',
+    'store.product.tiers.note': 'With a business account, your agreement price',
+    'store.product.tiers.range': '{from} – {to} units',
+    'store.product.tiers.from': '{from}+ units',
+    'store.product.tiers.choose': 'Take {n} units at {price} each',
     'store.product.zoomHint': 'Tap to zoom',
     'store.product.youSave': 'You save {amount} ({percent})',
     'store.product.prevImage': 'Previous image',
@@ -3029,6 +3032,8 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'promotions.campaigns.emptyBody':
       'Create a campaign to discount by percentage, amount, volume, buy-X-pay-Y or bundle. It starts as a draft: turning it on is a separate decision.',
     'promotions.campaigns.saved': 'Campaign saved',
+    'promotions.campaigns.savedDraft':
+      'Campaign saved as a draft. Switch it to “Active” for it to show in the store.',
     'promotions.campaigns.statusChanged': 'Campaign status updated',
     'promotions.campaigns.archived': 'Campaign archived',
     'promotions.campaigns.deleted': 'Campaign deleted',

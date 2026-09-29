@@ -130,12 +130,12 @@ La cifra de existencias nunca sale: `anon` lee `products.in_stock` —columna ge
 
 ### 1.6 La superficie anónima es una lista cerrada — PASS *(nuevo en P16)*
 
-`anon` puede ejecutar exactamente **24** funciones de `public`, cada una clasificada y justificada
-en el propio test. Una vigesimoquinta pone la suite roja.
+`anon` puede ejecutar exactamente **25** funciones de `public`, cada una clasificada y justificada
+en el propio test. Una vigesimosexta pone la suite roja.
 
 | Clase | Cuántas | Qué las protege |
 |---|---|---|
-| `publicado` | 13 | solo leen lo que la tienda ya publica (incluidas relaciones de producto y reseñas moderadas); la autoridad es la RLS |
+| `publicado` | 14 | solo leen lo que la tienda ya publica (incluidas relaciones de producto y reseñas moderadas); la autoridad es la RLS |
 | `secreto` | 8 | exigen un token de 256 bits (pedido, carrito, devolución), un código de 96 (tarjeta regalo) o el secreto de baja de 244 bits de un recordatorio de carrito |
 | `techo` | 2 | escriben o revelan, y llevan límite de tasa desde P16 (§3.6) |
 | `recogido` | 1 | escribe sin poder llevar techo —sería negar la venta— y por eso lo que escribe se recoge (§3.7) |
@@ -169,6 +169,14 @@ en el propio test. Una vigesimoquinta pone la suite roja.
 > por estrellas), de un producto publicado. Ninguna enseña precio, usuario,
 > correo ni tenant. Escribir una reseña exige sesión (`submit_product_review`,
 > fuera de esta lista) y moderarla, rol de catálogo (`moderate_product_review`).
+
+> **Añadida en la ficha rediseñada (lámina 31).** `product_price_tiers_for_slug`
+> devuelve las escalas de precio por cantidad de un producto publicado, con la
+> misma regla que el carrito cobra a un comprador anónimo: solo listas de alcance
+> tienda o del canal público por defecto. Las de segmento y cliente —precios
+> privados de un comprador concreto— no entran. Resuelve el tenant por el slug de
+> una tienda activa; el mismo producto pedido desde otra tienda devuelve cero
+> escalas. Importes como texto.
 
 > **Añadida en Storefront V2 · P08.** `store_best_sellers_for_slug` — el ranking
 > real de una tienda. Existe porque la portada titulaba «Lo más vendido» una

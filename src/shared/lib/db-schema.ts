@@ -656,6 +656,12 @@ export const CATALOG_SEARCH_PUBLIC_RPC = 'catalog_search_for_slug'
  * «lo más vendido».
  */
 export const STORE_BEST_SELLERS_PUBLIC_RPC = 'store_best_sellers_for_slug'
+/**
+ * Lámina 31 · Las escalas PÚBLICAS de precio por cantidad de un producto, con
+ * la misma regla que cobra el carrito a un comprador anónimo. Solo listas de
+ * tienda o del canal público: las de segmento o cliente son privadas.
+ */
+export const PRODUCT_PRICE_TIERS_PUBLIC_RPC = 'product_price_tiers_for_slug'
 export const CATALOG_SUGGEST_PUBLIC_RPC = 'catalog_suggest_for_slug'
 export const CONTENT_PREVIEW_RPC = 'content_preview'
 export const CATALOG_SEARCH_RPC = 'catalog_search'

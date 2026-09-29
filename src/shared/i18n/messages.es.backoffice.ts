@@ -530,6 +530,8 @@ export const esBackoffice = {
   'promotions.campaigns.emptyBody':
       'Crea una campaña para descontar por porcentaje, importe, volumen, 3x2 o combo. Nace en borrador: encenderla es una decisión aparte.',
   'promotions.campaigns.saved': 'Campaña guardada',
+  'promotions.campaigns.savedDraft':
+    'Campaña guardada como borrador. Cámbiala a «Activa» para que se vea en la tienda.',
   'promotions.campaigns.statusChanged': 'Estado de la campaña actualizado',
   'promotions.campaigns.archived': 'Campaña archivada',
   'promotions.campaigns.deleted': 'Campaña eliminada',
@@ -2267,7 +2269,8 @@ export const esBackoffice = {
   'copilot.disclaimer': 'Solo lee datos con tus permisos y puede equivocarse. Precios, stock, pagos y estados los decide el sistema. Cada pregunta usa una consulta de IA.',
   'copilot.days': '{n} días',
   'watch.title': 'Centro de vigilancia',
-  'watch.subtitle': 'Lo que está en rojo ahora mismo, de todos los módulos',  'watch.deterministic': 'Calculado por el sistema · no consume IA',
+  'watch.subtitle': 'Lo que está en rojo ahora mismo, de todos los módulos',
+  'watch.deterministic': 'Calculado por el sistema · no consume IA',
   'watch.seeMore': 'Ver {n} más',
   'watch.seeLess': 'Ver menos',
   'watch.tabs.label': 'Filtrar avisos por severidad',

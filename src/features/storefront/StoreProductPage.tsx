@@ -25,11 +25,12 @@ import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
 import { AppBreadcrumbs } from '@/shared/ui/AppBreadcrumbs'
 import { EmptyState, ErrorState } from '@/shared/ui/states'
 import { TS } from '@/theme/tokens'
-import { StorefrontNotFoundError } from './api'
+import { StorefrontNotFoundError, type PriceTier } from './api'
 import { ProductPageSkeleton } from './components/ProductPageSkeleton'
 import { notFoundMeta, productMeta } from './seo'
 import { track } from './analytics'
 import { useAddToCart } from './cart/useAddToCart'
+import { PriceTiers } from './components/PriceTiers'
 import { ProductGallery } from './components/ProductGallery'
 import { ProductRow } from './components/ProductRow'
 import { StoreProductDetails } from './components/StoreProductDetails'
@@ -54,6 +55,7 @@ import {
   useGallery,
   usePublicProduct,
   usePublicProducts,
+  usePriceTiers,
   usePublicVariants,
   useStorefront,
   useThumbnails,
@@ -87,6 +89,12 @@ export function StoreProductPage() {
   // Lámina 31 · El corazón también en la ficha, donde se decide guardar para
   // luego. Es el mismo estado que el de las tarjetas.
   const favorites = useFavorites(store.store_id)
+  // Lámina 31 · Las escalas por cantidad, solo sin variantes (con variantes el
+  // precio todavía es un «desde»).
+  const tiers = usePriceTiers(
+    storeSlug,
+    product.data && product.data.kind !== 'variant' ? product.data.product_id : null,
+  )
   const variants = usePublicVariants(product.data)
 
   /**
@@ -505,6 +513,9 @@ export function StoreProductPage() {
             variants={hasVariants ? (variants.data ?? []) : []}
             variantsPending={hasVariants && variants.isPending}
             priceLabel={precioDeLaFicha}
+            // Con convenio el precio de la sesión manda sobre las escalas
+            // públicas: enseñarlas ahí sería anunciar un precio que no es el suyo.
+            tiers={conAcuerdo ? [] : (tiers.data ?? [])}
             {...(conAcuerdo
               ? { priceNote: t('store.product.agreementPrice') }
               : hasVariants && item.variant_count > 1
@@ -778,6 +789,7 @@ function AddToCart({
   variantsPending,
   priceLabel,
   priceNote,
+  tiers = [],
 }: {
   product: PublicProduct
   available: boolean
@@ -794,6 +806,8 @@ function AddToCart({
   priceLabel: string
   /** «Desde», «precio de acuerdo»… si hace falta decirlo. */
   priceNote?: string
+  /** Escalas públicas por cantidad; vacías si no las hay. */
+  tiers?: readonly PriceTier[]
 }) {
   const { t, locale } = useI18n()
   const { storeSlug } = useStorefront()
@@ -887,6 +901,8 @@ function AddToCart({
           {formatMoney(Number(selected.price), selected.currency, locale)}
         </Typography>
       )}
+
+      <PriceTiers tiers={tiers} currency={product.currency} quantity={quantity} onChoose={setQuantity} />
 
       <Stack direction="row" sx={{ gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
         <QuantityStepper value={quantity} onChange={setQuantity} />
