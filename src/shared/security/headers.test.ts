@@ -112,8 +112,8 @@ describe('contentSecurityPolicy', () => {
     expect(same.get('connect-src')).toEqual(["'self'", SUPABASE, 'wss://proyecto.supabase.co'])
   })
 
-  it('nada de marcos, objetos ni base reescribible', () => {
-    expect(parsed.get('frame-src')).toEqual(["'none'"])
+  it('solo marcos propios (la vista previa del taller), ni objetos ni base reescribible', () => {
+    expect(parsed.get('frame-src')).toEqual(["'self'"])
     expect(parsed.get('object-src')).toEqual(["'none'"])
     expect(parsed.get('base-uri')).toEqual(["'self'"])
     expect(parsed.get('form-action')).toEqual(["'self'"])
@@ -124,7 +124,7 @@ describe('contentSecurityPolicy', () => {
    * Publicarlo ahí sería anunciar una protección que no existe.
    */
   it('`frame-ancestors` va en la cabecera y NO en la etiqueta', () => {
-    expect(parsed.get('frame-ancestors')).toEqual(["'none'"])
+    expect(parsed.get('frame-ancestors')).toEqual(["'self'"])
     const paraMeta = contentSecurityPolicy({
       supabaseOrigin: SUPABASE,
       inlineScriptHashes: [],
@@ -169,7 +169,7 @@ describe('securityHeaders', () => {
   })
 
   it('la cabecera SÍ lleva `frame-ancestors`', () => {
-    expect(headers['Content-Security-Policy']).toContain("frame-ancestors 'none'")
+    expect(headers['Content-Security-Policy']).toContain("frame-ancestors 'self'")
   })
 
   it('el referente no sale de origen con la ruta: la ruta lleva el token del pedido', () => {
