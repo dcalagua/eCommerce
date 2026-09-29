@@ -633,7 +633,7 @@ describe('exigir el cobro antes de entregar', () => {
    * El medio con el que se va a cobrar ESTE pedido. Es lo que distingue una
    * venta a credito de una que simplemente todavia no se ha pagado.
    */
-  async function conMedio(pedido: string, codigo: string, familia: 'credit' | 'wallet') {
+  async function conMedio(pedido: string, codigo: string, familia: 'credit' | 'wallet' | 'cash') {
     const [store] = await svc(`select store_id, organization_id, company_id from public.orders where id = $1`, [pedido])
     const [metodo] = await svc(
       `insert into public.payment_methods
@@ -761,6 +761,144 @@ describe('exigir el cobro antes de entregar', () => {
       entrega,
     ])
     expect((row?.result as Row).replay).toBe(true)
+  })
+
+  // -------------------------------------------------------------------------
+  // 20260929130000 · Contra entrega. Visto en QAS (EC-20260929-00003): con la
+  // regla encendida, un pedido en efectivo contra entrega no podía salir nunca
+  // sin marcarlo cobrado ANTES de tener el dinero.
+  // -------------------------------------------------------------------------
+  it('el pedido en efectivo CONTRA ENTREGA sale y se entrega sin cobrar', async () => {
+    const { entrega, pedido } = await nueva()
+    await conMedio(pedido, 'contraentrega-test', 'cash')
+    await dejarLista(entrega)
+
+    await asUser(ordersA(), `select public.fulfillment_transition($1, 'in_transit') as result`, [entrega])
+    await asUser(ordersA(), `select public.fulfillment_transition($1, 'delivered') as result`, [entrega])
+    const [fila] = await svc(`select state::text from public.fulfillments where id = $1`, [entrega])
+    expect(fila?.state).toBe('delivered')
+  })
+
+  it('contra entrega también abre el envío sin cobrar', async () => {
+    const { entrega, pedido } = await nueva()
+    await conMedio(pedido, 'contraentrega-envio', 'cash')
+    await dejarLista(entrega)
+
+    const [row] = await asUser(ordersA(), `select public.shipment_open($1, 'envio-contraentrega-01') as result`, [
+      entrega,
+    ])
+    expect((row?.result as Row).replay).toBe(false)
+  })
+
+  it('la exención es del medio: el mismo pedido por transferencia sigue frenado', async () => {
+    const { entrega, pedido } = await nueva()
+    await conMedio(pedido, 'transferencia-test', 'wallet')
+    await dejarLista(entrega)
+
+    const message = await expectFailure(() =>
+      asUser(ordersA(), `select public.fulfillment_transition($1, 'in_transit') as result`, [entrega]),
+    )
+    expect(message).toMatch(/PAGO_PENDIENTE/)
+  })
+})
+
+/**
+ * 20260929130100 · Un pedido cancelado no se prepara ni se despacha.
+ *
+ * Visto en QAS (EC-20260929-00010 y -00012): tras cancelar, las entregas
+ * seguían «Por preparar» con «Asignar» activo, y la -00012 estaba cobrada.
+ */
+describe('cancelar el pedido cierra sus entregas', () => {
+  // Cada caso crea su pedido y la tienda limita los pedidos por hora: sin esto
+  // el bloque se come el cupo de las suites que vienen detrás.
+  const liberarCupo = () => svc(`delete from public.checkout_attempts where store_id = $1`, [storeA])
+  beforeEach(liberarCupo)
+  afterAll(liberarCupo)
+
+  async function nuevaEn(estado: 'pending' | 'allocated' | 'ready' | 'in_transit') {
+    const order = await place({ delivery: null })
+    const [row] = await asUser(ordersA(), `select public.fulfillment_create($1, 'estandar') as result`, [
+      order.order_id,
+    ])
+    const entrega = String((row?.result as Row).fulfillment_id)
+    const camino = { pending: [], allocated: ['allocated'], ready: ['allocated', 'ready'], in_transit: ['allocated', 'ready', 'in_transit'] }[estado]
+    for (const paso of camino) {
+      await asUser(ordersA(), `select public.fulfillment_transition($1, $2) as result`, [entrega, paso])
+    }
+    return { pedido: String(order.order_id), entrega }
+  }
+
+  const cancelar = (pedido: string) =>
+    asUser(ordersA(), `select public.order_transition($1, 'order_status', 'cancelled', 'El cliente desistió') as r`, [
+      pedido,
+    ])
+
+  const estadoDe = async (entrega: string) =>
+    (await svc(`select state::text, cancel_reason from public.fulfillments where id = $1`, [entrega]))[0]
+
+  it('las entregas que no salieron quedan anuladas, con motivo', async () => {
+    const pendiente = await nuevaEn('pending')
+    const lista = await nuevaEn('ready')
+    await cancelar(pendiente.pedido)
+    await cancelar(lista.pedido)
+
+    for (const { entrega } of [pendiente, lista]) {
+      const fila = await estadoDe(entrega)
+      expect(fila?.state).toBe('cancelled')
+      expect(fila?.cancel_reason).toBe('Pedido cancelado')
+    }
+  })
+
+  it('queda en la línea de tiempo del pedido', async () => {
+    const { pedido, entrega } = await nuevaEn('allocated')
+    await cancelar(pedido)
+
+    const hechos = await svc(
+      `select payload from public.order_events
+        where order_id = $1 and event_type = 'fulfillment.state_changed' and payload->>'to' = 'cancelled'`,
+      [pedido],
+    )
+    expect(hechos).toHaveLength(1)
+    expect((hechos[0]?.payload as Row).fulfillment_id).toBe(entrega)
+  })
+
+  it('la que ya iba en camino no se toca, y se puede cerrar como terminó', async () => {
+    const { pedido, entrega } = await nuevaEn('in_transit')
+    await cancelar(pedido)
+    expect((await estadoDe(entrega))?.state).toBe('in_transit')
+
+    await asUser(ordersA(), `select public.fulfillment_transition($1, 'delivered') as result`, [entrega])
+    expect((await estadoDe(entrega))?.state).toBe('delivered')
+  })
+
+  it('una entrega abierta de un pedido cancelado no avanza (PEDIDO_CANCELADO)', async () => {
+    // El estado que dejaba el fallo: pedido cancelado con la entrega abierta.
+    const { pedido, entrega } = await nuevaEn('pending')
+    // Solo el dueño de la tabla apaga un trigger: se hace con la conexión del arnés.
+    await db.query(`alter table public.orders disable trigger orders_cancel_closes_fulfillments`)
+    try {
+      await cancelar(pedido)
+    } finally {
+      await db.query(`alter table public.orders enable trigger orders_cancel_closes_fulfillments`)
+    }
+    expect((await estadoDe(entrega))?.state).toBe('pending')
+
+    const message = await expectFailure(() =>
+      asUser(ordersA(), `select public.fulfillment_transition($1, 'allocated') as result`, [entrega]),
+    )
+    expect(message).toMatch(/PEDIDO_CANCELADO/)
+
+    // Anularla sí se puede: es lo que cierra el caso.
+    await asUser(ordersA(), `select public.fulfillment_transition($1, 'cancelled', 'Pedido cancelado') as result`, [
+      entrega,
+    ])
+    expect((await estadoDe(entrega))?.state).toBe('cancelled')
+  })
+
+  it('un pedido vivo sigue su camino como siempre', async () => {
+    const { entrega } = await nuevaEn('ready')
+    await asUser(ordersA(), `select public.fulfillment_transition($1, 'delivered') as result`, [entrega])
+    expect((await estadoDe(entrega))?.state).toBe('delivered')
   })
 })
 
