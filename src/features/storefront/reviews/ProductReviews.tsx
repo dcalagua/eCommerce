@@ -35,7 +35,8 @@ const CARD_SX = {
   p: { xs: 2, md: 3 },
   borderRadius: 'var(--sf-radius)',
   border: '1px solid var(--sf-line)',
-  boxShadow: 'var(--sf-shadow)',
+  // Lámina 31 · Sin sombra: es una franja de la ficha, no una tarjeta flotante.
+  boxShadow: 'none',
 } as const
 
 /**
@@ -60,8 +61,39 @@ export function ProductReviews({ storeSlug, productId }: { storeSlug: string; pr
   const data = reviews.data
   const pages = data ? Math.max(1, Math.ceil(data.total / data.page_size)) : 1
 
+  /**
+   * Lámina 31 · Sin opiniones, una FRANJA: el resumen vacío a la izquierda, la
+   * invitación en medio y el botón a la derecha. Antes era una tarjeta de dos
+   * columnas con «Todavía no hay opiniones» flotando en la de la derecha.
+   */
+  if (data && data.summary.count === 0 && data.reviews.length === 0) {
+    return (
+      <Card component="section" id="opiniones" aria-labelledby={headingId} data-reviews-empty sx={CARD_SX}>
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          sx={{ gap: { xs: 2, md: 5 }, alignItems: { md: 'center' } }}
+        >
+          <Stack sx={{ gap: 0.5, flexShrink: 0, minWidth: { md: 220 } }}>
+            <Typography
+              id={headingId}
+              component="h2"
+              sx={{ fontSize: { xs: 20, md: 22 }, fontWeight: 800, letterSpacing: '-0.02em' }}
+            >
+              {t('store.reviews.title')}
+            </Typography>
+            <Rating value={0} readOnly size="small" aria-hidden />
+            <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>{t('store.reviews.empty')}</Typography>
+          </Stack>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <ReviewForm storeSlug={storeSlug} productId={productId} enFranja />
+          </Box>
+        </Stack>
+      </Card>
+    )
+  }
+
   return (
-    <Card component="section" aria-labelledby={headingId} sx={CARD_SX}>
+    <Card component="section" id="opiniones" aria-labelledby={headingId} sx={CARD_SX}>
       <Typography
         id={headingId}
         component="h2"
@@ -231,7 +263,16 @@ const EMPTY_DRAFT: ReviewDraft = { rating: null, title: '', body: '', displayNam
  * El formulario. Sin sesión invita a entrar y vuelve aquí; con sesión enseña
  * la reseña propia y su estado, y deja escribirla o editarla.
  */
-function ReviewForm({ storeSlug, productId }: { storeSlug: string; productId: string }) {
+function ReviewForm({
+  storeSlug,
+  productId,
+  enFranja = false,
+}: {
+  storeSlug: string
+  productId: string
+  /** En la franja sin opiniones, la invitación va en fila: texto y botón a la derecha. */
+  enFranja?: boolean
+}) {
   const { t } = useI18n()
   const { status, session } = useSessionContext()
   const location = useLocation()
@@ -269,10 +310,26 @@ function ReviewForm({ storeSlug, productId }: { storeSlug: string; productId: st
 
   if (status !== 'authenticated') {
     return (
-      <Stack sx={{ gap: 1, alignItems: 'flex-start' }}>
-        <Typography sx={{ color: 'var(--muted)' }}>{t('store.reviews.form.signIn')}</Typography>
-        <Button component={Link} to="/login" state={{ from: location.pathname }} variant="outlined" size="small">
-          {t('auth.submit')}
+      <Stack
+        direction={enFranja ? { xs: 'column', md: 'row' } : 'column'}
+        sx={{ gap: enFranja ? 2 : 1, alignItems: enFranja ? { md: 'center' } : 'flex-start', justifyContent: 'space-between' }}
+      >
+        <Stack sx={{ gap: 0.5 }}>
+          {enFranja ? <Typography sx={{ fontWeight: 700 }}>{t('store.reviews.invite')}</Typography> : null}
+          <Typography sx={{ color: 'var(--muted)', fontSize: enFranja ? TS.label : undefined }}>
+            {t('store.reviews.form.signIn')}
+          </Typography>
+        </Stack>
+        <Button
+          component={Link}
+          to="/login"
+          state={{ from: location.pathname }}
+          variant="outlined"
+          size={enFranja ? 'medium' : 'small'}
+          startIcon={enFranja ? <RateReviewRoundedIcon /> : undefined}
+          sx={{ alignSelf: 'flex-start', flexShrink: 0, textTransform: 'none', fontWeight: 700 }}
+        >
+          {enFranja ? t('store.reviews.write') : t('auth.submit')}
         </Button>
       </Stack>
     )
@@ -280,18 +337,24 @@ function ReviewForm({ storeSlug, productId }: { storeSlug: string; productId: st
 
   if (!own && !abierto && !mine.isPending) {
     return (
-      <Stack data-review-invite sx={{ gap: 1.25, alignItems: 'flex-start' }}>
-        <Typography sx={{ fontWeight: 700 }}>{t('store.reviews.invite')}</Typography>
-        <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
-          {t('store.reviews.form.moderation')}
-        </Typography>
+      <Stack
+        data-review-invite
+        direction={enFranja ? { xs: 'column', md: 'row' } : 'column'}
+        sx={{ gap: enFranja ? 2 : 1.25, alignItems: enFranja ? { md: 'center' } : 'flex-start', justifyContent: 'space-between' }}
+      >
+        <Stack sx={{ gap: 0.5 }}>
+          <Typography sx={{ fontWeight: 700 }}>{t('store.reviews.invite')}</Typography>
+          <Typography sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
+            {t('store.reviews.form.moderation')}
+          </Typography>
+        </Stack>
         <Button
           variant="outlined"
           startIcon={<RateReviewRoundedIcon />}
           onClick={() => setAbierto(true)}
           aria-controls={formId}
           aria-expanded={false}
-          sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 'var(--sf-radius-sm)' }}
+          sx={{ alignSelf: 'flex-start', flexShrink: 0, textTransform: 'none', fontWeight: 700, borderRadius: 'var(--sf-radius-sm)' }}
         >
           {t('store.reviews.write')}
         </Button>

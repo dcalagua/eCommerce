@@ -250,29 +250,10 @@
 .sf-scope[data-store-theme='premium'] {
   --sf-radius: 24px;
   --sf-radius-sm: 16px;
-  /* Lamina 32 · En la ficha, la foto vertical y a sangre. */
-  --sf-pdp-ratio: 4 / 5;
+  /* Lamina 31 · En la ficha, la foto cuadrada y A SANGRE: en Premium la foto es
+     el argumento. (Una version vertical 4:5 dejaba la columna de compra
+     flotando junto a 800 px de foto.) */
   --sf-pdp-fit: cover;
-}
-
-/* Lamina 32 · Premium: la confianza de la ficha en UNA linea de texto, sin
-   caja ni iconos en circulo. Alli manda la foto, y un bloque con tres filas
-   enmarcadas compite con ella. */
-.sf-scope[data-store-theme='premium'] [data-pdp-trust] {
-  flex-direction: row;
-  flex-wrap: wrap;
-  column-gap: 18px;
-  border: 0;
-  background: transparent;
-}
-.sf-scope[data-store-theme='premium'] [data-pdp-trust] > li {
-  padding: 0;
-  border-top: 0;
-}
-.sf-scope[data-store-theme='premium'] [data-pdp-trust] > li > [aria-hidden] {
-  width: auto;
-  height: auto;
-  background: transparent;
 }
 
 /* ---------------------------------------------------------------------------

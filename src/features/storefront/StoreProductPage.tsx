@@ -10,6 +10,8 @@ import {
   Card,
   Chip,
   CircularProgress,
+  Link as MuiLink,
+  Rating,
   Skeleton,
   Stack,
   Typography,
@@ -35,6 +37,7 @@ import { StoreProductPurchaseBar } from './components/StoreProductPurchaseBar'
 import { QuantityStepper } from './components/QuantityStepper'
 import { VariantPicker } from './components/VariantPicker'
 import { useRelatedSections } from './relations'
+import { useProductReviews } from './reviews/hooks'
 import { useFavorites } from './useFavorites'
 import { useVariantChoice } from './useVariantChoice'
 
@@ -251,6 +254,21 @@ export function StoreProductPage() {
     ? `/s/${storeSlug}?c=${encodeURIComponent(item.category_slug)}`
     : `/s/${storeSlug}?ver=todo`
 
+  /** La ficha de datos: va en su pestaña y, resumida, junto a la descripción. */
+  const fichaDeDatos = (
+    <Stack>
+      {/* El SKU solo cuando llega: no todas las lecturas públicas lo traen, y
+          una fila fija con «—» diría que no tiene código. */}
+      {item.sku ? <SheetRow label="SKU" value={item.sku} /> : null}
+      <SheetRow label={t('store.filter.brand')} value={item.brand_name} />
+      <SheetRow label={t('store.filter.category')} value={item.category_name} />
+      <SheetRow
+        label={t('store.product.availabilityLabel')}
+        value={available ? t('store.availability.inStock') : t('store.availability.outOfStock')}
+      />
+    </Stack>
+  )
+
   return (
     <Stack
       sx={{
@@ -289,13 +307,17 @@ export function StoreProductPage() {
             { label: item.name },
           ]}
         />
+        {/* A la FAMILIA del producto, que es a donde vuelve quien lo descarta
+            y busca otro parecido. Sin familia, al catálogo. */}
         <Button
           component={Link}
-          to={`/s/${storeSlug}`}
+          to={salidaAlCatalogo}
           startIcon={<ArrowBackRoundedIcon />}
           sx={{ textTransform: 'none', fontWeight: 700, flexShrink: 0 }}
         >
-          {t('store.product.back')}
+          {item.category_name
+            ? t('store.product.backTo').replace('{name}', item.category_name)
+            : t('store.product.back')}
         </Button>
       </Stack>
 
@@ -362,6 +384,8 @@ export function StoreProductPage() {
             {item.name}
           </Typography>
 
+          <ReviewsSummaryLine storeSlug={storeSlug} productId={item.product_id} />
+
           <Stack direction="row" sx={{ gap: 1, alignItems: 'baseline', flexWrap: 'wrap' }}>
             {/* Con variantes el precio de la ficha es un "desde" hasta que el
                 comprador elige: el maestro puede costar 60 y la talla XL 70,
@@ -410,14 +434,11 @@ export function StoreProductPage() {
             )}
             {!conAcuerdo && !hasVariants && discount !== null && item.compare_at_price && (
               <>
-                <Typography component="s" sx={{ color: 'var(--muted)', fontWeight: 600 }}>
+                {/* Solo el tachado: el porcentaje ya lo dicen la pastilla de la
+                    foto y «Ahorras…». Tres veces el mismo −20 % es ruido. */}
+                <Typography component="s" sx={{ color: 'var(--muted)', fontWeight: 600, fontSize: { xs: 15, md: 17 } }}>
                   {formatMoney(Number(item.compare_at_price), item.currency, locale)}
                 </Typography>
-                <Chip
-                  label={`-${discount}%`}
-                  size="small"
-                  sx={{ bgcolor: 'var(--accent)', color: '#FFFFFF', fontWeight: 800 }}
-                />
               </>
             )}
           </Stack>
@@ -578,20 +599,46 @@ export function StoreProductPage() {
                 {
                   id: 'description',
                   title: t('store.product.description'),
+                  /**
+                   * Lámina 31 · El texto y, AL LADO, la ficha de datos en una
+                   * tarjeta. Solo el texto dejaba dos líneas en 1300 px de
+                   * ancho; en el teléfono la ficha baja debajo del texto.
+                   */
                   content: (
-                    <Typography
+                    <Box
                       sx={{
-                        fontSize: 15,
-                        color: 'var(--text)',
-                        whiteSpace: 'pre-line',
-                        lineHeight: 1.7,
-                        // Texto corrido a lo ancho de la página se lee peor que
-                        // en una línea larga pero acotada.
-                        maxWidth: '72ch',
+                        display: 'grid',
+                        gap: { xs: 2.5, md: 5 },
+                        gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) minmax(280px, 400px)' },
+                        alignItems: 'start',
                       }}
                     >
-                      {item.description.trim()}
-                    </Typography>
+                      <Typography
+                        sx={{
+                          fontSize: { xs: 15, md: 17 },
+                          color: 'var(--text)',
+                          whiteSpace: 'pre-line',
+                          lineHeight: 1.7,
+                          // Texto corrido a lo ancho de la página se lee peor que
+                          // en una línea larga pero acotada.
+                          maxWidth: '68ch',
+                        }}
+                      >
+                        {item.description.trim()}
+                      </Typography>
+                      <Box
+                        data-pdp-sheet-aside
+                        sx={{
+                          px: 2.5,
+                          py: 0.5,
+                          border: '1px solid var(--sf-line)',
+                          borderRadius: 'var(--sf-radius-sm)',
+                          bgcolor: 'var(--card)',
+                        }}
+                      >
+                        {fichaDeDatos}
+                      </Box>
+                    </Box>
                   ),
                 },
               ]
@@ -599,21 +646,7 @@ export function StoreProductPage() {
           {
             id: 'sheet',
             title: t('store.product.sheet'),
-            content: (
-              <Stack sx={{ maxWidth: '60ch' }}>
-                {/* El SKU solo cuando llega: no todas las lecturas públicas lo
-                    traen, y una fila fija con «—» diría que no tiene código. */}
-                {item.sku ? <SheetRow label="SKU" value={item.sku} /> : null}
-                <SheetRow label={t('store.filter.brand')} value={item.brand_name} />
-                <SheetRow label={t('store.filter.category')} value={item.category_name} />
-                <SheetRow
-                  label={t('store.product.availabilityLabel')}
-                  value={
-                    available ? t('store.availability.inStock') : t('store.availability.outOfStock')
-                  }
-                />
-              </Stack>
-            ),
+            content: <Box sx={{ maxWidth: '60ch' }}>{fichaDeDatos}</Box>,
           },
         ]}
       />
@@ -692,6 +725,8 @@ function RelatedRow({
       storeSlug={storeSlug}
       thumbnails={thumbnails}
       seeAllHref={seeAllHref}
+      // Lámina 31 · Compactos: 5 por fila en escritorio, en todos los temas.
+      fixedColumns={{ xs: 2, sm: 3, lg: 5 }}
     />
   )
 }
@@ -904,5 +939,55 @@ function AddToCart({
       />
     ) : null}
     </>
+  )
+}
+
+/**
+ * Lámina 31 · La valoración bajo el título: «★★★★½ 4,5 · 12 opiniones», o
+ * «Sin opiniones aún · Sé el primero» si no hay ninguna.
+ *
+ * Usa la MISMA consulta que la sección de opiniones (primera página, misma
+ * clave), así que no cuesta una petición más. Si falla o aún no llega, no se
+ * pinta: una línea de estrellas vacías mientras carga diría que no hay
+ * opiniones cuando no se sabe.
+ */
+function ReviewsSummaryLine({ storeSlug, productId }: { storeSlug: string; productId: string }) {
+  const { t, locale } = useI18n()
+  const reviews = useProductReviews(storeSlug, productId, 1)
+  const summary = reviews.data?.summary
+  if (!summary) return null
+
+  const average = summary.average === null ? 0 : Number(summary.average)
+  const hay = summary.count > 0
+  return (
+    <Stack direction="row" data-pdp-rating sx={{ alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+      <Rating
+        value={average}
+        precision={0.5}
+        readOnly
+        size="small"
+        getLabelText={() =>
+          t('store.reviews.average').replace(
+            '{average}',
+            new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(average),
+          )
+        }
+        sx={{ color: 'var(--accent-deep)' }}
+      />
+      <Typography sx={{ fontSize: TS.body, color: 'var(--muted)' }}>
+        {hay
+          ? summary.count === 1
+            ? t('store.reviews.countOne')
+            : t('store.reviews.count').replace('{count}', String(summary.count))
+          : t('store.reviews.none')}
+      </Typography>
+      <MuiLink
+        href="#opiniones"
+        underline="hover"
+        sx={{ fontSize: TS.body, fontWeight: 700, color: 'var(--accent-deep)' }}
+      >
+        {hay ? t('store.reviews.readAll') : t('store.reviews.beFirst')}
+      </MuiLink>
+    </Stack>
   )
 }

@@ -73,6 +73,7 @@ export function ProductRow({
   onToggleFavorite,
   presentation,
   ranked = false,
+  fixedColumns,
 }: {
   title: string
   /**
@@ -127,6 +128,15 @@ export function ProductRow({
    * «recomendados» de reserva no tiene puestos que dar.
    */
   ranked?: boolean
+  /**
+   * Columnas FIJAS, sin mirar cuántos productos hay (lámina 31).
+   *
+   * La ficha lo usa para sus relacionados: son una ayuda al pie, no el
+   * escaparate, y con tres productos en un tema de tres columnas salían tres
+   * tarjetas de 500 px que competían con el producto que se está mirando. Con
+   * columnas fijas quedan compactas aunque sean pocas, y sin la puerta extra.
+   */
+  fixedColumns?: { xs: number; sm: number; lg: number }
 }) {
   const { t } = useI18n()
   // Una cotización por fila, no por tarjeta: la fila que gira repite tarjetas
@@ -157,11 +167,11 @@ export function ProductRow({
    * en el tope de la sección porque el tope es del comercio («enseña 12») y esto
    * es del ritmo («enséñalas en grande»).
    */
-  const impuesto = presentation && presentation !== 'rail' ? presentation : null
+  const impuesto = fixedColumns ? 'grid' : presentation && presentation !== 'rail' ? presentation : null
   const visibles = impuesto === 'spotlight' ? products.slice(0, POCOS) : products
 
   const cuantos = visibles.length
-  const pocos = !loading && cuantos > 0 && (impuesto === 'spotlight' || cuantos <= POCOS)
+  const pocos = !fixedColumns && !loading && cuantos > 0 && (impuesto === 'spotlight' || cuantos <= POCOS)
   const rejilla =
     !loading && cuantos > 0 && (impuesto === 'grid' || pocos || cuantos <= TOPE_REJILLA)
 
@@ -178,7 +188,7 @@ export function ProductRow({
    * se quita sigue a un clic en «Ver todo». Con menos productos que columnas no
    * se quita nada: la fila única ya está completa.
    */
-  const columnas = {
+  const columnas = fixedColumns ?? {
     xs: cuantos === 1 ? 1 : Math.min(cuantos, definition.gridColumns.xs),
     sm: Math.min(cuantos, definition.gridColumns.sm),
     lg: Math.min(cuantos, definition.gridColumns.lg),
