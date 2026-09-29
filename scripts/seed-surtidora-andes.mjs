@@ -516,7 +516,8 @@ async function images(dir) {
     if (!ref || ref.variant_id || conFoto.has(ref.product_id)) continue
     const ext = extname(file).slice(1).toLowerCase()
     const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'webp' ? 'image/webp' : 'image/png'
-    const path = `${STORE.organizationId}/${STORE.companyId}/${ref.product_id}/${randomUUID()}.${ext}`
+    // La ruta la exige `ebim.assert_product_image_path`: {organización}/{tienda}/...
+    const path = `${STORE.organizationId}/${store.id}/${ref.product_id}/${randomUUID()}.${ext}`
     const response = await fetch(`${cfg.url}/storage/v1/object/product-images/${path}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${cfg.secret}`, apikey: cfg.secret, 'Content-Type': mime, 'x-upsert': 'false' },
