@@ -267,13 +267,21 @@ describe('el muro de logotipos', () => {
     expect(imagen.getAttribute('height')).toBe('44')
   })
 
-  it('la marca sin logotipo cae a su monograma, no se esconde ni se inventa una imagen', () => {
+  it('la marca sin logotipo se escribe con su nombre, no se esconde ni se inventa una imagen', () => {
     pintarMuro([marca('Sin logo')])
 
     const azulejo = screen.getByRole('button', { name: /Sin logo/ })
     expect(azulejo.querySelector('img')).toBeNull()
-    // El monograma son las iniciales del nombre, siempre las mismas.
-    expect(azulejo.textContent).toContain('SL')
+    // Lámina 33: el NOMBRE es la marca. Ni monograma («SL») en un círculo de
+    // un color que no es de la tienda.
+    expect(azulejo.querySelector('[data-brand-wordmark]')?.textContent).toBe('Sin logo')
+    expect(azulejo.textContent).not.toContain('SL')
+  })
+
+  it('nueve marcas no dejan una huérfana a la izquierda: las filas van centradas', () => {
+    pintarMuro(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].map((n) => marca(`Marca ${n}`)))
+    const fila = screen.getByRole('button', { name: /Marca A/ }).parentElement as HTMLElement
+    expect(getComputedStyle(fila).justifyContent).toBe('center')
   })
 
   it('deja el logotipo sin caja: un muro con doce recuadros es una tabla', () => {

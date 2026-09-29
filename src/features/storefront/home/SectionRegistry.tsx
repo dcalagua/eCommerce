@@ -21,6 +21,7 @@ import { OffersFeaturedBand } from '../components/OffersFeaturedBand'
 import { ProductRow } from '../components/ProductRow'
 import { PromoBanners } from '../components/PromoBanners'
 import { PromoCarousel } from '../components/PromoCarousel'
+import { PromoEditorial } from '../components/PromoEditorial'
 import { SectionHeading } from '../components/SectionHeading'
 import { StoreBentoHero } from '../components/StoreBentoHero'
 import { StoreFeaturedHero } from '../components/StoreFeaturedHero'
@@ -424,6 +425,20 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
     if (presentation?.variant === 'banners') {
       return (
         <PromoBanners
+          promotions={promos}
+          storeSlug={data.storeSlug}
+          currency={data.store.currency}
+          assets={data.promoAssets}
+        />
+      )
+    }
+    // Premium · el banner editorial (lámina 33): la campaña a todo el ancho,
+    // con su foto o con la cifra como imagen. Es la forma que toma en este
+    // tema la presentación de siempre; `banners` sigue valiendo si el
+    // comercio la elige.
+    if (data.theme.preset === 'premium') {
+      return (
+        <PromoEditorial
           promotions={promos}
           storeSlug={data.storeSlug}
           currency={data.store.currency}
