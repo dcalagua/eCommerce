@@ -2039,6 +2039,13 @@ export const es = {
     'customers.field.requiresApproval': 'Exige aprobación',
     'customers.field.approvalThreshold': 'Desde importe',
     'customers.field.thresholdHint': 'Vacío con el control encendido = siempre.',
+    'customers.credit.title': 'Crédito',
+    'customers.credit.help':
+      'Con línea, la cuenta puede pagar con «Crédito» en el checkout y sus pedidos salen sin esperar el cobro.',
+    'customers.field.creditLimit': 'Línea de crédito',
+    'customers.field.creditLimitHint': 'Vacío = compra al contado. Es distinto de 0.',
+    'customers.field.paymentTerms': 'Días de plazo',
+    'customers.field.paymentTermsHint': 'Desde la fecha del pedido, de 0 a 365.',
     'customers.field.ruleName': 'Regla',
     'customers.field.minAmount': 'Desde importe',
     'customers.field.approverRole': 'Aprueba',
@@ -2137,6 +2144,8 @@ export const es = {
     // algo que no existe. El mensaje dice el hecho y nada más.
     'customers.error.noAccount': 'Ese correo todavía no tiene una cuenta en el sistema.',
     'customers.error.thresholdNeedsControl': 'Enciende «exige aprobación» para fijar un umbral',
+    'customers.error.terms': 'Usa un número de días entre 0 y 365',
+    'customers.error.termsNeedLine': 'Fija primero la línea de crédito',
     'customers.error.customerRequired': 'Elige el cliente empresa de esta cuenta',
     'customers.error.duplicate': 'Ya existe un registro con ese dato.',
     'customers.error.forbidden': 'Tu rol no puede hacer este cambio.',

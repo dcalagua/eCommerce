@@ -212,6 +212,61 @@ describe('formulario de cuenta B2B y de sus reglas', () => {
     ).toBe(true)
   })
 
+  describe('línea de crédito', () => {
+    const base = { ...accountToForm(null, 'Acme'), code: 'ACME' }
+    const mensaje = (values: Record<string, unknown>) => {
+      const parsed = accountFormSchema.safeParse({ ...base, ...values })
+      return parsed.success ? null : parsed.error.issues[0]?.message
+    }
+
+    it('una cuenta nueva nace al contado: sin línea ni plazo', () => {
+      expect(base.credit_limit).toBe('')
+      expect(base.payment_terms_days).toBe('')
+      expect(mensaje({})).toBeNull()
+    })
+
+    it('línea con plazo se guarda', () => {
+      expect(mensaje({ credit_limit: '20000.00', payment_terms_days: '30' })).toBeNull()
+    })
+
+    it('línea cero es válida y distinta de «al contado»', () => {
+      expect(mensaje({ credit_limit: '0', payment_terms_days: '' })).toBeNull()
+    })
+
+    it('plazo sin línea no: sería fiar sin tope', () => {
+      expect(mensaje({ credit_limit: '', payment_terms_days: '30' })).toBe('customers.error.termsNeedLine')
+    })
+
+    it('el plazo respeta el rango de la base (0..365) y solo enteros', () => {
+      expect(mensaje({ credit_limit: '1000', payment_terms_days: '366' })).toBe('customers.error.terms')
+      expect(mensaje({ credit_limit: '1000', payment_terms_days: '15.5' })).toBe('customers.error.terms')
+      expect(mensaje({ credit_limit: '1000', payment_terms_days: '365' })).toBeNull()
+    })
+
+    it('la línea es un importe: sin negativos ni más de dos decimales', () => {
+      expect(mensaje({ credit_limit: '-5' })).toBe('customers.error.amount')
+      expect(mensaje({ credit_limit: '10.123' })).toBe('customers.error.amount')
+    })
+
+    it('al editar, la cuenta trae su línea y su plazo al formulario', () => {
+      const form = accountToForm({
+        id: '00000000-0000-4000-8000-000000000001',
+        customer_id: '00000000-0000-4000-8000-000000000002',
+        code: 'ACME',
+        name: 'Acme',
+        is_active: true,
+        requires_approval: false,
+        approval_threshold: null,
+        purchase_order_required: false,
+        notes: null,
+        credit_limit: '20000.00',
+        payment_terms_days: 30,
+      })
+      expect(form.credit_limit).toBe('20000.00')
+      expect(form.payment_terms_days).toBe('30')
+    })
+  })
+
   it('el vínculo se pide por CORREO: ya no hay que pegar un identificador', () => {
     /**
      * Este test estaba invertido, y con razón en su momento.

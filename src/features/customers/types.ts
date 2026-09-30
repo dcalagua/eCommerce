@@ -157,6 +157,9 @@ export const businessAccountSchema = z.object({
   approval_threshold: moneyText.nullable().default(null),
   purchase_order_required: z.boolean(),
   notes: z.string().nullable().default(null),
+  // Línea de crédito: `null` = compra al contado, que no es lo mismo que cero.
+  credit_limit: moneyText.nullable().default(null),
+  payment_terms_days: z.number().int().default(0),
 })
 export type BusinessAccount = z.infer<typeof businessAccountSchema>
 
@@ -497,12 +500,23 @@ export const accountFormSchema = z
     approval_threshold: amountField,
     purchase_order_required: z.boolean(),
     notes: z.string().trim().max(2000, 'customers.error.notes'),
+    credit_limit: amountField,
+    // Mismo rango que `business_accounts_terms_range` (0..365).
+    payment_terms_days: z
+      .string()
+      .trim()
+      .refine((value) => value === '' || (/^\d{1,3}$/.test(value) && Number(value) <= 365), 'customers.error.terms'),
   })
   // La base lo rechaza igual: un umbral sin control encendido es un número que
   // no decide nada y que alguien leerá como si decidiera.
   .refine((values) => values.requires_approval || values.approval_threshold === '', {
     path: ['approval_threshold'],
     message: 'customers.error.thresholdNeedsControl',
+  })
+  // Plazo sin línea es fiar sin tope: se pide la línea primero.
+  .refine((values) => values.credit_limit !== '' || Number(values.payment_terms_days || 0) === 0, {
+    path: ['payment_terms_days'],
+    message: 'customers.error.termsNeedLine',
   })
 export type AccountFormValues = z.infer<typeof accountFormSchema>
 
@@ -515,6 +529,8 @@ export function accountToForm(account: BusinessAccount | null, customerName = ''
     approval_threshold: account?.approval_threshold ?? '',
     purchase_order_required: account?.purchase_order_required ?? false,
     notes: account?.notes ?? '',
+    credit_limit: account?.credit_limit ?? '',
+    payment_terms_days: account && account.payment_terms_days > 0 ? String(account.payment_terms_days) : '',
   }
 }
 

@@ -362,7 +362,7 @@ export async function deleteExternalId(id: string): Promise<void> {
 
 const ACCOUNT_SELECT =
   'id, customer_id, code, name, is_active, requires_approval, approval_threshold::text, ' +
-  'purchase_order_required, notes'
+  'purchase_order_required, notes, credit_limit::text, payment_terms_days'
 
 export async function fetchBusinessAccounts(): Promise<BusinessAccount[]> {
   const { data, error } = await client().from(BUSINESS_ACCOUNTS_TABLE).select(ACCOUNT_SELECT).order('name')
@@ -398,6 +398,8 @@ export async function saveBusinessAccount(input: {
     approval_threshold: nullable(input.values.approval_threshold),
     purchase_order_required: input.values.purchase_order_required,
     notes: nullable(input.values.notes),
+    credit_limit: nullable(input.values.credit_limit),
+    payment_terms_days: Number(input.values.payment_terms_days || 0),
   }
 
   const { error } = input.id

@@ -8,6 +8,7 @@ import {
   Tab,
   Tabs,
   TextField,
+  Typography,
 } from '@mui/material'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useMemo, useState } from 'react'
@@ -249,6 +250,39 @@ export function BusinessAccountDrawer({
                 }
                 label={t('customers.field.purchaseOrder')}
               />
+
+              {/* La línea y el plazo van juntos: sin línea la cuenta compra al
+                  contado y el plazo no significa nada (lo valida el esquema). */}
+              <Stack spacing={1.5}>
+                <Box>
+                  <Typography sx={{ fontWeight: 700, fontSize: 14 }}>{t('customers.credit.title')}</Typography>
+                  <Typography sx={{ color: 'var(--muted)', fontSize: 13 }}>{t('customers.credit.help')}</Typography>
+                </Box>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                  <TextField
+                    label={t('customers.field.creditLimit')}
+                    fullWidth
+                    disabled={!canWrite}
+                    error={Boolean(errors.credit_limit)}
+                    helperText={fieldError('credit_limit') ?? t('customers.field.creditLimitHint')}
+                    inputProps={{ inputMode: 'decimal' }}
+                    {...register('credit_limit', {
+                      onChange: (event: { target: { value: string } }) => {
+                        if (event.target.value.trim() === '') setValue('payment_terms_days', '')
+                      },
+                    })}
+                  />
+                  <TextField
+                    label={t('customers.field.paymentTerms')}
+                    fullWidth
+                    disabled={!canWrite || watch('credit_limit').trim() === ''}
+                    error={Boolean(errors.payment_terms_days)}
+                    helperText={fieldError('payment_terms_days') ?? t('customers.field.paymentTermsHint')}
+                    inputProps={{ inputMode: 'numeric' }}
+                    {...register('payment_terms_days')}
+                  />
+                </Stack>
+              </Stack>
 
               <TextField
                 label={t('customers.field.notes')}
