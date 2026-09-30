@@ -1663,3 +1663,19 @@
 .sf-scope[data-store-theme='retail'][data-filter-drawer] .MuiLink-root {
   color: var(--text);
 }
+/* El mosaico del hero termina en el borde de la TIENDA, no de la ventana: con
+   el mismo margen interior que el texto de la izquierda, las fotos y el corazon
+   ya no quedan cortados bajo la barra de desplazamiento. El fondo sigue a
+   sangre porque lo pone el propio hero. */
+.sf-scope[data-store-theme='retail'] .sf-bento {
+  background: var(--sf-soft);
+}
+.sf-scope[data-store-theme='retail'] .sf-bento-tiles {
+  gap: 12px;
+  padding: 24px max(16px, calc(50vw - var(--sf-content-w) / 2 + 24px)) 24px 0;
+}
+@media (max-width: 1199.95px) {
+  .sf-scope[data-store-theme='retail'] .sf-bento-tiles {
+    padding: 0 16px 16px;
+  }
+}
