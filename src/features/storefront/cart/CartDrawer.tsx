@@ -42,6 +42,7 @@ export function CartDrawer({ storeSlug }: { storeSlug: string }) {
   // Rediseño v3 · El cajón vive en un portal, FUERA de la vitrina: sin la
   // frontera del tema no recibe ni los neutros ni la voz del estilo.
   const tema = useStorefrontTheme()
+  const compacto = tema.preset === 'retail'
 
   return (
     <Drawer
@@ -150,6 +151,40 @@ export function CartDrawer({ storeSlug }: { storeSlug: string }) {
               boxShadow: '0 -8px 20px -18px rgba(0,0,0,0.45)',
             }}
           >
+            {compacto ? (
+              /* Rediseño v3 · Retail: el resumen COMPACTO. El total manda y el
+                 desglose va en una sola línea pequeña debajo; el completo sigue
+                 en la bolsa grande. Nada se oculta: se dice más corto. */
+              <Stack sx={{ gap: 0.25, mb: 1 }} data-cart-total>
+                <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'baseline', gap: 2 }}>
+                  <Typography sx={{ fontWeight: 700, fontSize: TS.bodyStrong }}>
+                    {quoted ? t('store.cart.total') : t('store.cart.subtotal')}
+                  </Typography>
+                  <Typography className="tnum sf-drawer-total" sx={{ fontWeight: 800, fontSize: 22 }}>
+                    {formatMoney(
+                      Number(quoted ? quoted.grossTotal : subtotal),
+                      moneda,
+                      locale,
+                    )}
+                  </Typography>
+                </Stack>
+                <Typography className="tnum" sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
+                  {[
+                    quoted
+                      ? `${t('store.cart.subtotal')} ${formatMoney(Number(quoted.netTotal), moneda, locale)}`
+                      : null,
+                    quoted && Number(quoted.discountTotal) > 0
+                      ? `${t('store.cart.discount')} − ${formatMoney(Number(quoted.discountTotal), moneda, locale)}`
+                      : null,
+                    quoted ? `${t('store.cart.tax')} ${formatMoney(Number(quoted.taxTotal), moneda, locale)}` : null,
+                    quoted ? t('store.cart.shippingNote') : t('store.cart.taxNote'),
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </Typography>
+              </Stack>
+            ) : (
+            <>
             <Stack
               direction="row"
               sx={{ justifyContent: 'space-between', alignItems: 'baseline', gap: 2 }}
@@ -219,10 +254,12 @@ export function CartDrawer({ storeSlug }: { storeSlug: string }) {
                 {t('store.cart.taxNote')}
               </Typography>
             )}
-            <Box sx={{ mb: 1.25 }}>
+            </>
+            )}
+            <Box sx={{ mb: compacto ? 1 : 1.25 }} className="sf-drawer-terms">
               <BuyerTermsNotice storeSlug={storeSlug} total={total} currency={moneda} compact />
             </Box>
-            <Stack sx={{ gap: 0.5 }}>
+            <Stack sx={{ gap: 0.5 }} className="sf-drawer-actions">
               <Button
                 component={Link}
                 to={`/s/${storeSlug}/checkout`}

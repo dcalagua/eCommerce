@@ -1807,3 +1807,50 @@
   border-color: var(--text);
   border-radius: var(--sf-pill);
 }
+
+/* ---- Retail: el pie del cajon, compacto --------------------------------- */
+/* Credito en UNA linea: icono y lo que queda, sin rotulo ni barra. */
+.sf-scope[data-store-theme='retail'] .sf-drawer-terms [data-buyer-credit] {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+}
+.sf-scope[data-store-theme='retail'] .sf-drawer-terms [data-buyer-credit] .sf-credit-head p,
+.sf-scope[data-store-theme='retail'] .sf-drawer-terms [data-buyer-credit] > [aria-hidden] {
+  display: none;
+}
+.sf-scope[data-store-theme='retail'] .sf-drawer-terms [data-buyer-credit] > p {
+  margin: 0;
+  font-size: 12px;
+}
+/* Acciones: la salida a lo ancho y el resto en una fila de enlaces. */
+.sf-scope[data-store-theme='retail'] .sf-drawer-actions {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  column-gap: 18px;
+  row-gap: 6px;
+}
+.sf-scope[data-store-theme='retail'] .sf-drawer-actions .sf-cart-checkout {
+  flex-basis: 100%;
+  min-block-size: 48px;
+}
+.sf-scope[data-store-theme='retail'] .sf-drawer-actions .sf-drawer-b2b {
+  display: contents;
+}
+.sf-scope[data-store-theme='retail'] .sf-drawer-actions .sf-drawer-b2b .MuiButton-root,
+.sf-scope[data-store-theme='retail'] .sf-drawer-actions .sf-drawer-view {
+  flex: 0 0 auto;
+  inline-size: auto;
+  min-inline-size: 0;
+  min-block-size: 0;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
