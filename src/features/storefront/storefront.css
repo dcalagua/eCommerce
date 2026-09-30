@@ -2175,3 +2175,56 @@
   min-block-size: 48px;
   font-weight: 700;
 }
+
+/* ---- Universal · ficha, segun su lamina --------------------------------- */
+.sf-scope[data-store-theme='universal'] [data-pdp-price] {
+  padding-block: 14px;
+  border-block: 1px solid var(--sf-line);
+}
+.sf-scope[data-store-theme='universal'] .sf-pdp-buynow {
+  border-color: var(--accent-deep);
+  color: var(--accent-deep);
+  border-radius: var(--sf-btn-radius);
+}
+/* La columna derecha: UNA tarjeta con filas separadas y el vendedor al pie. */
+.sf-scope[data-store-theme='universal'] .sf-pdp-aside {
+  align-self: start;
+  border: 1px solid var(--sf-line);
+  border-radius: var(--sf-radius);
+  background: var(--card);
+  overflow: hidden;
+}
+.sf-scope[data-store-theme='universal'] .sf-pdp-aside [data-pdp-trust] {
+  border: 0;
+  border-radius: 0;
+}
+.sf-scope[data-store-theme='universal'] .sf-pdp-aside [data-pdp-trust] li {
+  padding-block: 14px;
+}
+.sf-scope[data-store-theme='universal'] .sf-pdp-aside [data-pdp-trust] li > [aria-hidden] {
+  background: transparent;
+  color: var(--accent-deep);
+}
+.sf-scope[data-store-theme='universal'] .sf-pdp-soldby {
+  padding: 12px 14px;
+  border-top: 1px solid var(--sf-line);
+}
+/* Especificaciones: tabla a lo ancho con filas alternas. */
+.sf-scope[data-store-theme='universal'] [data-product-details] .sf-sheet-row {
+  justify-content: flex-start;
+  gap: 0;
+  padding: 10px 14px;
+  border-bottom: 0;
+}
+.sf-scope[data-store-theme='universal'] [data-product-details] .sf-sheet-row:nth-child(odd) {
+  background: var(--neutral-soft);
+}
+.sf-scope[data-store-theme='universal'] [data-product-details] .sf-sheet-row > :first-child {
+  flex: 0 0 min(260px, 40%);
+  color: var(--text);
+  font-weight: 700;
+}
+.sf-scope[data-store-theme='universal'] [data-product-details] .sf-sheet-row > :last-child {
+  text-align: left;
+  font-weight: 400;
+}

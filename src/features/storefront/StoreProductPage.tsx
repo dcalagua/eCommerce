@@ -19,7 +19,7 @@ import {
   Typography,
 } from '@mui/material'
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAgreementPrice } from '@/features/pricing/useAgreementPrice'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { formatMoney } from '@/shared/lib/format'
@@ -402,7 +402,8 @@ export function StoreProductPage() {
           {
             id: 'sheet',
             title: t('store.product.sheet'),
-            content: <Box sx={{ maxWidth: '60ch' }}>{fichaDeDatos}</Box>,
+            // Universal: la tabla a lo ancho, en filas alternas (lámina).
+            content: <Box sx={{ maxWidth: universal ? 'none' : '60ch' }}>{fichaDeDatos}</Box>,
           },
         ]}
       />
@@ -536,7 +537,11 @@ export function StoreProductPage() {
 
           <ReviewsSummaryLine storeSlug={storeSlug} productId={item.product_id} />
 
-          <Stack direction="row" sx={{ gap: 1, alignItems: 'baseline', flexWrap: 'wrap' }}>
+          <Stack
+            direction="row"
+            data-pdp-price
+            sx={{ gap: 1, alignItems: 'baseline', flexWrap: 'wrap' }}
+          >
             {/* Con variantes el precio de la ficha es un "desde" hasta que el
                 comprador elige: el maestro puede costar 60 y la talla XL 70,
                 y anunciar 60 a secas es un precio que no se va a cobrar. */}
@@ -591,6 +596,18 @@ export function StoreProductPage() {
                 </Typography>
               </>
             )}
+            {/* Universal · el ahorro en la MISMA fila del precio (lámina). */}
+            {universal && ahorro !== null && ahorro > 0 ? (
+              <Box
+                data-pdp-savings
+                component="span"
+                sx={{ alignSelf: 'center', px: 1, py: 0.25, fontSize: TS.label, fontWeight: 800 }}
+              >
+                {t('store.product.youSave')
+                  .replace('{amount}', formatMoney(ahorro, item.currency, locale))
+                  .replace('{percent}', `−${discount} %`)}
+              </Box>
+            ) : null}
           </Stack>
 
           {/* Por qué ese precio y no el de la etiqueta. Sin esta línea, un
@@ -602,7 +619,7 @@ export function StoreProductPage() {
             </Typography>
           )}
 
-          {ahorro !== null && ahorro > 0 && (
+          {!universal && ahorro !== null && ahorro > 0 && (
             <Box
               data-pdp-savings
               sx={{
@@ -688,6 +705,9 @@ export function StoreProductPage() {
         {universal ? (
           <Box className="sf-pdp-aside" sx={{ gridColumn: { md: '1 / -1', lg: 'auto' } }}>
             {confianza}
+            <Typography className="sf-pdp-soldby" sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
+              {t('store.product.soldBy').replace('{name}', store.name)}
+            </Typography>
           </Box>
         ) : null}
       </Box>
@@ -799,6 +819,7 @@ function SheetRow({ label, value }: { label: string; value: string | null }) {
   return (
     <Stack
       direction="row"
+      className="sf-sheet-row"
       sx={{
         justifyContent: 'space-between',
         gap: 2,
@@ -859,6 +880,8 @@ function AddToCart({
   const { storeSlug } = useStorefront()
   const { agregar, pending } = useAddToCart()
   const [quantity, setQuantity] = useState(1)
+  const { preset } = useStorefrontTheme()
+  const navigate = useNavigate()
 
   const hasVariants = product.kind === 'variant'
   const { selected, select } = useVariantChoice(variants, hasVariants)
@@ -969,6 +992,30 @@ function AddToCart({
           {t('store.product.addToCart')}
         </Button>
       </Stack>
+      {/* Rediseño v3 · Universal: «Comprar ahora» (lámina). Es el mismo añadir
+          y, si sale bien, directo al pago: no hay flujo nuevo. */}
+      {preset === 'universal' ? (
+        <Button
+          variant="outlined"
+          fullWidth
+          className="sf-pdp-buynow"
+          disabled={!canBuy || pending}
+          onClick={() => {
+            track(storeSlug, {
+              type: 'add_to_cart',
+              product_id: product.product_id,
+              ...(selected ? { variant_id: selected.variant_id } : {}),
+              quantity,
+            })
+            void agregar(product, quantity, selected).then((ok) => {
+              if (ok) navigate(`/s/${storeSlug}/checkout`)
+            })
+          }}
+          sx={{ minHeight: 46, textTransform: 'none', fontWeight: 700 }}
+        >
+          {t('store.product.buyNow')}
+        </Button>
+      ) : null}
     </Stack>
 
     {/**

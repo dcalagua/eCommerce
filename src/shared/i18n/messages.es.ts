@@ -3414,6 +3414,8 @@ export const es = {
   'store.search.submit': 'Buscar',
   'store.universal.deals': 'Ofertas del día',
   'store.universal.seeDeals': 'Ver ofertas',
+  'store.product.buyNow': 'Comprar ahora',
+  'store.product.soldBy': 'Vendido y enviado por {name}',
   'store.nav.allCategories': 'Todas las categorías',
   'store.nav.home': 'Inicio',
   'store.search.placeholder': 'Buscar productos...',

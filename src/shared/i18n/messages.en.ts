@@ -4305,6 +4305,8 @@ export const en: Readonly<Record<MessageKey, string>> = {
   'store.search.submit': 'Search',
   'store.universal.deals': 'Deals of the day',
   'store.universal.seeDeals': 'See deals',
+  'store.product.buyNow': 'Buy now',
+  'store.product.soldBy': 'Sold and shipped by {name}',
   'store.nav.allCategories': 'All categories',
   'store.nav.home': 'Home',
   'store.search.placeholder': 'Search products...',
