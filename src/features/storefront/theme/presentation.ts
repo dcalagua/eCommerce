@@ -189,7 +189,8 @@ const AUTO_POR_TEMA: Readonly<
    * Resumen v2 · «Feria de ofertas»: lo rebajado en la banda relámpago y las
    * campañas como dos banners lado a lado.
    */
-  retail: { product: 'grid', brands: 'cards', offers: 'flash', promotions: 'banners', bleedOffers: false },
+  // Rediseño v3 · retail: marcas en MURO (sin cajas ni fila que se desplaza).
+  retail: { product: 'grid', brands: 'logos', offers: 'flash', promotions: 'banners', bleedOffers: false },
   /**
    * Premium · ritmo editorial.
    *

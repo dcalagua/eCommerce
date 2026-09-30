@@ -261,6 +261,7 @@ export function StoreCategoryNav({
       {familias.map(({ category, children }) =>
         abierta === category.slug && children.length > 0 ? (
           <Box
+            className="sf-catnav-drop"
             key={`panel-${category.category_id}`}
             sx={{
               position: 'absolute',
@@ -274,14 +275,22 @@ export function StoreCategoryNav({
               borderTop: '1px solid var(--sf-line)',
               borderBottom: '1px solid var(--sf-line)',
               boxShadow: 'var(--sf-shadow-hover)',
+              // Rediseño v3 · `sf-catnav-drop`: retail le pone su voz.
               maxHeight: '70vh',
               overflowY: 'auto',
             }}
           >
-            <Container maxWidth="lg" sx={{ py: 2.5 }}>
+            {/* Rediseño v3 · el panel usa el MISMO ancho y márgenes que la barra
+                de familias: con `lg` fijo arrancaba en otro borde que ella. */}
+            <Container
+              maxWidth={false}
+              className="sf-catnav-panel"
+              sx={{ maxWidth: 'var(--sf-content-w)', mx: 'auto', px: { xs: 2, md: 3 }, py: 2.5 }}
+            >
               <Stack direction="row" sx={{ alignItems: 'baseline', gap: 1.5, mb: 1.5 }}>
                 <Typography
                   component="h2"
+                  className="sf-catnav-panel-title"
                   sx={{ fontSize: 15, fontWeight: 800, color: tintFor(category.name).fg }}
                 >
                   {category.name}
@@ -292,6 +301,7 @@ export function StoreCategoryNav({
                 <Box
                   component={Link}
                   to={`/s/${storeSlug}?c=${encodeURIComponent(category.slug)}`}
+                  className="sf-catnav-panel-all"
                   sx={{
                     fontSize: TS.label,
                     fontWeight: 700,

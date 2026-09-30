@@ -1410,3 +1410,52 @@
   border: 0;
   padding-inline: 0;
 }
+
+/* ---- Retail: cabecera OPACA. Translucida, al pasar sobre la portada gris la
+   fila de arriba se tenia de gris mientras la de familias seguia blanca. */
+.sf-scope[data-store-theme='retail'] .sf-header {
+  background: var(--card);
+  backdrop-filter: none;
+}
+/* El panel de subfamilias, centrado bajo la barra centrada. */
+@media (min-width: 900px) {
+  .sf-scope[data-store-theme='retail'] .sf-catnav-panel {
+    max-width: 1040px;
+  }
+}
+/* Marcas: seis por fila en escritorio, sin caja. */
+@media (min-width: 900px) {
+  .sf-scope[data-store-theme='retail'] [data-brand-tile] {
+    flex-basis: 16.666%;
+  }
+}
+/* El desplegable de familias, con la voz retail: sin sombra, titulo en
+   versalitas negras, enlaces en tinta a cuerpo de lectura. */
+.sf-scope[data-store-theme='retail'] .sf-catnav-drop {
+  box-shadow: none;
+  border-bottom-color: var(--sf-line-strong);
+}
+.sf-scope[data-store-theme='retail'] .sf-catnav-panel {
+  padding-block: 28px 32px;
+}
+.sf-scope[data-store-theme='retail'] .sf-catnav-panel-title {
+  color: var(--text);
+  font-family: var(--sf-display);
+  font-size: 20px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+}
+.sf-scope[data-store-theme='retail'] .sf-catnav-panel-all {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.sf-scope[data-store-theme='retail'] .sf-catnav-panel ul a {
+  color: var(--text);
+  font-size: 15px;
+  padding-block: 6px;
+}
+.sf-scope[data-store-theme='retail'] .sf-catnav-panel ul a:hover {
+  color: var(--text);
+}
