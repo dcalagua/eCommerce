@@ -72,7 +72,9 @@ export function ConfirmDeleteDialog({
 
           {!isLoadingUsage && usageError && <Alert severity="error">{usageError}</Alert>}
 
-          {!isLoadingUsage && !usageError && (
+          {/* Sin líneas no hay conteo que enseñar: un recuadro «Uso» vacío se
+              leería como «no se usa en ningún sitio», que nadie ha comprobado. */}
+          {!isLoadingUsage && !usageError && usage.length > 0 && (
             <Stack
               spacing={0.5}
               sx={{

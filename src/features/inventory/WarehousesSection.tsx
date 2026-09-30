@@ -35,6 +35,7 @@ import { TableSkeleton } from '@/shared/ui/TableSkeleton'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import { EmptyState, ErrorState } from '@/shared/ui/states'
 import { InventoryError } from './errors'
+import { planSupplyToggle } from './storeSupply'
 import {
   useLinkStoreWarehouse,
   useSaveWarehouse,
@@ -96,26 +97,32 @@ export function WarehousesSection() {
     () => new Set((links.data ?? []).filter((l) => l.is_active).map((l) => l.warehouse_id)),
     [links.data],
   )
-  const linkById = useMemo(
-    () => new Map((links.data ?? []).map((l) => [l.warehouse_id, l])),
-    [links.data],
-  )
 
   const isEmpty = !query.isPending && !query.isError && warehouses.length === 0
 
+  /**
+   * El interruptor dice «abastece» y hace eso en los dos modos; la decisión
+   * está en `planSupplyToggle` (ver allí por qué, y el fallo que la motivó).
+   */
   async function toggleLink(warehouse: Warehouse) {
     if (!tenant || !activeCompanyId || !activeStore) return
-    const existing = linkById.get(warehouse.id)
-    if (existing) {
-      await unlink.mutateAsync(existing.id)
-    } else {
-      await link.mutateAsync({
-        scope: { organizationId: tenant.organization_id, companyId: activeCompanyId },
-        storeId: activeStore.id,
-        warehouseId: warehouse.id,
-        priority: warehouse.priority,
-      })
+    const all = query.data ?? []
+    const plan = planSupplyToggle(warehouse.id, all, links.data ?? [])
+    if (plan.kind === 'lastOne') {
+      notify(t('inventory.warehouses.lastOne'), 'warning')
+      return
     }
+
+    const scope = { organizationId: tenant.organization_id, companyId: activeCompanyId }
+    const vincular = async (id: string) => {
+      const target = all.find((w) => w.id === id)
+      if (!target) return
+      await link.mutateAsync({ scope, storeId: activeStore.id, warehouseId: id, priority: target.priority })
+    }
+
+    if (plan.kind === 'unlink' || plan.kind === 'relink') await unlink.mutateAsync(plan.linkId)
+    if (plan.kind === 'relink') await vincular(plan.warehouseId)
+    if (plan.kind === 'link') for (const id of plan.warehouseIds) await vincular(id)
     notify(t('inventory.toast.saved'))
   }
 

@@ -472,6 +472,10 @@ export const esBackoffice = {
       'Añade al menos uno para que el checkout pueda ofrecer una forma de pagar.',
   'payments.methods.saved': 'Medio de pago guardado',
   'payments.methods.deleted': 'Medio de pago eliminado',
+  'payments.methods.deleteTitle': '¿Eliminar este medio de pago?',
+  'payments.methods.hideInstead': 'Ocultar del checkout',
+  'payments.methods.hideHint':
+    'Ocultarlo deja de ofrecerlo a los compradores y conserva su configuración para volver a publicarlo.',
   'payments.method.offline': 'Sin pasarela',
   'payments.refund.help':
       'La devolución se pide aquí y la ejecuta el proveedor. Pulsar dos veces devuelve una sola.',

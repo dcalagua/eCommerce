@@ -2395,6 +2395,8 @@ export const es = {
     'inventory.warehouses.allServe':
       'Esta tienda no tiene almacenes declarados, así que se sirve de todos los activos. En cuanto marques uno, dejará de servirse de los demás.',
     'inventory.warehouses.seed': 'Cargar del catálogo',
+    'inventory.warehouses.lastOne':
+      'Es el único almacén que abastece esta tienda. Marca otro antes de quitarlo.',
     'inventory.levels.help':
       'Físico es lo que está en la estantería; comprometido, lo que ya tiene dueño. Disponible es la resta.',
     'inventory.levels.search': 'Buscar por SKU, nombre o almacén',

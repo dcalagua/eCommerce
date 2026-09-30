@@ -2750,6 +2750,8 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'inventory.warehouses.allServe':
       'This store declares no warehouses, so every active one supplies it. As soon as you tick one, the rest stop supplying it.',
     'inventory.warehouses.seed': 'Load from catalog',
+    'inventory.warehouses.lastOne':
+      'This is the only warehouse supplying this store. Select another one before removing it.',
     'inventory.levels.help':
       'On hand is what sits on the shelf; reserved is what already has an owner. Available is the difference.',
     'inventory.levels.search': 'Search by SKU, name or warehouse',
@@ -2969,6 +2971,10 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'payments.methods.emptyBody': 'Add at least one so checkout can offer a way to pay.',
     'payments.methods.saved': 'Payment method saved',
     'payments.methods.deleted': 'Payment method deleted',
+    'payments.methods.deleteTitle': 'Delete this payment method?',
+    'payments.methods.hideInstead': 'Hide from checkout',
+    'payments.methods.hideHint':
+      'Hiding it stops offering it to buyers and keeps its settings so you can publish it again.',
     'payments.method.offline': 'No gateway',
 
     'payments.refund.help':

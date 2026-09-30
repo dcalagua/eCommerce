@@ -25,6 +25,7 @@ import { useEffect, useState } from 'react'
 import { useTenant } from '@/features/tenant/tenant-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
+import { ConfirmDeleteDialog } from '@/shared/ui/ConfirmDeleteDialog'
 import { FormDrawer } from '@/shared/ui/FormDrawer'
 import { TableSkeleton } from '@/shared/ui/TableSkeleton'
 import { useFeedback } from '@/shared/ui/feedback-context'
@@ -51,6 +52,20 @@ const EMPTY: PaymentMethodFormValues = {
   isActive: false,
   position: 100,
   instructions: '',
+}
+
+function toForm(method: PaymentMethod): PaymentMethodFormValues {
+  return {
+    id: method.id,
+    code: method.code,
+    displayName: method.display_name,
+    kind: method.kind,
+    providerCode: method.provider_code ?? '',
+    captureMode: method.capture_mode,
+    isActive: method.is_active,
+    position: method.position,
+    instructions: method.instructions ?? '',
+  }
 }
 
 /**
@@ -97,23 +112,13 @@ export function MethodsSection() {
   )
   const remove = useDeletePaymentMethod()
 
+  // Borrar un medio de pago pide confirmación: antes se borraba al primer clic,
+  // y el botón estaba pegado al de editar.
+  const [deleting, setDeleting] = useState<PaymentMethod | null>(null)
+
   useEffect(() => {
     if (!drawer.open) return
-    setValues(
-      drawer.method
-        ? {
-            id: drawer.method.id,
-            code: drawer.method.code,
-            displayName: drawer.method.display_name,
-            kind: drawer.method.kind,
-            providerCode: drawer.method.provider_code ?? '',
-            captureMode: drawer.method.capture_mode,
-            isActive: drawer.method.is_active,
-            position: drawer.method.position,
-            instructions: drawer.method.instructions ?? '',
-          }
-        : EMPTY,
-    )
+    setValues(drawer.method ? toForm(drawer.method) : EMPTY)
   }, [drawer])
 
   const offline = values.providerCode === ''
@@ -203,7 +208,9 @@ export function MethodsSection() {
                         {
                           id: '0',
                           icon: <EditRoundedIcon fontSize="small" />,
-                          label: t('common.edit'),
+                          // Con el nombre: cinco «Editar» iguales no se distinguen
+                          // con lector de pantalla.
+                          label: `${t('common.edit')}: ${method.display_name}`,
                           tone: 'neutral',
                           disabled: !canWrite,
                           onClick: () => setDrawer({ open: true, method }),
@@ -211,17 +218,10 @@ export function MethodsSection() {
                         {
                           id: '1',
                           icon: <DeleteRoundedIcon fontSize="small" />,
-                          label: t('common.delete'),
+                          label: `${t('common.delete')}: ${method.display_name}`,
                           tone: 'danger',
                           disabled: !canWrite,
-                          onClick: async () => {
-                            try {
-                              await remove.mutateAsync(method.id)
-                              notify(t('payments.methods.deleted'), 'success')
-                            } catch (error) {
-                              report(error)
-                            }
-                          },
+                          onClick: () => setDeleting(method),
                         },
                       ]}
                     />
@@ -243,6 +243,39 @@ export function MethodsSection() {
           />
         )}
       </Card>
+
+      <ConfirmDeleteDialog
+        open={Boolean(deleting)}
+        title={t('payments.methods.deleteTitle')}
+        entityName={deleting?.display_name ?? ''}
+        usage={[]}
+        isLoadingUsage={false}
+        // Lo recomendable es ocultarlo: deja de ofrecerse y no se pierde nada.
+        safeActionLabel={deleting?.is_active ? t('payments.methods.hideInstead') : undefined}
+        safeActionHint={deleting?.is_active ? t('payments.methods.hideHint') : undefined}
+        onSafeAction={async () => {
+          if (!deleting) return
+          try {
+            await save.mutateAsync({ ...toForm(deleting), isActive: false })
+            notify(t('payments.methods.saved'), 'success')
+            setDeleting(null)
+          } catch (error) {
+            report(error)
+          }
+        }}
+        onDelete={async () => {
+          if (!deleting) return
+          try {
+            await remove.mutateAsync(deleting.id)
+            notify(t('payments.methods.deleted'), 'success')
+            setDeleting(null)
+          } catch (error) {
+            report(error)
+          }
+        }}
+        onClose={() => setDeleting(null)}
+        isBusy={remove.isPending || save.isPending}
+      />
 
       <FormDrawer
         open={drawer.open}
