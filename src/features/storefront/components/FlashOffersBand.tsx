@@ -54,6 +54,9 @@ export function FlashOffersBand({
       component="section"
       aria-label={titulo}
       data-offers-presentation="flash"
+      // Banda INVERTIDA: los estilos cuya tarjeta no tiene caja se la devuelven
+      // aquí, o el nombre quedaría en tinta sobre tinta (storefront.css).
+      data-inverse=""
       sx={{
         p: { xs: 1.5, md: 2.5 },
         borderRadius: 'var(--sf-radius)',

@@ -77,13 +77,16 @@ export function ProductMedia({
         // que no es cuadrada dejaba dos franjas grises arriba y abajo: parecía
         // una imagen rota. Las fotos de catálogo vienen sobre blanco, así que el
         // sobrante se funde con la tarjeta. Sin foto, el tinte del producto.
+        // Rediseño v3: el fondo lo pone el ESTILO (`--sf-photo-bg`); retail y
+        // premium apoyan la foto sobre un gris cálido y la funden con
+        // `multiply`, así el blanco de estudio se vuelve el papel del estilo.
         ...(url
-          ? { bgcolor: 'var(--card)', color: 'var(--muted)' }
+          ? { bgcolor: 'var(--sf-photo-bg, var(--card))', color: 'var(--muted)' }
           : {
               background: `linear-gradient(150deg, ${tinte.bg} 0%, color-mix(in srgb, ${tinte.fg} 10%, ${tinte.bg}) 100%)`,
               color: tinte.fg,
             }),
-        borderRadius: `${R.md}px`,
+        borderRadius: `var(--sf-radius-sm, ${R.md}px)`,
         overflow: 'hidden',
         display: 'grid',
         placeItems: 'center',
@@ -104,6 +107,7 @@ export function ProductMedia({
             // los dos lados en vez de quedarse todo abajo.
             objectPosition: 'center',
             display: 'block',
+            mixBlendMode: 'var(--sf-media-blend, normal)',
           }}
         />
       ) : (

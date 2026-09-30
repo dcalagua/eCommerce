@@ -509,7 +509,7 @@ export function ProductCard({
             <Stack
               direction="row"
               data-stock={available ? 'in' : 'out'}
-              sx={{ alignItems: 'center', gap: 0.5, flexShrink: 0, fontSize: 11, fontWeight: 700, color: available ? 'var(--accent-deep)' : 'var(--muted)' }}
+              sx={{ alignItems: 'center', gap: 0.5, flexShrink: 0, fontSize: 11, fontWeight: 700, color: available ? 'var(--sf-ok, var(--accent-deep))' : 'var(--muted)' }}
             >
               <Box aria-hidden sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: 'currentColor' }} />
               {available ? t('store.availability.inStock') : t('store.availability.outOfStock')}
@@ -533,7 +533,9 @@ export function ProductCard({
             <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 0.75, flexWrap: 'wrap' }}>
               <Typography
                 className="tnum"
-                sx={{ fontSize: denso ? 18 : 'var(--sf-card-price)', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.15, color: 'var(--accent-deep)' }}
+                // Rediseño v3 · 60-30-10: el precio va en TINTA; el acento solo cuando
+                // el precio es una rebaja o un precio comercial, que es lo que vende.
+                sx={{ fontSize: denso ? 18 : 'var(--sf-card-price)', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.15, color: commercialPrice || discount !== null ? 'var(--accent-deep)' : 'var(--text)' }}
               >
                 {formatMoney(commercialPrice ? commercialPrice.amount : Number(product.price), product.currency, locale)}
               </Typography>
@@ -562,6 +564,8 @@ export function ProductCard({
               fontWeight: 800,
               letterSpacing: '-0.02em',
               lineHeight: 1.2,
+              // Rediseño v3 · la rebaja es uno de los tres sitios del acento.
+              ...(commercialPrice || discount !== null ? { color: 'var(--accent-deep)' } : {}),
             }}
           >
             {formatMoney(commercialPrice ? commercialPrice.amount : Number(product.price), product.currency, locale)}
@@ -617,8 +621,8 @@ export function ProductCard({
             fontSize: TS.label,
             fontWeight: 700,
             lineHeight: 1.7,
-            bgcolor: available ? 'var(--accent-soft)' : 'var(--neutral-soft)',
-            color: available ? 'var(--accent-deep)' : 'var(--muted)',
+            bgcolor: available ? 'color-mix(in srgb, var(--sf-ok, var(--accent)) 12%, transparent)' : 'var(--neutral-soft)',
+            color: available ? 'var(--sf-ok, var(--accent-deep))' : 'var(--muted)',
           }}
         >
           {available ? t('store.availability.inStock') : t('store.availability.outOfStock')}

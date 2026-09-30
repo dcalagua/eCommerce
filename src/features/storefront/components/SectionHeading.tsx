@@ -62,7 +62,7 @@ export function SectionHeading({
             fontWeight: 800,
             letterSpacing: '0.12em',
             textTransform: 'uppercase',
-            color: 'var(--accent-deep)',
+            color: 'var(--muted)',
           }}
         >
           {eyebrow}
@@ -89,19 +89,17 @@ export function SectionHeading({
           ) : null}
         </Stack>
 
-        {/* Regla que arranca en el acento y se apaga hacia el borde: cierra el
-            bloque y ordena la lectura sin competir con el título. A 1 px y en
-            gris no se veía; el degradado se ve y sigue sin gritar. */}
+        {/* Regla que cierra el bloque y ordena la lectura. Rediseño v3: en
+            LÍNEA neutra y no en el acento —una raya de color bajo cada título
+            era otra de las manchas que sumaban «colores muy vivos»—. */}
         <Box
           aria-hidden
           sx={{
             flex: 1,
-            height: 2,
+            height: '1px',
             minWidth: 24,
             mb: 1.25,
-            borderRadius: 1,
-            background:
-              'linear-gradient(to right, color-mix(in srgb, var(--accent) 55%, transparent), transparent)',
+            bgcolor: 'var(--sf-line-strong, var(--border))',
           }}
         />
 

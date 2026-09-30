@@ -55,7 +55,10 @@
   /* Dos sombras por estado: una de contacto (1 px, define el canto) y otra
      difusa y muy abierta (la que da la sensacion de peso). Una sola sombra
      grande flota; una sola pequena se ve plana. */
-  --sf-shadow: 0 1px 2px rgba(16, 24, 32, 0.04), 0 12px 32px -20px rgba(16, 24, 32, 0.35);
+  /* Rediseño v3 · Ninguna caja lleva sombra EN REPOSO: la separación la dan
+     el fondo y la línea. La sombra vuelve al apuntar, que es cuando dice
+     «esto se pulsa». */
+  --sf-shadow: none;
   --sf-shadow-hover: 0 2px 6px rgba(16, 24, 32, 0.07), 0 26px 56px -26px rgba(16, 24, 32, 0.45);
 
   /* Fondo del hueco de la foto. Casi blanco, apenas un tono por debajo de la
@@ -135,24 +138,29 @@
      Cada tinte trae fondo (`-bg`), borde (`-line`) y color de contenido
      (`-fg`), y los tres se redefinen en oscuro: un pastel de claro sobre fondo
      oscuro se convierte en una mancha lechosa. */
-  --sf-tint-1-bg: #EAF3FF;
-  --sf-tint-1-line: #CBE0FA;
-  --sf-tint-1-fg: #1B4F86;
-  --sf-tint-2-bg: #E9F7F0;
-  --sf-tint-2-line: #C7EADA;
-  --sf-tint-2-fg: #1C6647;
-  --sf-tint-3-bg: #FFF3E6;
-  --sf-tint-3-line: #F8DEC1;
-  --sf-tint-3-fg: #8A4B12;
-  --sf-tint-4-bg: #F4EEFF;
-  --sf-tint-4-line: #E0D3F8;
-  --sf-tint-4-fg: #543089;
-  --sf-tint-5-bg: #FFECEF;
-  --sf-tint-5-line: #FBD2D9;
-  --sf-tint-5-fg: #8C2740;
-  --sf-tint-6-bg: #E8F6F8;
-  --sf-tint-6-line: #C6E8ED;
-  --sf-tint-6-fg: #145A66;
+  /* Rediseño v3 · Los seis tintes pasan a NEUTROS. Seis pasteles distintos en
+     una fila eran la mitad de lo «muy vivo» que el operador vio en la portada:
+     la orientación ahora la dan la foto y el icono, y el color queda para lo
+     que vende (regla 60-30-10). Los nombres se conservan como punto de
+     extensión; los valores siguen al modo porque salen de variables. */
+  --sf-tint-1-bg: var(--neutral-soft);
+  --sf-tint-1-line: var(--sf-line);
+  --sf-tint-1-fg: var(--text);
+  --sf-tint-2-bg: var(--neutral-soft);
+  --sf-tint-2-line: var(--sf-line);
+  --sf-tint-2-fg: var(--text);
+  --sf-tint-3-bg: var(--neutral-soft);
+  --sf-tint-3-line: var(--sf-line);
+  --sf-tint-3-fg: var(--text);
+  --sf-tint-4-bg: var(--neutral-soft);
+  --sf-tint-4-line: var(--sf-line);
+  --sf-tint-4-fg: var(--text);
+  --sf-tint-5-bg: var(--neutral-soft);
+  --sf-tint-5-line: var(--sf-line);
+  --sf-tint-5-fg: var(--text);
+  --sf-tint-6-bg: var(--neutral-soft);
+  --sf-tint-6-line: var(--sf-line);
+  --sf-tint-6-fg: var(--text);
 
   /* El corazon de guardar. Es el UNICO sitio de la vitrina donde manda un color
      que no es el del comercio, y es a proposito: «guardado» es una convencion
@@ -166,31 +174,10 @@
    vuelve a ser la linea, y la profundidad la da una sombra mucho mas negra. */
 :root:not([data-theme='light']) .sf-scope {
   --sf-line: color-mix(in srgb, var(--border) 85%, transparent);
-  --sf-shadow: 0 1px 0 rgba(255, 255, 255, 0.03), 0 16px 36px -22px rgba(0, 0, 0, 0.75);
+  --sf-shadow: none;
   --sf-shadow-hover: 0 1px 0 rgba(255, 255, 255, 0.05), 0 28px 60px -26px rgba(0, 0, 0, 0.85);
   --sf-media-bg: color-mix(in srgb, var(--neutral-soft) 75%, var(--card));
 
-  /* En oscuro los pasteles se vuelven manchas: los tintes pasan a ser tonos
-     PROFUNDOS con el contenido claro. Mismo orden, misma asignacion, distinta
-     materia. */
-  --sf-tint-1-bg: #16283C;
-  --sf-tint-1-line: #24405E;
-  --sf-tint-1-fg: #9DC6F2;
-  --sf-tint-2-bg: #142E24;
-  --sf-tint-2-line: #21493A;
-  --sf-tint-2-fg: #92D9B8;
-  --sf-tint-3-bg: #33230F;
-  --sf-tint-3-line: #4E3618;
-  --sf-tint-3-fg: #F0BE85;
-  --sf-tint-4-bg: #241B39;
-  --sf-tint-4-line: #392C57;
-  --sf-tint-4-fg: #C4AEF0;
-  --sf-tint-5-bg: #351720;
-  --sf-tint-5-line: #522432;
-  --sf-tint-5-fg: #F1A2B3;
-  --sf-tint-6-bg: #102C31;
-  --sf-tint-6-line: #1C464D;
-  --sf-tint-6-fg: #8FD3DD;
 
   --sf-heart: #FF6E85;
   --sf-heart-soft: color-mix(in srgb, var(--sf-heart) 18%, var(--card));
@@ -198,7 +185,7 @@
 
 :root[data-theme='light'] .sf-scope {
   --sf-line: color-mix(in srgb, var(--border) 55%, transparent);
-  --sf-shadow: 0 1px 2px rgba(16, 24, 32, 0.04), 0 12px 32px -20px rgba(16, 24, 32, 0.35);
+  --sf-shadow: none;
   --sf-shadow-hover: 0 2px 6px rgba(16, 24, 32, 0.07), 0 26px 56px -26px rgba(16, 24, 32, 0.45);
   --sf-media-bg: color-mix(in srgb, var(--neutral-soft) 55%, var(--card));
 }
@@ -311,44 +298,23 @@
   font: 800 12px/1.4 'DM Sans', system-ui, sans-serif;
 }
 
-/* RETAIL «FERIA DE OFERTAS» · la cabecera (Resumen v2).
-   Todo sale del acento de la TIENDA: el tema pone la forma, nunca un color.
-   - La barra de familias se vuelve una banda del color de la tienda. Va en
-     `--accent-deep`, que es el tono que garantiza AA con texto blanco.
-   - El buscador gana protagonismo: borde de 2 px en el acento.
-   - El aviso superior pasa a la franja invertida del diseño.
-   - «Ofertas» deja de ser un enlace y se vuelve una pastilla blanca. */
-.sf-scope[data-store-theme='retail'] .sf-catnav {
-  background: var(--accent-deep);
-  border-top-color: transparent;
-}
-.sf-scope[data-store-theme='retail'] .sf-catnav .sf-catnav-item,
-.sf-scope[data-store-theme='retail'] .sf-catnav .sf-catnav-item:hover {
-  color: #fff;
-}
-.sf-scope[data-store-theme='retail'] .sf-catnav .sf-catnav-item[aria-current='true'],
-.sf-scope[data-store-theme='retail'] .sf-catnav .sf-catnav-item[aria-expanded='true'] {
-  border-bottom-color: #fff;
-}
-.sf-scope[data-store-theme='retail'] .sf-catnav .sf-catnav-icon {
-  background: color-mix(in srgb, #fff 18%, transparent);
-  color: #fff;
-}
-.sf-scope[data-store-theme='retail'] .sf-catnav .sf-catnav-door {
-  border-left-color: color-mix(in srgb, #fff 35%, transparent);
-  color: #fff;
+/* RETAIL · la cabecera (rediseño v3).
+   La barra de familias YA NO es una banda del acento: una franja roja o naranja
+   de lado a lado era lo primero que se veía y lo que el operador llamó «colores
+   muy vivos». Queda en tinta sobre el lienzo; el acento se reserva para
+   «Ofertas», que es el único enlace que vende. El buscador es una píldora gris
+   sin borde, y el aviso superior, la franja en tinta. */
+.sf-scope[data-store-theme='retail'] .sf-catnav .sf-catnav-item {
+  font-weight: 600;
 }
 .sf-scope[data-store-theme='retail'] .sf-catnav .sf-catnav-door[data-door='offers'] {
-  margin-left: auto;
-  align-self: center;
-  border: 0;
-  padding: 4px 14px;
-  border-radius: var(--sf-pill);
-  background: #fff;
   color: var(--accent-deep);
+  font-weight: 800;
 }
 .sf-scope[data-store-theme='retail'] .sf-search {
-  border: 2px solid var(--accent);
+  border-color: transparent;
+  background: var(--neutral-soft);
+  border-radius: var(--sf-pill);
 }
 .sf-scope[data-store-theme='retail'] [data-announcement-bar] {
   background: var(--text);
@@ -510,4 +476,252 @@
   --sf-featured-title-md: 30px;
   --sf-heading: 19px;
   --sf-heading-md: 21px;
+}
+
+/* ===========================================================================
+   REDISEÑO v3 · LA BASE DE CADA ESTILO (design/storefront.pen, «00 Design System»)
+   ===========================================================================
+   El operador lo resumió en dos frases: «se ve muy simple» y «los colores son
+   muy vivos». Las dos tienen la misma causa: el acento del tenant estaba en
+   TODAS partes —portada en degradado, barra de familias, precio, pastillas—, y
+   donde todo grita nada destaca.
+
+   La regla es 60-30-10:
+    · 60 % lienzo NEUTRO propio de cada estilo (blanco, gris frío, gris técnico o
+      crudo cálido);
+    · 30 % TINTA: titulares, franjas y bandas, en el casi-negro del estilo;
+    · 10 % ACENTO del tenant: el botón principal, el precio de oferta y un
+      detalle. Nada más.
+
+   El color sigue siendo 100 % del tenant (contrato §4.4): aquí no se inventa un
+   acento, se decide DÓNDE se usa. Los neutros no son marca: son el papel sobre
+   el que la marca se lee.
+
+   ## Por qué con `:root[data-theme=…]` delante
+
+   Los neutros cambian con el modo, y los bloques de modo de arriba pesan más
+   que la regla de tema sola. Con el modo en el selector cada valor
+   tiene un solo dueño (estilo × modo) y el interruptor claro/oscuro no deja
+   una tienda a medio pintar.
+   --------------------------------------------------------------------------- */
+
+.sf-scope {
+  /* La franja en TINTA sustituye al degradado del acento en portada y bandas.
+     `--hero-grad` se redefine aquí —y no en `appearance.ts`— para que el
+     backoffice y el login conserven el suyo: esto es solo de la vitrina. */
+  --hero-grad: var(--sf-band);
+  --badge-grad: var(--accent-deep);
+  /* El tinte suave del acento baja del 14 % al 7 % y se mezcla con el papel
+     DEL ESTILO: a 14 % un naranja o un rojo convertía cada franja de servicios
+     y cada promo en un bloque durazno o rosa. */
+  --accent-soft: color-mix(in srgb, var(--accent) 7%, var(--card));
+  --sf-band: #16191f;
+  --sf-display: inherit;
+  --sf-btn-radius: 10px;
+  /* Verde de «disponible»: semántico, no de marca. Pintarlo del acento hacía
+     que «en stock» y «oferta» se leyeran igual. */
+  --sf-ok: #117a3d;
+}
+:root[data-theme='dark'] .sf-scope {
+  --sf-band: #05070a;
+  --sf-ok: #5cc98b;
+}
+
+/* ---- RETAIL · lienzo blanco, tinta pura, foto sobre gris cálido ---------- */
+:root:not([data-theme='dark']) .sf-scope[data-store-theme='retail'] {
+  --bg: #ffffff;
+  --card: #ffffff;
+  --border: #e6e6e3;
+  --text: #111111;
+  --muted: #6f6f6f;
+  --neutral-soft: #f2f2f0;
+  --sf-band: #111111;
+  --sf-photo-bg: #f2f2f0;
+  --sf-media-blend: multiply;
+}
+:root[data-theme='dark'] .sf-scope[data-store-theme='retail'] {
+  --bg: #0e0e0e;
+  --card: #161616;
+  --border: #2a2a2a;
+  --text: #f2f2f0;
+  --muted: #a8a8a4;
+  --neutral-soft: #1f1f1f;
+  --sf-band: #000000;
+}
+
+/* ---- UNIVERSAL · gris frío de gran superficie, tarjeta blanca ----------- */
+:root:not([data-theme='dark']) .sf-scope[data-store-theme='universal'] {
+  --bg: #f5f6f8;
+  --card: #ffffff;
+  --border: #e3e6ea;
+  --text: #16191f;
+  --muted: #5f6670;
+  --neutral-soft: #eef0f3;
+  --sf-band: #16191f;
+}
+:root[data-theme='dark'] .sf-scope[data-store-theme='universal'] {
+  --bg: #0f1217;
+  --card: #171b22;
+  --border: #262c35;
+  --text: #e9ecf1;
+  --muted: #9aa3ae;
+  --neutral-soft: #1e232b;
+  --sf-band: #07090c;
+}
+
+/* ---- CATÁLOGO · técnico: blanco, líneas firmes, gris de ficha ------------ */
+:root:not([data-theme='dark']) .sf-scope[data-store-theme='catalog'] {
+  --bg: #f4f5f7;
+  --card: #ffffff;
+  --border: #d8dde3;
+  --text: #0e1116;
+  --muted: #58616c;
+  --neutral-soft: #f4f5f7;
+  --sf-band: #0e1116;
+}
+:root[data-theme='dark'] .sf-scope[data-store-theme='catalog'] {
+  --bg: #0c0f13;
+  --card: #141920;
+  --border: #29313b;
+  --text: #e6e9ed;
+  --muted: #98a2ae;
+  --neutral-soft: #1b2129;
+  --sf-band: #05070a;
+}
+
+/* ---- PREMIUM · crudo cálido, tinta marrón, foto sobre lino -------------- */
+:root:not([data-theme='dark']) .sf-scope[data-store-theme='premium'] {
+  --bg: #f4efe8;
+  --card: #fbf8f3;
+  --border: #d9d0c3;
+  --text: #1f1b16;
+  /* #7B7166 del diseño se queda en 4,1:1 sobre el crudo: se oscurece hasta AA. */
+  --muted: #6b6155;
+  --neutral-soft: #eae3d8;
+  --sf-band: #1f1b16;
+  --sf-photo-bg: #eae3d8;
+  --sf-media-blend: multiply;
+}
+:root[data-theme='dark'] .sf-scope[data-store-theme='premium'] {
+  --bg: #15120e;
+  --card: #1d1914;
+  --border: #352e26;
+  --text: #f1ebe2;
+  --muted: #b3a898;
+  --neutral-soft: #27221b;
+  --sf-band: #0b0907;
+}
+
+/* ---------------------------------------------------------------------------
+   GEOMETRÍA POR ESTILO
+   Retail: píldoras y foto a sangre, sin caja. Universal: tarjeta blanca de 12
+   con borde. Catálogo: 4 px, borde técnico. Premium: ángulo recto.
+   Van al final para ganar a `[data-store-cards='compact']`, que pesa lo mismo.
+   --------------------------------------------------------------------------- */
+.sf-scope[data-store-theme='retail'] {
+  --sf-radius: 8px;
+  --sf-radius-sm: 0px;
+  --sf-btn-radius: var(--sf-pill);
+  --sf-card-title: 15px;
+  --sf-card-price: 17px;
+  --sf-display: 'Archivo', system-ui, sans-serif;
+}
+.sf-scope[data-store-theme='universal'] {
+  --sf-radius: 12px;
+  --sf-radius-sm: 8px;
+  --sf-btn-radius: 8px;
+}
+.sf-scope[data-store-theme='catalog'] {
+  --sf-radius: 4px;
+  --sf-radius-sm: 4px;
+  --sf-btn-radius: 4px;
+  --sf-card-price: 16px;
+}
+.sf-scope[data-store-theme='premium'] {
+  --sf-radius: 0px;
+  --sf-radius-sm: 0px;
+  --sf-btn-radius: 0px;
+  --sf-display: 'Fraunces', Georgia, serif;
+  --sf-card-price: 19px;
+}
+
+/* Un solo radio de botón por estilo, también en los botones que traen el suyo. */
+.sf-scope .MuiButton-root {
+  border-radius: var(--sf-btn-radius);
+}
+
+/* Titulares con la voz del estilo. Solo retail y premium cambian de familia:
+   universal y catálogo ya titulan con su propia tipografía de cuerpo. */
+.sf-scope[data-store-theme='retail'] :is(h1, h2) {
+  font-family: var(--sf-display);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.sf-scope[data-store-theme='premium'] :is(h1, h2) {
+  font-family: var(--sf-display);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+/* «Marcas» es navegación, no venta: en tinta. El acento se queda en «Ofertas». */
+.sf-scope .sf-catnav .sf-catnav-door[data-door='brands'] {
+  color: var(--text);
+}
+
+/* ---- La tarjeta, por estilo ------------------------------------------- */
+/* Retail y premium: SIN caja. La foto es la pieza y el texto va debajo, a ras. */
+.sf-scope[data-store-theme='retail'] .eb-card,
+.sf-scope[data-store-theme='retail'] .eb-card:hover,
+.sf-scope[data-store-theme='premium'] .eb-card,
+.sf-scope[data-store-theme='premium'] .eb-card:hover {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
+  padding: 0;
+}
+/* …salvo sobre una banda INVERTIDA (tinta de fondo): ahí la tarjeta recupera
+   su papel y su aire, o el nombre quedaría en tinta sobre tinta. */
+.sf-scope[data-store-theme] [data-inverse] .eb-card,
+.sf-scope[data-store-theme] [data-inverse] .eb-card:hover {
+  background: var(--card);
+  padding: var(--sf-card-pad-md);
+}
+.sf-scope[data-store-theme='retail'] .eb-card .eb-card-media,
+.sf-scope[data-store-theme='premium'] .eb-card .eb-card-media {
+  box-shadow: none;
+}
+.sf-scope[data-store-theme='retail'] .eb-card:hover h3 a,
+.sf-scope[data-store-theme='premium'] .eb-card:hover h3 a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+/* Catálogo: ficha con borde firme; al apuntar el borde se oscurece, sin flotar. */
+.sf-scope[data-store-theme='catalog'] .eb-card {
+  border-color: var(--sf-line-strong);
+  box-shadow: none;
+}
+.sf-scope[data-store-theme='catalog'] .eb-card:hover {
+  border-color: var(--muted);
+  box-shadow: none;
+  transform: none;
+}
+/* Premium: el precio con la voz del estilo, y el botón en TINTA contorneada.
+   El acento del tenant queda para la oferta: en una tienda de lujo, un botón
+   de color en cada tarjeta abarata la rejilla. */
+.sf-scope[data-store-theme='premium'] .eb-card .tnum {
+  font-family: var(--sf-display);
+  font-weight: 400;
+}
+.sf-scope[data-store-theme='premium'] .eb-card .MuiButton-contained {
+  background: transparent;
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px currentColor;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 12px;
+}
+.sf-scope[data-store-theme='premium'] .eb-card .MuiButton-contained:hover {
+  background: var(--text);
+  color: var(--bg);
 }

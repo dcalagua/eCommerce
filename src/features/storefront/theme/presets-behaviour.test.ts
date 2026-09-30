@@ -15,14 +15,14 @@ import { THEME_PRESET_IDS } from './types'
  *
  * Las tres que más valen:
  *
- *  1. **`universal` no tiene reglas propias.** Es el suelo: lo que se ve sin
- *     ningún atributo es lo que la vitrina ya hacía. En cuanto exista una regla
- *     `[data-store-theme='universal']`, «por defecto» habrá dejado de significar
- *     «como antes» y las tiendas que nunca eligieron tema habrán cambiado.
- *  2. **Ningún tema toca el color.** El acento es 100 % del tenant (contrato
- *     §4.4) y el modo claro/oscuro es de `AppearanceProvider`. Un tema que
- *     redefiniera `--accent` le quitaría al comercio su color, y uno que
- *     redefiniera `--card` rompería el modo oscuro sin que se note en claro.
+ *  1. **`universal` solo pone su BASE.** Hasta el rediseño v3 era el suelo sin
+ *     una sola regla; desde v3 (aprobado por el operador el 2026-09-30) cada
+ *     estilo tiene su lienzo neutro, y universal también. Lo que sigue vetado
+ *     es que meta color de marca o movimiento.
+ *  2. **Ningún tema toca el ACENTO.** Es 100 % del tenant (contrato §4.4). Los
+ *     NEUTROS (`--bg`, `--card`, `--text`, `--muted`) sí son del estilo desde
+ *     v3, pero solo en bloques atados al modo y siempre en los dos: uno que los
+ *     redefiniera sin modo rompería el oscuro sin que se note en claro.
  *  3. **Ningún tema mete movimiento.** El movimiento de la vitrina se apaga
  *     entero con `prefers-reduced-motion`, y esa promesa solo se sostiene si las
  *     animaciones viven donde ya se apagan.
@@ -61,9 +61,12 @@ function bloquesDeLaFrontera(): string[] {
 // ---------------------------------------------------------------------------
 
 describe('universal es el suelo, no un tema más', () => {
-  it('no tiene ni una regla propia en la hoja', () => {
-    expect(CSS).not.toContain("data-store-theme='universal'")
-    expect(CSS).not.toContain('data-store-theme="universal"')
+  it('sus reglas son solo base de estilo: ni acento ni movimiento', () => {
+    const suyas = cuerpos(/data-store-theme='universal'\][^{]*\{([^}]*)\}/g)
+    expect(suyas.length).toBeGreaterThan(0)
+    for (const bloque of suyas) {
+      expect(bloque).not.toMatch(/--accent[\w-]*:|--hero-grad:|\btransition\b|\banimation\b/)
+    }
   })
 
   it('sus valores son los de la vitrina anterior al Theme Engine', () => {
@@ -105,12 +108,39 @@ describe('ningún tema le quita el color al comercio', () => {
    * peso, así que un tema que los pisara solo se notaría con el modo del
    * sistema sin elegir. El modo manda en profundidad; el tema, en geometría.
    */
-  const COLORES_AJENOS = ['--accent:', '--accent-deep:', '--accent-soft:', '--text:', '--muted:', '--card:', '--bg:']
+  const COLORES_AJENOS = ['--accent:', '--accent-deep:', '--accent-soft:', '--accent2:']
 
   it.each(COLORES_AJENOS)('no redefine %s en ninguna regla de tema', (variable) => {
     for (const bloque of bloquesDeTema()) {
       expect(bloque).not.toContain(variable)
     }
+  })
+
+  /** Selector + cuerpo de cada bloque que declara sobre una frontera con tema. */
+  function bloquesConSelector(): { selector: string; cuerpo: string }[] {
+    const re = /([^{}]*\.sf-scope\[data-store-theme='[a-z]+'\])\s*\{([^}]*)\}/g
+    const fuera: { selector: string; cuerpo: string }[] = []
+    let m: RegExpExecArray | null
+    while ((m = re.exec(CSS)) !== null) fuera.push({ selector: (m[1] ?? '').trim(), cuerpo: m[2] ?? '' })
+    return fuera
+  }
+
+  const NEUTROS = ['--text:', '--muted:', '--card:', '--bg:']
+
+  it.each(NEUTROS)('%s solo se redefine atado al modo claro u oscuro', (variable) => {
+    for (const { selector, cuerpo } of bloquesConSelector()) {
+      if (!cuerpo.includes(variable)) continue
+      expect(selector).toMatch(/^(\/\*[\s\S]*?\*\/\s*)*:root(:not\(\[data-theme='dark'\]\)|\[data-theme='dark'\])/)
+    }
+  })
+
+  it.each(THEME_PRESET_IDS)('%s define sus neutros en los DOS modos', (preset) => {
+    const suyos = bloquesConSelector().filter(
+      ({ selector, cuerpo }) => selector.includes(`data-store-theme='${preset}'`) && cuerpo.includes('--bg:'),
+    )
+    const claro = suyos.some(({ selector }) => selector.includes(":not([data-theme='dark'])"))
+    const oscuro = suyos.some(({ selector }) => /:root\[data-theme='dark'\]/.test(selector))
+    expect({ claro, oscuro }).toEqual({ claro: true, oscuro: true })
   })
 
   const PROFUNDIDAD = ['--sf-line:', '--sf-shadow:', '--sf-shadow-hover:', '--sf-media-bg:']
