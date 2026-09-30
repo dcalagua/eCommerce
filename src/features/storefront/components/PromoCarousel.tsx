@@ -322,9 +322,8 @@ function PromoSlide({
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 0.5,
-                color: 'var(--accent-deep)',
-                background:
-                  'linear-gradient(150deg, color-mix(in srgb, var(--accent) 16%, var(--card)) 0%, color-mix(in srgb, var(--accent2) 12%, var(--card)) 100%)',
+                color: 'var(--muted)',
+                background: 'var(--sf-soft, var(--neutral-soft))',
               }}
             >
               <LocalOfferRoundedIcon sx={{ fontSize: 40, opacity: 0.6 }} />

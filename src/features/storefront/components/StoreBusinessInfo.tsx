@@ -149,7 +149,8 @@ export function StoreBusinessInfo({
         // de valor: esto es información de servicio, y un recuadro más con
         // borde y sombra le quitaría peso a las tarjetas de producto, que son
         // las que venden.
-        bgcolor: 'color-mix(in srgb, var(--accent) 6%, var(--card))',
+        // Rediseño v3 · superficie neutra del estilo, no un tinte del acento.
+        bgcolor: 'var(--sf-soft, var(--neutral-soft))',
       }}
     >
       <Stack sx={{ gap: 1, minWidth: 0 }}>

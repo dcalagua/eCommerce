@@ -70,7 +70,8 @@ export function BrandRow({
         borderRadius: 'var(--sf-radius)',
         border: '1px solid var(--sf-line)',
         background:
-          'linear-gradient(180deg, color-mix(in srgb, var(--accent2) 8%, transparent) 0%, transparent 100%)',
+          // Rediseño v3 · superficie neutra del estilo, no un lavado del acento.
+          'var(--sf-soft, var(--neutral-soft))',
       }}
     >
       <SectionHeading

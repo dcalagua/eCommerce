@@ -116,7 +116,8 @@ export function StoreValueProps({
         // servicio que se lee de pasada, así que se apoya en un tinte del acento
         // del comercio y suelta el borde y la sombra. Las tarjetas de producto
         // recuperan el único recuadro con peso de la pantalla.
-        bgcolor: 'color-mix(in srgb, var(--accent) 6%, var(--card))',
+        // Rediseño v3 · superficie neutra del estilo, no un tinte del acento.
+        bgcolor: 'var(--sf-soft, var(--neutral-soft))',
       }}
     >
       {propuestas.map((propuesta, indice) => {

@@ -112,7 +112,9 @@ export function StoreBentoHero({
           // Con foto: la foto de fondo bajo un velo del color de la tienda, más
           // denso a la izquierda, donde va el texto blanco (contraste AA).
           background: imageSrc
-            ? `linear-gradient(90deg, color-mix(in srgb, var(--accent-deep) 92%, transparent) 0%, color-mix(in srgb, var(--accent-deep) 72%, transparent) 55%, rgba(0,0,0,.28) 100%), url("${imageSrc.replace(/"/g, '%22')}") center / cover no-repeat`
+            // Rediseño v3 · veladura en TINTA sobre la foto, no en el acento:
+            // una foto teñida de naranja era la mitad del «muy vivo».
+            ? `linear-gradient(90deg, color-mix(in srgb, var(--sf-band, #111) 88%, transparent) 0%, color-mix(in srgb, var(--sf-band, #111) 60%, transparent) 55%, rgba(0,0,0,.2) 100%), url("${imageSrc.replace(/"/g, '%22')}") center / cover no-repeat`
             : 'radial-gradient(120% 90% at 0% 0%, rgba(255,255,255,.14) 0%, transparent 55%), var(--hero-grad)',
           color: '#fff',
           boxShadow: '0 18px 40px -24px rgba(0,0,0,.55)',

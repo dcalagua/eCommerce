@@ -411,7 +411,8 @@ export function ProductCard({
               display: 'grid',
               placeItems: 'center',
               borderRadius: '50%',
-              bgcolor: rank === 1 ? 'var(--sf-discount-bg, var(--accent-deep))' : 'var(--text)',
+              // Rediseño v3 · el ranking en tinta: el acento es para la oferta.
+              bgcolor: 'var(--text)',
               color: rank === 1 ? 'var(--sf-discount-fg, #FFFFFF)' : 'var(--card)',
               fontSize: 12.5,
               fontWeight: 800,

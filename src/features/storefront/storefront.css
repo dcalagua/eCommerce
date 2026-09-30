@@ -416,7 +416,8 @@
    no informa, decora. `out` se pinta en los cuatro temas —esa si es informacion
    y es la que decide si el boton sirve—, asi que el selector nombra el estado,
    no la pastilla. */
-.sf-scope[data-store-theme='premium'] .eb-card-state[data-stock='in'] {
+.sf-scope[data-store-theme='premium'] .eb-card-state[data-stock='in'],
+.sf-scope[data-store-theme='retail'] .eb-card-state[data-stock='in'] {
   display: none;
 }
 
@@ -516,6 +517,9 @@
      y cada promo en un bloque durazno o rosa. */
   --accent-soft: color-mix(in srgb, var(--accent) 7%, var(--card));
   --sf-band: #16191f;
+  /* Superficie de apoyo para franjas y paneles de la portada: NEUTRA. Donde el
+     lienzo ya es gris (universal, catálogo) el panel es el papel blanco. */
+  --sf-soft: var(--neutral-soft);
   --sf-display: inherit;
   --sf-btn-radius: 10px;
   /* Verde de «disponible»: semántico, no de marca. Pintarlo del acento hacía
@@ -627,11 +631,13 @@
   --sf-display: 'Archivo', system-ui, sans-serif;
 }
 .sf-scope[data-store-theme='universal'] {
+  --sf-soft: var(--card);
   --sf-radius: 12px;
   --sf-radius-sm: 8px;
   --sf-btn-radius: 8px;
 }
 .sf-scope[data-store-theme='catalog'] {
+  --sf-soft: var(--card);
   --sf-radius: 4px;
   --sf-radius-sm: 4px;
   --sf-btn-radius: 4px;
@@ -656,6 +662,11 @@
   font-family: var(--sf-display);
   font-weight: 800;
   letter-spacing: -0.02em;
+}
+/* Retail titula en versalitas negras (diseño «NOVEDADES», «LO MÁS VENDIDO»). */
+.sf-scope[data-store-theme='retail'] main h2 {
+  text-transform: uppercase;
+  font-weight: 900;
 }
 .sf-scope[data-store-theme='premium'] :is(h1, h2) {
   font-family: var(--sf-display);

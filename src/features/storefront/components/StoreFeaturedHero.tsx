@@ -102,8 +102,9 @@ export function StoreFeaturedHero({
         border: '1px solid var(--sf-line)',
         // Fondo claro con un lavado del acento: la foto del producto manda, y
         // sobre un panel oscuro una caja blanca de medicamento se recorta fatal.
-        background:
-          'linear-gradient(130deg, color-mix(in srgb, var(--accent) 10%, var(--card)) 0%, var(--card) 55%, color-mix(in srgb, var(--accent) 6%, var(--card)) 100%)',
+        // Rediseño v3 · papel limpio: el lavado del acento pintaba de durazno
+        // la primera pantalla. El acento queda en el precio y el botón.
+        background: 'var(--card)',
       }}
     >
       <Stack

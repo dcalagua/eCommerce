@@ -232,8 +232,8 @@ export function ProductRow({
           ? {
               p: { xs: 1.75, md: 2.5 },
               borderRadius: 'var(--sf-radius)',
-              background:
-                'linear-gradient(180deg, color-mix(in srgb, var(--accent2) 8%, transparent) 0%, transparent 100%)',
+              // Rediseño v3 · superficie neutra del estilo.
+              background: 'var(--sf-soft, var(--neutral-soft))',
             }
           : {}),
       }}
@@ -367,13 +367,13 @@ function PuertaAlCatalogo({ href }: { href: string }) {
         // producto» sin gritar. Con el mismo relleno que una tarjeta, la fila
         // se lee como una sola pieza.
         border: '1px dashed var(--sf-line-strong)',
-        bgcolor: 'color-mix(in srgb, var(--accent) 4%, transparent)',
-        color: 'var(--accent-deep)',
+        bgcolor: 'transparent',
+        color: 'var(--text)',
         transition: 'border-color .18s ease, background-color .18s ease',
         '@media (hover: hover)': {
           '&:hover': {
-            borderColor: 'var(--accent)',
-            bgcolor: 'color-mix(in srgb, var(--accent) 9%, transparent)',
+            borderColor: 'var(--text)',
+            bgcolor: 'var(--sf-soft, var(--neutral-soft))',
           },
           '&:hover .sf-row-flecha': { transform: 'translateX(3px)' },
         },

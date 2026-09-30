@@ -81,7 +81,8 @@ export function PromoEditorial({
         gridTemplateColumns: { xs: '1fr', md: conFoto ? 'minmax(0, 7fr) minmax(0, 5fr)' : '1fr' },
         borderRadius: 'var(--sf-radius)',
         overflow: 'hidden',
-        bgcolor: conFoto ? 'var(--accent-deep)' : 'var(--accent-soft)',
+        // Rediseño v3 · franja en tinta / superficie neutra, no un bloque del acento.
+        bgcolor: conFoto ? 'var(--sf-band, var(--accent-deep))' : 'var(--sf-soft, var(--accent-soft))',
         color: tinta,
         minHeight: { md: conFoto ? 420 : 220 },
       }}
