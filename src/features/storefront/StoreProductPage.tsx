@@ -87,6 +87,8 @@ export function StoreProductPage() {
   const { preset } = useStorefrontTheme()
   /** Rediseño v3 · la ficha retail con la composición de su lámina. */
   const retail = preset === 'retail'
+  /** Rediseño v3 · la ficha universal: tres columnas (lámina de ficha). */
+  const universal = preset === 'universal'
   const { store, storeSlug } = useStorefront()
   const { productSlug } = useParams<{ productSlug: string }>()
 
@@ -287,6 +289,63 @@ export function StoreProductPage() {
    * El detalle plegado. En retail vive EN la columna de compra, bajo los
    * beneficios (lámina de ficha); en los demás estilos, debajo y a lo ancho.
    */
+  /**
+   * Las tres dudas que frenan un «añadir al carrito», junto al botón. Son
+   * lo que la plataforma SÍ garantiza. En universal viven en su propia
+   * columna, en tarjeta (lámina de ficha); en los demás, bajo la compra.
+   */
+  const confianza = (
+          <Stack
+            component="ul"
+            data-pdp-trust
+            sx={{
+              listStyle: 'none',
+              m: 0,
+              mt: 1,
+              p: 0,
+              border: '1px solid var(--sf-line)',
+              borderRadius: 'var(--sf-radius-sm)',
+              bgcolor: 'var(--card)',
+            }}
+          >
+            {([
+              ['store.product.trust.delivery', LocalShippingRoundedIcon],
+              ['store.product.trust.payment', LockRoundedIcon],
+              ['store.product.trust.stock', InventoryRoundedIcon],
+            ] as const).map(([clave, Icono]) => (
+              <Stack
+                key={clave}
+                component="li"
+                direction="row"
+                sx={{
+                  alignItems: 'center',
+                  gap: 1.25,
+                  px: 1.75,
+                  py: 1.25,
+                  '& + &': { borderTop: '1px solid var(--sf-line)' },
+                }}
+              >
+                <Box
+                  aria-hidden
+                  sx={{
+                    display: 'grid',
+                    placeItems: 'center',
+                    width: 32,
+                    height: 32,
+                    flexShrink: 0,
+                    borderRadius: '50%',
+                    bgcolor: 'var(--accent-soft)',
+                    color: 'var(--accent-deep)',
+                  }}
+                >
+                  <Icono sx={{ fontSize: 16 }} />
+                </Box>
+                <Typography sx={{ fontSize: TS.body, fontWeight: 600 }}>{t(clave)}</Typography>
+              </Stack>
+            ))}
+          </Stack>
+  )
+
   const detalles = (
       <StoreProductDetails
         ariaLabel={t('store.product.detailsSection')}
@@ -407,7 +466,9 @@ export function StoreProductPage() {
         sx={{
           display: 'grid',
           gap: { xs: 2, md: 4 },
-          gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1.1fr) minmax(0, 1fr)' },
+          gridTemplateColumns: universal
+            ? { xs: '1fr', md: 'minmax(0, 1.1fr) minmax(0, 1fr)', lg: 'minmax(0, 1.05fr) minmax(0, 1fr) 280px' }
+            : { xs: '1fr', md: 'minmax(0, 1.1fr) minmax(0, 1fr)' },
           alignItems: 'start',
         }}
       >
@@ -604,67 +665,7 @@ export function StoreProductPage() {
                 : {})}
           />
 
-          {/* Las tres dudas que frenan un «anadir al carrito», justo donde se
-              frena: al lado del boton. La franja de servicios ya las contaba,
-              pero vive al final de la portada, a media docena de pantallas de
-              distancia del unico momento en que importan.
-
-              Son afirmaciones sobre lo que la plataforma SI hace —entrega
-              calculada al comprar, pago por medios de la tienda, stock real
-              del almacen—: nada de politicas de devolucion que no existan. */}
-          {/* Lámina 31 · Un bloque legible y no tres etiquetas grises de 12 px.
-              Las mismas tres afirmaciones de siempre, que son lo que la
-              plataforma SÍ garantiza. Premium lo deja en una línea de texto
-              (ver `storefront.css`): allí manda la foto. */}
-          <Stack
-            component="ul"
-            data-pdp-trust
-            sx={{
-              listStyle: 'none',
-              m: 0,
-              mt: 1,
-              p: 0,
-              border: '1px solid var(--sf-line)',
-              borderRadius: 'var(--sf-radius-sm)',
-              bgcolor: 'var(--card)',
-            }}
-          >
-            {([
-              ['store.product.trust.delivery', LocalShippingRoundedIcon],
-              ['store.product.trust.payment', LockRoundedIcon],
-              ['store.product.trust.stock', InventoryRoundedIcon],
-            ] as const).map(([clave, Icono]) => (
-              <Stack
-                key={clave}
-                component="li"
-                direction="row"
-                sx={{
-                  alignItems: 'center',
-                  gap: 1.25,
-                  px: 1.75,
-                  py: 1.25,
-                  '& + &': { borderTop: '1px solid var(--sf-line)' },
-                }}
-              >
-                <Box
-                  aria-hidden
-                  sx={{
-                    display: 'grid',
-                    placeItems: 'center',
-                    width: 32,
-                    height: 32,
-                    flexShrink: 0,
-                    borderRadius: '50%',
-                    bgcolor: 'var(--accent-soft)',
-                    color: 'var(--accent-deep)',
-                  }}
-                >
-                  <Icono sx={{ fontSize: 16 }} />
-                </Box>
-                <Typography sx={{ fontSize: TS.body, fontWeight: 600 }}>{t(clave)}</Typography>
-              </Stack>
-            ))}
-          </Stack>
+          {universal ? null : confianza}
 
           {/* Rediseño v3 · Retail: guardar como botón bajo la compra y el
               detalle plegado en la misma columna (lámina de ficha). */}
@@ -682,6 +683,13 @@ export function StoreProductPage() {
           ) : null}
           {retail ? <Box className="sf-pdp-details">{detalles}</Box> : null}
         </Stack>
+
+        {/* Universal · la tercera columna: entrega, pago y stock en tarjeta. */}
+        {universal ? (
+          <Box className="sf-pdp-aside" sx={{ gridColumn: { md: '1 / -1', lg: 'auto' } }}>
+            {confianza}
+          </Box>
+        ) : null}
       </Box>
 
       {/**

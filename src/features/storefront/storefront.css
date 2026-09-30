@@ -1462,6 +1462,7 @@
 
 /* ---- Retail: el catalogo segun su lamina ------------------------------- */
 /* El total ya va junto al titulo: en la barra solo lo oye el lector. */
+.sf-scope[data-store-theme='universal'] .sf-plp-toolbar-count,
 .sf-scope[data-store-theme='retail'] .sf-plp-toolbar-count {
   position: absolute;
   clip-path: inset(50%);
@@ -2089,4 +2090,88 @@
 }
 .sf-scope[data-store-theme='universal'] .sf-footer > :first-child {
   border-top: 0;
+}
+
+/* ---- Universal · catalogo: titulo con total y filtros en tarjeta blanca --- */
+.sf-scope[data-store-theme='universal'] .sf-plp-title {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+@media (min-width: 900px) {
+  .sf-scope[data-store-theme='universal'] .sf-plp-title {
+    font-size: 32px;
+  }
+}
+.sf-scope[data-store-theme='universal'] .sf-plp-filters {
+  align-self: flex-start;
+  padding: 16px 18px;
+  border: 1px solid var(--sf-line);
+  border-radius: var(--sf-radius);
+  background: var(--card);
+}
+.sf-scope[data-store-theme='universal'] .sf-plp-toolbar [data-active-filter] {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--accent) 10%, var(--card));
+}
+
+/* ---- Universal · ficha: galeria y columna de entrega en tarjetas blancas -- */
+.sf-scope[data-store-theme='universal'] [data-pdp-gallery] {
+  padding: 16px;
+  border: 1px solid var(--sf-line);
+  border-radius: var(--sf-radius);
+  background: var(--card);
+}
+.sf-scope[data-store-theme='universal'] .sf-pdp-aside [data-pdp-trust] {
+  margin-top: 0;
+  border-radius: var(--sf-radius);
+}
+.sf-scope[data-store-theme='universal'] .sf-pdp-title {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.sf-scope[data-store-theme='universal'] [data-pdp-eyebrow] {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.sf-scope[data-store-theme='universal'] [data-pdp-savings] {
+  background: color-mix(in srgb, var(--sf-ok) 12%, var(--card));
+  color: var(--sf-ok);
+  border-radius: 6px;
+}
+.sf-scope[data-store-theme='universal'] .sf-reviews {
+  border: 1px solid var(--sf-line);
+  box-shadow: none;
+}
+.sf-scope[data-store-theme='universal'] .sf-pdp-back {
+  display: none;
+}
+.sf-scope[data-store-theme='universal'] main > * > [data-product-details] {
+  padding: 8px 20px 16px;
+  border: 1px solid var(--sf-line);
+  border-radius: var(--sf-radius);
+  background: var(--card);
+}
+
+/* ---- Universal · carrito: titulo grande y total destacado ---------------- */
+.sf-scope[data-store-theme='universal'] .sf-cart-head h1 {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+@media (min-width: 900px) {
+  .sf-scope[data-store-theme='universal'] .sf-cart-head h1 {
+    font-size: 30px;
+  }
+}
+.sf-scope[data-store-theme='universal'] .sf-cart-summary,
+.sf-scope[data-store-theme='universal'] .sf-cart-lines {
+  border: 1px solid var(--sf-line);
+  box-shadow: none;
+}
+.sf-scope[data-store-theme='universal'] .sf-cart-total p:last-child {
+  font-size: 26px;
+  letter-spacing: -0.02em;
+}
+.sf-scope[data-store-theme='universal'] .sf-cart-checkout {
+  min-block-size: 48px;
+  font-weight: 700;
 }

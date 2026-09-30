@@ -133,7 +133,7 @@ export function StoreCartPage() {
             )}
 
             {quoted && (
-              <Stack direction="row" sx={{ justifyContent: 'space-between', mt: 1 }}>
+              <Stack direction="row" className="sf-cart-total" sx={{ justifyContent: 'space-between', alignItems: 'baseline', mt: 1 }}>
                 <Typography sx={{ fontWeight: 800 }}>{t('store.cart.total')}</Typography>
                 <Typography sx={{ fontWeight: 800 }}>
                   {formatMoney(Number(quoted.grossTotal), quoted.currency, locale)}

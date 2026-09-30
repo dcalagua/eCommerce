@@ -600,7 +600,9 @@ describe('catálogo', () => {
     // Las píldoras son la forma que toman las categorías DENTRO del catálogo:
     // ahí son un filtro que se enciende y se apaga. En la portada son azulejos
     // con icono, que son una puerta y no un interruptor.
-    renderStorefront(backend(), '/s/casa-nordica?ver=todo')
+    // Tema con píldoras: Universal las lleva al panel de filtros desde el
+    // rediseño v3, así que esto se prueba donde siguen existiendo.
+    renderStorefront(backend({ public_stores: [store({ theme_preset: 'catalog' })] }), '/s/casa-nordica?ver=todo')
     await screen.findByText('Silla de roble')
 
     // Resumen v2 · la píldora lleva su cantidad al lado del nombre: «Mesas 1».
@@ -614,7 +616,7 @@ describe('catálogo', () => {
 
   it('volver a pulsar la categoría activa la quita', async () => {
     const user = userEvent.setup()
-    renderStorefront(backend(), '/s/casa-nordica?c=mesas')
+    renderStorefront(backend({ public_stores: [store({ theme_preset: 'catalog' })] }), '/s/casa-nordica?c=mesas')
     await screen.findByText('Mesa extensible')
 
     await user.click(screen.getByRole('button', { name: /^Mesas( \d+)?$/ }))
@@ -645,7 +647,8 @@ describe('catálogo', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Todo el catálogo' })).toBeInTheDocument()
     // Y hay camino de vuelta: sin esto, la única salida es el botón de atrás.
-    expect(screen.getByRole('link', { name: /Volver a la portada/ })).toHaveAttribute(
+    // (Universal lo da con las migas desde «Inicio» desde el rediseño v3.)
+    expect(screen.getAllByRole('link', { name: /Volver a la portada|^Inicio$/ })[0]).toHaveAttribute(
       'href',
       '/s/casa-nordica',
     )

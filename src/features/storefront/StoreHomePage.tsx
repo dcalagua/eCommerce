@@ -1,3 +1,4 @@
+import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
 import BoltRoundedIcon from '@mui/icons-material/BoltRounded'
 import { Box, Breadcrumbs, Button, Card, FormControlLabel, Link as MuiLink, Skeleton, Stack, Switch, Typography } from '@mui/material'
 import { visuallyHidden } from '@mui/utils'
@@ -159,6 +160,13 @@ export function StoreHomePage() {
   const tema = useStorefrontTheme()
   /** Rediseño v3 · El catálogo retail con la composición de su lámina. */
   const plpRetail = tema.preset === 'retail'
+  /**
+   * Rediseño v3 · Migas desde «Inicio» y total junto al título: retail y
+   * universal (sus dos láminas de catálogo lo piden igual).
+   */
+  const plpMigas = plpRetail || tema.preset === 'universal'
+  /** Universal: las familias viven en el panel de filtros, sin píldoras. */
+  const sinPildoras = tema.preset === 'universal'
   const { pathname, hash } = useLocation()
   const [params, setParams] = useSearchParams()
 
@@ -1173,7 +1181,7 @@ export function StoreHomePage() {
         <Stack sx={{ gap: 0.5 }}>
           {/* Rediseño v3 · Retail: migas ARRIBA del título, desde «Inicio»
               (lámina de catálogo). Sustituyen al «Volver a la portada». */}
-          {plpRetail ? (
+          {plpMigas ? (
             <Breadcrumbs
               aria-label={t('store.categories.title')}
               separator="/"
@@ -1255,7 +1263,7 @@ export function StoreHomePage() {
                 {tituloCatalogo}
               </Typography>
               {/* Retail · el total junto al título, «(48)», como en la lámina. */}
-              {plpRetail && results.isSuccess ? (
+              {plpMigas && results.isSuccess ? (
                 <Typography aria-hidden className="tnum" sx={{ fontSize: { xs: 15, md: 18 }, color: 'var(--muted)' }}>
                   {`(${resultCount})`}
                 </Typography>
@@ -1284,7 +1292,7 @@ export function StoreHomePage() {
         <Stack sx={{ gap: 1 }}>
           {/* Las migas: sin ellas, quien abre «Desodorantes» desde el buscador
               no sabe que esta dentro de «Cuidado personal» ni como subir. */}
-          {trail.length > 0 && !plpRetail && (
+          {trail.length > 0 && !plpMigas && (
             <Breadcrumbs
               aria-label={t('store.categories.title')}
               separator="›"
@@ -1322,6 +1330,7 @@ export function StoreHomePage() {
               )}
             </Breadcrumbs>
           )}
+          {sinPildoras ? null : (
           <CategoryBar
             categories={categoryBarItems(categories.data ?? [], categorySlug).filter(
               // Resumen v2 · Con las cantidades a la vista, una familia a CERO es
@@ -1349,6 +1358,7 @@ export function StoreHomePage() {
               ) : null
             }
           />
+          )}
         </Stack>
       ) : null}
 
@@ -1374,6 +1384,41 @@ export function StoreHomePage() {
               Sin esqueleto mientras llega su módulo: la barra es una línea, y
               un hueco gris parpadeando encima de la rejilla informa menos que
               el propio retraso. */}
+          {/* Rediseño v3 · Universal: la campaña vigente en una franja sobre los
+              resultados (lámina de catálogo). */}
+          {tema.preset === 'universal' && promosVigentes[0] ? (
+            <Stack
+              direction="row"
+              data-plp-promo
+              sx={{
+                alignItems: 'center',
+                gap: 1.5,
+                mb: 1.5,
+                px: 2,
+                py: 1.25,
+                borderRadius: 'var(--sf-radius)',
+                bgcolor: 'color-mix(in srgb, var(--accent) 8%, var(--card))',
+              }}
+            >
+              <LocalOfferRoundedIcon aria-hidden sx={{ fontSize: 18, color: 'var(--accent-deep)' }} />
+              <Typography sx={{ flex: 1, minWidth: 0, fontSize: TS.body, fontWeight: 700 }}>
+                {[promosVigentes[0].name, promosVigentes[0].description].filter(Boolean).join(' · ')}
+              </Typography>
+              <MuiLink
+                component={Link}
+                to={
+                  promosVigentes[0].categorySlug
+                    ? `/s/${storeSlug}?c=${encodeURIComponent(promosVigentes[0].categorySlug)}`
+                    : promosVigentes[0].brandCode
+                      ? `/s/${storeSlug}?b=${encodeURIComponent(promosVigentes[0].brandCode)}`
+                      : `/s/${storeSlug}?ver=todo&oferta=1`
+                }
+                sx={{ fontSize: TS.label, fontWeight: 700, color: 'var(--accent-deep)', flexShrink: 0 }}
+              >
+                {t('store.promos.see')}
+              </MuiLink>
+            </Stack>
+          ) : null}
           <Suspense fallback={null}>
             <StoreCatalogToolbar
               count={cuentaDeResultados}
@@ -1601,6 +1646,7 @@ export function StoreHomePage() {
          */}
         {plpRetail ? null : (
         <Box
+          className="sf-plp-filters"
           sx={{
             display: { xs: 'none', md: 'block' },
             width: { md: 280 },
