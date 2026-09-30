@@ -1854,3 +1854,86 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+/* ===========================================================================
+   REDISEÑO v3 · RETAIL, LA VISTA RÁPIDA — la voz de su ficha, en pequeño
+   =========================================================================== */
+.sf-scope[data-store-theme='retail'][data-quickview] {
+  background: var(--card);
+}
+.sf-scope[data-store-theme='retail'] .sf-qv-head {
+  border-bottom-color: var(--sf-line);
+}
+.sf-scope[data-store-theme='retail'] .sf-qv-close {
+  border: 0;
+  color: var(--text);
+}
+/* Sin tarjetas dentro del modal: foto sobre papel y texto a ras. */
+.sf-scope[data-store-theme='retail'] .sf-qv-gallery,
+.sf-scope[data-store-theme='retail'] .sf-qv-info,
+.sf-scope[data-store-theme='retail'] .sf-qv-desc {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.sf-scope[data-store-theme='retail'] .sf-qv-gallery {
+  padding: 0;
+}
+.sf-scope[data-store-theme='retail'] .sf-qv-info {
+  padding: 4px 0 0;
+}
+.sf-scope[data-store-theme='retail'] .sf-qv-title {
+  font-family: var(--sf-display);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.sf-scope[data-store-theme='retail'] .sf-qv-meta {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.sf-scope[data-store-theme='retail'] .sf-qv-discount {
+  border-radius: 0;
+  background: var(--accent-deep);
+}
+.sf-scope[data-store-theme='retail'] .sf-qv-stock {
+  height: auto;
+  padding: 0;
+  background: transparent;
+}
+.sf-scope[data-store-theme='retail'] .sf-qv-stock .MuiChip-label {
+  padding: 0;
+}
+.sf-scope[data-store-theme='retail'] .sf-qv-stock[data-stock='in'] {
+  color: var(--sf-ok);
+}
+/* Compra en píldora de tinta a lo que queda de la fila; la ficha, en texto. */
+.sf-scope[data-store-theme='retail'][data-quickview] .sf-pdp-buy {
+  flex: 1;
+  min-block-size: 48px;
+}
+.sf-scope[data-store-theme='retail'] .sf-qv-detail {
+  flex-basis: 100%;
+  justify-content: flex-start;
+  padding: 4px 0;
+  border: 0;
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.sf-scope[data-store-theme='retail'] .sf-qv-detail .MuiButton-endIcon {
+  display: none;
+}
+.sf-scope[data-store-theme='retail'] .sf-qv-desc {
+  padding: 16px 0 0;
+  border-top: 1px solid var(--sf-line);
+}
+.sf-scope[data-store-theme='retail'] .sf-qv-desc h3 {
+  font-size: 15px;
+  font-weight: 700;
+}
+.sf-scope[data-store-theme='retail'][data-quickview] .sf-qty {
+  border-color: var(--text);
+  border-radius: var(--sf-pill);
+}

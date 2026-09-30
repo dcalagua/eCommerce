@@ -28,6 +28,8 @@ import { ProductGallery } from './ProductGallery'
 import { QuantityStepper } from './QuantityStepper'
 import { useVariantChoice } from '../useVariantChoice'
 import { VariantPicker } from './VariantPicker'
+import { themeDataAttributes } from '../theme/theme-context'
+import { useStorefrontTheme } from '../theme/useStorefrontTheme'
 
 /**
  * Vista rápida del producto, en un diálogo sobre el catálogo.
@@ -67,6 +69,7 @@ export function ProductQuickView({
   onClose: () => void
 }) {
   const { t, locale } = useI18n()
+  const tema = useStorefrontTheme()
   const { agregar, pending } = useAddToCart()
   const [quantity, setQuantity] = useState(1)
 
@@ -116,14 +119,19 @@ export function ProductQuickView({
       slotProps={{
         paper: {
           className: 'sf-scope',
+          // Rediseño v3 · también los atributos del tema: sin ellos el modal
+          // no recibe la voz del estilo (vive en un portal).
+          ...themeDataAttributes(tema),
+          'data-quickview': 'true',
           sx: { borderRadius: 'var(--sf-radius)', bgcolor: 'var(--bg)', backgroundImage: 'none' },
-        },
+        } as object,
       }}
     >
       {/* Migas a la izquierda y cerrar a la derecha: dónde estás y por dónde
           sales, en la misma línea y sin competir con el nombre del producto. */}
       <Stack
         direction="row"
+        className="sf-qv-head"
         sx={{
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -144,6 +152,7 @@ export function ProductQuickView({
         />
         <Button
           onClick={onClose}
+          className="sf-qv-close"
           endIcon={<CloseRoundedIcon />}
           sx={{
             textTransform: 'none',
@@ -213,6 +222,7 @@ export function ProductQuickView({
                 justo lo que se mira antes de comprar. Lo que se pierde a la
                 derecha es aire, no contenido. */}
             <Card
+              className="sf-qv-gallery"
               sx={{
                 p: 2,
                 width: { md: 400 },
@@ -227,6 +237,7 @@ export function ProductQuickView({
 
             <Stack sx={{ flex: 1, minWidth: 0, gap: 2 }}>
               <Card
+                className="sf-qv-info"
                 sx={{
                   p: { xs: 2, md: 2.5 },
                   borderRadius: 'var(--sf-radius)',
@@ -238,6 +249,7 @@ export function ProductQuickView({
                   {discount !== null && (
                     <Chip
                       size="small"
+                      className="sf-qv-discount"
                       label={`-${discount}%`}
                       sx={{
                         alignSelf: 'flex-start',
@@ -250,6 +262,7 @@ export function ProductQuickView({
 
                   <Typography
                     component="h2"
+                    className="sf-qv-title"
                     sx={{ fontSize: { xs: 20, md: 24 }, fontWeight: 800, lineHeight: 1.25 }}
                   >
                     {item.name}
@@ -257,7 +270,7 @@ export function ProductQuickView({
 
                   {/* Marca y categoría en una línea tenue bajo el título: son
                       contexto, no titular. */}
-                  <Typography sx={{ fontSize: TS.body, color: 'var(--muted)' }}>
+                  <Typography className="sf-qv-meta" sx={{ fontSize: TS.body, color: 'var(--muted)' }}>
                     {[item.brand_name, item.category_name].filter(Boolean).join(' / ') || '—'}
                   </Typography>
 
@@ -308,6 +321,8 @@ export function ProductQuickView({
 
                   <Chip
                     size="small"
+                    className="sf-qv-stock"
+                    data-stock={available ? 'in' : 'out'}
                     label={
                       available
                         ? t('store.availability.inStock')
@@ -375,6 +390,7 @@ export function ProductQuickView({
                           })
                           onClose()
                         }}
+                        className="sf-pdp-buy"
                         sx={{ textTransform: 'none', fontWeight: 700 }}
                       >
                         {t('store.product.addToCart')}
@@ -384,6 +400,7 @@ export function ProductQuickView({
                         to={`/s/${storeSlug}/product/${item.slug}`}
                         variant="outlined"
                         endIcon={<OpenInFullRoundedIcon />}
+                        className="sf-qv-detail"
                         sx={{ textTransform: 'none', fontWeight: 700 }}
                       >
                         {t('store.product.detail')}
@@ -401,7 +418,7 @@ export function ProductQuickView({
                   Alimentación Infantil» se quedaba con 370 px y dejaba el texto
                   en una tira de dos palabras por línea. Se leía peor que si no
                   estuviera. */}
-              <Card sx={{ p: { xs: 2, md: 2.5 }, bgcolor: 'var(--neutral-soft)' }}>
+              <Card className="sf-qv-desc" sx={{ p: { xs: 2, md: 2.5 }, bgcolor: 'var(--neutral-soft)' }}>
                 <Typography
                   component="h3"
                   sx={{ fontSize: TS.cardTitle, fontWeight: 800, mb: 0.75 }}
