@@ -1,7 +1,9 @@
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
-import { Box, Button, Drawer, IconButton, Stack, Typography } from '@mui/material'
+import { Box, Button, Drawer, IconButton, Stack, Typography, useMediaQuery } from '@mui/material'
 import type { ReactNode } from 'react'
 import { useI18n } from '@/shared/i18n/i18n-context'
+import { themeDataAttributes } from '../theme/theme-context'
+import { useStorefrontTheme } from '../theme/useStorefrontTheme'
 
 /**
  * El cajón de filtros del teléfono (Storefront V3 · P09).
@@ -55,21 +57,33 @@ export function StoreFilterDrawer({
   canClear: boolean
 }) {
   const { t } = useI18n()
+  /**
+   * Rediseño v3 · En escritorio, cajón LATERAL de ancho fijo: la hoja inferior
+   * a todo el ancho de un monitor dejaba cada filtro a dos metros de su
+   * casilla. En el teléfono sigue siendo la hoja de abajo, que es lo cómodo.
+   */
+  const lateral = useMediaQuery('(min-width:900px)')
+  const tema = useStorefrontTheme()
 
   return (
     <Drawer
-      anchor="bottom"
+      anchor={lateral ? 'right' : 'bottom'}
       open={open}
       onClose={onClose}
       // El cajón vive fuera del árbol de la vitrina, así que sin esto se queda
       // sin los tokens del tema: colores, radios y densidad del comercio.
       PaperProps={{
         className: 'sf-scope',
+        // Los atributos del tema también aquí: sin ellos el cajón no recibe
+        // la voz del estilo (botones, neutros) y sale con la de por defecto.
+        ...themeDataAttributes(tema),
         'data-filter-drawer': 'true',
         sx: {
-          maxHeight: '88vh',
-          borderTopLeftRadius: 'var(--sf-radius)',
-          borderTopRightRadius: 'var(--sf-radius)',
+          maxHeight: lateral ? '100dvh' : '88vh',
+          width: lateral ? 420 : 'auto',
+          maxWidth: '100vw',
+          borderTopLeftRadius: lateral ? 0 : 'var(--sf-radius)',
+          borderTopRightRadius: lateral ? 0 : 'var(--sf-radius)',
           bgcolor: 'var(--bg)',
           display: 'flex',
           flexDirection: 'column',

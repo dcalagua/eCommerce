@@ -1650,3 +1650,16 @@
 .sf-scope[data-store-theme='retail'] .sf-reviews {
   order: 2;
 }
+/* Retail: el cajon de filtros con su voz; «Ver resultados» en tinta. */
+.sf-scope[data-store-theme='retail'][data-filter-drawer] .MuiButton-contained {
+  background: var(--text);
+  color: var(--card);
+  box-shadow: none;
+}
+.sf-scope[data-store-theme='retail'][data-filter-drawer] .MuiSlider-root {
+  color: var(--text);
+}
+.sf-scope[data-store-theme='retail'][data-filter-drawer] button.MuiButton-text,
+.sf-scope[data-store-theme='retail'][data-filter-drawer] .MuiLink-root {
+  color: var(--text);
+}

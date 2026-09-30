@@ -187,7 +187,15 @@ export function ProductCard({
    * nombre no se distinguen por voz. La cuenta de empresa sigue con su
    * selector de cantidad, porque repone por cajas.
    */
-  const compraRapida = preset === 'retail' && !b2b
+  const compraRapida = preset === 'retail'
+  /**
+   * Rediseño v3 · La ficha de EMPRESA (marca, SKU, estado, cantidad y botón
+   * ancho) en todos los estilos salvo retail: allí la tarjeta es la de la
+   * lámina también con sesión de empresa. El precio de convenio se sigue
+   * pintando —es el que se cobra— y la cantidad se ajusta en el carrito o en
+   * el pedido rápido.
+   */
+  const vistaEmpresa = b2b && !compraRapida
   const nombreComprar = `${hasVariants ? t('store.product.chooseOptions') : t('store.product.addToCart')}: ${product.name}`
   function comprar() {
     if (hasVariants) {
@@ -400,7 +408,7 @@ export function ProductCard({
             {`-${discount}%`}
           </Box>
         )}
-        {b2b && purchased ? (
+        {vistaEmpresa && purchased ? (
           <Box
             data-purchased
             sx={{
@@ -485,7 +493,7 @@ export function ProductCard({
       </Box>
 
       <Stack sx={{ gap: 0.5, flex: 1 }}>
-        {b2b && (product.brand_name || product.category_name) ? (
+        {vistaEmpresa && (product.brand_name || product.category_name) ? (
           <Typography
             className="eb-card-brand"
             noWrap
@@ -555,7 +563,7 @@ export function ProductCard({
             {product.name}
           </Box>
         </Typography>
-        {b2b ? (
+        {vistaEmpresa ? (
           <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 1, minWidth: 0 }}>
             <Typography
               data-sku={product.sku ?? ''}
@@ -577,7 +585,7 @@ export function ProductCard({
       </Stack>
 
       <Stack sx={{ gap: 0.75, mt: 'auto' }}>
-        {b2b ? (
+        {vistaEmpresa ? (
           <Stack sx={{ gap: 0.25 }} data-b2b-price>
             {commercialPrice || (discount !== null && product.compare_at_price) ? (
               <Typography component="s" className="tnum" sx={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>
@@ -663,7 +671,7 @@ export function ProductCard({
         {/* El estado, en pastilla: en una línea de texto suelta se confunde con
             el resto de la ficha, y es lo que decide si el botón sirve. En la
             fila no se pinta: allí no hay botón al que condicionar. */}
-        {reduced || b2b ? null : (
+        {reduced || vistaEmpresa ? null : (
         <Box
           className="eb-card-state"
           // `in` es el estado ESPERADO de un producto publicado, y por eso hay
@@ -708,7 +716,7 @@ export function ProductCard({
       >
         {/* La cantidad, solo para empresa y solo cuando se puede comprar: con
             variantes la cifra se elige en la vista rápida, junto a la opción. */}
-        {b2b && available && !hasVariants ? (
+        {vistaEmpresa && available && !hasVariants ? (
           <QuantityStepper value={cantidad} onChange={setCantidad} size="sm" disabled={pending} />
         ) : null}
         <Button
@@ -748,7 +756,7 @@ export function ProductCard({
         >
           {hasVariants
             ? t('store.product.chooseOptions')
-            : b2b
+            : vistaEmpresa
               ? available
                 ? t('store.product.addShort')
                 : t('store.availability.outOfStock')
