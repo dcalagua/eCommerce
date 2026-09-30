@@ -1679,3 +1679,131 @@
     padding: 0 16px 16px;
   }
 }
+
+/* ===========================================================================
+   REDISEÑO v3 · RETAIL, EL CAJÓN DE LA BOLSA (lámina «Retail · Bolsa lateral»)
+   ===========================================================================
+   Las mismas piezas y acciones del cajón; la voz retail: título en versalitas,
+   líneas sin tarjeta entre filetes, resumen fijo con el total grande, crédito
+   sobre gris con barra en tinta y la salida en píldora de tinta.
+   --------------------------------------------------------------------------- */
+.sf-scope[data-store-theme='retail'][data-cart-drawer] > div > :first-child {
+  padding: 20px 24px 16px;
+  border-bottom: 0;
+}
+.sf-scope[data-store-theme='retail'] .sf-drawer-title {
+  font-family: var(--sf-display);
+  font-size: 24px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+}
+.sf-scope[data-store-theme='retail'] .sf-drawer-title > span {
+  font-family: var(--font-body, inherit);
+  font-size: 15px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+/* Cuenta empresa: franja gris fina, sin rosa. */
+.sf-scope[data-store-theme='retail'] [data-cart-account] {
+  padding: 11px 24px;
+  background: var(--neutral-soft);
+  border-bottom: 0;
+}
+.sf-scope[data-store-theme='retail'] [data-cart-account] svg,
+.sf-scope[data-store-theme='retail'] [data-cart-account] p {
+  color: var(--text);
+}
+/* Líneas sobre el papel, sin tarjeta. */
+.sf-scope[data-store-theme='retail'] .sf-drawer-body {
+  padding: 4px 24px 16px;
+  background: var(--card);
+}
+.sf-scope[data-store-theme='retail'] .sf-drawer-lines {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.sf-scope[data-store-theme='retail'] .sf-drawer-lines li {
+  padding-block: 18px;
+  border-bottom-color: var(--sf-line);
+}
+.sf-scope[data-store-theme='retail'] .sf-drawer-lines .sf-cart-thumb {
+  inline-size: 84px;
+  block-size: 104px;
+}
+.sf-scope[data-store-theme='retail'] [data-cart-drawer] [data-line-discount],
+.sf-scope[data-store-theme='retail'][data-cart-drawer] [data-line-discount] {
+  background: transparent;
+  color: var(--accent-deep);
+  padding: 0;
+  border-radius: 0;
+}
+.sf-scope[data-store-theme='retail'][data-cart-drawer] li .MuiIconButton-root {
+  color: var(--text);
+}
+/* Resumen fijo: sin sombra, total grande en la voz del estilo. */
+.sf-scope[data-store-theme='retail'] .sf-drawer-foot {
+  padding: 18px 24px 22px;
+  box-shadow: none;
+  border-top-color: var(--sf-line-strong);
+}
+.sf-scope[data-store-theme='retail'] .sf-drawer-total {
+  font-family: var(--sf-display);
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--text);
+}
+/* «Precio especial» ya lo dice la franja de cuenta: fuera la pastilla verde. */
+.sf-scope[data-store-theme='retail'] .sf-drawer-special {
+  display: none;
+}
+/* Crédito: bloque gris, texto y barra en tinta. */
+.sf-scope[data-store-theme='retail'] [data-buyer-credit='ok'] {
+  background: var(--neutral-soft);
+  border-radius: 0;
+  padding: 14px;
+}
+.sf-scope[data-store-theme='retail'] [data-buyer-credit='ok'] .sf-credit-head svg,
+.sf-scope[data-store-theme='retail'] [data-buyer-credit='ok'] .sf-credit-head p {
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 11px;
+}
+.sf-scope[data-store-theme='retail'] [data-buyer-credit='ok'] .sf-credit-used {
+  background: var(--text);
+}
+.sf-scope[data-store-theme='retail'] [data-buyer-credit='ok'] .sf-credit-order {
+  background: color-mix(in srgb, var(--text) 45%, transparent);
+}
+/* Cotizar y programar: píldoras contorneadas en tinta. */
+.sf-scope[data-store-theme='retail'] .sf-drawer-b2b .MuiButton-outlined {
+  min-block-size: 44px;
+  border-color: var(--text);
+  color: var(--text);
+  border-radius: var(--sf-pill);
+  text-transform: none;
+  font-weight: 700;
+}
+.sf-scope[data-store-theme='retail'] .sf-drawer-b2b .MuiButton-startIcon {
+  display: none;
+}
+.sf-scope[data-store-theme='retail'] .sf-drawer-view {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+/* Solo el total pesa: el subtotal va a cuerpo de lectura. */
+.sf-scope[data-store-theme='retail'] .sf-drawer-subtotal {
+  font-size: 14px;
+  font-weight: 600;
+}
+/* El selector de cantidad en pildora contorneada en tinta (bolsa y cajon). */
+.sf-scope[data-store-theme='retail'] li .sf-qty {
+  border-color: var(--text);
+  border-radius: var(--sf-pill);
+}

@@ -53,7 +53,7 @@ export function BuyerTermsNotice({
             bgcolor: alcanza ? 'color-mix(in srgb, var(--accent) 8%, var(--card))' : 'var(--red-soft)',
           }}
         >
-          <Stack direction="row" sx={{ alignItems: 'center', gap: 0.75 }}>
+          <Stack direction="row" className="sf-credit-head" sx={{ alignItems: 'center', gap: 0.75 }}>
             <AccountBalanceWalletRoundedIcon aria-hidden sx={{ fontSize: 17, color: alcanza ? 'var(--accent-deep)' : 'var(--red)' }} />
             <Typography sx={{ fontSize: TS.label, fontWeight: 800, color: alcanza ? 'var(--accent-deep)' : 'var(--red)' }}>
               {t('store.terms.credit').replace('{n}', String(credit.termsDays))}
@@ -64,8 +64,8 @@ export function BuyerTermsNotice({
               aria-hidden
               sx={{ display: 'flex', height: 6, borderRadius: 999, overflow: 'hidden', bgcolor: 'var(--neutral-soft)', my: 0.75 }}
             >
-              <Box sx={{ width: `${Math.max(pct - pctPedido, 0)}%`, bgcolor: 'var(--accent)' }} />
-              <Box sx={{ width: `${pctPedido}%`, bgcolor: alcanza ? 'var(--accent-deep)' : 'var(--red)' }} />
+              <Box className="sf-credit-used" sx={{ width: `${Math.max(pct - pctPedido, 0)}%`, bgcolor: 'var(--accent)' }} />
+              <Box className="sf-credit-order" sx={{ width: `${pctPedido}%`, bgcolor: alcanza ? 'var(--accent-deep)' : 'var(--red)' }} />
             </Box>
           ) : null}
           <Typography sx={{ fontSize: TS.label, color: 'var(--text)', mt: pct === null ? 0.5 : 0 }}>

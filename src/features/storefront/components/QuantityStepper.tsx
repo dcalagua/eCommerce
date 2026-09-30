@@ -48,6 +48,7 @@ export function QuantityStepper({
   return (
     <Stack
       direction="row"
+      className="sf-qty"
       sx={{
         alignItems: 'center',
         gap: 0.5,

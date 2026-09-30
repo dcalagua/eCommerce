@@ -15,6 +15,8 @@ import { CartLineList } from './CartLineList'
 import { RequestQuoteButton } from './RequestQuoteButton'
 import { ScheduleCartButton } from './ScheduleCartButton'
 import { useCart } from './cart-context'
+import { themeDataAttributes } from '../theme/theme-context'
+import { useStorefrontTheme } from '../theme/useStorefrontTheme'
 import { useQuotedCart } from './useQuotedCart'
 
 /**
@@ -37,13 +39,24 @@ export function CartDrawer({ storeSlug }: { storeSlug: string }) {
   const { context } = useCommerceContext(storeSlug, status === 'authenticated')
   const moneda = quoted?.currency ?? currency
   const total = quoted?.grossTotal ?? null
+  // Rediseño v3 · El cajón vive en un portal, FUERA de la vitrina: sin la
+  // frontera del tema no recibe ni los neutros ni la voz del estilo.
+  const tema = useStorefrontTheme()
 
   return (
     <Drawer
       anchor="right"
       open={isOpen}
       onClose={closeCart}
-      slotProps={{ paper: { sx: { width: { xs: '100%', sm: 400 }, bgcolor: 'var(--card)' } } }}
+      slotProps={{
+        paper: {
+          className: 'sf-scope',
+          ...themeDataAttributes(tema),
+          'data-cart-drawer': 'true',
+          // Retail: 440 px, como su lámina; el resto, los 400 de siempre.
+          sx: { width: { xs: '100%', sm: tema.preset === 'retail' ? 440 : 400 }, bgcolor: 'var(--card)' },
+        } as object,
+      }}
       aria-label={t('store.cart.title')}
     >
       <Stack sx={{ height: '100%' }}>
@@ -58,7 +71,7 @@ export function CartDrawer({ storeSlug }: { storeSlug: string }) {
             borderBottom: '1px solid var(--border)',
           }}
         >
-          <Typography component="h2" sx={{ fontSize: 16, fontWeight: 800 }}>
+          <Typography component="h2" className="sf-drawer-title" sx={{ fontSize: 16, fontWeight: 800 }}>
             {t('store.cart.title')}
             {count > 0 && (
               <Box component="span" sx={{ color: 'var(--muted)', fontWeight: 700 }}>
@@ -103,7 +116,7 @@ export function CartDrawer({ storeSlug }: { storeSlug: string }) {
         {/* `--bg` y no `--card`: la zona de las líneas se hunde un tono y las
             líneas se ven sobre ella, en vez de flotar en un panel blanco donde
             un carrito de un solo producto parece medio vacío. */}
-        <Box sx={{ flex: 1, overflowY: 'auto', px: 2, py: 2, bgcolor: 'var(--bg)' }}>
+        <Box className="sf-drawer-body" sx={{ flex: 1, overflowY: 'auto', px: 2, py: 2, bgcolor: 'var(--bg)' }}>
           {empty ? (
             <EmptyState
               title={t('store.cart.empty')}
@@ -111,7 +124,7 @@ export function CartDrawer({ storeSlug }: { storeSlug: string }) {
               icon={<ShoppingCartRoundedIcon fontSize="small" />}
             />
           ) : (
-            <Card sx={{ p: 1.5 }}>
+            <Card className="sf-drawer-lines" sx={{ p: 1.5 }}>
               <CartLineList
                 cart={cart}
                 storeSlug={storeSlug}
@@ -128,6 +141,7 @@ export function CartDrawer({ storeSlug }: { storeSlug: string }) {
              línea, el subtotal y el botón quedaban colgando al final de un
              hueco y no se leían como el cierre del panel. */
           <Box
+            className="sf-drawer-foot"
             sx={{
               px: 2,
               py: 2,
@@ -143,7 +157,7 @@ export function CartDrawer({ storeSlug }: { storeSlug: string }) {
               <Typography sx={{ fontWeight: 700, fontSize: TS.bodyStrong }}>
                 {t('store.cart.subtotal')}
               </Typography>
-              <Typography className="tnum" sx={{ fontWeight: 800, fontSize: 20 }}>
+              <Typography className="tnum sf-drawer-subtotal" sx={{ fontWeight: 800, fontSize: 20 }}>
                 {formatMoney(
                   Number(quoted?.netTotal ?? subtotal),
                   quoted?.currency ?? currency,
@@ -170,6 +184,7 @@ export function CartDrawer({ storeSlug }: { storeSlug: string }) {
               <Chip
                 size="small"
                 color="success"
+                className="sf-drawer-special"
                 label={t('store.cart.listPrice')}
                 sx={{ mt: 1 }}
               />
@@ -191,7 +206,7 @@ export function CartDrawer({ storeSlug }: { storeSlug: string }) {
                   sx={{ justifyContent: 'space-between', alignItems: 'baseline', gap: 2, mt: 0.75 }}
                 >
                   <Typography sx={{ fontWeight: 800, fontSize: TS.bodyStrong }}>{t('store.cart.total')}</Typography>
-                  <Typography className="tnum" sx={{ fontWeight: 800, fontSize: 22, color: 'var(--accent-deep)' }}>
+                  <Typography className="tnum sf-drawer-total" sx={{ fontWeight: 800, fontSize: 22, color: 'var(--accent-deep)' }}>
                     {formatMoney(Number(quoted.grossTotal), moneda, locale)}
                   </Typography>
                 </Stack>
@@ -215,6 +230,7 @@ export function CartDrawer({ storeSlug }: { storeSlug: string }) {
                 size="large"
                 onClick={closeCart}
                 fullWidth
+                className="sf-cart-checkout"
                 sx={{ textTransform: 'none', fontWeight: 800 }}
               >
                 {t('store.cart.checkout')}
@@ -222,7 +238,7 @@ export function CartDrawer({ storeSlug }: { storeSlug: string }) {
               {/* Cotizar y programar también desde aquí: son el flujo B2B más
                   usado y exigían pasar por la página del carrito. Se callan
                   solos para quien no compra con cuenta de empresa. */}
-              <Stack direction="row" sx={{ gap: 1, '& > *': { flex: 1, minWidth: 0 } }}>
+              <Stack direction="row" className="sf-drawer-b2b" sx={{ gap: 1, '& > *': { flex: 1, minWidth: 0 } }}>
                 <RequestQuoteButton storeSlug={storeSlug} lines={cart.lines} />
                 <ScheduleCartButton storeSlug={storeSlug} lines={cart.lines} />
               </Stack>
@@ -231,6 +247,7 @@ export function CartDrawer({ storeSlug }: { storeSlug: string }) {
                 to={`/s/${storeSlug}/cart`}
                 onClick={closeCart}
                 fullWidth
+                className="sf-drawer-view"
                 sx={{ textTransform: 'none', fontWeight: 700 }}
               >
                 {t('store.cart.view')}
