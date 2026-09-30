@@ -1064,3 +1064,259 @@
 .sf-scope[data-store-theme='premium'] .sf-cat-count {
   display: none;
 }
+
+/* ===========================================================================
+   REDISEÑO v3 · RETAIL, LA COMPOSICIÓN (lámina «01 — Retail · Home»)
+   ===========================================================================
+   Hasta aquí Retail cambiaba de color y de forma; esto cambia la COMPOSICIÓN:
+   portada editorial partida, familias en tarjetas altas con foto, tarjeta de
+   producto sin botón ancho (el «+» va sobre la foto), ranking «01», títulos en
+   versalitas sin antetítulo y pie en tinta con la marca en grande.
+   Las piezas y lo que hacen son las de siempre; cambia cómo se ven.
+   --------------------------------------------------------------------------- */
+
+/* ---- Portada: texto sobre papel + mosaico 2×2 de productos a sangre ----- */
+.sf-scope[data-store-theme='retail'] .sf-bento {
+  gap: 0;
+  margin-inline: calc(50% - 50vw);
+  margin-top: calc(-1 * var(--sf-main-pad-md, 24px));
+}
+@media (min-width: 1200px) {
+  .sf-scope[data-store-theme='retail'] .sf-bento {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  }
+}
+.sf-scope[data-store-theme='retail'] .sf-bento-block:not([data-feria-image]) {
+  background: var(--sf-soft);
+  color: var(--text);
+  box-shadow: none;
+  border-radius: 0;
+  justify-content: center;
+  gap: 32px;
+  padding: 48px 48px 48px max(24px, calc(50vw - var(--sf-content-w) / 2 + 24px));
+}
+.sf-scope[data-store-theme='retail'] .sf-bento-block[data-feria-image] {
+  border-radius: 0;
+  box-shadow: none;
+}
+.sf-scope[data-store-theme='retail'] .sf-bento-block::before,
+.sf-scope[data-store-theme='retail'] .sf-bento-block::after {
+  display: none;
+}
+.sf-scope[data-store-theme='retail'] .sf-bento-kicker {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+}
+.sf-scope[data-store-theme='retail'] .sf-bento-title {
+  font-family: var(--sf-display);
+  font-weight: 900;
+  text-transform: uppercase;
+  text-shadow: none;
+  letter-spacing: -0.03em;
+}
+.sf-scope[data-store-theme='retail'] .sf-bento-block:not([data-feria-image]) .sf-bento-cta {
+  background: var(--text);
+  color: var(--card);
+  border-radius: var(--sf-pill);
+  box-shadow: none;
+}
+.sf-scope[data-store-theme='retail'] .sf-bento-block:not([data-feria-image]) [data-countdown='boxes'] > * {
+  background: var(--card);
+  border-color: var(--sf-line-strong);
+  box-shadow: none;
+  color: var(--text);
+}
+.sf-scope[data-store-theme='retail'] .sf-bento-tiles {
+  gap: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.sf-scope[data-store-theme='retail'] .sf-bento-offer {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--sf-photo-bg, var(--neutral-soft));
+}
+.sf-scope[data-store-theme='retail'] .sf-bento-offer:nth-child(4n + 2),
+.sf-scope[data-store-theme='retail'] .sf-bento-offer:nth-child(4n + 3) {
+  background: color-mix(in srgb, var(--sf-photo-bg, var(--neutral-soft)) 70%, var(--card));
+}
+.sf-scope[data-store-theme='retail'] .sf-bento-offer-media {
+  flex: 1;
+  width: auto;
+  max-width: none;
+  border-radius: 0;
+  background: transparent;
+}
+.sf-scope[data-store-theme='retail'] .sf-bento-offer-media [data-media] {
+  aspect-ratio: 4 / 3;
+  background: transparent;
+  border-radius: 0;
+}
+.sf-scope[data-store-theme='retail'] .sf-bento-offer-info {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  max-width: calc(100% - 32px);
+  padding: 6px 10px;
+  gap: 0;
+  background: var(--card);
+}
+.sf-scope[data-store-theme='retail'] .sf-bento-offer-info a {
+  font-size: 12px;
+  -webkit-line-clamp: 1;
+}
+.sf-scope[data-store-theme='retail'] .sf-bento-offer-price {
+  font-size: 13px;
+}
+.sf-scope[data-store-theme='retail'] .sf-bento-offer-before {
+  display: none;
+}
+.sf-scope[data-store-theme='retail'] .sf-bento-offer-badge {
+  position: absolute;
+  top: -1px;
+  left: 0;
+  transform: translateY(-100%);
+  border-radius: 0;
+}
+
+/* ---- Tarjeta: insignias rectas, ranking «01», «+» sobre la foto ---------- */
+.sf-scope[data-store-theme='retail'] .eb-card-badge {
+  border-radius: 0;
+  box-shadow: none;
+  font-size: 11px;
+}
+.sf-scope[data-store-theme='retail'] .eb-card-rank {
+  position: static;
+  order: -1;
+  display: block;
+  min-width: auto;
+  height: auto;
+  padding: 0 0 6px;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text);
+  font-family: var(--sf-display);
+  font-size: 44px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+.sf-scope[data-store-theme='retail'] .eb-card-rank .eb-card-rank-hash {
+  display: none;
+}
+.sf-scope[data-store-theme='retail'] .eb-card-rank::after {
+  content: attr(data-rank-label);
+}
+.sf-scope[data-store-theme='retail'] .eb-card-rank:not([data-rank='1']) {
+  color: color-mix(in srgb, var(--text) 22%, transparent);
+}
+/* El ranking sale de la foto y se pone ENCIMA de ella, como en el diseño. */
+.sf-scope[data-store-theme='retail'] .eb-card-media:has(.eb-card-rank) {
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+
+/* ---- Familias: tarjeta alta, foto a sangre, etiqueta en tinta ----------- */
+.sf-scope[data-store-theme='retail'] .sf-cat-door {
+  aspect-ratio: 3 / 4;
+  min-height: 0;
+  padding: 16px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  justify-content: flex-end;
+  background: var(--sf-photo-bg, var(--neutral-soft));
+  color: var(--text);
+}
+.sf-scope[data-store-theme='retail'] .sf-cat-door:hover {
+  box-shadow: none;
+}
+.sf-scope[data-store-theme='retail'] .sf-cat-door[data-category-fit='contain'] .sf-cat-foto {
+  padding: 12%;
+  mix-blend-mode: var(--sf-media-blend, normal);
+}
+.sf-scope[data-store-theme='retail'] .sf-cat-veil,
+.sf-scope[data-store-theme='retail'] .sf-cat-disc,
+.sf-scope[data-store-theme='retail'] .sf-cat-see {
+  display: none;
+}
+.sf-scope[data-store-theme='retail'] .sf-cat-mark {
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0.12;
+  color: var(--text);
+}
+.sf-scope[data-store-theme='retail'] .sf-cat-name {
+  align-self: flex-start;
+  padding: 7px 12px;
+  background: var(--text);
+  color: var(--card);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-shadow: none;
+}
+.sf-scope[data-store-theme='retail'] .sf-cat-name::after {
+  content: '  \2192';
+  white-space: pre;
+}
+
+/* ---- Títulos de sección: solo el título grande -------------------------- */
+.sf-scope[data-store-theme='retail'] .sf-heading-eyebrow,
+.sf-scope[data-store-theme='retail'] .sf-heading-sub,
+.sf-scope[data-store-theme='retail'] .sf-heading-rule {
+  display: none;
+}
+.sf-scope[data-store-theme='retail'] .sf-heading-rule + * {
+  margin-left: auto;
+}
+@media (min-width: 900px) {
+  .sf-scope[data-store-theme='retail'] main h2 {
+    font-size: 32px;
+  }
+}
+
+/* ---- Pie en tinta, a lo ancho, con la marca gigante --------------------- */
+.sf-scope[data-store-theme='retail'] .sf-footer {
+  --text: #f2f2f0;
+  --muted: #a3a3a0;
+  --sf-line: rgba(255, 255, 255, 0.14);
+  max-width: none;
+  margin-top: var(--sf-section-gap-md);
+  padding-inline: max(24px, calc(50vw - var(--sf-content-w) / 2 + 24px));
+  background: var(--sf-band);
+  color: var(--text);
+  overflow: hidden;
+}
+.sf-scope[data-store-theme='retail'] .sf-footer > :first-child {
+  border-top: 0;
+}
+.sf-scope[data-store-theme='retail'] .sf-footer .sf-footer-mark {
+  display: block;
+  margin-top: 40px;
+  font-family: var(--sf-display);
+  font-weight: 900;
+  font-size: clamp(72px, 15vw, 220px);
+  line-height: 0.85;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.07);
+  user-select: none;
+}
+/* El nombre va por `attr()` y no como texto: es decoración, y como texto
+   duplicaría la marca para quien lee o busca en la página. */
+.sf-scope[data-store-theme='retail'] .sf-footer .sf-footer-mark::before {
+  content: attr(data-mark);
+}

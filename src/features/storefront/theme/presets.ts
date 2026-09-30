@@ -88,8 +88,10 @@ export const THEME_PRESETS: Readonly<Record<ThemePreset, ThemeDefinition>> = {
      */
     heroVariant: 'bento',
     productCardVariant: 'compact',
-    // Resumen v2 · Accesos: tarjetas con icono y la puerta a las ofertas.
-    categoryVariant: 'icons',
+    // Rediseño v3 · Tarjetas ALTAS con foto (lámina «Compra por categoría»):
+    // la familia se enseña con su prenda, no con un icono. Sin foto propia, la
+    // portada le presta la de un producto suyo (StoreHomePage, `fotoDeRespaldo`).
+    categoryVariant: 'tiles',
     contentWidth: 'lg',
     imageRatio: 'square',
     sectionSpacing: 'compact',

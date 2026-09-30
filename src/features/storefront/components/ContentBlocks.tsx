@@ -40,7 +40,10 @@ export { CategoryDoorGrid, type CategoryDoorItem }
  * lista completa de categorías de la tienda.
  */
 export type CategoryMedia = Readonly<
-  Record<string, { readonly imageUrl?: string | null; readonly imageAlt?: string | null }>
+  Record<
+    string,
+    { readonly imageUrl?: string | null; readonly imageAlt?: string | null; readonly imageFit?: 'cover' | 'contain' }
+  >
 >
 
 /**

@@ -1,3 +1,4 @@
+import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import FavoriteBorderRoundedIcon from '@mui/icons-material/FavoriteBorderRounded'
 import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded'
 import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded'
@@ -169,7 +170,7 @@ export function ProductCard({
    * `if (theme === 'premium')` en este archivo: lo que hay son tres
    * presentaciones nombradas, y quien elige es el contrato.
    */
-  const { style } = useStorefrontTheme()
+  const { style, preset } = useStorefrontTheme()
   const presentacion = variant ?? style.productCardVariant
   const denso = presentacion === 'compact'
   const editorial = presentacion === 'editorial'
@@ -177,6 +178,34 @@ export function ProductCard({
   const available = product.in_stock !== false
   const hasVariants = product.kind === 'variant'
   const to = `/s/${storeSlug}/product/${product.slug}`
+  /**
+   * Rediseño v3 · En RETAIL la compra rápida es un «+» sobre la foto y no un
+   * botón ancho bajo el precio (lámina «R · Tarjeta producto»): la tarjeta de
+   * moda enseña la prenda, no un bloque de color. Hace EXACTAMENTE lo mismo que
+   * el botón —una unidad, o la vista rápida si hay que elegir talla o color—, y
+   * se pinta EN LUGAR del botón, nunca además: dos controles con el mismo
+   * nombre no se distinguen por voz. La cuenta de empresa sigue con su
+   * selector de cantidad, porque repone por cajas.
+   */
+  const compraRapida = preset === 'retail' && !b2b
+  const nombreComprar = `${hasVariants ? t('store.product.chooseOptions') : t('store.product.addToCart')}: ${product.name}`
+  function comprar() {
+    if (hasVariants) {
+      onQuickView?.(product.slug)
+      return
+    }
+    void agregar(product, cantidad, null).then((ok) => {
+      if (ok) setCantidad(1)
+    })
+    // Se cuenta aquí igual que en la ficha: `add_to_cart` es una decisión,
+    // y si solo se contara desde la ficha, el embudo perdería a todo el
+    // que compra desde la rejilla.
+    track(storeSlug, {
+      type: 'add_to_cart',
+      product_id: product.product_id,
+      quantity: cantidad,
+    })
+  }
 
   return (
     <Card
@@ -352,6 +381,7 @@ export function ProductCard({
           // sombra: sobre la foto lo que hace falta es una etiqueta que se lea,
           // no un control que parezca pulsable.
           <Box
+            className="eb-card-badge"
             sx={{
               px: 1,
               py: 0.25,
@@ -399,6 +429,9 @@ export function ProductCard({
         {rank ? (
           <Box
             data-rank={rank}
+            // Rediseño v3 · retail lo pinta como cifra grande «01» (storefront.css).
+            data-rank-label={String(rank).padStart(2, '0')}
+            className="eb-card-rank"
             title={t('store.ranking.position').replace('{n}', String(rank))}
             sx={{
               position: 'absolute',
@@ -419,11 +452,35 @@ export function ProductCard({
               boxShadow: '0 2px 8px rgba(0,0,0,.2)',
             }}
           >
-            <Box component="span" aria-hidden>{`#${rank}`}</Box>
+            <Box component="span" aria-hidden className="eb-card-rank-hash">{`#${rank}`}</Box>
             <Box component="span" sx={visuallyHidden}>
               {t('store.ranking.position').replace('{n}', String(rank))}
             </Box>
           </Box>
+        ) : null}
+
+        {compraRapida ? (
+          <IconButton
+            className="eb-card-quick"
+            aria-label={nombreComprar}
+            disabled={(!available && !hasVariants) || pending}
+            onClick={comprar}
+            sx={{
+              position: 'absolute',
+              right: 10,
+              bottom: 10,
+              zIndex: 1,
+              width: 38,
+              height: 38,
+              bgcolor: 'var(--card)',
+              color: 'var(--text)',
+              boxShadow: '0 2px 10px -2px rgba(16, 24, 32, 0.25)',
+              '&:hover': { bgcolor: 'var(--text)', color: 'var(--card)' },
+              '&.Mui-disabled': { bgcolor: 'var(--card)', opacity: 0.6 },
+            }}
+          >
+            {pending ? <CircularProgress size={16} color="inherit" /> : hasVariants ? <TuneRoundedIcon sx={{ fontSize: 20 }} /> : <AddRoundedIcon sx={{ fontSize: 22 }} />}
+          </IconButton>
         ) : null}
       </Box>
 
@@ -633,7 +690,7 @@ export function ProductCard({
 
       {/* Por encima de la capa que hace pulsable la tarjeta: pulsar aquí compra,
           no navega. */}
-      {reduced ? null : (
+      {reduced || compraRapida ? null : (
       <Stack
         direction="row"
         sx={{
@@ -668,23 +725,7 @@ export function ProductCard({
               <ShoppingCartRoundedIcon />
             )
           }
-          onClick={() => {
-            if (hasVariants) {
-              onQuickView?.(product.slug)
-              return
-            }
-            void agregar(product, cantidad, null).then((ok) => {
-              if (ok) setCantidad(1)
-            })
-            // Se cuenta aquí igual que en la ficha: `add_to_cart` es una decisión,
-            // y si solo se contara desde la ficha, el embudo perdería a todo el
-            // que compra desde la rejilla.
-            track(storeSlug, {
-              type: 'add_to_cart',
-              product_id: product.product_id,
-              quantity: cantidad,
-            })
-          }}
+          onClick={comprar}
           sx={{
             position: 'relative',
             zIndex: 1,

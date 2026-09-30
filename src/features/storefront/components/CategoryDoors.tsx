@@ -78,6 +78,12 @@ export interface CategoryDoorItem {
    * Repetirlo en el `alt` haría que un lector dijera «Abrigos, Abrigos».
    */
   readonly imageAlt?: string | null
+  /**
+   * Rediseño v3 · Cómo encaja la foto. `cover` (defecto) para la foto propia de
+   * la familia, que es un FONDO; `contain` para la foto PRESTADA de un producto,
+   * que está sobre blanco de estudio y recortarla se come la prenda.
+   */
+  readonly imageFit?: 'cover' | 'contain'
 }
 
 /**
@@ -289,6 +295,10 @@ export function CategoryDoor({
       to={`/s/${storeSlug}?c=${encodeURIComponent(category.slug)}`}
       {...(sinFoco ? { tabIndex: -1 } : {})}
       data-category-door={conFoto ? 'photo' : 'tint'}
+      data-category-fit={conFoto ? (category.imageFit ?? 'cover') : undefined}
+      // Rediseño v3 · enganches `sf-cat-*`: retail la viste como tarjeta alta
+      // con la etiqueta en tinta (storefront.css).
+      className="sf-cat-door"
       sx={{
         position: 'relative',
         overflow: 'hidden',
@@ -347,7 +357,7 @@ export function CategoryDoor({
               height: '100%',
               // `cover` y no `contain`: la foto de una categoría es un FONDO.
               // Encajada dejaría dos franjas vacías dentro del azulejo.
-              objectFit: 'cover',
+              objectFit: category.imageFit ?? 'cover',
               transition: 'transform .35s ease',
               '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
             }}
@@ -357,6 +367,7 @@ export function CategoryDoor({
               sube el comercio, así que el suelo de abajo es opaco de verdad. */}
           <Box
             aria-hidden
+            className="sf-cat-veil"
             sx={{
               position: 'absolute',
               inset: 0,
@@ -371,6 +382,7 @@ export function CategoryDoor({
         // mantener por categoría.
         <Box
           aria-hidden
+          className="sf-cat-mark"
           sx={{
             position: 'absolute',
             right: -14,
@@ -388,6 +400,7 @@ export function CategoryDoor({
           hace que la puerta se reconozca cuando la foto es oscura o ruidosa. */}
       <Box
         aria-hidden
+        className="sf-cat-disc"
         sx={{
           position: 'relative',
           width: 42,
@@ -404,6 +417,7 @@ export function CategoryDoor({
       </Box>
 
       <Typography
+        className="sf-cat-name"
         sx={{
           position: 'relative',
           mt: 'auto',
@@ -421,6 +435,7 @@ export function CategoryDoor({
 
       <Stack
         direction="row"
+        className="sf-cat-see"
         sx={{
           position: 'relative',
           alignSelf: 'flex-start',

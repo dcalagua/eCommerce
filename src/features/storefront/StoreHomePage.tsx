@@ -989,6 +989,65 @@ export function StoreHomePage() {
     return mapa
   }, [categories.data, fotosFirmadas])
 
+  /**
+   * Rediseño v3 · RETAIL presenta las familias como tarjetas altas CON FOTO
+   * (lámina «Compra por categoría»). Si el comercio no subió foto a la familia,
+   * se usa la de un producto suyo que la portada YA cargó —más vendidos,
+   * novedades, ofertas, catálogo—: cero peticiones nuevas y ningún dato
+   * inventado. Se busca por la familia RAÍZ, porque los productos cuelgan de las
+   * hojas. Sin producto con foto, la puerta cae a su respaldo de siempre.
+   */
+  const fotoDeRespaldo = useMemo(() => {
+    const mapa: Record<string, { imageUrl: string; imageAlt: null; imageFit: 'contain' }> = {}
+    if (tema.preset !== 'retail') return mapa
+    const padre = new Map((categories.data ?? []).map((c) => [c.category_id, c.parent_id]))
+    // Los productos que llegan de la BÚSQUEDA traen el slug de su familia y no
+    // el id: se resuelve con el mismo árbol.
+    const idPorSlug = new Map((categories.data ?? []).map((c) => [c.slug, c.category_id]))
+    // La hoja y TODOS sus ancestros: la sección automática pinta raíces, pero
+    // un bloque del CMS puede apuntar a cualquier nivel del árbol.
+    const linaje = (id: string): string[] => {
+      const fuera = [id]
+      let actual = id
+      for (let i = 0; i < 12; i += 1) {
+        const p = padre.get(actual)
+        if (!p) break
+        fuera.push(p)
+        actual = p
+      }
+      return fuera
+    }
+    const listas: readonly (readonly [readonly PublicProduct[], Record<string, string>])[] = [
+      [masVendidos.data ?? [], masVendidoThumbs],
+      [novedades, novedadesThumbs],
+      [ofertas, rebajadosThumbs],
+      [products, thumbnails],
+    ]
+    for (const [lista, firmas] of listas) {
+      for (const producto of lista) {
+        const categoria =
+          producto.category_id ?? (producto.category_slug ? idPorSlug.get(producto.category_slug) : undefined)
+        if (!categoria || !producto.primary_image_path) continue
+        const url = firmas[producto.primary_image_path]
+        if (!url) continue
+        for (const id of linaje(categoria)) {
+          if (!mapa[id]) mapa[id] = { imageUrl: url, imageAlt: null, imageFit: 'contain' }
+        }
+      }
+    }
+    return mapa
+  }, [tema.preset, categories.data, masVendidos.data, masVendidoThumbs, novedades, novedadesThumbs, ofertas, rebajadosThumbs, products, thumbnails])
+
+  const mediaConRespaldo = useMemo(() => {
+    const fuera: Record<string, { imageUrl: string | null; imageAlt: string | null; imageFit?: 'contain' }> = {
+      ...fotoDeRespaldo,
+    }
+    for (const [id, media] of Object.entries(categoryMedia)) {
+      if (media.imageUrl || !fuera[id]) fuera[id] = media
+    }
+    return fuera
+  }, [categoryMedia, fotoDeRespaldo])
+
   const familias = useMemo(
     () =>
       (categories.data ?? [])
@@ -998,9 +1057,12 @@ export function StoreHomePage() {
           category_id: category.category_id,
           name: category.name,
           slug: category.slug,
-          ...(categoryMedia[category.category_id] ?? {}),
+          // La foto propia manda; si no hay o su firma no llegó, la prestada.
+          ...(categoryMedia[category.category_id]?.imageUrl
+            ? categoryMedia[category.category_id]
+            : (fotoDeRespaldo[category.category_id] ?? categoryMedia[category.category_id] ?? {})),
         })),
-    [categories.data, categoryMedia],
+    [categories.data, categoryMedia, fotoDeRespaldo],
   )
 
   /**
@@ -1053,7 +1115,9 @@ export function StoreHomePage() {
     promociones: promosVigentes,
     promoAssets: assetsPromos,
     categorias: familias,
-    categoryMedia,
+    // Rediseño v3 · el CMS recibe también las fotos prestadas (solo retail):
+    // la foto propia manda y, sin ella, la de un producto de la familia.
+    categoryMedia: mediaConRespaldo,
     paginas: navegacion.data ?? [],
     brands: brandOptions,
     brandSelected: brand,

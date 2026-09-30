@@ -57,6 +57,7 @@ export function SectionHeading({
     <Stack sx={{ gap: 0.25 }}>
       {eyebrow ? (
         <Typography
+          className="sf-heading-eyebrow"
           sx={{
             fontSize: TS.label,
             fontWeight: 800,
@@ -83,7 +84,7 @@ export function SectionHeading({
             {title}
           </Typography>
           {subtitle ? (
-            <Typography sx={{ fontSize: TS.bodyStrong, color: 'var(--muted)' }}>
+            <Typography className="sf-heading-sub" sx={{ fontSize: TS.bodyStrong, color: 'var(--muted)' }}>
               {subtitle}
             </Typography>
           ) : null}
@@ -94,6 +95,7 @@ export function SectionHeading({
             era otra de las manchas que sumaban «colores muy vivos»—. */}
         <Box
           aria-hidden
+          className="sf-heading-rule"
           sx={{
             flex: 1,
             height: '1px',

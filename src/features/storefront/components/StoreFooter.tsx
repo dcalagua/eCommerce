@@ -102,6 +102,9 @@ export function StoreFooter({ store, storeSlug }: { store: PublicStore; storeSlu
       maxWidth={false}
       component="footer"
       data-content-width={style.contentWidth}
+      // Rediseño v3 · retail lo pinta en tinta a lo ancho, con la marca gigante
+      // de fondo (storefront.css).
+      className="sf-footer"
       sx={{
         maxWidth: 'var(--sf-content-w)',
         mx: 'auto',
@@ -231,6 +234,11 @@ export function StoreFooter({ store, storeSlug }: { store: PublicStore; storeSlu
           </BloqueDelPie>
         )}
       </Box>
+
+      {/* Rediseño v3 · La marca en grande, como firma del pie (lámina retail).
+          Decorativa: el nombre ya está arriba y en el copyright. Oculta por
+          defecto; la enciende el estilo. */}
+      <Box aria-hidden className="sf-footer-mark" data-mark={nombre} sx={{ display: 'none' }} />
 
       <Typography
         sx={{

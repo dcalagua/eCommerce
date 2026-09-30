@@ -529,11 +529,13 @@ describe('las puertas de categoría con fotografía', () => {
     },
   )
 
-  it('en el tema retail las familias son tarjetas con icono que llevan a su catálogo', async () => {
+  // Rediseño v3 (aprobado por el operador, 2026-09-30): retail pasa de tarjetas
+  // con icono a PUERTAS altas con foto (lámina «Compra por categoría»).
+  it('en el tema retail las familias son puertas altas que llevan a su catálogo', async () => {
     cleanup()
     const seccion = await portadaConCategorias('retail')
     const abrigos = within(seccion).getAllByRole('link', { name: /Abrigos/ })[0]
-    expect(abrigos).toHaveAttribute('data-category-icon-card', 'true')
+    expect(abrigos).toHaveAttribute('data-category-door')
     expect(abrigos).toHaveAttribute('href', '/s/tienda?c=abrigos')
   })
 

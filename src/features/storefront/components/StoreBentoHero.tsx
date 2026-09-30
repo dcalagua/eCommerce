@@ -82,6 +82,10 @@ export function StoreBentoHero({
     <Box
       data-hero-variant="bento"
       data-offer-count={n}
+      // Rediseño v3 · enganches `sf-bento*`: retail recompone el bloque como
+      // portada editorial (texto sobre papel + mosaico de productos) desde
+      // storefront.css. Las piezas y lo que hacen no cambian.
+      className="sf-bento"
       sx={{
         display: 'grid',
         gap: { xs: 1.5, md: 2 },
@@ -97,6 +101,7 @@ export function StoreBentoHero({
         aria-label={kicker}
         data-feria-block
         data-feria-image={imageSrc ? 'si' : undefined}
+        className="sf-bento-block"
         sx={{
           position: 'relative',
           overflow: 'hidden',
@@ -145,6 +150,7 @@ export function StoreBentoHero({
       >
         <Stack sx={{ position: 'relative', gap: { xs: 1.25, md: 1.75 } }}>
         <Box
+          className="sf-bento-kicker"
           sx={{
             alignSelf: 'flex-start',
             display: 'inline-flex',
@@ -168,6 +174,7 @@ export function StoreBentoHero({
 
         <Typography
           component="h1"
+          className="sf-bento-title"
           sx={{
             display: 'flex',
             alignItems: 'baseline',
@@ -255,6 +262,7 @@ export function StoreBentoHero({
         <Box
           component={Link}
           to={`/s/${storeSlug}?ver=todo&oferta=1`}
+          className="sf-bento-cta"
           sx={{
             position: 'relative',
             alignSelf: { xs: 'flex-start', sm: 'flex-end' },
@@ -282,6 +290,7 @@ export function StoreBentoHero({
       </Box>
 
       <Box
+        className="sf-bento-tiles"
         sx={{
           display: 'grid',
           gap: { xs: 1.25, md: 2 },
@@ -344,6 +353,7 @@ function FeriaOfferCard({
     <Stack
       direction={vertical ? { xs: 'row', sm: 'column' } : 'row'}
       data-feria-offer={product.product_id}
+      className="sf-bento-offer"
       sx={{
         position: 'relative',
         gap: 1.5,
@@ -359,6 +369,7 @@ function FeriaOfferCard({
       }}
     >
       <Box
+        className="sf-bento-offer-media"
         sx={{
           position: 'relative',
           width: vertical ? { xs: 96, sm: '100%' } : { xs: 96, md: 120 },
@@ -395,9 +406,10 @@ function FeriaOfferCard({
         ) : null}
       </Box>
 
-      <Stack sx={{ minWidth: 0, gap: 0.375 }}>
+      <Stack className="sf-bento-offer-info" sx={{ minWidth: 0, gap: 0.375 }}>
         {descuento !== null ? (
           <Box
+            className="sf-bento-offer-badge"
             sx={{
               alignSelf: 'flex-start',
               px: 0.875,
@@ -432,11 +444,11 @@ function FeriaOfferCard({
           {product.name}
         </Typography>
         {antes !== null ? (
-          <Typography component="s" className="tnum" sx={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>
+          <Typography component="s" className="tnum sf-bento-offer-before" sx={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>
             {formatMoney(antes, product.currency, locale)}
           </Typography>
         ) : null}
-        <Typography className="tnum" sx={{ fontSize: { xs: 20, md: 24 }, fontWeight: 800, lineHeight: 1.1, color: 'var(--accent-deep)' }}>
+        <Typography className="tnum sf-bento-offer-price" sx={{ fontSize: { xs: 20, md: 24 }, fontWeight: 800, lineHeight: 1.1, color: 'var(--accent-deep)' }}>
           {formatMoney(precio, product.currency, locale)}
         </Typography>
         {commercialPrice ? (
