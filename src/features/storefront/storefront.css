@@ -725,3 +725,271 @@
   background: var(--text);
   color: var(--bg);
 }
+
+/* ===========================================================================
+   REDISEÑO v3 · FASE 2 — CABECERAS Y NAVEGACIÓN POR ESTILO
+   ===========================================================================
+   Las PIEZAS son las mismas en los cuatro —marca, buscador, favoritos, cuenta,
+   carrito, familias—; lo que cambia es cómo se visten. Los enganches (`sf-hdr-*`,
+   `sf-search-*`, `sf-catnav-*`, `sf-brand-name`) los ponen los componentes y
+   aquí se decide qué enseña cada estilo. Ninguno quita una acción.
+   --------------------------------------------------------------------------- */
+
+/* Base de los cuatro: los iconos de la cabecera en TINTA, sin pastilla de color.
+   Corazón rojo, cuenta azul y carrito del acento eran tres manchas de color más
+   en la primera franja de la pantalla. La insignia sigue en el acento: es el
+   «detalle» del 10 %. */
+.sf-scope .sf-hdr-action .sf-hdr-icon {
+  background: transparent;
+  color: var(--text);
+}
+.sf-scope .sf-hdr-action .MuiBadge-badge {
+  background: var(--accent-deep);
+}
+
+/* Las familias, sin el icono en círculo en escritorio: el diseño las lista en
+   texto. En el teléfono se quedan, porque la fila se desliza y el icono ayuda
+   a reconocerlas de un vistazo. */
+@media (min-width: 900px) {
+  .sf-scope .sf-catnav .sf-catnav-icon {
+    display: none;
+  }
+}
+
+/* «Todas las categorías», cuando un estilo la enciende. */
+.sf-scope .sf-catnav .sf-catnav-all {
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  margin-right: 4px;
+  font-size: 13.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: none;
+  border-radius: var(--sf-btn-radius);
+}
+
+/* El botón de buscar, cuando un estilo lo enciende. */
+.sf-scope .sf-search .sf-search-submit {
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  align-self: stretch;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* La barra inferior del teléfono sube con ella los flotantes y la holgura. */
+@media (max-width: 899.95px) {
+  .sf-scope:has(.sf-bottombar) {
+    --sf-bottom-bar: 60px;
+  }
+}
+
+/* ---- RETAIL · una línea limpia: marca, familias, píldora e iconos ------- */
+.sf-scope[data-store-theme='retail'] .sf-brand-name {
+  font-family: var(--sf-display);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+@media (min-width: 900px) {
+  /* Solo iconos: el diseño de retail no rotula las acciones. El nombre sigue
+     en `aria-label`. */
+  .sf-scope[data-store-theme='retail'] .sf-hdr-action .sf-hdr-label {
+    display: none;
+  }
+  .sf-scope[data-store-theme='retail'] .sf-header [role='search'] {
+    flex: 0 1 300px;
+    margin-left: auto;
+  }
+  .sf-scope[data-store-theme='retail'] .sf-catnav {
+    border-top: 0;
+  }
+  .sf-scope[data-store-theme='retail'] .sf-catnav nav {
+    justify-content: center;
+    gap: 28px;
+  }
+  .sf-scope[data-store-theme='retail'] .sf-catnav .sf-catnav-item {
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .sf-scope[data-store-theme='retail'] .sf-catnav .sf-catnav-door {
+    border-left: 0;
+    padding-left: 4px;
+  }
+}
+
+/* ---- UNIVERSAL · gran superficie: buscador ancho, carrito con importe --- */
+.sf-scope[data-store-theme='universal'] .sf-header [role='search'] {
+  max-width: none;
+}
+.sf-scope[data-store-theme='universal'] .sf-search {
+  border-radius: var(--sf-btn-radius);
+  padding-right: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+.sf-scope[data-store-theme='universal'] .sf-search .MuiInputBase-root {
+  padding: 8px 0;
+}
+.sf-scope[data-store-theme='universal'] .sf-search .sf-search-submit {
+  display: flex;
+  padding: 0 16px;
+  background: var(--accent-deep);
+  color: #fff;
+}
+.sf-scope[data-store-theme='universal'] .sf-search .sf-search-submit-label {
+  display: none;
+}
+.sf-scope[data-store-theme='universal'] .sf-catnav .sf-catnav-all {
+  display: flex;
+  background: var(--text);
+  color: var(--card);
+}
+.sf-scope[data-store-theme='universal'] .sf-catnav .sf-catnav-door[data-door='offers'] {
+  border-left: 0;
+  margin-left: 4px;
+  padding: 4px 12px;
+  border-radius: var(--sf-pill);
+  background: var(--accent-soft);
+}
+@media (min-width: 900px) {
+  .sf-scope[data-store-theme='universal'] .sf-hdr-action[data-tone='cart'] {
+    background: var(--accent-deep);
+    color: #fff;
+    border-radius: var(--sf-btn-radius);
+    padding: 6px 14px 6px 8px;
+  }
+  .sf-scope[data-store-theme='universal'] .sf-hdr-action[data-tone='cart']:hover {
+    background: color-mix(in srgb, var(--accent-deep) 88%, #000);
+  }
+  .sf-scope[data-store-theme='universal'] .sf-hdr-action[data-tone='cart'] .sf-hdr-icon {
+    color: #fff;
+  }
+  .sf-scope[data-store-theme='universal'] .sf-hdr-action[data-tone='cart'] .MuiBadge-badge {
+    background: #fff;
+    color: var(--accent-deep);
+    border-color: var(--accent-deep);
+  }
+  .sf-scope[data-store-theme='universal'] .sf-hdr-cart-total {
+    display: inline;
+    font-weight: 800;
+  }
+}
+
+/* ---- CATÁLOGO · barra de trabajo: buscador con botón en tinta ----------- */
+.sf-scope[data-store-theme='catalog'] .sf-header [role='search'] {
+  max-width: none;
+}
+.sf-scope[data-store-theme='catalog'] .sf-search {
+  border-radius: var(--sf-btn-radius);
+  padding-right: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+.sf-scope[data-store-theme='catalog'] .sf-search .MuiInputBase-root {
+  padding: 6px 0;
+}
+.sf-scope[data-store-theme='catalog'] .sf-search .sf-search-submit {
+  display: flex;
+  padding: 0 18px;
+  background: var(--text);
+  color: var(--card);
+}
+.sf-scope[data-store-theme='catalog'] .sf-search .sf-search-submit-icon {
+  display: none;
+}
+.sf-scope[data-store-theme='catalog'] .sf-catnav .sf-catnav-all {
+  display: flex;
+  background: var(--neutral-soft);
+  color: var(--text);
+}
+.sf-scope[data-store-theme='catalog'] .sf-catnav .sf-catnav-item {
+  font-weight: 500;
+}
+/* Marcas y Ofertas a la derecha, como en el diseño: son cortes, no familias. */
+.sf-scope[data-store-theme='catalog'] .sf-catnav .sf-catnav-door {
+  border-left: 0;
+}
+.sf-scope[data-store-theme='catalog'] .sf-catnav .sf-catnav-door[data-door='brands'] {
+  order: 2;
+  margin-left: auto;
+  font-weight: 600;
+}
+.sf-scope[data-store-theme='catalog'] .sf-catnav .sf-catnav-door[data-door='offers'] {
+  order: 3;
+}
+@media (min-width: 900px) {
+  .sf-scope[data-store-theme='catalog'] .sf-hdr-action[data-tone='cart'] {
+    border: 1px solid var(--text);
+    border-radius: var(--sf-btn-radius);
+    padding: 4px 12px 4px 6px;
+  }
+  .sf-scope[data-store-theme='catalog'] .sf-hdr-cart-total {
+    display: inline;
+    font-weight: 700;
+  }
+  .sf-scope[data-store-theme='catalog'] .sf-hdr-cart-total::before {
+    content: '· ';
+    color: var(--muted);
+  }
+}
+
+/* ---- PREMIUM · marca serif al centro, todo lo demás en texto ------------ */
+.sf-scope[data-store-theme='premium'] .sf-brand-name {
+  font-family: var(--sf-display);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+.sf-scope[data-store-theme='premium'] .sf-search {
+  border-radius: 0;
+  border-width: 0 0 1px;
+  background: transparent;
+}
+.sf-scope[data-store-theme='premium'] .sf-catnav {
+  border-top: 0;
+  background: transparent;
+}
+/* Centrada solo donde cabe: en el teléfono la fila se desliza, y centrar una
+   fila que desborda deja las primeras familias fuera de alcance. */
+@media (min-width: 900px) {
+  .sf-scope[data-store-theme='premium'] .sf-catnav nav {
+    justify-content: center;
+    gap: 32px;
+  }
+}
+.sf-scope[data-store-theme='premium'] .sf-catnav .sf-catnav-item,
+.sf-scope[data-store-theme='premium'] .sf-catnav .sf-catnav-door {
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  border-left: 0;
+}
+.sf-scope[data-store-theme='premium'] .sf-catnav .sf-catnav-item > svg {
+  display: none;
+}
+@media (min-width: 900px) {
+  /* Acciones en TEXTO espaciado («Cuenta», «Bolsa (2)»), sin iconos. */
+  /* Solo las que tienen rótulo: el botón de modo es solo icono y se queda. */
+  .sf-scope[data-store-theme='premium'] .sf-hdr-action:has(.sf-hdr-label) .MuiBadge-root {
+    display: none;
+  }
+  .sf-scope[data-store-theme='premium'] .sf-hdr-action .sf-hdr-count {
+    display: inline;
+  }
+  .sf-scope[data-store-theme='premium'] .sf-hdr-action {
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+}

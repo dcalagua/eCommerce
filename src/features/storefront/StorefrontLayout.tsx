@@ -27,6 +27,7 @@ import { Link, Outlet, useLocation, useNavigate, useParams } from 'react-router-
 import { ErrorBoundary } from '@/app/ErrorBoundary'
 import { useSessionContext } from '@/features/auth/session-context'
 import { useI18n } from '@/shared/i18n/i18n-context'
+import { formatMoney } from '@/shared/lib/format'
 import { useDocumentMeta } from '@/shared/seo/useDocumentMeta'
 import { EmptyState, ErrorState, LoadingState } from '@/shared/ui/states'
 import { SkipToContentLink, CONTENT_ANCHOR } from '@/shared/ui/SkipToContentLink'
@@ -43,6 +44,7 @@ import { StoreAnnouncementBar } from './components/StoreAnnouncementBar'
 import { CheckoutHeader } from './components/CheckoutHeader'
 import { StoreBrandLockup } from './components/StoreBrandLockup'
 import { StoreQuickSearch } from './components/StoreQuickSearch'
+import { StoreBottomBar } from './components/StoreBottomBar'
 import { CartDrawer } from './cart/CartDrawer'
 import { CartProvider } from './cart/CartProvider'
 import { useCart } from './cart/cart-context'
@@ -239,7 +241,9 @@ export function StorefrontLayout() {
               último de la página tiene que poder quedar POR ENCIMA de los dos
               botones flotantes (asistente y «volver arriba»), incluida la
               franja segura de un iPhone con barra de gestos. */}
-          <Box aria-hidden sx={{ display: { xs: 'block', md: 'none' }, height: 'calc(72px + env(safe-area-inset-bottom, 0px))' }} />
+          <Box aria-hidden sx={{ display: { xs: 'block', md: 'none' }, height: 'calc(72px + var(--sf-bottom-bar, 0px) + env(safe-area-inset-bottom, 0px))' }} />
+
+          {!enCheckout && <StoreBottomBar storeSlug={storeSlug as string} />}
 
           <CartDrawer storeSlug={storeSlug as string} />
 
@@ -263,8 +267,13 @@ export function StorefrontLayout() {
         sx={{
           position: 'fixed',
           right: { xs: 16, md: 24 },
-          bottom: { xs: 'calc(76px + env(safe-area-inset-bottom, 0px))', md: 88 },
+          bottom: { xs: 'calc(76px + var(--sf-bottom-bar, 0px) + env(safe-area-inset-bottom, 0px))', md: 88 },
           zIndex: 4,
+          // Rediseño v3 · En tinta y no en el acento: un botón flotante de
+          // color en cada pantalla era el 10 % del acento gastado en un ayudante.
+          bgcolor: 'var(--text)',
+          color: 'var(--card)',
+          '&:hover': { bgcolor: 'color-mix(in srgb, var(--text) 85%, var(--card))' },
         }}
       >
         <AutoAwesomeRoundedIcon />
@@ -639,6 +648,7 @@ function HeaderAction({
   iconOnly = false,
   trailing,
   menu,
+  extra,
 }: {
   icon: ReactNode
   label: string
@@ -655,6 +665,8 @@ function HeaderAction({
   trailing?: ReactNode
   /** Cuando el botón abre un menú: para que el lector de pantalla lo anuncie. */
   menu?: { id: string; open: boolean }
+  /** Detrás del texto: el importe del carrito. Cada ESTILO decide si se ve. */
+  extra?: ReactNode
 }) {
   const { bg, fg } = ACTION_TONES[tone]
 
@@ -665,6 +677,11 @@ function HeaderAction({
         ? { 'aria-haspopup': 'menu' as const, 'aria-expanded': menu.open, 'aria-controls': menu.open ? menu.id : undefined }
         : {})}
       aria-label={badge > 0 ? `${label} (${badge})` : label}
+      // Rediseño v3 · enganches para que cada estilo vista la acción desde
+      // `storefront.css`: retail solo icono, premium solo texto, universal y
+      // catálogo con el importe en el carrito.
+      className="sf-hdr-action"
+      data-tone={tone}
       sx={{
         flexShrink: 0,
         minWidth: 0,
@@ -699,6 +716,7 @@ function HeaderAction({
         }}
       >
         <Box
+          className="sf-hdr-icon"
           sx={{
             width: 34,
             height: 34,
@@ -714,10 +732,18 @@ function HeaderAction({
         </Box>
       </Badge>
       {!iconOnly && (
-        <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+        <Box component="span" className="sf-hdr-label" sx={{ display: { xs: 'none', sm: 'inline' } }}>
           {label}
+          {/* La cifra junto al texto solo la enseña el estilo que no pinta el
+              icono (premium: «Bolsa (2)»); el resto la lleva en la insignia. */}
+          {badge > 0 ? (
+            <Box component="span" aria-hidden className="sf-hdr-count" sx={{ display: 'none' }}>
+              {` (${badge})`}
+            </Box>
+          ) : null}
         </Box>
       )}
+      {extra}
       {trailing && (
         <Box
           component="span"
@@ -1083,8 +1109,8 @@ function AccountMenu({ storeSlug }: { storeSlug: string }) {
  * venta.
  */
 function CartButton() {
-  const { t } = useI18n()
-  const { count, openCart } = useCart()
+  const { t, locale } = useI18n()
+  const { count, subtotal, currency, openCart } = useCart()
 
   return (
     <HeaderAction
@@ -1093,6 +1119,16 @@ function CartButton() {
       label={t('store.cart.title')}
       badge={count}
       tone="cart"
+      // Rediseño v3 · El importe va en la cabecera de universal y catálogo, que
+      // compran por volumen y quieren ver cuánto llevan sin abrir el carrito.
+      // Oculto por defecto: lo enciende el estilo (storefront.css).
+      extra={
+        count > 0 ? (
+          <Box component="span" aria-hidden className="sf-hdr-cart-total tnum" sx={{ display: 'none' }}>
+            {formatMoney(Number(subtotal), currency, locale)}
+          </Box>
+        ) : null
+      }
     />
   )
 }

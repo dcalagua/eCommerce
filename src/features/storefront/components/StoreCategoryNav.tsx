@@ -1,4 +1,5 @@
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
+import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import { Box, Container, Stack, Typography } from '@mui/material'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -148,6 +149,19 @@ export function StoreCategoryNav({
             '&::-webkit-scrollbar': { display: 'none' },
           }}
         >
+          {/* Rediseño v3 · «Todas las categorías» abre la fila en universal y
+              catálogo, que venden por departamentos. Lleva al catálogo entero:
+              es navegación, no un menú nuevo. Oculta por defecto; la enciende
+              el estilo (storefront.css). */}
+          <Box
+            component={Link}
+            to={`/s/${storeSlug}?ver=todo`}
+            className="sf-catnav-all"
+            sx={{ display: 'none' }}
+          >
+            <MenuRoundedIcon aria-hidden sx={{ fontSize: 18 }} />
+            {t('store.nav.allCategories')}
+          </Box>
           {familias.map(({ category, children }) => {
             const Icono = iconoDe(category.name)
             const tinte = tintFor(category.name)

@@ -117,7 +117,7 @@ export function StoreQuickSearch({ storeSlug }: { storeSlug: string }) {
             '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
           }}
         >
-          <SearchRoundedIcon sx={{ fontSize: 20, color: 'var(--muted)' }} />
+          <SearchRoundedIcon className="sf-search-lead" sx={{ fontSize: 20, color: 'var(--muted)' }} />
           {/* Un campo de texto con lista de sugerencias ES un `combobox`, no un
               `searchbox`: es lo que hace que un lector de pantalla anuncie
               cuántas opciones hay y cuál está enfocada. Los atributos van en el
@@ -168,6 +168,22 @@ export function StoreQuickSearch({ storeSlug }: { storeSlug: string }) {
           {results.isFetching && clean.length >= 2 && (
             <CircularProgress size={16} sx={{ color: 'var(--muted)' }} />
           )}
+          {/* Rediseño v3 · El botón de buscar. Hace lo mismo que Enter; existe
+              porque en universal y catálogo el diseño lo pide como pieza de la
+              barra. Oculto por defecto: lo enciende el estilo (storefront.css). */}
+          <Box
+            component="button"
+            type="button"
+            className="sf-search-submit"
+            onClick={goToCatalog}
+            aria-label={t('store.search.submit')}
+            sx={{ display: 'none' }}
+          >
+            <SearchRoundedIcon aria-hidden className="sf-search-submit-icon" sx={{ fontSize: 20 }} />
+            <Box component="span" className="sf-search-submit-label">
+              {t('store.search.submit')}
+            </Box>
+          </Box>
         </Stack>
 
         {/* La lista de sugerencias llega por `lazy` (Storefront V2 · P14).

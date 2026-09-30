@@ -116,6 +116,9 @@ export function StoreBrandLockup({
       {lockup !== 'logo' && (
         <Typography
           component="span"
+          // Rediseño v3 · el estilo le pone su voz (versalitas en retail,
+          // serif en premium) desde storefront.css.
+          className="sf-brand-name"
           sx={{
             fontWeight: 800,
             fontSize: cuerpo,
