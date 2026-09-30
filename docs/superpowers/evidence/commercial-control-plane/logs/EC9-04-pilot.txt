@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 /Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1
+
+ ✓ supabase/tests/platform-entitlements-pilot.test.ts (11 tests) 790ms
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  01:31:19
+   Duration  1.53s (transform 170ms, setup 165ms, collect 117ms, tests 790ms, environment 0ms, prepare 130ms)
+

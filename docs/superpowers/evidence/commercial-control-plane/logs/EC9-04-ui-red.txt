@@ -1,0 +1,610 @@
+
+ RUN  v3.2.7 /Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1
+
+stderr | src/features/capabilities/DiagnosticsPage.test.tsx > DiagnosticsPage > dice de dónde salió la configuración y cuál es la sociedad activa
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+ ❯ src/features/capabilities/DiagnosticsPage.test.tsx (10 tests | 1 failed) 5486ms
+   ✓ DiagnosticsPage > dice de dónde salió la configuración y cuál es la sociedad activa 76ms
+   ✓ DiagnosticsPage > distingue «sin contexto» de «no contratado» 21ms
+   ✓ DiagnosticsPage > separa el módulo no contratado del apagado por interruptor 124ms
+   ✓ DiagnosticsPage > sin contexto, un módulo con fallback legado está activo y su interruptor se puede usar 75ms
+   ✓ DiagnosticsPage > avisa de los addons que esta versión no reconoce 52ms
+   ✓ DiagnosticsPage > no ofrece apagar un módulo incluido 64ms
+   ✓ DiagnosticsPage > un rol sin `tenant.manage` no entra 5ms
+   ✓ DiagnosticsPage > no pinta ninguna credencial 16ms
+   × DiagnosticsPage > dice cuando la configuración viene de EBIM MasterAdmin y no ofrece releer del hub 5009ms
+     → Unable to find an element with the text: /Configuración recibida de EBIM MasterAdmin/. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"MuiStack-root css-xbibuz-MuiStack-root"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"MuiStack-root css-vr6712-MuiStack-root"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mclass[39m=[32m"MuiBox-root css-17juhaj"[39m
+        [36m>[39m
+          [36m<svg[39m
+            [33maria-hidden[39m=[32m"true"[39m
+            [33mclass[39m=[32m"MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-1j9lygv-MuiSvgIcon-root"[39m
+            [33mdata-testid[39m=[32m"MonitorHeartRoundedIcon"[39m
+            [33mfocusable[39m=[32m"false"[39m
+            [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [36m>[39m
+            [36m<path[39m
+              [33md[39m=[32m"M15.11 12.45 14 10.24l-3.11 6.21c-.16.34-.51.55-.89.55s-.73-.21-.89-.55L7.38 13H2v5c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-5h-6c-.38 0-.73-.21-.89-.55"[39m
+            [36m/>[39m
+            [36m<path[39m
+              [33md[39m=[32m"M20 4H4c-1.1 0-2 .9-2 2v5h6c.38 0 .73.21.89.55L10 13.76l3.11-6.21c.34-.68 1.45-.68 1.79 0L16.62 11H22V6c0-1.1-.9-2-2-2"[39m
+            [36m/>[39m
+          [36m</svg>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"MuiBox-root css-31l7gp"[39m
+        [36m>[39m
+          [36m<h1[39m
+            [33mclass[39m=[32m"MuiTypography-root MuiTypography-body1 css-1gbwi7o-MuiTypography-root"[39m
+          [36m>[39m
+            [0mDiagnóstico[0m
+          [36m</h1>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"MuiTypography-root MuiTypography-body1 css-45u65q-MuiTypography-root"[39m
+          [36m>[39m
+            [0mQué módulos están activos para esta sociedad y de dónde salió esa respuesta.[0m
+          [36m</p>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"MuiBox-root css-0"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"MuiTabs-root css-17a9mzd-MuiTabs-root"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"MuiTabs-scrollableX MuiTabs-hideScrollbar css-i8yde5"[39m
+          [33mstyle[39m=[32m"width: 99px; height: 99px; position: absolute; top: -9999px; overflow: scroll;"[39m
+        [36m/>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"MuiTabs-scroller MuiTabs-hideScrollbar MuiTabs-scrollableX css-1fr578y-MuiTabs-scroller"[39m
+          [33mstyle[39m=[32m"margin-bottom: 0px;"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33maria-label[39m=[32m"Diagnóstico"[39m
+            [33mclass[39m=[32m"MuiTabs-list MuiTabs-flexContainer css-hzcega-MuiTabs-list"[39m
+            [33mrole[39m=[32m"tablist"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-controls[39m=[32m"panel-context"[39m
+              [33maria-selected[39m=[32m"true"[39m
+              [33mclass[39m=[32m"MuiButtonBase-root MuiTab-root MuiTab-textColorPrimary Mui-selected css-1xc6n9q-MuiButtonBase-root-MuiTab-root"[39m
+              [33mid[39m=[32m"tab-context"[39m
+              [33mrole[39m=[32m"tab"[39m
+              [33mtabindex[39m=[32m"0"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mConfiguración[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33maria-controls[39m=[32m"panel-capabilities"[39m
+              [33maria-selected[39m=[32m"false"[39m
+              [33mclass[39m=[32m"MuiButtonBase-root MuiTab-root MuiTab-textColorPrimary css-1xc6n9q-MuiButtonBase-root-MuiTab-root"[39m
+              [33mid[39m=[32m"tab-capabilities"[39m
+              [33mrole[39m=[32m"tab"[39m
+              [33mtabindex[39m=[32m"-1"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mMódulos[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33maria-controls[39m=[32m"panel-ai"[39m
+              [33maria-selected[39m=[32m"false"[39m
+              [33mclass[39m=[32m"MuiButtonBase-root MuiTab-root MuiTab-textColorPrimary css-1xc6n9q-MuiButtonBase-root-MuiTab-root"[39m
+              [33mid[39m=[32m"tab-ai"[39m
+              [33mrole[39m=[32m"tab"[39m
+              [33mtabindex[39m=[32m"-1"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mIA[0m
+            [36m</button>[39m
+          [36m</div>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"MuiTabs-indicator css-1yu2tvo-MuiTabs-indicator"[39m
+            [33mstyle[39m=[32m"left: 0px; width: 0px;"[39m
+          [36m/>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33maria-labelledby[39m=[32m"tab-context"[39m
+        [33mclass[39m=[32m"MuiBox-root css-19n8dai"[39m
+        [33mid[39m=[32m"panel-context"[39m
+        [33mrole[39m=[32m"tabpanel"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-j0k4xm-MuiPaper-root-MuiCard-root"[39m
+          [33mstyle[39m=[32m"--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"MuiCardContent-root css-1lt5qva-MuiCardContent-root"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"MuiStack-root css-1sazv7p-MuiStack-root"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation0 MuiAlert-root MuiAlert-colorInfo MuiAlert-standardInfo MuiAlert-standard css-1ahc06y-MuiPaper-root-MuiAlert-root"[39m
+                [33mrole[39m=[32m"alert"[39m
+                [33mstyle[39m=[32m"--Paper-shadow: none;"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"MuiAlert-message css-zioonp-MuiAlert-message"[39m
+                [36m>[39m
+                  [0mNunca se leyó la configuración del hub. Solo están activos los módulos incluidos.[0m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"MuiStack-root css-nen11g-MuiStack-root"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"MuiStack-root css-yd78m9-MuiStack-root"[39m
+                [36m>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"MuiTypography-root MuiTypography-body1 css-1r8vhvj-MuiTypography-root"[39m
+                  [36m>[39m
+                    [0mProducto y versión[0m
+                  [36m</...
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"MuiStack-root css-xbibuz-MuiStack-root"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"MuiStack-root css-vr6712-MuiStack-root"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mclass[39m=[32m"MuiBox-root css-17juhaj"[39m
+        [36m>[39m
+          [36m<svg[39m
+            [33maria-hidden[39m=[32m"true"[39m
+            [33mclass[39m=[32m"MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-1j9lygv-MuiSvgIcon-root"[39m
+            [33mdata-testid[39m=[32m"MonitorHeartRoundedIcon"[39m
+            [33mfocusable[39m=[32m"false"[39m
+            [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [36m>[39m
+            [36m<path[39m
+              [33md[39m=[32m"M15.11 12.45 14 10.24l-3.11 6.21c-.16.34-.51.55-.89.55s-.73-.21-.89-.55L7.38 13H2v5c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-5h-6c-.38 0-.73-.21-.89-.55"[39m
+            [36m/>[39m
+            [36m<path[39m
+              [33md[39m=[32m"M20 4H4c-1.1 0-2 .9-2 2v5h6c.38 0 .73.21.89.55L10 13.76l3.11-6.21c.34-.68 1.45-.68 1.79 0L16.62 11H22V6c0-1.1-.9-2-2-2"[39m
+            [36m/>[39m
+          [36m</svg>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"MuiBox-root css-31l7gp"[39m
+        [36m>[39m
+          [36m<h1[39m
+            [33mclass[39m=[32m"MuiTypography-root MuiTypography-body1 css-1gbwi7o-MuiTypography-root"[39m
+          [36m>[39m
+            [0mDiagnóstico[0m
+          [36m</h1>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"MuiTypography-root MuiTypography-body1 css-45u65q-MuiTypography-root"[39m
+          [36m>[39m
+            [0mQué módulos están activos para esta sociedad y de dónde salió esa respuesta.[0m
+          [36m</p>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"MuiBox-root css-0"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"MuiTabs-root css-17a9mzd-MuiTabs-root"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"MuiTabs-scrollableX MuiTabs-hideScrollbar css-i8yde5"[39m
+          [33mstyle[39m=[32m"width: 99px; height: 99px; position: absolute; top: -9999px; overflow: scroll;"[39m
+        [36m/>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"MuiTabs-scroller MuiTabs-hideScrollbar MuiTabs-scrollableX css-1fr578y-MuiTabs-scroller"[39m
+          [33mstyle[39m=[32m"margin-bottom: 0px;"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33maria-label[39m=[32m"Diagnóstico"[39m
+            [33mclass[39m=[32m"MuiTabs-list MuiTabs-flexContainer css-hzcega-MuiTabs-list"[39m
+            [33mrole[39m=[32m"tablist"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-controls[39m=[32m"panel-context"[39m
+              [33maria-selected[39m=[32m"true"[39m
+              [33mclass[39m=[32m"MuiButtonBase-root MuiTab-root MuiTab-textColorPrimary Mui-selected css-1xc6n9q-MuiButtonBase-root-MuiTab-root"[39m
+              [33mid[39m=[32m"tab-context"[39m
+              [33mrole[39m=[32m"tab"[39m
+              [33mtabindex[39m=[32m"0"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mConfiguración[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33maria-controls[39m=[32m"panel-capabilities"[39m
+              [33maria-selected[39m=[32m"false"[39m
+              [33mclass[39m=[32m"MuiButtonBase-root MuiTab-root MuiTab-textColorPrimary css-1xc6n9q-MuiButtonBase-root-MuiTab-root"[39m
+              [33mid[39m=[32m"tab-capabilities"[39m
+              [33mrole[39m=[32m"tab"[39m
+              [33mtabindex[39m=[32m"-1"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mMódulos[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33maria-controls[39m=[32m"panel-ai"[39m
+              [33maria-selected[39m=[32m"false"[39m
+              [33mclass[39m=[32m"MuiButtonBase-root MuiTab-root MuiTab-textColorPrimary css-1xc6n9q-MuiButtonBase-root-MuiTab-root"[39m
+              [33mid[39m=[32m"tab-ai"[39m
+              [33mrole[39m=[32m"tab"[39m
+              [33mtabindex[39m=[32m"-1"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mIA[0m
+            [36m</button>[39m
+          [36m</div>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"MuiTabs-indicator css-1yu2tvo-MuiTabs-indicator"[39m
+            [33mstyle[39m=[32m"left: 0px; width: 0px;"[39m
+          [36m/>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33maria-labelledby[39m=[32m"tab-context"[39m
+        [33mclass[39m=[32m"MuiBox-root css-19n8dai"[39m
+        [33mid[39m=[32m"panel-context"[39m
+        [33mrole[39m=[32m"tabpanel"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-j0k4xm-MuiPaper-root-MuiCard-root"[39m
+          [33mstyle[39m=[32m"--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"MuiCardContent-root css-1lt5qva-MuiCardContent-root"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"MuiStack-root css-1sazv7p-MuiStack-root"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation0 MuiAlert-root MuiAlert-colorInfo MuiAlert-standardInfo MuiAlert-standard css-1ahc06y-MuiPaper-root-MuiAlert-root"[39m
+                [33mrole[39m=[32m"alert"[39m
+                [33mstyle[39m=[32m"--Paper-shadow: none;"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"MuiAlert-message css-zioonp-MuiAlert-message"[39m
+                [36m>[39m
+                  [0mNunca se leyó la configuración del hub. Solo están activos los módulos incluidos.[0m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"MuiStack-root css-nen11g-MuiStack-root"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"MuiStack-root css-yd78m9-MuiStack-root"[39m
+                [36m>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"MuiTypography-root MuiTypography-body1 css-1r8vhvj-MuiTypography-root"[39m
+                  [36m>[39m
+                    [0mProducto y versión[0m
+                  [36m</...
+   ✓ DiagnosticsPage > el botón de refresco llama a la Edge Function, no al hub desde el navegador 44ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/features/capabilities/DiagnosticsPage.test.tsx > DiagnosticsPage > dice cuando la configuración viene de EBIM MasterAdmin y no ofrece releer del hub
+TestingLibraryElementError: Unable to find an element with the text: /Configuración recibida de EBIM MasterAdmin/. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"MuiStack-root css-xbibuz-MuiStack-root"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"MuiStack-root css-vr6712-MuiStack-root"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mclass[39m=[32m"MuiBox-root css-17juhaj"[39m
+        [36m>[39m
+          [36m<svg[39m
+            [33maria-hidden[39m=[32m"true"[39m
+            [33mclass[39m=[32m"MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-1j9lygv-MuiSvgIcon-root"[39m
+            [33mdata-testid[39m=[32m"MonitorHeartRoundedIcon"[39m
+            [33mfocusable[39m=[32m"false"[39m
+            [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [36m>[39m
+            [36m<path[39m
+              [33md[39m=[32m"M15.11 12.45 14 10.24l-3.11 6.21c-.16.34-.51.55-.89.55s-.73-.21-.89-.55L7.38 13H2v5c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-5h-6c-.38 0-.73-.21-.89-.55"[39m
+            [36m/>[39m
+            [36m<path[39m
+              [33md[39m=[32m"M20 4H4c-1.1 0-2 .9-2 2v5h6c.38 0 .73.21.89.55L10 13.76l3.11-6.21c.34-.68 1.45-.68 1.79 0L16.62 11H22V6c0-1.1-.9-2-2-2"[39m
+            [36m/>[39m
+          [36m</svg>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"MuiBox-root css-31l7gp"[39m
+        [36m>[39m
+          [36m<h1[39m
+            [33mclass[39m=[32m"MuiTypography-root MuiTypography-body1 css-1gbwi7o-MuiTypography-root"[39m
+          [36m>[39m
+            [0mDiagnóstico[0m
+          [36m</h1>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"MuiTypography-root MuiTypography-body1 css-45u65q-MuiTypography-root"[39m
+          [36m>[39m
+            [0mQué módulos están activos para esta sociedad y de dónde salió esa respuesta.[0m
+          [36m</p>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"MuiBox-root css-0"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"MuiTabs-root css-17a9mzd-MuiTabs-root"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"MuiTabs-scrollableX MuiTabs-hideScrollbar css-i8yde5"[39m
+          [33mstyle[39m=[32m"width: 99px; height: 99px; position: absolute; top: -9999px; overflow: scroll;"[39m
+        [36m/>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"MuiTabs-scroller MuiTabs-hideScrollbar MuiTabs-scrollableX css-1fr578y-MuiTabs-scroller"[39m
+          [33mstyle[39m=[32m"margin-bottom: 0px;"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33maria-label[39m=[32m"Diagnóstico"[39m
+            [33mclass[39m=[32m"MuiTabs-list MuiTabs-flexContainer css-hzcega-MuiTabs-list"[39m
+            [33mrole[39m=[32m"tablist"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-controls[39m=[32m"panel-context"[39m
+              [33maria-selected[39m=[32m"true"[39m
+              [33mclass[39m=[32m"MuiButtonBase-root MuiTab-root MuiTab-textColorPrimary Mui-selected css-1xc6n9q-MuiButtonBase-root-MuiTab-root"[39m
+              [33mid[39m=[32m"tab-context"[39m
+              [33mrole[39m=[32m"tab"[39m
+              [33mtabindex[39m=[32m"0"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mConfiguración[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33maria-controls[39m=[32m"panel-capabilities"[39m
+              [33maria-selected[39m=[32m"false"[39m
+              [33mclass[39m=[32m"MuiButtonBase-root MuiTab-root MuiTab-textColorPrimary css-1xc6n9q-MuiButtonBase-root-MuiTab-root"[39m
+              [33mid[39m=[32m"tab-capabilities"[39m
+              [33mrole[39m=[32m"tab"[39m
+              [33mtabindex[39m=[32m"-1"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mMódulos[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33maria-controls[39m=[32m"panel-ai"[39m
+              [33maria-selected[39m=[32m"false"[39m
+              [33mclass[39m=[32m"MuiButtonBase-root MuiTab-root MuiTab-textColorPrimary css-1xc6n9q-MuiButtonBase-root-MuiTab-root"[39m
+              [33mid[39m=[32m"tab-ai"[39m
+              [33mrole[39m=[32m"tab"[39m
+              [33mtabindex[39m=[32m"-1"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mIA[0m
+            [36m</button>[39m
+          [36m</div>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"MuiTabs-indicator css-1yu2tvo-MuiTabs-indicator"[39m
+            [33mstyle[39m=[32m"left: 0px; width: 0px;"[39m
+          [36m/>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33maria-labelledby[39m=[32m"tab-context"[39m
+        [33mclass[39m=[32m"MuiBox-root css-19n8dai"[39m
+        [33mid[39m=[32m"panel-context"[39m
+        [33mrole[39m=[32m"tabpanel"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-j0k4xm-MuiPaper-root-MuiCard-root"[39m
+          [33mstyle[39m=[32m"--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"MuiCardContent-root css-1lt5qva-MuiCardContent-root"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"MuiStack-root css-1sazv7p-MuiStack-root"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation0 MuiAlert-root MuiAlert-colorInfo MuiAlert-standardInfo MuiAlert-standard css-1ahc06y-MuiPaper-root-MuiAlert-root"[39m
+                [33mrole[39m=[32m"alert"[39m
+                [33mstyle[39m=[32m"--Paper-shadow: none;"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"MuiAlert-message css-zioonp-MuiAlert-message"[39m
+                [36m>[39m
+                  [0mNunca se leyó la configuración del hub. Solo están activos los módulos incluidos.[0m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"MuiStack-root css-nen11g-MuiStack-root"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"MuiStack-root css-yd78m9-MuiStack-root"[39m
+                [36m>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"MuiTypography-root MuiTypography-body1 css-1r8vhvj-MuiTypography-root"[39m
+                  [36m>[39m
+                    [0mProducto y versión[0m
+                  [36m</...
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"MuiStack-root css-xbibuz-MuiStack-root"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"MuiStack-root css-vr6712-MuiStack-root"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mclass[39m=[32m"MuiBox-root css-17juhaj"[39m
+        [36m>[39m
+          [36m<svg[39m
+            [33maria-hidden[39m=[32m"true"[39m
+            [33mclass[39m=[32m"MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-1j9lygv-MuiSvgIcon-root"[39m
+            [33mdata-testid[39m=[32m"MonitorHeartRoundedIcon"[39m
+            [33mfocusable[39m=[32m"false"[39m
+            [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [36m>[39m
+            [36m<path[39m
+              [33md[39m=[32m"M15.11 12.45 14 10.24l-3.11 6.21c-.16.34-.51.55-.89.55s-.73-.21-.89-.55L7.38 13H2v5c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-5h-6c-.38 0-.73-.21-.89-.55"[39m
+            [36m/>[39m
+            [36m<path[39m
+              [33md[39m=[32m"M20 4H4c-1.1 0-2 .9-2 2v5h6c.38 0 .73.21.89.55L10 13.76l3.11-6.21c.34-.68 1.45-.68 1.79 0L16.62 11H22V6c0-1.1-.9-2-2-2"[39m
+            [36m/>[39m
+          [36m</svg>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"MuiBox-root css-31l7gp"[39m
+        [36m>[39m
+          [36m<h1[39m
+            [33mclass[39m=[32m"MuiTypography-root MuiTypography-body1 css-1gbwi7o-MuiTypography-root"[39m
+          [36m>[39m
+            [0mDiagnóstico[0m
+          [36m</h1>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"MuiTypography-root MuiTypography-body1 css-45u65q-MuiTypography-root"[39m
+          [36m>[39m
+            [0mQué módulos están activos para esta sociedad y de dónde salió esa respuesta.[0m
+          [36m</p>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"MuiBox-root css-0"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"MuiTabs-root css-17a9mzd-MuiTabs-root"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"MuiTabs-scrollableX MuiTabs-hideScrollbar css-i8yde5"[39m
+          [33mstyle[39m=[32m"width: 99px; height: 99px; position: absolute; top: -9999px; overflow: scroll;"[39m
+        [36m/>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"MuiTabs-scroller MuiTabs-hideScrollbar MuiTabs-scrollableX css-1fr578y-MuiTabs-scroller"[39m
+          [33mstyle[39m=[32m"margin-bottom: 0px;"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33maria-label[39m=[32m"Diagnóstico"[39m
+            [33mclass[39m=[32m"MuiTabs-list MuiTabs-flexContainer css-hzcega-MuiTabs-list"[39m
+            [33mrole[39m=[32m"tablist"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-controls[39m=[32m"panel-context"[39m
+              [33maria-selected[39m=[32m"true"[39m
+              [33mclass[39m=[32m"MuiButtonBase-root MuiTab-root MuiTab-textColorPrimary Mui-selected css-1xc6n9q-MuiButtonBase-root-MuiTab-root"[39m
+              [33mid[39m=[32m"tab-context"[39m
+              [33mrole[39m=[32m"tab"[39m
+              [33mtabindex[39m=[32m"0"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mConfiguración[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33maria-controls[39m=[32m"panel-capabilities"[39m
+              [33maria-selected[39m=[32m"false"[39m
+              [33mclass[39m=[32m"MuiButtonBase-root MuiTab-root MuiTab-textColorPrimary css-1xc6n9q-MuiButtonBase-root-MuiTab-root"[39m
+              [33mid[39m=[32m"tab-capabilities"[39m
+              [33mrole[39m=[32m"tab"[39m
+              [33mtabindex[39m=[32m"-1"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mMódulos[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33maria-controls[39m=[32m"panel-ai"[39m
+              [33maria-selected[39m=[32m"false"[39m
+              [33mclass[39m=[32m"MuiButtonBase-root MuiTab-root MuiTab-textColorPrimary css-1xc6n9q-MuiButtonBase-root-MuiTab-root"[39m
+              [33mid[39m=[32m"tab-ai"[39m
+              [33mrole[39m=[32m"tab"[39m
+              [33mtabindex[39m=[32m"-1"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mIA[0m
+            [36m</button>[39m
+          [36m</div>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"MuiTabs-indicator css-1yu2tvo-MuiTabs-indicator"[39m
+            [33mstyle[39m=[32m"left: 0px; width: 0px;"[39m
+          [36m/>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33maria-labelledby[39m=[32m"tab-context"[39m
+        [33mclass[39m=[32m"MuiBox-root css-19n8dai"[39m
+        [33mid[39m=[32m"panel-context"[39m
+        [33mrole[39m=[32m"tabpanel"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-j0k4xm-MuiPaper-root-MuiCard-root"[39m
+          [33mstyle[39m=[32m"--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"MuiCardContent-root css-1lt5qva-MuiCardContent-root"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"MuiStack-root css-1sazv7p-MuiStack-root"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation0 MuiAlert-root MuiAlert-colorInfo MuiAlert-standardInfo MuiAlert-standard css-1ahc06y-MuiPaper-root-MuiAlert-root"[39m
+                [33mrole[39m=[32m"alert"[39m
+                [33mstyle[39m=[32m"--Paper-shadow: none;"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"MuiAlert-message css-zioonp-MuiAlert-message"[39m
+                [36m>[39m
+                  [0mNunca se leyó la configuración del hub. Solo están activos los módulos incluidos.[0m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"MuiStack-root css-nen11g-MuiStack-root"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"MuiStack-root css-yd78m9-MuiStack-root"[39m
+                [36m>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"MuiTypography-root MuiTypography-body1 css-1r8vhvj-MuiTypography-root"[39m
+                  [36m>[39m
+                    [0mProducto y versión[0m
+                  [36m</...
+ ❯ waitForWrapper ../../node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ ../../node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/features/capabilities/DiagnosticsPage.test.tsx:217:25
+    215|     renderPage()
+    216| 
+    217|     expect(await screen.findByText(/Configuración recibida de EBIM Mas…
+       |                         ^
+    218|     expect(screen.getByText('ecommerce-shared-standard')).toBeInTheDoc…
+    219|     expect(screen.queryByRole('button', { name: /Volver a leer del hub…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 9 passed (10)
+   Start at  01:29:16
+   Duration  7.37s (transform 399ms, setup 162ms, collect 1.08s, tests 5.49s, environment 285ms, prepare 58ms)
+

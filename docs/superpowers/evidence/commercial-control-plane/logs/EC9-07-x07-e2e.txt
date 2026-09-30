@@ -1,0 +1,17 @@
+PASS · 0. receptor eCommerce configurado (fail-closed si faltara algo)
+PASS · 1. MasterAdmin lee el manifiesto de eCommerce (26 códigos ACTIVE) · 2026-10-01.1
+PASS · 2. emisor real → PUT M2M real → APPLIED · APPLIED 200
+PASS · 3. GET: misma versión y checksum, PRIMARY · 1 PRIMARY
+PASS · 4. gate de servidor eCommerce: promotions sí, payments no
+PASS ·    IA: asignación 2 del snapshot, el hard gate corta la 3ª
+PASS · 5. replay idempotente → REPLAYED · REPLAYED
+PASS · 6. v2 revoca promotions → APPLIED y gate cerrado · APPLIED
+PASS · 7. v1 tras v2 → STALE (409) · STALE STALE_SNAPSHOT
+PASS · 8. misma versión, otro contenido → CONFLICT (409) · CONFLICT VERSION_CONFLICT
+PASS · 9. credencial con scope de provisioning → 403 REJECTED · 403 INSUFFICIENT_SCOPE
+PASS · 10. SaaS no disponible → RETRYABLE, nada aplicado · RETRYABLE 503
+PASS · 11. reconciliación: el GET delata deriva (aplicado v2 ≠ deseado v3)
+PASS ·     mientras tanto el gate sigue con el last-good v2
+PASS · 12. push de v3 → GET en sincronía (versión y checksum)
+
+15/15 PASS

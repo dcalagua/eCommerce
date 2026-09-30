@@ -1,0 +1,284 @@
+--- a/scripts/ccp/ecommerce-pilot-e2e.mts
++++ b/scripts/ccp/ecommerce-pilot-e2e.mts
+@@ -17,12 +17,18 @@
+  * Sin stack Supabase, sin red externa, sin tocar ningún proyecto remoto. No
+  * imprime claves ni tokens. El estado de MasterAdmin (sync_state) no se
+  * ejercita aquí: lo cubrió el E2E de la fase 08 contra la base local real.
++ *
++ * Fase 18 (D-14, DEV/LOCAL): al final, fase "D14" SIN rollback — prerrequisitos
++ * de paridad, PRODUCT SHADOW→DUAL_READ→PRIMARY con motivo, negativo del camino
++ * legado, appActive=false (solo retira lo comercial), GET final y tenant legado
++ * sin mapping intacto. Con CCP_EVIDENCE_DIR escribe d14-ecommerce.json.
+  */
+ import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+ import { readFileSync } from 'node:fs';
+ import { EntitlementSyncClient, type EntitlementDeliveryContext } from '../../supabase/functions/_shared/entitlements/sync-client.ts';
+ import { buildSnapshot } from '../../supabase/functions/_shared/entitlements/snapshot.ts';
+ import type { EntitlementSnapshot, GrantedCapability, RegistryCapability } from '../../supabase/functions/_shared/entitlements/types.ts';
++import { D14_REASON, countChecks, writeD14Evidence, type D14Evidence } from './d14-evidence.mts';
+ 
+ const WT = process.env.ECOMMERCE_WT ?? '';
+ if (!WT || !WT.endsWith('/eCommerce/.worktrees/ebim-commercial-control-plane-v1')) {
+@@ -141,8 +147,8 @@
+ 
+ // ── MasterAdmin: contexto de entrega (lo que leería de product_integrations) ─
+ const SECRET_REF = 'LOCAL_X07_ECOMMERCE_M2M_PRIVATE_KEY';
+-const ctx = (writeScope = 'ecommerce:entitlements:write'): EntitlementDeliveryContext => ({
+-  tenant: { controlPlaneTenantId: CPT, productCode: 'ecommerce' },
++const ctx = (writeScope = 'ecommerce:entitlements:write', cpt = CPT): EntitlementDeliveryContext => ({
++  tenant: { controlPlaneTenantId: cpt, productCode: 'ecommerce' },
+   push_enabled: true,
+   enrollment: 'ENROLLED',
+   deployment: { id: 'x07', environment: 'DEV', base_url: `http://127.0.0.1:${port}/functions/v1/platform-provisioning`, timeout_ms: 5000, retry_count: 0 },
+@@ -183,20 +189,27 @@
+ }));
+ 
+ let clock = Date.parse('2026-10-01T00:00:00Z');
+-async function emit(version: number, features: string[], aiCredits: number | null): Promise<EntitlementSnapshot> {
++type EmitTarget = { cpt: string; org: string; company: string };
++async function emit(
++  version: number,
++  features: string[],
++  aiCredits: number | null,
++  o: { appActive?: boolean; target?: EmitTarget } = {},
++): Promise<EntitlementSnapshot> {
++  const t = o.target ?? { cpt: CPT, org: ORG, company: COMPANY };
+   const granted: GrantedCapability[] = features.map((code) => ({ code, value: null, enforcement: null, included: null, sources: ['PLAN'], companyIds: null }));
+   if (aiCredits !== null) granted.push({ code: 'ecommerce.ai.credits', value: null, enforcement: null, included: aiCredits, sources: ['PLAN'], companyIds: null });
+   clock += 60_000;
+   return buildSnapshot({
+     environment: 'DEV',
+-    controlPlaneTenantId: CPT,
++    controlPlaneTenantId: t.cpt,
+     productCode: 'ecommerce',
+-    external: { tenantId: ORG, organizationId: ORG, companyIds: [COMPANY] },
++    external: { tenantId: t.org, organizationId: t.org, companyIds: [t.company] },
+     snapshotVersion: version,
+     previousVersion: version > 1 ? version - 1 : null,
+     effectiveAt: new Date(clock - 1000).toISOString(),
+     issuedAt: new Date(clock).toISOString(),
+-    appActive: true,
++    appActive: o.appActive ?? true,
+     planCode: 'ecommerce-shared-standard',
+     registry,
+     granted,
+@@ -206,8 +219,8 @@
+   });
+ }
+ 
+-const gate = async (cap: string) =>
+-  (await svc<{ ok: boolean }>('select ebim.company_is_entitled($1, $2, $3) as ok', [ORG, COMPANY, cap]))[0]!.ok;
++const gate = async (cap: string, org = ORG, company = COMPANY) =>
++  (await svc<{ ok: boolean }>('select ebim.company_is_entitled($1, $2, $3) as ok', [org, company, cap]))[0]!.ok;
+ const consume = async () =>
+   (await svc<{ r: Row }>(`select ebim.ai_consume_for($1, $2, 'assistant', 1) as r`, [ORG, COMPANY]))[0]!.r;
+ 
+@@ -262,6 +275,208 @@
+ const g3 = await client.getApplied(ctx(), actor);
+ check('12. push de v3 → GET en sincronía (versión y checksum)', p3.result === 'APPLIED' && g3.appliedVersion === 3 && g3.appliedChecksum === v3.checksum && (await gate('pricing.lists')));
+ 
++// ── D14 · corte gobernado a MASTERADMIN_PRIMARY (DEV/LOCAL, D-14) ────────────
++// Va AL FINAL y NO se revierte: el estado que queda es el certificado.
++console.log('\n── D14 ──');
++// Superusuario del banco PGlite (lee los esquemas privados del receptor). Solo LOCAL.
++const su = async <T,>(sql: string, params: unknown[] = []) => (await db.query<T>(sql, params)).rows;
++const BASELINE = ['catalog', 'storefront', 'checkout', 'orders', 'analytics.basic'];
++
++/** Vendibles donde la decisión efectiva de la caché difiere de la del último snapshot aplicado. */
++async function parityMismatches(cpt: string, org: string, company: string): Promise<number> {
++  const [r] = await su<{ n: number }>(
++    `select count(*)::int as n
++       from platform_entitlements.known_codes k
++       cross join (select a.app_active, a.snapshot from platform_entitlements.applied a
++                    where a.control_plane_tenant_id = $1::uuid) ap
++      where k.kind in ('FEATURE', 'AI_FEATURE')
++        and ebim.company_is_entitled($2::uuid, $3::uuid, k.capability_code) is distinct from
++            (ap.app_active
++             and k.code = any (platform_entitlements.expected_codes(ap.snapshot))
++             and coalesce((select f.is_enabled from public.tenant_feature_flags f
++                            where f.organization_id = $2::uuid and f.company_id = $3::uuid
++                              and f.flag_key = k.capability_code), true))`,
++    [cpt, org, company],
++  );
++  return r!.n;
++}
++const decisionsOf = async (org: string, company: string) =>
++  svc<{ code: string; ok: boolean }>(
++    'select cap.code, ebim.company_is_entitled($1, $2, cap.code) as ok from public.app_capabilities cap order by cap.code',
++    [org, company],
++  );
++const legacyWrite = async (org: string, company: string, source: 'hub' | 'provisioning', codes: string[]) => {
++  try {
++    await svc('select public.sync_platform_context($1, $2, true, $3::text[], $4::public.entitlement_source, null)', [org, company, codes, source]);
++    return { ok: true as const, error: '' };
++  } catch (error) {
++    return { ok: false as const, error: (error as Error).message };
++  }
++};
++
++// (a) Tenant legado SIN mapping con los ids de la semilla `miquimica` (seed.sql +
++//     b2b-entitlements.sql): entitlements del camino de aprovisionamiento, SIN fila de contexto.
++const MIQ = { org: 'd0000000-0000-4000-8000-000000000001', company: 'd0000000-0000-4000-8000-0000000000c1' };
++await su(
++  `insert into public.tenants (organization_id, slug, name, admin_email, status)
++   values ($1, 'miquimica', 'MiQuímica', 'admin@miquimica.demo', 'active')`,
++  [MIQ.org],
++);
++await su(
++  `insert into public.tenant_entitlements (organization_id, company_id, entitlement_code, is_active, source)
++   select $1::uuid, $2::uuid, c, true, 'provisioning'::public.entitlement_source
++     from unnest(array['ecommerce.trade.quotes', 'ecommerce.invoicing', 'ecommerce.promotions']) c`,
++  [MIQ.org, MIQ.company],
++);
++const miqBefore = await decisionsOf(MIQ.org, MIQ.company);
++const miqCpt = (await su<{ c: string | null }>('select platform_entitlements.cpt_of($1, $2)::text as c', [MIQ.org, MIQ.company]))[0]!.c;
++check('D14.0 legado sin mapping (ids de miquimica): sin controlPlaneTenantId, decide por su fuente legada',
++  miqCpt === null && miqBefore.find((d) => d.code === 'trade.quotes')?.ok === true && miqBefore.find((d) => d.code === 'catalog')?.ok === true);
++
++// (b) Prerrequisitos del tenant de certificación. Fue a PRIMARY (por tenant) antes del
++//     primer push, así que NO tiene fase SHADOW: shadow_diffs no aplica y se deja constancia (0 filas).
++//     Lo que sí aplica: reconcile sin deriva y paridad caché↔snapshot = 0.
++const cptShadowRows = (await su<{ n: number }>('select count(*)::int as n from platform_entitlements.shadow_diffs where control_plane_tenant_id = $1', [CPT]))[0]!.n;
++const recon = (await svc<{ r: Row }>('select public.platform_reconcile_entitlements($1::uuid) as r', [CPT]))[0]!.r;
++const cptParity = await parityMismatches(CPT, ORG, COMPANY);
++check('D14.1 certificación: reconcile sin deriva, paridad caché↔snapshot 0 (shadow_diffs no aplica: PRIMARY desde el inicio)',
++  recon.drift === false && recon.mode === 'PRIMARY' && cptParity === 0 && cptShadowRows === 0,
++  `drift=${String(recon.drift)} paridad=${cptParity} shadowRows=${cptShadowRows}`);
++
++// (c) Cohorte gobernada por el modo del PRODUCTO (sin modo propio): pasa por SHADOW de verdad.
++const T2: EmitTarget = { cpt: '9f000000-0000-4000-8000-000000000002', org: '9f000000-0000-4000-8000-0000000000a2', company: '9f000000-0000-4000-8000-0000000000c2' };
++await helpers.provisionTenant(db, { cpt: T2.cpt, org: T2.org, company: T2.company, slug: 'x07-d14-cohort' });
++const t2Legacy = await decisionsOf(T2.org, T2.company);
++// Recién aprovisionada y nunca sincronizada: el fallback `legacy_until_synced` le da estas tres.
++// El snapshot de MasterAdmin las reproduce: la paridad SHADOW debe dar 0.
++const t2v1 = await emit(1, ['ecommerce.catalog.advanced', 'ecommerce.fulfillment', 'ecommerce.payments'], null, { target: T2 });
++const t2p1 = await client.pushSnapshot(ctx(undefined, T2.cpt), t2v1, actor);
++const t2g1 = await client.getApplied(ctx(undefined, T2.cpt), actor);
++const t2Shadow = (await su<{ n: number }>('select count(*)::int as n from platform_entitlements.shadow_diffs where control_plane_tenant_id = $1', [T2.cpt]))[0]!.n;
++check('D14.2 cohorte en SHADOW: APPLIED, shadow_diffs = 0 (paridad verde) y la decisión legada no cambia',
++  t2p1.result === 'APPLIED' && t2g1.enforcementMode === 'SHADOW' && t2Shadow === 0 &&
++  JSON.stringify(await decisionsOf(T2.org, T2.company)) === JSON.stringify(t2Legacy),
++  `${t2p1.result} ${t2g1.enforcementMode} diffs=${t2Shadow}`);
++
++// (d) Transición gobernada del PRODUCTO: un paso por vez y con motivo D-14.
++const transitions: string[] = [];
++let transitionsOk = true;
++for (const to of ['DUAL_READ', 'PRIMARY'] as const) {
++  const r = (await svc<{ r: Row }>('select public.platform_set_entitlement_enforcement_mode($1, $2, $3) as r', ['PRODUCT', to, D14_REASON]))[0]!.r;
++  transitions.push(`PRODUCT ${String(r.from)}→${String(r.to)} (tenants=${String(r.tenants)})`);
++  transitionsOk &&= r.changed === true && r.to === to;
++}
++const events = await su<{ from_mode: string; to_mode: string; reason: string }>(
++  `select from_mode, to_mode, reason from platform_entitlements.mode_events where scope_key = 'PRODUCT' order by id`,
++);
++const productMode = (await su<{ m: string }>(`select mode as m from platform_entitlements.enforcement_mode where scope_key = 'PRODUCT'`))[0]!.m;
++check('D14.3 PRODUCT SHADOW→DUAL_READ→PRIMARY, un paso por vez, motivo D-14 en la bitácora',
++  transitionsOk && productMode === 'PRIMARY' && events.length === 2 && events.every((e) => e.reason === D14_REASON) &&
++  events[0]!.from_mode === 'SHADOW' && events[1]!.to_mode === 'PRIMARY',
++  transitions.join(' · '));
++
++const t2g2 = await client.getApplied(ctx(undefined, T2.cpt), actor);
++const t2Parity = await parityMismatches(T2.cpt, T2.org, T2.company);
++check('D14.4 cohorte materializada por el modo del producto: PRIMARY, paridad 0, misma decisión que en legado',
++  t2g2.enforcementMode === 'PRIMARY' && t2Parity === 0 &&
++  JSON.stringify(await decisionsOf(T2.org, T2.company)) === JSON.stringify(t2Legacy),
++  `${String(t2g2.enforcementMode)} paridad=${t2Parity}`);
++
++// (e) Negativo en el estado final: el camino legado de los tenants mapeados queda bloqueado en servidor.
++const blocked: string[] = [];
++for (const [label, org, company] of [['cert', ORG, COMPANY], ['cohort', T2.org, T2.company]] as const) {
++  for (const source of ['hub', 'provisioning'] as const) {
++    const w = await legacyWrite(org, company, source, ['ecommerce.promotions', 'ecommerce.analytics.advanced']);
++    if (!w.ok && /FUENTE_LEGADA_BLOQUEADA/.test(w.error)) blocked.push(`${label}:${source}`);
++  }
++}
++check('D14.5 escritura legada (hub y provisioning) de tenants mapeados → FUENTE_LEGADA_BLOQUEADA, nada concedido',
++  blocked.length === 4 && !(await gate('analytics.advanced')) && !(await gate('analytics.advanced', T2.org, T2.company)),
++  blocked.join(','));
++
++// (f) appActive=false (versión siguiente): se retira lo comercial; la operación (baseline) sigue.
++const v4 = await emit(4, ['ecommerce.ai.assist', 'ecommerce.pricing.lists'], 5, { appActive: false });
++const p4 = await client.pushSnapshot(ctx(), v4, actor);
++const aiWhileInactive = await consume();
++const commercialDenied = !(await gate('pricing.lists')) && !(await gate('ai.assist')) && aiWhileInactive.allowed === false;
++const baselineAfter = await Promise.all(BASELINE.map((b) => gate(b)));
++const operationalContinues = baselineAfter.every(Boolean);
++check('D14.6 v4 appActive=false → APPLIED; comercial denegado (pricing.lists, ai.assist, consumo IA)',
++  p4.result === 'APPLIED' && commercialDenied, `${p4.result} ia=${String(aiWhileInactive.reason ?? aiWhileInactive.allowed)}`);
++check('D14.7 appActive=false no bloquea la operación: baseline sigue concedido', operationalContinues,
++  BASELINE.map((b, i) => `${b}=${baselineAfter[i]}`).join(' '));
++
++const v5 = await emit(5, ['ecommerce.ai.assist', 'ecommerce.pricing.lists'], 5, { appActive: true });
++const p5 = await client.pushSnapshot(ctx(), v5, actor);
++check('D14.8 v5 appActive=true → APPLIED; lo comercial vuelve',
++  p5.result === 'APPLIED' && (await gate('pricing.lists')) && (await gate('ai.assist')), p5.result);
++
++// (g) GET final: PRIMARY y en sincronía con lo último deseado.
++const gFinal = await client.getApplied(ctx(), actor);
++check('D14.9 GET final: PRIMARY, versión y checksum = último deseado (v5)',
++  gFinal.result === 'OBSERVED' && gFinal.enforcementMode === 'PRIMARY' && gFinal.appliedVersion === 5 && gFinal.appliedChecksum === v5.checksum,
++  `${gFinal.appliedVersion} ${gFinal.enforcementMode}`);
++
++// (h) PRODUCT PRIMARY no toca al tenant legado sin mapping: misma decisión y su fuente legada sigue abierta.
++const miqAfter = await decisionsOf(MIQ.org, MIQ.company);
++const miqPolicy = (await svc<{ p: string }>(`select platform_entitlements.legacy_write_policy($1, $2, 'hub', '{}'::text[]) as p`, [MIQ.org, MIQ.company]))[0]!.p;
++check('D14.10 legado sin mapping (miquimica): misma decisión bajo PRODUCT PRIMARY y política legada ALLOW',
++  JSON.stringify(miqAfter) === JSON.stringify(miqBefore) && miqPolicy === 'ALLOW', miqPolicy);
++
++// (i) Modos al cerrar.
++const mapped = await su<{ cpt: string; mode: string }>(
++  `select r.control_plane_tenant_id::text as cpt, platform_entitlements.mode_for(r.control_plane_tenant_id) as mode
++     from platform_provisioning.requests r where r.status = 'ACTIVE' order by 1`,
++);
++check('D14.11 todos los tenants mapeados en PRIMARY', mapped.length === 2 && mapped.every((m) => m.mode === 'PRIMARY'),
++  mapped.map((m) => `${m.cpt.slice(-4)}=${m.mode}`).join(' '));
++
++const finalParity = (await parityMismatches(CPT, ORG, COMPANY)) + (await parityMismatches(T2.cpt, T2.org, T2.company));
++const parityBlocking = cptParity + t2Shadow + t2Parity + finalParity;
++check('D14.12 paridad bloqueante total = 0', parityBlocking === 0, String(parityBlocking));
++
++const evidence: D14Evidence = {
++  product: 'ecommerce',
++  entitlements: {
++    scope: 'PRODUCT',
++    productScopeMode: productMode,
++    finalMode: String(gFinal.enforcementMode),
++    transitions,
++    mappedTenants: mapped.length,
++    mappedTenantsPrimary: mapped.filter((m) => m.mode === 'PRIMARY').length,
++    getVerified: {
++      appliedVersion: Number(gFinal.appliedVersion),
++      appliedChecksum: String(gFinal.appliedChecksum),
++      enforcementMode: String(gFinal.enforcementMode),
++      desiredChecksum: v5.checksum,
++    },
++    legacyWrite: {
++      status: blocked.length === 4 ? 'BLOCKED' : 'NO_LEGACY_PATH',
++      evidence: `estado final PRIMARY: public.sync_platform_context(source=hub|provisioning) → FUENTE_LEGADA_BLOQUEADA (42501, platform_entitlements.legacy_write_policy) para ${blocked.join(', ')}`,
++    },
++    parityBlocking,
++  },
++  appActiveFalse: {
++    commercialDenied,
++    operationalContinues,
++    evidence: `v4 appActive=false: pricing.lists y ai.assist denegados, ai_consume_for no permitido; baseline ${BASELINE.join('/')} concedido (ebim.company_is_entitled, D-14 regla 2, migración eCommerce 20261003100000); v5 appActive=true restaura`,
++  },
++  legacyTenants: [
++    {
++      id: 'd0000000-0000-4000-8000-000000000001',
++      label: 'miquimica (seed DEV; company d0000000-0000-4000-8000-0000000000c1)',
++      resolution: 'UNRESOLVED',
++      reason:
++        'Sin mapping determinista en MasterAdmin (ninguna platform_provisioning.requests ACTIVE ni evidencia de controlPlaneTenantId). Sigue en su fuente legada; PRODUCT PRIMARY no la cambia (D14.10). La clave estática H-ECO-1 de platform-context sigue vigente SOLO para sociedades sin mapping.',
++    },
++  ],
++  billing: null,
++  checks: { passed: 0, failed: 0 },
++};
++evidence.checks = countChecks(results);
++const file = writeD14Evidence(evidence);
++console.log(file ? `evidencia D14: ${file}` : 'evidencia D14: CCP_EVIDENCE_DIR no definido (no se escribe)');
++
+ server.close();
+ await db.close();
+ console.log(`\n${results.filter((r) => r.startsWith('PASS')).length}/${results.length} PASS`);

@@ -1,0 +1,35 @@
+(node:72686) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS · 0. receptor eCommerce configurado (fail-closed si faltara algo)
+PASS · 1. MasterAdmin lee el manifiesto de eCommerce (26 códigos ACTIVE) · 2026-10-01.1
+PASS · 2. emisor real → PUT M2M real → APPLIED · APPLIED 200
+PASS · 3. GET: misma versión y checksum, PRIMARY · 1 PRIMARY
+PASS · 4. gate de servidor eCommerce: promotions sí, payments no
+PASS ·    IA: asignación 2 del snapshot, el hard gate corta la 3ª
+PASS · 5. replay idempotente → REPLAYED · REPLAYED
+PASS · 6. v2 revoca promotions → APPLIED y gate cerrado · APPLIED
+PASS · 7. v1 tras v2 → STALE (409) · STALE STALE_SNAPSHOT
+PASS · 8. misma versión, otro contenido → CONFLICT (409) · CONFLICT VERSION_CONFLICT
+PASS · 9. credencial con scope de provisioning → 403 REJECTED · 403 INSUFFICIENT_SCOPE
+PASS · 10. SaaS no disponible → RETRYABLE, nada aplicado · RETRYABLE 503
+PASS · 11. reconciliación: el GET delata deriva (aplicado v2 ≠ deseado v3)
+PASS ·     mientras tanto el gate sigue con el last-good v2
+PASS · 12. push de v3 → GET en sincronía (versión y checksum)
+
+── D14 ──
+PASS · D14.0 legado sin mapping (ids de miquimica): sin controlPlaneTenantId, decide por su fuente legada
+PASS · D14.1 certificación: reconcile sin deriva, paridad caché↔snapshot 0 (shadow_diffs no aplica: PRIMARY desde el inicio) · drift=false paridad=0 shadowRows=0
+PASS · D14.2 cohorte en SHADOW: APPLIED, shadow_diffs = 0 (paridad verde) y la decisión legada no cambia · APPLIED SHADOW diffs=0
+PASS · D14.3 PRODUCT SHADOW→DUAL_READ→PRIMARY, un paso por vez, motivo D-14 en la bitácora · PRODUCT SHADOW→DUAL_READ (tenants=1) · PRODUCT DUAL_READ→PRIMARY (tenants=1)
+PASS · D14.4 cohorte materializada por el modo del producto: PRIMARY, paridad 0, misma decisión que en legado · PRIMARY paridad=0
+PASS · D14.5 escritura legada (hub y provisioning) de tenants mapeados → FUENTE_LEGADA_BLOQUEADA, nada concedido · cert:hub,cert:provisioning,cohort:hub,cohort:provisioning
+PASS · D14.6 v4 appActive=false → APPLIED; comercial denegado (pricing.lists, ai.assist, consumo IA) · APPLIED ia=DISABLED
+FAIL · D14.7 appActive=false no bloquea la operación: baseline sigue concedido · catalog=false storefront=false checkout=false orders=false analytics.basic=false
+PASS · D14.8 v5 appActive=true → APPLIED; lo comercial vuelve · APPLIED
+PASS · D14.9 GET final: PRIMARY, versión y checksum = último deseado (v5) · 5 PRIMARY
+PASS · D14.10 legado sin mapping (miquimica): misma decisión bajo PRODUCT PRIMARY y política legada ALLOW · ALLOW
+PASS · D14.11 todos los tenants mapeados en PRIMARY · 0001=PRIMARY 0002=PRIMARY
+PASS · D14.12 paridad bloqueante total = 0 · 0
+evidencia D14: CCP_EVIDENCE_DIR no definido (no se escribe)
+
+27/28 PASS

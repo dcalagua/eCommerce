@@ -2984,10 +2984,11 @@ enseña en diagnóstico, pero **nada decide con él**: una prueba de arquitectur
 **La composición, escrita una vez y comprobada tres veces:**
 
 ```
-capacidad efectiva = app_active AND (baseline OR entitlement) AND (baseline OR flag ≠ false)
+capacidad efectiva = baseline OR (app_active AND entitlement AND flag ≠ false)
 ```
 
-- `app_active: false` no deja **ni lo baseline**: no es un plan mínimo, es un no-cliente.
+- `app_active: false` retira lo **comercial** y conserva lo baseline (D-14 regla 2, 2026-09-29;
+  migración `20261003100000`, ADR-002 «Enmienda D-14»). *Antes:* «no deja ni lo baseline».
 - **Un flag jamás concede.** Si pudiera, los ajustes del propio cliente serían una caja registradora.
 - **Un flag no apaga lo baseline**: sería un botón de caída dentro de la pantalla de ajustes.
 

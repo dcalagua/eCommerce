@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 /Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1
+
+ ✓ supabase/tests/entitlements-fixtures-pin.test.ts (34 tests) 9ms
+
+ Test Files  1 passed (1)
+      Tests  34 passed (34)
+   Start at  01:13:21
+   Duration  624ms (transform 159ms, setup 239ms, collect 29ms, tests 9ms, environment 1ms, prepare 91ms)
+

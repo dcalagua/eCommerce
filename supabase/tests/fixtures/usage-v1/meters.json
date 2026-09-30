@@ -1,0 +1,76 @@
+{
+  "description": "Medidores que emiten los SaaS en v1. Se registran en MasterAdmin (upsert_usage_meter) por el product admin; nacen is_billable=false (D-06). Ningún DAILY_SNAPSHOT está aprobado: los SaaS NO emiten fotos diarias hasta que un humano apruebe la dimensión. Ningún peso de crédito está aprobado (D-03): mapear cuotas por acción a peso 1 requiere aprobación explícita.",
+  "eventMeters": [
+    {
+      "productCode": "ecommerce",
+      "code": "ecommerce.ai.calls",
+      "unit": "call",
+      "aggregation": "SUM",
+      "measurement": "EVENT",
+      "capabilityCodeFromEvent": true
+    },
+    {
+      "productCode": "ewm",
+      "code": "ewm.ai.calls",
+      "unit": "call",
+      "aggregation": "SUM",
+      "measurement": "EVENT",
+      "capabilityCodeFromEvent": true
+    },
+    {
+      "productCode": "comerza",
+      "code": "comerza.ai.calls",
+      "unit": "call",
+      "aggregation": "SUM",
+      "measurement": "EVENT",
+      "capabilityCodeFromEvent": true
+    },
+    {
+      "productCode": "esupplier",
+      "code": "esupplier.ai.calls",
+      "unit": "call",
+      "aggregation": "SUM",
+      "measurement": "EVENT",
+      "capabilityCodeFromEvent": true
+    },
+    {
+      "productCode": "echange",
+      "code": "echange.ai.calls",
+      "unit": "call",
+      "aggregation": "SUM",
+      "measurement": "EVENT",
+      "capabilityCodeFromEvent": true
+    },
+    {
+      "productCode": "echange",
+      "code": "echange.voice.seconds",
+      "unit": "second",
+      "aggregation": "SUM",
+      "measurement": "EVENT",
+      "capabilityCodeFromEvent": true
+    },
+    {
+      "productCode": "eexpense",
+      "code": "eexpense.ai.calls",
+      "unit": "call",
+      "aggregation": "SUM",
+      "measurement": "EVENT",
+      "capabilityCodeFromEvent": true
+    },
+    {
+      "productCode": "gmao",
+      "code": "gmao.ai.calls",
+      "unit": "call",
+      "aggregation": "SUM",
+      "measurement": "EVENT",
+      "capabilityCodeFromEvent": true
+    }
+  ],
+  "dailySnapshotMeters": [],
+  "notEmitting": [
+    {
+      "productCode": "tms",
+      "reason": "Sin medidor aprobado (plan §12.2)."
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ebim.pe/contracts/usage/v1/response.schema.json",
+  "title": "ebim.usage/v1 — respuesta 200 por evento",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "batchId", "results", "accepted", "duplicate", "rejected"],
+  "properties": {
+    "schema": { "const": "ebim.usage/v1" },
+    "batchId": { "type": "string", "format": "uuid" },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["eventId", "status"],
+        "properties": {
+          "eventId": { "type": ["string", "null"] },
+          "status": { "enum": ["ACCEPTED", "DUPLICATE", "REJECTED"] },
+          "code": {
+            "enum": ["INVALID_EVENT", "UNKNOWN_METER", "NEGATIVE_QUANTITY", "UNIT_MISMATCH", "OCCURRED_AT_IN_FUTURE",
+                     "INTERNAL_METADATA_INVALID", "TENANT_NOT_MAPPED_FOR_PRODUCT", "ENVIRONMENT_MISMATCH", "CONFLICT"]
+          }
+        }
+      }
+    },
+    "accepted": { "type": "integer", "minimum": 0 },
+    "duplicate": { "type": "integer", "minimum": 0 },
+    "rejected": { "type": "integer", "minimum": 0 }
+  }
+}

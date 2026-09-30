@@ -1,0 +1,55 @@
+{
+  "description": "Estado de MasterAdmin contra el que se evalúa fixtures/ingest-batch.json en orden. El E2E de MasterAdmin (scripts/ccp/usage-ingest-e2e.mts) lo crea en su stack local con identificadores de su seed.",
+  "productCode": "fixture",
+  "environment": "DEV",
+  "meters": [
+    {
+      "code": "fixture.ai.calls",
+      "unit": "call",
+      "aggregation": "SUM",
+      "measurement": "EVENT",
+      "status": "ACTIVE",
+      "allowsNegative": false,
+      "capabilityCode": "fixture.ai.copilot"
+    },
+    {
+      "code": "fixture.voice.seconds",
+      "unit": "second",
+      "aggregation": "SUM",
+      "measurement": "EVENT",
+      "status": "ACTIVE",
+      "allowsNegative": false
+    },
+    {
+      "code": "fixture.adjust",
+      "unit": "call",
+      "aggregation": "SUM",
+      "measurement": "EVENT",
+      "status": "ACTIVE",
+      "allowsNegative": true
+    },
+    {
+      "code": "fixture.draft",
+      "unit": "call",
+      "aggregation": "SUM",
+      "measurement": "EVENT",
+      "status": "DRAFT",
+      "allowsNegative": false
+    }
+  ],
+  "tenants": [
+    {
+      "controlPlaneTenantId": "00000000-0000-4ccc-8000-0000000000a1",
+      "mapping": "ACTIVE",
+      "environment": "DEV"
+    },
+    {
+      "controlPlaneTenantId": "00000000-0000-4ccc-8000-0000000000a2",
+      "mapping": "NONE"
+    },
+    {
+      "controlPlaneTenantId": "00000000-0000-4ccc-8000-0000000000a3",
+      "mapping": "ACTIVE_OTHER_PRODUCT"
+    }
+  ]
+}

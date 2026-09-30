@@ -30,5 +30,8 @@
     "eslint.config.js",
     "supabase/functions/_shared",
     "supabase/tests"
+  ],
+  "exclude": [
+    "supabase/tests/fixtures/entitlements-v1"
   ]
 }

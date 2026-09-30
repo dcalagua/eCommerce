@@ -7,7 +7,19 @@ import tseslint from 'typescript-eslint'
 export default tseslint.config(
   // `.claude`: worktrees de trabajo en paralelo, copias completas del repo. Un
   // lint del árbol principal no tiene nada que decir sobre otra rama.
-  { ignores: ['dist', 'coverage', 'node_modules', '.claude'] },
+  // `supabase/tests/fixtures/entitlements-v1`: copia fijada por checksum del
+  // contrato de MasterAdmin (FIX-ENT-v1); sus imports apuntan al repo emisor.
+  {
+    ignores: [
+      'dist',
+      'coverage',
+      'node_modules',
+      '.claude',
+      '.worktrees',
+      'supabase/tests/fixtures/entitlements-v1',
+      'supabase/tests/fixtures/usage-v1',
+    ],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],

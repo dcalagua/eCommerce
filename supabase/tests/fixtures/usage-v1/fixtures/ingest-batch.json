@@ -1,0 +1,208 @@
+{
+  "schema": "ebim.usage/v1",
+  "environment": "DEV",
+  "productCode": "fixture",
+  "batchId": "00000000-0000-4ccc-8000-00000000b001",
+  "events": [
+    {
+      "eventId": "00000000-0000-4ccc-8000-00000000e001",
+      "meterCode": "fixture.ai.calls",
+      "quantity": 1,
+      "unit": "call",
+      "occurredAt": "2026-09-05T10:00:00Z",
+      "controlPlaneTenantId": "00000000-0000-4ccc-8000-0000000000a1",
+      "externalCompanyId": "fixture-co-01",
+      "capabilityCode": "fixture.ai.copilot",
+      "internal": {
+        "provider": "anthropic",
+        "model": "fixture-model",
+        "inputTokens": 1200,
+        "outputTokens": 300,
+        "latencyMs": 850
+      }
+    },
+    {
+      "eventId": "00000000-0000-4ccc-8000-00000000e001",
+      "meterCode": "fixture.ai.calls",
+      "quantity": 1,
+      "unit": "call",
+      "occurredAt": "2026-09-05T10:00:00Z",
+      "controlPlaneTenantId": "00000000-0000-4ccc-8000-0000000000a1",
+      "externalCompanyId": "fixture-co-01",
+      "capabilityCode": "fixture.ai.copilot",
+      "internal": {
+        "provider": "anthropic",
+        "model": "fixture-model",
+        "inputTokens": 1200,
+        "outputTokens": 300,
+        "latencyMs": 850
+      }
+    },
+    {
+      "eventId": "00000000-0000-4ccc-8000-00000000e001",
+      "meterCode": "fixture.ai.calls",
+      "quantity": 2,
+      "unit": "call",
+      "occurredAt": "2026-09-05T10:00:00Z",
+      "controlPlaneTenantId": "00000000-0000-4ccc-8000-0000000000a1",
+      "externalCompanyId": "fixture-co-01",
+      "capabilityCode": "fixture.ai.copilot"
+    },
+    {
+      "eventId": "00000000-0000-4ccc-8000-00000000e002",
+      "meterCode": "fixture.ai.calls",
+      "quantity": 1,
+      "unit": "call",
+      "occurredAt": "2026-09-05T10:00:00Z",
+      "controlPlaneTenantId": "00000000-0000-4ccc-8000-0000000000a1",
+      "externalCompanyId": "fixture-co-01",
+      "capabilityCode": "fixture.ai.copilot",
+      "internal": {
+        "provider": "deepgram",
+        "model": "fixture-stt"
+      }
+    },
+    {
+      "eventId": "00000000-0000-4ccc-8000-00000000e003",
+      "meterCode": "fixture.voice.seconds",
+      "quantity": 12.5,
+      "unit": "second",
+      "occurredAt": "2026-09-05T10:00:00Z",
+      "controlPlaneTenantId": "00000000-0000-4ccc-8000-0000000000a1",
+      "externalCompanyId": "fixture-co-01"
+    },
+    {
+      "eventId": "00000000-0000-4ccc-8000-00000000e004",
+      "meterCode": "fixture.ai.calls",
+      "quantity": 1,
+      "unit": "call",
+      "occurredAt": "2026-01-15T08:00:00Z",
+      "controlPlaneTenantId": "00000000-0000-4ccc-8000-0000000000a1",
+      "externalCompanyId": "fixture-co-01",
+      "capabilityCode": "fixture.ai.copilot"
+    },
+    {
+      "eventId": "00000000-0000-4ccc-8000-00000000e005",
+      "meterCode": "fixture.adjust",
+      "quantity": -1,
+      "unit": "call",
+      "occurredAt": "2026-09-05T10:00:00Z",
+      "controlPlaneTenantId": "00000000-0000-4ccc-8000-0000000000a1",
+      "externalCompanyId": "fixture-co-01"
+    },
+    {
+      "eventId": "00000000-0000-4ccc-8000-00000000e006",
+      "meterCode": "fixture.ai.calls",
+      "quantity": -1,
+      "unit": "call",
+      "occurredAt": "2026-09-05T10:00:00Z",
+      "controlPlaneTenantId": "00000000-0000-4ccc-8000-0000000000a1",
+      "externalCompanyId": "fixture-co-01",
+      "capabilityCode": "fixture.ai.copilot"
+    },
+    {
+      "eventId": "00000000-0000-4ccc-8000-00000000e007",
+      "meterCode": "fixture.nope",
+      "quantity": 1,
+      "unit": "call",
+      "occurredAt": "2026-09-05T10:00:00Z",
+      "controlPlaneTenantId": "00000000-0000-4ccc-8000-0000000000a1",
+      "externalCompanyId": "fixture-co-01",
+      "capabilityCode": "fixture.ai.copilot"
+    },
+    {
+      "eventId": "00000000-0000-4ccc-8000-00000000e008",
+      "meterCode": "fixture.draft",
+      "quantity": 1,
+      "unit": "call",
+      "occurredAt": "2026-09-05T10:00:00Z",
+      "controlPlaneTenantId": "00000000-0000-4ccc-8000-0000000000a1",
+      "externalCompanyId": "fixture-co-01",
+      "capabilityCode": "fixture.ai.copilot"
+    },
+    {
+      "eventId": "00000000-0000-4ccc-8000-00000000e009",
+      "meterCode": "fixture.ai.calls",
+      "quantity": 1,
+      "unit": "page",
+      "occurredAt": "2026-09-05T10:00:00Z",
+      "controlPlaneTenantId": "00000000-0000-4ccc-8000-0000000000a1",
+      "externalCompanyId": "fixture-co-01",
+      "capabilityCode": "fixture.ai.copilot"
+    },
+    {
+      "eventId": "00000000-0000-4ccc-8000-00000000e00a",
+      "meterCode": "fixture.ai.calls",
+      "quantity": 1,
+      "unit": "call",
+      "occurredAt": "2026-09-05T10:00:00Z",
+      "controlPlaneTenantId": "00000000-0000-4ccc-8000-0000000000a2",
+      "externalCompanyId": "fixture-co-01",
+      "capabilityCode": "fixture.ai.copilot"
+    },
+    {
+      "eventId": "00000000-0000-4ccc-8000-00000000e00b",
+      "meterCode": "fixture.ai.calls",
+      "quantity": 1,
+      "unit": "call",
+      "occurredAt": "2026-09-05T10:00:00Z",
+      "controlPlaneTenantId": "00000000-0000-4ccc-8000-0000000000a3",
+      "externalCompanyId": "fixture-co-01",
+      "capabilityCode": "fixture.ai.copilot"
+    },
+    {
+      "eventId": "00000000-0000-4ccc-8000-00000000e00c",
+      "meterCode": "fixture.ai.calls",
+      "quantity": 1,
+      "unit": "call",
+      "occurredAt": "2099-01-01T00:00:00Z",
+      "controlPlaneTenantId": "00000000-0000-4ccc-8000-0000000000a1",
+      "externalCompanyId": "fixture-co-01",
+      "capabilityCode": "fixture.ai.copilot"
+    },
+    {
+      "eventId": "00000000-0000-4ccc-8000-00000000e00d",
+      "meterCode": "fixture.ai.calls",
+      "quantity": 1,
+      "unit": "call",
+      "occurredAt": "2026-09-05T10:00:00Z",
+      "controlPlaneTenantId": "00000000-0000-4ccc-8000-0000000000a1",
+      "externalCompanyId": "fixture-co-01",
+      "capabilityCode": "fixture.ai.copilot",
+      "internal": {
+        "provider": "anthropic",
+        "prompt": "fixture text"
+      }
+    },
+    {
+      "eventId": "00000000-0000-4ccc-8000-00000000e00e",
+      "meterCode": "fixture.ai.calls",
+      "quantity": 1,
+      "unit": "call",
+      "occurredAt": "2026-09-05T10:00:00Z",
+      "controlPlaneTenantId": "00000000-0000-4ccc-8000-0000000000a1",
+      "externalCompanyId": "fixture-co-01",
+      "capabilityCode": "fixture.ai.copilot",
+      "internal": {
+        "provider": "anthropic",
+        "inputTokens": -5
+      }
+    },
+    {
+      "eventId": "not-a-uuid",
+      "meterCode": "fixture.ai.calls",
+      "quantity": 1
+    },
+    {
+      "eventId": "00000000-0000-4ccc-8000-00000000e00f",
+      "meterCode": "fixture.ai.calls",
+      "quantity": 1,
+      "unit": "call",
+      "occurredAt": "2026-09-05T10:00:00Z",
+      "controlPlaneTenantId": "00000000-0000-4ccc-8000-0000000000a1",
+      "externalCompanyId": "fixture-co-01",
+      "capabilityCode": "fixture.ai.copilot",
+      "prompt": "fixture text"
+    }
+  ]
+}
