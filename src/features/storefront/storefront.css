@@ -1372,3 +1372,41 @@
   color: var(--card);
   font-size: 16px;
 }
+
+/* ---- Retail: las ofertas relampago son una FILA, no una caja en tinta ----
+   El negro de la portada retail es de la banda de campana. Una segunda caja
+   negra con tarjetas blancas encajonadas partia el lienzo en dos y competia
+   con ella: aqui la fila queda limpia sobre el papel, como Novedades, y el
+   reloj conserva su pastilla en tinta. */
+.sf-scope[data-store-theme='retail'] [data-offers-presentation='flash'] {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+}
+.sf-scope[data-store-theme='retail'] [data-offers-presentation='flash'] .eb-card,
+.sf-scope[data-store-theme='retail'] [data-offers-presentation='flash'] .eb-card:hover {
+  background: transparent;
+  padding: 0;
+}
+
+/* ---- Retail: servicios en una linea entre filetes, sin caja ------------- */
+.sf-scope[data-store-theme='retail'] .sf-value-props {
+  background: transparent;
+  border-radius: 0;
+  border-block: 1px solid var(--sf-line);
+  padding-inline: 0;
+}
+.sf-scope[data-store-theme='retail'] .sf-value-props .sf-value-icon {
+  background: transparent;
+  color: var(--text);
+}
+
+/* ---- Retail: las piezas con fondo propio (marcas, fila tenida, sobre la
+   tienda) quedan sobre el lienzo. El diseno retail no encajona secciones:
+   separa por aire y por titulo, no por cajas grises. */
+.sf-scope[data-store-theme='retail'] [data-own-surface]:not(.sf-value-props) {
+  background: transparent;
+  border: 0;
+  padding-inline: 0;
+}

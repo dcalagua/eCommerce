@@ -94,6 +94,7 @@ export function StoreValueProps({
     <Box
       component="section"
       aria-label={t('store.valueProps.title')}
+      className="sf-value-props"
       data-own-surface=""
       data-value-props={propuestas.length}
       sx={{
@@ -105,6 +106,8 @@ export function StoreValueProps({
         },
         p: { xs: 2, md: 2.25 },
         borderRadius: 'var(--sf-radius)',
+        // Rediseño v3 · `sf-value-props`: retail la deja en una línea entre
+        // filetes (storefront.css).
         // Una BANDA, no una tarjeta (Storefront V2 · P05).
         //
         // Con borde y sombra era la tercera caja en los primeros ochocientos
@@ -140,6 +143,7 @@ export function StoreValueProps({
           >
             <Box
               aria-hidden
+              className="sf-value-icon"
               sx={{
                 width: 38,
                 height: 38,
