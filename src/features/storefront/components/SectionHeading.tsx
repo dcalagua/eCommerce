@@ -105,7 +105,7 @@ export function SectionHeading({
           }}
         />
 
-        {action ? <Box sx={{ flexShrink: 0, mb: 0.25 }}>{action}</Box> : null}
+        {action ? <Box className="sf-heading-action" sx={{ flexShrink: 0, mb: 0.25 }}>{action}</Box> : null}
       </Stack>
     </Stack>
   )

@@ -20,6 +20,7 @@ import { FlashOffersBand } from '../components/FlashOffersBand'
 import { OffersFeaturedBand } from '../components/OffersFeaturedBand'
 import { ProductRow } from '../components/ProductRow'
 import { PromoBanners } from '../components/PromoBanners'
+import { PromoRetail } from '../components/PromoRetail'
 import { PromoCarousel } from '../components/PromoCarousel'
 import { PromoEditorial } from '../components/PromoEditorial'
 import { SectionHeading } from '../components/SectionHeading'
@@ -421,7 +422,19 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
       maxItems,
     )
     if (promos.length === 0) return null
-    // Resumen v2 · `banners`: dos campañas lado a lado (Retail).
+    // Rediseño v3 · En RETAIL las campañas son la banda en tinta a todo el
+    // ancho y la campaña partida con foto (lámina retail), no dos tarjetas.
+    if (presentation?.variant === 'banners' && data.theme.preset === 'retail') {
+      return (
+        <PromoRetail
+          promotions={promos}
+          storeSlug={data.storeSlug}
+          currency={data.store.currency}
+          assets={data.promoAssets}
+        />
+      )
+    }
+    // Resumen v2 · `banners`: dos campañas lado a lado.
     if (presentation?.variant === 'banners') {
       return (
         <PromoBanners

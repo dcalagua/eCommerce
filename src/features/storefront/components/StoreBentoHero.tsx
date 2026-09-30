@@ -452,7 +452,7 @@ function FeriaOfferCard({
           {formatMoney(precio, product.currency, locale)}
         </Typography>
         {commercialPrice ? (
-          <Stack direction="row" sx={{ alignItems: 'center', gap: 0.375, color: 'var(--accent-deep)' }}>
+          <Stack direction="row" className="sf-bento-offer-commercial" sx={{ alignItems: 'center', gap: 0.375, color: 'var(--accent-deep)' }}>
             <VerifiedRoundedIcon aria-hidden sx={{ fontSize: 13 }} />
             <Typography sx={{ fontSize: 11, fontWeight: 800 }}>
               {commercialPrice.label === 'enterprise' ? t('store.product.agreementPriceCard') : t('store.product.tradePriceCard')}

@@ -60,6 +60,9 @@ export function CommerceContextBar({ storeSlug }: { storeSlug: string }) {
       component="aside"
       aria-label={t('store.commerce.region')}
       data-commerce-audience={audience}
+      // Rediseño v3 · retail la pinta como franja fina a todo el ancho bajo la
+      // cabecera (storefront.css).
+      className="sf-commerce-bar"
       sx={{
         mb: { xs: 1.5, md: 2 },
         px: { xs: 1.5, md: 2 },

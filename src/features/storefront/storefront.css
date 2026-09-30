@@ -1079,7 +1079,12 @@
 .sf-scope[data-store-theme='retail'] .sf-bento {
   gap: 0;
   margin-inline: calc(50% - 50vw);
-  margin-top: calc(-1 * var(--sf-main-pad-md, 24px));
+  margin-top: calc(-1 * var(--sf-main-pad, 16px));
+}
+@media (min-width: 900px) {
+  .sf-scope[data-store-theme='retail'] .sf-bento {
+    margin-top: calc(-1 * var(--sf-main-pad-md, 24px));
+  }
 }
 @media (min-width: 1200px) {
   .sf-scope[data-store-theme='retail'] .sf-bento {
@@ -1155,34 +1160,37 @@
   background: transparent;
 }
 .sf-scope[data-store-theme='retail'] .sf-bento-offer-media [data-media] {
-  aspect-ratio: 4 / 3;
+  /* Alto ACOTADO: a 1920 px una foto 4:3 de media pantalla era un cartel. El
+     producto va entero y centrado, con aire, sobre el papel del estilo. */
+  aspect-ratio: auto;
+  height: clamp(160px, 12vw, 210px);
+  padding: 20px 24px 8px;
   background: transparent;
   border-radius: 0;
 }
+/* Nombre y precio DEBAJO de la foto, en texto limpio: sin recuadro blanco. */
 .sf-scope[data-store-theme='retail'] .sf-bento-offer-info {
-  position: absolute;
-  left: 16px;
-  bottom: 16px;
-  max-width: calc(100% - 32px);
-  padding: 6px 10px;
-  gap: 0;
-  background: var(--card);
+  padding: 4px 20px 18px;
+  gap: 2px;
+  background: transparent;
 }
 .sf-scope[data-store-theme='retail'] .sf-bento-offer-info a {
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 600;
   -webkit-line-clamp: 1;
 }
 .sf-scope[data-store-theme='retail'] .sf-bento-offer-price {
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 700;
 }
-.sf-scope[data-store-theme='retail'] .sf-bento-offer-before {
+.sf-scope[data-store-theme='retail'] .sf-bento-offer-before,
+.sf-scope[data-store-theme='retail'] .sf-bento-offer-commercial {
   display: none;
 }
 .sf-scope[data-store-theme='retail'] .sf-bento-offer-badge {
   position: absolute;
-  top: -1px;
-  left: 0;
-  transform: translateY(-100%);
+  top: 12px;
+  left: 12px;
   border-radius: 0;
 }
 
@@ -1319,4 +1327,48 @@
    duplicaría la marca para quien lee o busca en la página. */
 .sf-scope[data-store-theme='retail'] .sf-footer .sf-footer-mark::before {
   content: attr(data-mark);
+}
+
+/* ---- «Comprando para»: franja fina a todo el ancho bajo la cabecera ----- */
+.sf-scope[data-store-theme='retail'] .sf-commerce-bar {
+  margin-inline: calc(50% - 50vw);
+  padding-inline: calc(50vw - 50%);
+  margin-top: calc(-1 * var(--sf-main-pad, 16px));
+  margin-bottom: var(--sf-main-pad, 16px);
+  border-radius: 0;
+  border-bottom: 1px solid var(--sf-line);
+  background: var(--card);
+}
+@media (min-width: 900px) {
+  .sf-scope[data-store-theme='retail'] .sf-commerce-bar {
+    margin-top: calc(-1 * var(--sf-main-pad-md, 24px));
+    margin-bottom: var(--sf-main-pad-md, 24px);
+  }
+}
+
+/* ---- «Ver todo»: texto y un círculo en tinta con la flecha ------------- */
+.sf-scope[data-store-theme='retail'] .sf-heading-action .MuiButton-root {
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+}
+.sf-scope[data-store-theme='retail'] .sf-heading-action .MuiButton-root:hover {
+  background: transparent;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.sf-scope[data-store-theme='retail'] .sf-heading-action .MuiButton-root::after {
+  content: '\2192';
+  display: inline-grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 9px;
+  line-height: 1;
+  border-radius: 50%;
+  background: var(--text);
+  color: var(--card);
+  font-size: 16px;
 }
