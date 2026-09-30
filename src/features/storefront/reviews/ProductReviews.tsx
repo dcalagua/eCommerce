@@ -68,7 +68,7 @@ export function ProductReviews({ storeSlug, productId }: { storeSlug: string; pr
    */
   if (data && data.summary.count === 0 && data.reviews.length === 0) {
     return (
-      <Card component="section" id="opiniones" aria-labelledby={headingId} data-reviews-empty sx={CARD_SX}>
+      <Card component="section" className="sf-reviews" id="opiniones" aria-labelledby={headingId} data-reviews-empty sx={CARD_SX}>
         <Stack
           direction={{ xs: 'column', md: 'row' }}
           sx={{ gap: { xs: 2, md: 5 }, alignItems: { md: 'center' } }}
@@ -93,7 +93,7 @@ export function ProductReviews({ storeSlug, productId }: { storeSlug: string; pr
   }
 
   return (
-    <Card component="section" id="opiniones" aria-labelledby={headingId} sx={CARD_SX}>
+    <Card component="section" className="sf-reviews" id="opiniones" aria-labelledby={headingId} sx={CARD_SX}>
       <Typography
         id={headingId}
         component="h2"

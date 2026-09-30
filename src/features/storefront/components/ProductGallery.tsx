@@ -40,6 +40,7 @@ export function ProductGallery({
   alt,
   badge = null,
   favorite,
+  layout = 'viewer',
 }: {
   images: GalleryImage[]
   alt: string
@@ -47,6 +48,12 @@ export function ProductGallery({
   badge?: string | null
   /** El corazón sobre la foto: se guarda donde se decide. */
   favorite?: { active: boolean; onToggle: () => void; label: string }
+  /**
+   * Rediseño v3 · `grid`: TODAS las fotos a tamaño grande, en dos columnas
+   * (lámina de ficha retail). En el teléfono, una fila que se desliza. Cada
+   * foto abre el mismo visor ampliado. `viewer` es la de siempre.
+   */
+  layout?: 'viewer' | 'grid'
 }) {
   const { t } = useI18n()
   const [index, setIndex] = useState(0)
@@ -68,6 +75,104 @@ export function ProductGallery({
   function open(next: number) {
     setIndex(next)
     setZoomed(next)
+  }
+
+  const corazon = favorite ? (
+    <IconButton
+      aria-pressed={favorite.active}
+      aria-label={favorite.label}
+      onClick={favorite.onToggle}
+      sx={{
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        width: 40,
+        height: 40,
+        bgcolor: 'var(--card)',
+        color: favorite.active ? 'var(--sf-heart, var(--accent-deep))' : 'var(--text)',
+        boxShadow: 'var(--sf-shadow)',
+        '&:hover': { bgcolor: 'var(--card)' },
+      }}
+    >
+      {favorite.active ? <FavoriteRoundedIcon sx={{ fontSize: 20 }} /> : <FavoriteBorderRoundedIcon sx={{ fontSize: 20 }} />}
+    </IconButton>
+  ) : null
+
+  if (layout === 'grid' && images.length > 0) {
+    return (
+      <Box component="section" aria-label={t('store.product.gallery')} sx={{ position: 'relative' }}>
+        <Box
+          data-gallery-layout="grid"
+          sx={{
+            display: { xs: 'flex', md: 'grid' },
+            gridTemplateColumns: images.length > 1 ? 'repeat(2, minmax(0, 1fr))' : '1fr',
+            gap: { xs: 1, md: 1.25 },
+            overflowX: { xs: 'auto', md: 'visible' },
+            scrollSnapType: { xs: 'x mandatory', md: 'none' },
+            scrollbarWidth: 'none',
+            '&::-webkit-scrollbar': { display: 'none' },
+          }}
+        >
+          {images.map((image, slot) => (
+            <ButtonBase
+              key={image.image_id}
+              onClick={() => open(slot)}
+              aria-label={`${t('store.product.zoom')} · ${t('store.product.image')} ${slot + 1}`}
+              sx={{
+                flex: { xs: images.length > 1 ? '0 0 86%' : '0 0 100%', md: 'initial' },
+                scrollSnapAlign: 'start',
+                display: 'block',
+                overflow: 'hidden',
+                borderRadius: 'var(--sf-radius-sm, 0)',
+                bgcolor: 'var(--sf-photo-bg, var(--sf-media-bg, #fff))',
+                cursor: 'zoom-in',
+              }}
+            >
+              <ProductMedia
+                url={image.url}
+                alt={slot === 0 ? (image.alt ?? alt) : ''}
+                ratio="4 / 5"
+                sizePx={40}
+                eager={slot < 2}
+                fit="contain"
+              />
+            </ButtonBase>
+          ))}
+        </Box>
+
+        {badge ? (
+          <Box
+            data-gallery-badge
+            sx={{
+              position: 'absolute',
+              top: 12,
+              left: 12,
+              px: 1,
+              py: 0.375,
+              bgcolor: 'var(--sf-discount-bg, var(--accent-deep))',
+              color: '#FFFFFF',
+              fontSize: 12,
+              fontWeight: 800,
+              pointerEvents: 'none',
+            }}
+          >
+            {badge}
+          </Box>
+        ) : null}
+        {corazon}
+
+        <ImageLightbox
+          images={images}
+          index={zoomed}
+          alt={alt}
+          onIndexChange={(next) => {
+            setIndex(next)
+            setZoomed(next)
+          }}
+          onClose={() => setZoomed(null)}
+        />
+      </Box>
+    )
   }
 
   /**
@@ -133,28 +238,9 @@ export function ProductGallery({
           </Box>
         ) : null}
 
-        {favorite ? (
-          // Hermano del botón de la foto, no hijo: un botón dentro de otro no
-          // es HTML válido y el lector de pantalla no sabría cuál pulsa.
-          <IconButton
-            aria-pressed={favorite.active}
-            aria-label={favorite.label}
-            onClick={favorite.onToggle}
-            sx={{
-              position: 'absolute',
-              top: 12,
-              right: 12,
-              width: 40,
-              height: 40,
-              bgcolor: 'var(--card)',
-              color: favorite.active ? 'var(--sf-heart, var(--accent-deep))' : 'var(--text)',
-              boxShadow: 'var(--sf-shadow)',
-              '&:hover': { bgcolor: 'var(--card)' },
-            }}
-          >
-            {favorite.active ? <FavoriteRoundedIcon sx={{ fontSize: 20 }} /> : <FavoriteBorderRoundedIcon sx={{ fontSize: 20 }} />}
-          </IconButton>
-        ) : null}
+        {/* Hermano del botón de la foto, no hijo: un botón dentro de otro no
+            es HTML válido y el lector de pantalla no sabría cuál pulsa. */}
+        {corazon}
 
         {hasImages && (
           // Cuántas fotos hay y que se amplía, en una pastilla sobre la foto.

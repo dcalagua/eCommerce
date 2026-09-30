@@ -1480,3 +1480,131 @@
   color: var(--text);
   border-color: transparent;
 }
+
+/* ===========================================================================
+   REDISEÑO v3 · RETAIL, FICHA Y BOLSA (láminas «Retail · PDP» y «Carrito»)
+   ===========================================================================
+   Mismas piezas y mismas acciones; cambia la voz: fotos grandes en rejilla,
+   compra en píldora de tinta, beneficios en lista entre filetes, nada de cajas
+   con sombra, y la bolsa con el resumen sobre papel.
+   --------------------------------------------------------------------------- */
+
+/* ---- Ficha --------------------------------------------------------------- */
+.sf-scope[data-store-theme='retail'] .sf-pdp-back {
+  display: none;
+}
+.sf-scope[data-store-theme='retail'] .sf-pdp-title {
+  font-family: var(--sf-display);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.sf-scope[data-store-theme='retail'] [data-pdp-eyebrow] {
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.sf-scope[data-store-theme='retail'] [data-pdp-savings] {
+  background: var(--neutral-soft);
+  color: var(--text);
+  border-radius: 0;
+}
+/* La compra: píldora en tinta a todo lo que queda de la fila. */
+.sf-scope[data-store-theme='retail'] .sf-pdp-buy {
+  background: var(--text);
+  color: var(--card);
+  border-radius: var(--sf-pill);
+  box-shadow: none;
+}
+.sf-scope[data-store-theme='retail'] .sf-pdp-buy:hover {
+  background: color-mix(in srgb, var(--text) 85%, var(--card));
+  box-shadow: none;
+}
+/* Beneficios: una lista entre filetes, iconos en tinta, sin caja. */
+.sf-scope[data-store-theme='retail'] [data-pdp-trust] {
+  border: 0;
+  border-block: 1px solid var(--sf-line);
+  border-radius: 0;
+  background: transparent;
+  padding-block: 8px;
+}
+.sf-scope[data-store-theme='retail'] [data-pdp-trust] li {
+  padding-inline: 0;
+  padding-block: 8px;
+  border-top: 0;
+}
+.sf-scope[data-store-theme='retail'] [data-pdp-trust] li > [aria-hidden] {
+  background: transparent;
+  color: var(--text);
+}
+.sf-scope[data-store-theme='retail'] [data-pdp-sheet-aside] {
+  border-radius: 0;
+  background: var(--sf-soft);
+  border-color: transparent;
+}
+/* ---- Bolsa ---------------------------------------------------------------- */
+.sf-scope[data-store-theme='retail'] .sf-cart-head h1 {
+  font-family: var(--sf-display);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -0.03em;
+}
+@media (min-width: 900px) {
+  .sf-scope[data-store-theme='retail'] .sf-cart-head h1 {
+    font-size: 48px;
+    line-height: 1;
+  }
+}
+/* Las líneas sobre el lienzo, separadas por filetes: sin caja ni sombra. */
+.sf-scope[data-store-theme='retail'] .sf-cart-lines {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  border-top: 1px solid var(--sf-line);
+  padding-top: 16px;
+}
+.sf-scope[data-store-theme='retail'] .sf-cart-thumb {
+  inline-size: 104px;
+  block-size: 104px;
+  border-radius: 0;
+  background: var(--sf-photo-bg, var(--neutral-soft));
+}
+/* El resumen, sobre papel y sin borde; la salida en píldora de tinta. */
+.sf-scope[data-store-theme='retail'] .sf-cart-summary {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--sf-soft);
+  padding: 28px;
+}
+.sf-scope[data-store-theme='retail'] .sf-cart-summary h2 {
+  font-family: var(--sf-display);
+  font-size: 20px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.sf-scope[data-store-theme='retail'] .sf-cart-checkout {
+  min-block-size: 52px;
+  background: var(--text);
+  color: var(--card);
+  border-radius: var(--sf-pill);
+  box-shadow: none;
+  font-weight: 700;
+}
+.sf-scope[data-store-theme='retail'] .sf-cart-checkout:hover {
+  background: color-mix(in srgb, var(--text) 85%, var(--card));
+  box-shadow: none;
+}
+/* Opiniones sin caja; «Seguir comprando» en tinta. */
+.sf-scope[data-store-theme='retail'] .sf-reviews {
+  border: 0;
+  border-top: 1px solid var(--sf-line);
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  padding-inline: 0;
+}
+.sf-scope[data-store-theme='retail'] .sf-cart-summary .MuiButton-text {
+  color: var(--text);
+}

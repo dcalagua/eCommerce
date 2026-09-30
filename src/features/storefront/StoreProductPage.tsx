@@ -41,6 +41,7 @@ import { useRelatedSections } from './relations'
 import { useProductReviews } from './reviews/hooks'
 import { useFavorites } from './useFavorites'
 import { useVariantChoice } from './useVariantChoice'
+import { useStorefrontTheme } from './theme/useStorefrontTheme'
 
 /**
  * Las opiniones van por `lazy`: están debajo del pliegue y traen el formulario
@@ -81,6 +82,7 @@ const RELATED_FETCH = 12
 
 export function StoreProductPage() {
   const { t, locale } = useI18n()
+  const { preset } = useStorefrontTheme()
   const { store, storeSlug } = useStorefront()
   const { productSlug } = useParams<{ productSlug: string }>()
 
@@ -321,6 +323,8 @@ export function StoreProductPage() {
           component={Link}
           to={salidaAlCatalogo}
           startIcon={<ArrowBackRoundedIcon />}
+          // Rediseño v3 · retail no lo pinta: las migas ya dicen cómo subir.
+          className="sf-pdp-back"
           sx={{ textTransform: 'none', fontWeight: 700, flexShrink: 0 }}
         >
           {item.category_name
@@ -354,6 +358,8 @@ export function StoreProductPage() {
             images={gallery.data ?? []}
             alt={item.name}
             badge={!conAcuerdo && !hasVariants && discount !== null ? `−${discount} %` : null}
+            // Rediseño v3 · retail: todas las fotos grandes en rejilla (lámina).
+            layout={preset === 'retail' ? 'grid' : 'viewer'}
             favorite={{
               active: esFavorito,
               onToggle: () => void favorites.toggle(item.product_id),
@@ -387,6 +393,7 @@ export function StoreProductPage() {
               ningún otro sitio de esta columna. */}
           <Typography
             component="h1"
+            className="sf-pdp-title"
             sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 700, lineHeight: 1.18, letterSpacing: '-0.015em' }}
           >
             {item.name}
@@ -486,21 +493,21 @@ export function StoreProductPage() {
 
           {/* Disponible con un punto de color y no con una pastilla: la
               pastilla competía con la de ahorro, que es la que vende. */}
-          <Stack direction="row" sx={{ alignItems: 'center', gap: 0.875 }}>
+          <Stack direction="row" data-pdp-stock sx={{ alignItems: 'center', gap: 0.875 }}>
             <Box
               aria-hidden
               sx={{
                 width: 8,
                 height: 8,
                 borderRadius: '50%',
-                bgcolor: available ? 'var(--accent-deep)' : 'var(--muted)',
+                bgcolor: available ? 'var(--sf-ok, var(--accent-deep))' : 'var(--muted)',
               }}
             />
             <Typography
               sx={{
                 fontSize: TS.body,
                 fontWeight: 700,
-                color: available ? 'var(--accent-deep)' : 'var(--muted)',
+                color: available ? 'var(--sf-ok, var(--accent-deep))' : 'var(--muted)',
               }}
             >
               {available ? t('store.availability.inStock') : t('store.availability.outOfStock')}
@@ -915,6 +922,7 @@ function AddToCart({
           }
           disabled={!canBuy || pending}
           onClick={añadirAlCarrito}
+          className="sf-pdp-buy"
           // Lámina 31 · El botón ocupa lo que queda de la fila: es la acción de
           // la página y no puede medir lo mismo que el selector de cantidad.
           sx={{ flex: 1, minWidth: 200, minHeight: 50, fontSize: 16, fontWeight: 700 }}

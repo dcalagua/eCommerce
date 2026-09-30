@@ -142,6 +142,7 @@ function CartLineRow({
         to={`/s/${storeSlug}/product/${line.slug}`}
         onClick={onNavigate}
         aria-label={line.name}
+        className="sf-cart-thumb"
         sx={{
           width: size,
           height: size,

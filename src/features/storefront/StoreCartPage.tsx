@@ -65,12 +65,17 @@ export function StoreCartPage() {
 
   return (
     <>
-      <PageHeader
-        title={t('store.cart.title')}
-        subtitle={`${count} ${count === 1 ? t('store.cart.unit') : t('store.cart.units')}`}
-      />
+      {/* Rediseño v3 · enganches `sf-cart*`: retail viste la bolsa como su
+          lámina (título en versalitas, líneas sin caja, resumen sobre papel). */}
+      <Box className="sf-cart-head">
+        <PageHeader
+          title={t('store.cart.title')}
+          subtitle={`${count} ${count === 1 ? t('store.cart.unit') : t('store.cart.units')}`}
+        />
+      </Box>
 
       <Box
+        className="sf-cart"
         sx={{
           display: 'grid',
           gap: { xs: 2, md: 3 },
@@ -78,11 +83,11 @@ export function StoreCartPage() {
           alignItems: 'start',
         }}
       >
-        <Card sx={{ p: { xs: 1.5, md: 2.5 } }}>
+        <Card className="sf-cart-lines" sx={{ p: { xs: 1.5, md: 2.5 } }}>
           <CartLineList cart={cart} storeSlug={storeSlug} quoted={quoted} />
         </Card>
 
-        <Card sx={{ p: { xs: 1.5, md: 2.5 } }}>
+        <Card className="sf-cart-summary" sx={{ p: { xs: 1.5, md: 2.5 } }}>
           <Typography component="h2" sx={{ fontSize: TS.cardTitle, fontWeight: 800, mb: 1.5 }}>
             {t('store.cart.summary')}
           </Typography>
@@ -167,7 +172,7 @@ export function StoreCartPage() {
 
           <Divider sx={{ my: 2 }} />
           <Stack sx={{ gap: 1 }}>
-            <Button component={Link} to={`/s/${storeSlug}/checkout`} variant="contained" fullWidth>
+            <Button component={Link} to={`/s/${storeSlug}/checkout`} variant="contained" fullWidth className="sf-cart-checkout">
               {t('store.cart.checkout')}
             </Button>
             {/* Cierre A3: solo se pinta para quien compra para una empresa. */}

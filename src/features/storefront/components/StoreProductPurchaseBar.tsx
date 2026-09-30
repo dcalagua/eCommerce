@@ -123,6 +123,7 @@ export function StoreProductPurchaseBar({
       </Stack>
 
       <Button
+        className="sf-pdp-buy"
         variant="contained"
         onClick={onCta}
         disabled={disabled || pending}
