@@ -183,11 +183,14 @@ describe('la densidad nunca llega al teléfono', () => {
     expect(lg).toBeGreaterThanOrEqual(sm)
   })
 
-  it('el catálogo denso es el que más reparte, y el editorial el que menos', () => {
+  it('el catálogo denso es el que más reparte, y el editorial nunca más que universal', () => {
     expect(THEME_PRESETS.catalog.gridColumns.lg).toBeGreaterThan(
       THEME_PRESETS.universal.gridColumns.lg,
     )
-    expect(THEME_PRESETS.premium.gridColumns.lg).toBeLessThan(
+    // Rediseño v3: premium subió a 4 por pedido del operador («más productos,
+    // imágenes más chicas»). La regla que sobrevive es que el editorial no
+    // reparte más que el suelo.
+    expect(THEME_PRESETS.premium.gridColumns.lg).toBeLessThanOrEqual(
       THEME_PRESETS.universal.gridColumns.lg,
     )
   })

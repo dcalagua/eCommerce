@@ -149,9 +149,21 @@ export function ProductListRow({
           </Box>
         </Typography>
         {b2b ? <B2BProductMeta sku={product.sku} purchased={purchased} /> : null}
+        {/* Rediseño v3 · el SKU en la fila técnica. Oculto por defecto: lo
+            enciende el estilo catálogo (storefront.css), que vende por código.
+            En B2B ya lo pinta `B2BProductMeta`. */}
+        {!b2b && product.sku ? (
+          <Typography
+            component="span"
+            className="sf-row-sku"
+            sx={{ display: 'none', fontSize: 11, fontWeight: 600, color: 'var(--muted)', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}
+          >
+            {product.sku}
+          </Typography>
+        ) : null}
         <Typography
           data-stock={available ? 'in' : 'out'}
-          sx={{ fontSize: 11.5, fontWeight: 700, color: available ? 'var(--accent-deep)' : 'var(--muted)' }}
+          sx={{ fontSize: 11.5, fontWeight: 700, color: available ? 'var(--sf-ok, var(--accent-deep))' : 'var(--muted)' }}
         >
           {available ? t('store.availability.inStock') : t('store.availability.outOfStock')}
         </Typography>

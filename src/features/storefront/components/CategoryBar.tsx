@@ -30,11 +30,13 @@ function pillSx(active: boolean): SxProps<Theme> {
     fontSize: 13,
     borderRadius: 'var(--sf-pill)',
     border: '1px solid',
-    borderColor: active ? 'var(--accent)' : 'var(--sf-line-strong)',
-    bgcolor: active ? 'var(--accent-soft)' : 'var(--card)',
-    color: active ? 'var(--accent-deep)' : 'var(--text)',
+    // Rediseño v3 · la activa en TINTA (diseño de los cuatro estilos): se
+    // distingue igual que con el acento suave y no suma otra mancha de color.
+    borderColor: active ? 'var(--text)' : 'var(--sf-line-strong)',
+    bgcolor: active ? 'var(--text)' : 'var(--card)',
+    color: active ? 'var(--card)' : 'var(--text)',
     transition: 'background-color .15s ease, border-color .15s ease',
-    '&:hover': { bgcolor: active ? 'var(--accent-soft)' : 'var(--neutral-soft)' },
+    '&:hover': { bgcolor: active ? 'var(--text)' : 'var(--neutral-soft)' },
     '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
   }
 }
@@ -52,8 +54,8 @@ function Etiqueta({ nombre, cuenta }: { nombre: string; cuenta: number | undefin
       {cuenta !== undefined ? (
         <Box
           component="span"
-          className="tnum"
-          sx={{ px: 0.75, borderRadius: 'var(--sf-pill)', bgcolor: 'var(--neutral-soft)', color: 'var(--muted)', fontSize: 11.5, fontWeight: 700, lineHeight: 1.6 }}
+          className="tnum sf-cat-count"
+          sx={{ px: 0.75, borderRadius: 'var(--sf-pill)', bgcolor: 'color-mix(in srgb, currentColor 12%, transparent)', color: 'inherit', opacity: 0.8, fontSize: 11.5, fontWeight: 700, lineHeight: 1.6 }}
         >
           {cuenta}
         </Box>
@@ -91,6 +93,7 @@ export function CategoryBar({
             label={<Etiqueta nombre={t('store.categories.all')} cuenta={total ?? undefined} />}
             onClick={() => onSelect(null)}
             aria-pressed={selected === null}
+            className="sf-cat-pill"
             sx={pillSx(selected === null)}
           />
           {categories.map((category) => {
@@ -101,6 +104,7 @@ export function CategoryBar({
                 label={<Etiqueta nombre={category.name} cuenta={counts?.get(category.slug) ?? undefined} />}
                 onClick={() => onSelect(active ? null : category.slug)}
                 aria-pressed={active}
+                className="sf-cat-pill"
                 sx={pillSx(active)}
               />
             )

@@ -1130,6 +1130,9 @@ export function StoreHomePage() {
           ) : (
             <Typography
               component="h1"
+              // Rediseño v3 · cada estilo le pone su voz (versalitas en retail,
+              // serif grande en premium) desde storefront.css.
+              className="sf-plp-title"
               sx={{ fontSize: { xs: 22, md: 26 }, fontWeight: 800, letterSpacing: '-0.02em' }}
             >
               {tituloCatalogo}

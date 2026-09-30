@@ -135,7 +135,11 @@ export const THEME_PRESETS: Readonly<Record<ThemePreset, ThemeDefinition>> = {
      * esto.
      */
     productMediaFit: 'cover',
-    gridColumns: { xs: 2, sm: 2, lg: 3 },
+    // Rediseño v3 (pedido del operador, 2026-09-30): «imágenes más chicas y
+    // que se muestren más productos». La rejilla editorial pasa a 4 en
+    // escritorio, como la selección del atelier del diseño; nunca más que
+    // universal.
+    gridColumns: { xs: 2, sm: 3, lg: 4 },
   },
   catalog: {
     id: 'catalog',
