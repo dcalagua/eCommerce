@@ -1,5 +1,4 @@
 import { Box, Card, Skeleton, Stack } from '@mui/material'
-import { Fragment, type ReactNode } from 'react'
 import { useSessionContext } from '@/features/auth/session-context'
 import { useCatalogCommercialPrices } from '../commerce/catalogPrices'
 import { useCommerceContext } from '../commerce/context'
@@ -42,7 +41,6 @@ export function ProductGrid({
   favorites,
   onToggleFavorite,
   view = 'grid',
-  feature,
 }: {
   products: PublicProduct[]
   storeSlug: string
@@ -60,12 +58,6 @@ export function ProductGrid({
   onToggleFavorite?: (productId: string) => void
   /** `list` para quien compra por referencia. Por defecto, la rejilla. */
   view?: CatalogView
-  /**
-   * Rediseño v3 · Una pieza destacada DENTRO de la rejilla (la campaña del
-   * catálogo retail): va tras los cuatro primeros productos y ocupa 2×2 en
-   * escritorio. No es un resultado —no cuenta en el total—, es la campaña.
-   */
-  feature?: ReactNode
 }) {
   // UNA cotización para toda la rejilla, y solo si la sesión tiene condiciones
   // comerciales (N03). Invitado y consumidor: ninguna.
@@ -115,16 +107,7 @@ export function ProductGrid({
 
   return (
     <Box sx={GRID_SX}>
-      {products.map((product, indice) => (
-        <Fragment key={product.product_id}>
-        {feature && indice === 4 ? (
-          <Box
-            data-grid-feature
-            sx={{ gridColumn: { xs: '1 / -1', md: 'span 2' }, gridRow: { md: 'span 2' }, minWidth: 0 }}
-          >
-            {feature}
-          </Box>
-        ) : null}
+      {products.map((product) => (
         <ProductCard
           key={product.product_id}
           product={product}
@@ -140,7 +123,6 @@ export function ProductGrid({
           }
           onPrefetch={onPrefetch}
         />
-        </Fragment>
       ))}
     </Box>
   )

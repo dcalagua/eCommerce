@@ -18,7 +18,6 @@ import { BackToTop } from './components/BackToTop'
 import { CategoryBar } from './components/CategoryBar'
 import { CatalogOffersBand } from './components/CatalogOffersBand'
 import { CatalogViewToggle } from './components/CatalogViewToggle'
-import { PromoCatalogTile } from './components/PromoRetail'
 import { ProductGrid, ProductGridSkeleton, type CatalogView } from './components/ProductGrid'
 import { useFavorites } from './useFavorites'
 import { StoreLandingSkeleton } from './components/StoreLandingSkeleton'
@@ -1503,16 +1502,6 @@ export function StoreHomePage() {
                 favorites={favorites.ids}
                 onToggleFavorite={(productId) => void favorites.toggle(productId)}
                 view={vista}
-                feature={
-                  plpRetail && promosVigentes[0] ? (
-                    <PromoCatalogTile
-                      promo={promosVigentes[0]}
-                      storeSlug={storeSlug}
-                      currency={store.currency}
-                      assets={assetsPromos}
-                    />
-                  ) : undefined
-                }
               />
 
           {/* La siguiente página se PIDE al servidor: 24 filas, no las 48 o 72
