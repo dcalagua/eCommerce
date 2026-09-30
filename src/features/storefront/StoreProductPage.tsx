@@ -4,6 +4,8 @@ import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
 import LockRoundedIcon from '@mui/icons-material/LockRounded'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
+import FavoriteBorderRoundedIcon from '@mui/icons-material/FavoriteBorderRounded'
+import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded'
 import {
   Box,
   Button,
@@ -83,6 +85,8 @@ const RELATED_FETCH = 12
 export function StoreProductPage() {
   const { t, locale } = useI18n()
   const { preset } = useStorefrontTheme()
+  /** Rediseño v3 · la ficha retail con la composición de su lámina. */
+  const retail = preset === 'retail'
   const { store, storeSlug } = useStorefront()
   const { productSlug } = useParams<{ productSlug: string }>()
 
@@ -279,6 +283,72 @@ export function StoreProductPage() {
     </Stack>
   )
 
+  /**
+   * El detalle plegado. En retail vive EN la columna de compra, bajo los
+   * beneficios (lámina de ficha); en los demás estilos, debajo y a lo ancho.
+   */
+  const detalles = (
+      <StoreProductDetails
+        ariaLabel={t('store.product.detailsSection')}
+        panels={[
+          ...(item.description?.trim()
+            ? [
+                {
+                  id: 'description',
+                  title: t('store.product.description'),
+                  /**
+                   * Lámina 31 · El texto y, AL LADO, la ficha de datos en una
+                   * tarjeta. Solo el texto dejaba dos líneas en 1300 px de
+                   * ancho; en el teléfono la ficha baja debajo del texto.
+                   */
+                  content: (
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gap: { xs: 2.5, md: 5 },
+                        gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) minmax(280px, 400px)' },
+                        alignItems: 'start',
+                      }}
+                    >
+                      <Typography
+                        sx={{
+                          fontSize: { xs: 15, md: 17 },
+                          color: 'var(--text)',
+                          whiteSpace: 'pre-line',
+                          lineHeight: 1.7,
+                          // Texto corrido a lo ancho de la página se lee peor que
+                          // en una línea larga pero acotada.
+                          maxWidth: '68ch',
+                        }}
+                      >
+                        {item.description.trim()}
+                      </Typography>
+                      <Box
+                        data-pdp-sheet-aside
+                        sx={{
+                          px: 2.5,
+                          py: 0.5,
+                          border: '1px solid var(--sf-line)',
+                          borderRadius: 'var(--sf-radius-sm)',
+                          bgcolor: 'var(--card)',
+                        }}
+                      >
+                        {fichaDeDatos}
+                      </Box>
+                    </Box>
+                  ),
+                },
+              ]
+            : []),
+          {
+            id: 'sheet',
+            title: t('store.product.sheet'),
+            content: <Box sx={{ maxWidth: '60ch' }}>{fichaDeDatos}</Box>,
+          },
+        ]}
+      />
+  )
+
   return (
     <Stack
       sx={{
@@ -359,12 +429,16 @@ export function StoreProductPage() {
             alt={item.name}
             badge={!conAcuerdo && !hasVariants && discount !== null ? `−${discount} %` : null}
             // Rediseño v3 · retail: todas las fotos grandes en rejilla (lámina).
-            layout={preset === 'retail' ? 'grid' : 'viewer'}
-            favorite={{
-              active: esFavorito,
-              onToggle: () => void favorites.toggle(item.product_id),
-              label: `${esFavorito ? t('store.favorite.remove') : t('store.favorite.add')}: ${item.name}`,
-            }}
+            layout={retail ? 'grid' : 'viewer'}
+            {...(retail
+              ? {}
+              : {
+                  favorite: {
+                    active: esFavorito,
+                    onToggle: () => void favorites.toggle(item.product_id),
+                    label: `${esFavorito ? t('store.favorite.remove') : t('store.favorite.add')}: ${item.name}`,
+                  },
+                })}
           />
         </Box>
 
@@ -592,6 +666,21 @@ export function StoreProductPage() {
             ))}
           </Stack>
 
+          {/* Rediseño v3 · Retail: guardar como botón bajo la compra y el
+              detalle plegado en la misma columna (lámina de ficha). */}
+          {retail ? (
+            <Button
+              variant="outlined"
+              fullWidth
+              className="sf-pdp-fav"
+              aria-pressed={esFavorito}
+              onClick={() => void favorites.toggle(item.product_id)}
+              endIcon={esFavorito ? <FavoriteRoundedIcon /> : <FavoriteBorderRoundedIcon />}
+            >
+              {esFavorito ? t('store.favorite.remove') : t('store.favorite.add')}
+            </Button>
+          ) : null}
+          {retail ? <Box className="sf-pdp-details">{detalles}</Box> : null}
         </Stack>
       </Box>
 
@@ -609,65 +698,7 @@ export function StoreProductPage() {
        * apartado de envíos o devoluciones, porque la plataforma no conoce esas
        * políticas y escribirlas sería inventarlas.
        */}
-      <StoreProductDetails
-        ariaLabel={t('store.product.detailsSection')}
-        panels={[
-          ...(item.description?.trim()
-            ? [
-                {
-                  id: 'description',
-                  title: t('store.product.description'),
-                  /**
-                   * Lámina 31 · El texto y, AL LADO, la ficha de datos en una
-                   * tarjeta. Solo el texto dejaba dos líneas en 1300 px de
-                   * ancho; en el teléfono la ficha baja debajo del texto.
-                   */
-                  content: (
-                    <Box
-                      sx={{
-                        display: 'grid',
-                        gap: { xs: 2.5, md: 5 },
-                        gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) minmax(280px, 400px)' },
-                        alignItems: 'start',
-                      }}
-                    >
-                      <Typography
-                        sx={{
-                          fontSize: { xs: 15, md: 17 },
-                          color: 'var(--text)',
-                          whiteSpace: 'pre-line',
-                          lineHeight: 1.7,
-                          // Texto corrido a lo ancho de la página se lee peor que
-                          // en una línea larga pero acotada.
-                          maxWidth: '68ch',
-                        }}
-                      >
-                        {item.description.trim()}
-                      </Typography>
-                      <Box
-                        data-pdp-sheet-aside
-                        sx={{
-                          px: 2.5,
-                          py: 0.5,
-                          border: '1px solid var(--sf-line)',
-                          borderRadius: 'var(--sf-radius-sm)',
-                          bgcolor: 'var(--card)',
-                        }}
-                      >
-                        {fichaDeDatos}
-                      </Box>
-                    </Box>
-                  ),
-                },
-              ]
-            : []),
-          {
-            id: 'sheet',
-            title: t('store.product.sheet'),
-            content: <Box sx={{ maxWidth: '60ch' }}>{fichaDeDatos}</Box>,
-          },
-        ]}
-      />
+      {retail ? null : detalles}
 
       {/* Opiniones (cierre): solo lo moderado, más la reseña propia con su
           estado. Ver `reviews/ProductReviews.tsx`. */}

@@ -1509,13 +1509,15 @@
   border-radius: 0;
 }
 /* La compra: píldora en tinta a todo lo que queda de la fila. */
-.sf-scope[data-store-theme='retail'] .sf-pdp-buy {
+.sf-scope[data-store-theme='retail'] .sf-pdp-buy,
+.sf-scope[data-store-theme='retail'] .sf-pdp-bar-buy {
   background: var(--text);
   color: var(--card);
   border-radius: var(--sf-pill);
   box-shadow: none;
 }
-.sf-scope[data-store-theme='retail'] .sf-pdp-buy:hover {
+.sf-scope[data-store-theme='retail'] .sf-pdp-buy:hover,
+.sf-scope[data-store-theme='retail'] .sf-pdp-bar-buy:hover {
   background: color-mix(in srgb, var(--text) 85%, var(--card));
   box-shadow: none;
 }
@@ -1607,4 +1609,44 @@
 }
 .sf-scope[data-store-theme='retail'] .sf-cart-summary .MuiButton-text {
   color: var(--text);
+}
+/* Ficha retail: la compra a todo el ancho de la columna (la cantidad queda
+   encima) y guardar como boton contorneado debajo. */
+.sf-scope[data-store-theme='retail'] [data-pdp-purchase] .sf-pdp-buy {
+  flex-basis: 100%;
+}
+.sf-scope[data-store-theme='retail'] .sf-pdp-fav {
+  min-block-size: 50px;
+  border-radius: var(--sf-pill);
+  border-color: var(--text);
+  color: var(--text);
+  font-weight: 700;
+  text-transform: none;
+}
+.sf-scope[data-store-theme='retail'] .sf-pdp-fav[aria-pressed='true'] .MuiButton-endIcon {
+  color: var(--sf-heart);
+}
+/* El detalle plegado dentro de la columna: titulos a cuerpo de lectura. */
+.sf-scope[data-store-theme='retail'] .sf-pdp-details h2 {
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.sf-scope[data-store-theme='retail'] .sf-pdp-details :has(> [data-pdp-sheet-aside]) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.sf-scope[data-store-theme='retail'] .sf-pdp-details p {
+  font-size: 14px;
+}
+/* La galeria manda: ~3/5 del ancho, como en la lamina. */
+@media (min-width: 900px) {
+  .sf-scope[data-store-theme='retail'] main :has(> [data-pdp-gallery]) {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  }
+}
+/* Las opiniones cierran la ficha, despues de las sugerencias. */
+.sf-scope[data-store-theme='retail'] .sf-reviews {
+  order: 2;
 }
