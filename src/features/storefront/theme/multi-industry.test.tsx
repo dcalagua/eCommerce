@@ -512,7 +512,8 @@ describe('las puertas de categoría con fotografía', () => {
    * desde P04 pide píldoras, y ahí la foto no cabe. `retail` tampoco: desde el
    * Resumen v2 pide tarjetas con icono. Ver las pruebas siguientes.
    */
-  it.each(['universal', 'premium'])(
+  // Universal pinta sus familias en círculos desde el rediseño v3 (lámina).
+  it.each(['premium'])(
     'en el tema %s la que tiene foto la enseña y la que no cae al tinte',
     async (tema) => {
       cleanup()
@@ -581,7 +582,11 @@ describe('las puertas de categoría con fotografía', () => {
   it('una tienda sin ninguna foto pinta la sección igual que antes de P03', async () => {
     const base = ESCENARIOS[1] as Escenario
     await abrir(base, '/s/tienda', {
-      store: { home_layout: { version: 1, sections: [{ id: 'categories', enabled: true }] } },
+      // Las puertas se piden explícitas: el `auto` de Universal son círculos.
+      store: {
+        home_layout: { version: 1, sections: [{ id: 'categories', enabled: true }] },
+        storefront_style: { categoryVariant: 'tiles' },
+      },
       categorias: [
         { slug: 'zapatillas', name: 'Zapatillas' },
         { slug: 'botas', name: 'Botas' },

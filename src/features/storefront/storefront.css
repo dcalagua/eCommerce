@@ -1937,3 +1937,156 @@
   border-color: var(--text);
   border-radius: var(--sf-pill);
 }
+
+/* ===========================================================================
+   REDISEÑO v3 · UNIVERSAL (lámina «02 — Universal»)
+   ===========================================================================
+   El amarillo de oferta es SEMÁNTICO —como el rojo del corazón—: marca lo que
+   está rebajado en la gran superficie. No sustituye al acento del tenant, que
+   sigue siendo el de los botones y la marca. */
+.sf-scope {
+  --sf-deal: #ffd60a;
+  --sf-deal-fg: #16191f;
+}
+
+/* ---- Universal · títulos de sección: el título y «Ver más ›» en el acento -- */
+.sf-scope[data-store-theme='universal'] .sf-heading-eyebrow,
+.sf-scope[data-store-theme='universal'] .sf-heading-rule {
+  display: none;
+}
+.sf-scope[data-store-theme='universal'] .sf-heading-rule + * {
+  margin-left: auto;
+}
+.sf-scope[data-store-theme='universal'] main h2 {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.sf-scope[data-store-theme='universal'] .sf-heading-action .MuiButton-root {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-deep);
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.sf-scope[data-store-theme='universal'] .sf-heading-action .MuiButton-root::after {
+  content: '\203A';
+  margin-left: 6px;
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* ---- Universal · beneficios en cuatro tarjetas blancas ------------------ */
+.sf-scope[data-store-theme='universal'] .sf-value-props {
+  gap: 16px;
+  padding: 0;
+  background: transparent;
+}
+.sf-scope[data-store-theme='universal'] .sf-value-props > * {
+  padding: 16px 18px;
+  border: 1px solid var(--sf-line);
+  border-radius: var(--sf-radius);
+  background: var(--card);
+}
+
+/* ---- Universal · las piezas con fondo propio, sobre el lienzo gris ------- */
+.sf-scope[data-store-theme='universal'] [data-own-surface]:not(.sf-value-props) {
+  background: transparent;
+  border: 0;
+  padding-inline: 0;
+}
+
+/* ---- Universal · «Ofertas del día»: fila con reloj en pastilla amarilla --- */
+.sf-scope[data-store-theme='universal'] [data-offers-presentation='flash'] {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+}
+.sf-scope[data-store-theme='universal'] [data-offers-presentation='flash'] [data-countdown] {
+  color: var(--sf-deal-fg);
+}
+.sf-scope[data-store-theme='universal'] [data-offers-presentation='flash'] :has(> [data-countdown]),
+.sf-scope[data-store-theme='universal'] [data-offers-presentation='flash'] :has(> svg + [data-countdown]) {
+  background: var(--sf-deal);
+  color: var(--sf-deal-fg);
+}
+.sf-scope[data-store-theme='universal'] [data-offers-presentation='flash'] > :first-child > :first-child {
+  display: none;
+}
+
+/* ---- Universal · la tarjeta: blanca con borde, compra a lo ancho --------- */
+.sf-scope[data-store-theme='universal'] .eb-card {
+  background: var(--card);
+  border-color: var(--sf-line);
+  box-shadow: none;
+}
+.sf-scope[data-store-theme='universal'] .eb-card-state[data-stock='in'] {
+  display: none;
+}
+.sf-scope[data-store-theme='universal'] .eb-card-badge {
+  border-radius: 4px;
+  background: var(--sf-deal);
+  color: var(--sf-deal-fg);
+  box-shadow: none;
+}
+
+/* ---- Universal · familias en círculos dentro de un panel blanco ---------- */
+.sf-scope[data-store-theme='universal'] :has(> [data-category-circle]) {
+  justify-content: space-between;
+  padding: 20px 24px;
+  border: 1px solid var(--sf-line);
+  border-radius: var(--sf-radius);
+  background: var(--card);
+}
+.sf-scope[data-store-theme='universal'] [data-category-circle] .eb-circle {
+  background: var(--neutral-soft);
+  border: 0;
+}
+.sf-scope[data-store-theme='universal'] [data-category-circle] .eb-circle img {
+  object-fit: contain;
+  padding: 14%;
+  mix-blend-mode: multiply;
+}
+
+/* ---- Universal · marcas: fila de cajas blancas con el nombre ------------ */
+.sf-scope[data-store-theme='universal'] [data-brand-wall] > :last-child {
+  gap: 12px;
+  border-top: 0;
+}
+.sf-scope[data-store-theme='universal'] [data-brand-tile] {
+  margin-left: 0;
+  border: 1px solid var(--sf-line);
+  border-radius: var(--sf-radius);
+  background: var(--card);
+  min-height: 64px;
+}
+@media (min-width: 900px) {
+  .sf-scope[data-store-theme='universal'] [data-brand-tile] {
+    flex: 0 0 calc(12.5% - 10.5px);
+  }
+}
+.sf-scope[data-store-theme='universal'] [data-brand-tile] * {
+  color: var(--accent-deep);
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  font-size: 13px;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+/* ---- Universal · pie oscuro --------------------------------------------- */
+.sf-scope[data-store-theme='universal'] .sf-footer {
+  --text: #e9ecf1;
+  --muted: #9aa3ae;
+  --sf-line: rgba(255, 255, 255, 0.12);
+  max-width: none;
+  margin-top: var(--sf-section-gap-md);
+  padding-inline: max(24px, calc(50vw - var(--sf-content-w) / 2 + 24px));
+  background: var(--sf-band);
+  color: var(--text);
+}
+.sf-scope[data-store-theme='universal'] .sf-footer > :first-child {
+  border-top: 0;
+}

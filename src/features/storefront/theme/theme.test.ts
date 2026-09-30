@@ -84,12 +84,12 @@ describe('los presets como datos', () => {
    * va en `Container maxWidth="lg"`, `ProductMedia` viene con `1 / 1`— y
    * cambiarlos sin querer es cambiarle la tienda a todo el mundo.
    */
-  it('universal reproduce el aspecto actual de la vitrina', () => {
+  it('universal sigue su lámina v3 (cinco por fila en escritorio)', () => {
     const universal = THEME_PRESETS.universal
     expect(universal.contentWidth).toBe('lg')
     expect(universal.imageRatio).toBe('square')
     expect(universal.productCardVariant).toBe('comfortable')
-    expect(universal.gridColumns).toEqual({ xs: 2, sm: 3, lg: 4 })
+    expect(universal.gridColumns).toEqual({ xs: 2, sm: 3, lg: 5 })
   })
 
   it('los cuatro se distinguen entre si: un preset que no cambia nada no es un preset', () => {

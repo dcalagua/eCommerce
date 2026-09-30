@@ -69,16 +69,16 @@ describe('universal es el suelo, no un tema más', () => {
     }
   })
 
-  it('sus valores son los de la vitrina anterior al Theme Engine', () => {
-    // Los mismos números que había cableados: `Container` en `lg`,
-    // `ProductMedia` en `1 / 1` y `ProductGrid` repartiendo 2/3/4.
+  it('sus valores son los de su lámina v3', () => {
+    // Rediseño v3: la misma base (`lg`, cuadrada, cómoda) y cinco por fila en
+    // escritorio, como la gran superficie de la lámina.
     expect(THEME_PRESETS.universal).toMatchObject({
       contentWidth: 'lg',
       imageRatio: 'square',
       sectionSpacing: 'comfortable',
       headerVariant: 'standard',
       productCardVariant: 'comfortable',
-      gridColumns: { xs: 2, sm: 3, lg: 4 },
+      gridColumns: { xs: 2, sm: 3, lg: 5 },
     })
   })
 

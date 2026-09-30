@@ -3412,6 +3412,8 @@ export const es = {
   'store.catalog.result': 'resultado',
   'store.search.open': 'Buscar en la tienda',
   'store.search.submit': 'Buscar',
+  'store.universal.deals': 'Ofertas del día',
+  'store.universal.seeDeals': 'Ver ofertas',
   'store.nav.allCategories': 'Todas las categorías',
   'store.nav.home': 'Inicio',
   'store.search.placeholder': 'Buscar productos...',

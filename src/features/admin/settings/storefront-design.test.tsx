@@ -896,12 +896,12 @@ describe('cómo se enseña cada sección', () => {
     pintar()
 
     const panel = await abrirPanel(user, 'Novedades')
-    // Universal resuelve `rail` para producto: el desplegable lo escribe.
+    // Universal resuelve `grid` para producto (rediseño v3): el desplegable lo escribe.
     // Se mira el TEXTO del panel: el valor visible de un select de MUI no vive
     // en el input, que es el que lleva la etiqueta.
     await user.click(within(panel).getByLabelText('Composición'))
     expect(
-      await screen.findByRole('option', { name: 'Usar tema: Fila que se desplaza' }),
+      await screen.findByRole('option', { name: /^Usar tema: Rejilla/ }),
     ).toBeInTheDocument()
   })
 
@@ -911,12 +911,13 @@ describe('cómo se enseña cada sección', () => {
 
     const panel = await abrirPanel(user, 'Novedades')
     await user.click(within(panel).getByLabelText('Composición'))
-    await user.click(await screen.findByRole('option', { name: /Rejilla, todos iguales/ }))
+    // Una composición DISTINTA de la heredada (Universal hereda la rejilla).
+    await user.click(await screen.findByRole('option', { name: /^Fila que se desplaza/ }))
 
     await waitFor(() => {
       const guardado = valores().home_layout
       const seccion = guardado.sections.find((s) => s.id === 'new-arrivals')
-      expect(seccion?.presentation).toEqual({ variant: 'grid' })
+      expect(seccion?.presentation).toEqual({ variant: 'rail' })
       // La versión describe el CONTENIDO: con presentaciones, es la 2.
       expect(guardado.version).toBe(2)
     })

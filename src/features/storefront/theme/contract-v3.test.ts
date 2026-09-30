@@ -154,15 +154,15 @@ describe('los cuatro temas tienen personalidad propia', () => {
     expect(THEME_PRESETS.catalog.productMediaFit).toBe('contain')
   })
 
-  it('Universal conserva EXACTAMENTE lo que veía antes de V3', () => {
-    // La compatibilidad que el propio prompt de la fase exige: quien nunca
-    // eligió tema no puede cambiar de aspecto por un despliegue. Y `contain` es
-    // lo que la tarjeta aplicaba cableado a todas las tiendas.
+  it('Universal sigue su lámina v3 sin recortar fotos ajenas', () => {
+    // Rediseño v3 (aprobado por el operador, 2026-09-30): Universal pasa a la
+    // composición de su lámina —departamentos en círculos—. Lo que se mantiene
+    // es `contain`: la plataforma no sabe qué vende quien no eligió tema.
     expect(THEME_PRESETS.universal).toMatchObject({
       headerVariant: 'standard',
       heroVariant: 'product',
       productCardVariant: 'comfortable',
-      categoryVariant: 'tiles',
+      categoryVariant: 'circles',
       contentWidth: 'lg',
       imageRatio: 'square',
       sectionSpacing: 'comfortable',

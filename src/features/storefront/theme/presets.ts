@@ -50,7 +50,7 @@ export const THEME_PRESETS: Readonly<Record<ThemePreset, ThemeDefinition>> = {
     headerVariant: 'standard',
     heroVariant: 'product',
     productCardVariant: 'comfortable',
-    categoryVariant: 'tiles',
+    categoryVariant: 'circles',
     contentWidth: 'lg',
     imageRatio: 'square',
     sectionSpacing: 'comfortable',
@@ -75,7 +75,8 @@ export const THEME_PRESETS: Readonly<Record<ThemePreset, ThemeDefinition>> = {
      * eligiendo Premium, que es donde la fotografía manda—.
      */
     productMediaFit: 'contain',
-    gridColumns: { xs: 2, sm: 3, lg: 4 },
+    // Rediseño v3 · cinco por fila en escritorio, como la lámina.
+    gridColumns: { xs: 2, sm: 3, lg: 5 },
   },
   retail: {
     id: 'retail',

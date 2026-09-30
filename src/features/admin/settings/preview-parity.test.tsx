@@ -217,7 +217,8 @@ describe('cada composición del contrato tiene representación en el taller', ()
     )
     unmount()
 
-    pintarPreview({ preset: 'universal' })
+    // Catálogo sigue en tarjetas (Universal pasó al muro en el rediseño v3).
+    pintarPreview({ preset: 'catalog' })
     expect(marco().querySelector('[data-preview-brands]')).toHaveAttribute(
       'data-preview-brands',
       'cards',

@@ -94,12 +94,13 @@ describe('lo guardado manda, y lo que no encaja se descarta', () => {
 })
 
 describe('`auto` resuelve por tema, nunca por rubro', () => {
-  it('Universal resuelve EXACTAMENTE lo que la portada hacía antes de V3', () => {
-    // La prueba de compatibilidad de la fase: todas las tiendas existentes
-    // tienen `auto` en todo, así que si esto cambiara, cambiaría su portada.
-    expect(resolver('featured', 'universal').variant).toBe('rail')
-    expect(resolver('brands', 'universal').variant).toBe('cards')
-    expect(resolver('offers', 'universal').variant).toBe('band')
+  it('Universal resuelve la composición de su lámina v3, sin bandas a sangre', () => {
+    // Rediseño v3 (aprobado por el operador, 2026-09-30): Universal deja de
+    // ser «lo de antes» y pasa a su lámina. Lo que se mantiene es que nada va
+    // a sangre ni con fondo: la gran superficie ordena por tarjetas.
+    expect(resolver('featured', 'universal').variant).toBe('grid')
+    expect(resolver('brands', 'universal').variant).toBe('logos')
+    expect(resolver('offers', 'universal').variant).toBe('flash')
     for (const id of HOME_SECTION_IDS) {
       const resuelta = resolver(id, 'universal')
       expect(resuelta.surface).toBe('plain')
@@ -177,6 +178,9 @@ describe('`auto` resuelve por tema, nunca por rubro', () => {
       'icons',
       'flash',
       'banners',
+      // Rediseño v3 · Universal resuelve sus familias en círculos
+      // (`CategoryCircles`, que existe desde el contrato V4).
+      'circles',
     ]
     for (const preset of THEME_PRESET_IDS) {
       for (const id of HOME_SECTION_IDS) {

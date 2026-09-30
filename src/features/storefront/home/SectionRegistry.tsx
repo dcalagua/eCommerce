@@ -21,6 +21,9 @@ import { OffersFeaturedBand } from '../components/OffersFeaturedBand'
 import { ProductRow } from '../components/ProductRow'
 import { PromoBanners } from '../components/PromoBanners'
 import { PromoRetail } from '../components/PromoRetail'
+import { StoreUniversalHero } from '../components/StoreUniversalHero'
+import { PromoUniversal } from '../components/PromoUniversal'
+import { resolveValueProps } from '../valueProps'
 import { PromoCarousel } from '../components/PromoCarousel'
 import { PromoEditorial } from '../components/PromoEditorial'
 import { SectionHeading } from '../components/SectionHeading'
@@ -303,6 +306,34 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
       />
     )
 
+    // Rediseño v3 · Universal: departamentos, banner de campañas y dos
+    // bloques (lámina «Universal · Home»). Sin campañas, la destacada.
+    if (data.theme.preset === 'universal') {
+      const primeraOferta = data.ofertas[0] ?? null
+      const servicio =
+        resolveValueProps({
+          configured: data.store.value_props,
+          hasContact: Boolean(data.store.support_email?.trim() || data.store.contact_phone?.trim()),
+          t: data.t,
+        })[0] ?? null
+      return (
+        <StoreUniversalHero
+          storeSlug={data.storeSlug}
+          departments={data.categorias}
+          promotions={data.promociones}
+          promoAssets={data.promoAssets}
+          currency={data.store.currency}
+          offerThumb={
+            primeraOferta?.primary_image_path ? (data.thumbsOfertas[primeraOferta.primary_image_path] ?? null) : null
+          }
+          maxDiscount={mayorDescuento([...productos, ...data.ofertas], data.promociones)}
+          clockEndsAt={campanaQueTerminaAntes(data.promociones)?.endsAt ?? null}
+          service={servicio}
+          fallback={destacada}
+        />
+      )
+    }
+
     // Catálogo · la oferta y las campañas en UNA fila (propuesta 29). Antes
     // eran dos carruseles apilados, el segundo con media tarjeta vacía.
     const enPortada = campanasDePortadaCatalogo(data)
@@ -433,6 +464,10 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
           assets={data.promoAssets}
         />
       )
+    }
+    // Rediseño v3 · Universal: tres tarjetas de color (lámina «Universal · Home»).
+    if (presentation?.variant === 'band' && data.theme.preset === 'universal') {
+      return <PromoUniversal promotions={promos} storeSlug={data.storeSlug} currency={data.store.currency} />
     }
     // Resumen v2 · `banners`: dos campañas lado a lado.
     if (presentation?.variant === 'banners') {

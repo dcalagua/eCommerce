@@ -1003,7 +1003,7 @@ export function StoreHomePage() {
    */
   const fotoDeRespaldo = useMemo(() => {
     const mapa: Record<string, { imageUrl: string; imageAlt: null; imageFit: 'contain' }> = {}
-    if (tema.preset !== 'retail') return mapa
+    if (tema.preset !== 'retail' && tema.preset !== 'universal') return mapa
     const padre = new Map((categories.data ?? []).map((c) => [c.category_id, c.parent_id]))
     // Los productos que llegan de la BÚSQUEDA traen el slug de su familia y no
     // el id: se resuelve con el mismo árbol.

@@ -319,8 +319,10 @@ describe('el orden heredado es el de siempre', () => {
     expect(vendido).toBeGreaterThan(novedades)
   })
 
-  it('lo destacado va DENTRO de la banda de ofertas, como hasta ahora', () => {
-    pintar(layout([{ id: 'offers', enabled: true }]))
+  it('lo destacado va DENTRO de la banda de ofertas', () => {
+    // La banda se pide explícita: desde el rediseño v3 el `auto` de Universal
+    // es la fila de «Ofertas del día», que no lleva lo destacado.
+    pintar(layout([{ id: 'offers', enabled: true, presentation: { variant: 'band' } }]))
 
     expect(screen.getAllByText('Vitamina Destacada').length).toBeGreaterThan(0)
   })
@@ -495,8 +497,10 @@ describe('las familias y las marcas cambian de composición, no de contenido', (
     expect(screen.queryByText(/\b4\b/)).not.toBeInTheDocument()
   })
 
-  it('sin pedir nada, las marcas siguen siendo tarjetas con su cuenta', () => {
-    pintar(layout([{ id: 'brands', enabled: true }]))
+  it('pedidas en tarjetas, las marcas llevan su cuenta y no el muro', () => {
+    // Desde el rediseño v3 el `auto` de Universal es el muro (lámina); las
+    // tarjetas siguen a un control de distancia.
+    pintar(layout([{ id: 'brands', enabled: true, presentation: { variant: 'cards' } }]))
 
     expect(document.querySelector('[data-brand-wall]')).toBeNull()
     expect(screen.getAllByText('Genfar').length).toBeGreaterThan(0)
@@ -543,12 +547,12 @@ describe('marcas y reconocimiento no se pintan dos veces', () => {
  * cuesta alto de página.
  */
 describe('lo rebajado puede llevar su mensaje al lado', () => {
-  it('sin pedir nada es la banda de siempre', () => {
+  it('sin pedir nada, Universal pinta la fila de «Ofertas del día» (lámina v3)', () => {
     pintar(layout([{ id: 'offers', enabled: true }]))
 
     expect(document.querySelector('[data-offers-presentation]')).toHaveAttribute(
       'data-offers-presentation',
-      'band',
+      'flash',
     )
     expect(document.querySelector('[data-split-band]')).toBeNull()
   })

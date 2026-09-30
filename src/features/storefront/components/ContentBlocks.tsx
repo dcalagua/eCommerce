@@ -12,12 +12,14 @@ import { blockLayoutOf, type ProductCollectionLayout } from '@/domain/content'
 import type { ContentBlock, ContentCollectionItem } from '../content'
 import { moneyCorto, offerBadge, vigenciaTexto } from '../offer'
 import {
+  CategoryCircles,
   CategoryDoor,
   CategoryDoorGrid,
   CategoryPills,
   type CategoryDoorItem,
 } from './CategoryDoors'
 import { CategoryMosaic } from './CategoryMosaic'
+import { useStorefrontTheme } from '../theme/useStorefrontTheme'
 import { ProductMedia } from './ProductMedia'
 import { LoopingRow } from './LoopingRow'
 import { StoreSectionFrame } from './StoreSectionFrame'
@@ -996,6 +998,7 @@ function CategoryCollectionBlock({
   storeSlug: string
   categoryMedia: CategoryMedia
 }) {
+  const { preset } = useStorefrontTheme()
   const categories = block.items.filter(
     (item): item is Extract<ContentCollectionItem, { kind: 'category' }> => item.kind === 'category',
   )
@@ -1031,6 +1034,10 @@ function CategoryCollectionBlock({
    */
   const disposicion = blockLayoutOf('category_collection', block.settings)
   const etiqueta = block.title ?? undefined
+  // Rediseño v3 · En Universal la disposición POR DEFECTO son círculos, como
+  // la sección de familias de su lámina. Si el comercio eligió otra en el
+  // bloque, manda la suya.
+  const circulos = preset === 'universal' && disposicion === 'tiles'
 
   return (
     <Stack component="section" aria-label={etiqueta} sx={{ gap: 1.5 }}>
@@ -1041,6 +1048,8 @@ function CategoryCollectionBlock({
         <CategoryMosaic categories={conFoto} storeSlug={storeSlug} ariaLabel={etiqueta} />
       ) : disposicion === 'photo-grid' ? (
         <CategoryPhotoGrid categories={conFoto} storeSlug={storeSlug} ariaLabel={etiqueta} />
+      ) : circulos ? (
+        <CategoryCircles categories={conFoto} storeSlug={storeSlug} ariaLabel={etiqueta} />
       ) : (
         <CategoryDoorGrid categories={conFoto} storeSlug={storeSlug} ariaLabel={etiqueta} />
       )}

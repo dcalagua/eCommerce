@@ -178,7 +178,9 @@ const AUTO_POR_TEMA: Readonly<
    * `rail` es lo que la fila hacía: rejilla corta con pocos productos y
    * carrusel con muchos —esa adaptación es de la fila y no se toca—.
    */
-  universal: { product: 'rail', brands: 'cards', offers: 'band', promotions: 'band', bleedOffers: false },
+  // Rediseño v3 · Universal según su lámina: rejilla, muro de marcas y la
+  // fila de «Ofertas del día» con su reloj.
+  universal: { product: 'grid', brands: 'logos', offers: 'flash', promotions: 'band', bleedOffers: false },
   /**
    * Retail · descubrimiento.
    *

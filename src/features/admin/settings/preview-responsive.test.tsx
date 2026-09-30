@@ -100,7 +100,8 @@ describe('cada marco resuelve por su propio ancho', () => {
     pintar()
     const escritorio = marco('desktop') as HTMLElement
 
-    expect(variable(escritorio, '--sf-grid-lg')).toBe('4')
+    // Universal reparte cinco en escritorio desde el rediseño v3.
+    expect(variable(escritorio, '--sf-grid-lg')).toBe('5')
     expect(variable(escritorio, '--sfp-grid-cols')).toBe('var(--sf-grid-lg, 4)')
   })
 })
