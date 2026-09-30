@@ -1,5 +1,5 @@
 import BoltRoundedIcon from '@mui/icons-material/BoltRounded'
-import { Box, Breadcrumbs, Button, Card, Link as MuiLink, Skeleton, Stack, Typography } from '@mui/material'
+import { Box, Breadcrumbs, Button, Card, FormControlLabel, Link as MuiLink, Skeleton, Stack, Switch, Typography } from '@mui/material'
 import { visuallyHidden } from '@mui/utils'
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
@@ -18,6 +18,7 @@ import { BackToTop } from './components/BackToTop'
 import { CategoryBar } from './components/CategoryBar'
 import { CatalogOffersBand } from './components/CatalogOffersBand'
 import { CatalogViewToggle } from './components/CatalogViewToggle'
+import { PromoCatalogTile } from './components/PromoRetail'
 import { ProductGrid, ProductGridSkeleton, type CatalogView } from './components/ProductGrid'
 import { useFavorites } from './useFavorites'
 import { StoreLandingSkeleton } from './components/StoreLandingSkeleton'
@@ -157,6 +158,8 @@ export function StoreHomePage() {
   // El tema trae el ORDEN de la portada. No trae los datos ni decide qué hay:
   // eso sigue resolviéndose aquí abajo, con las mismas consultas de siempre.
   const tema = useStorefrontTheme()
+  /** Rediseño v3 · El catálogo retail con la composición de su lámina. */
+  const plpRetail = tema.preset === 'retail'
   const { pathname, hash } = useLocation()
   const [params, setParams] = useSearchParams()
 
@@ -915,7 +918,9 @@ export function StoreHomePage() {
       const promociones = tema.layout.sections.find((seccion) => seccion.id === 'promotions')
       if (promociones) secciones.push(promociones)
     }
-    if (filaDelCatalogo) secciones.push({ id: filaDelCatalogo, enabled: true, maxItems: 6 })
+    // Rediseño v3 · el catálogo retail no lleva fila encima (lámina de
+    // catálogo): la campaña va DENTRO de la rejilla.
+    if (filaDelCatalogo && tema.preset !== 'retail') secciones.push({ id: filaDelCatalogo, enabled: true, maxItems: 6 })
     // «Marcas» de la cabecera lleva a `?ver=todo#marcas`. Sin esto el ancla no
     // tenía destino en el catálogo y el enlace no hacía nada: el directorio de
     // marcas se pinta aquí, con la configuración del comercio si la tiene.
@@ -924,7 +929,7 @@ export function StoreHomePage() {
       secciones.push({ ...(marcas ?? { id: 'brands' as const }), enabled: true })
     }
     return { version: 1 as const, sections: secciones }
-  }, [catalogo, cargandoPortada, tema.layout, hash, filaDelCatalogo])
+  }, [catalogo, cargandoPortada, tema.layout, tema.preset, hash, filaDelCatalogo])
 
   /**
    * ¿Lo destacado se pinta como sección propia?
@@ -1167,6 +1172,53 @@ export function StoreHomePage() {
           camino de vuelta que no fuera el botón de atrás del navegador. */}
       {cargandoPortada ? null : catalogo ? (
         <Stack sx={{ gap: 0.5 }}>
+          {/* Rediseño v3 · Retail: migas ARRIBA del título, desde «Inicio»
+              (lámina de catálogo). Sustituyen al «Volver a la portada». */}
+          {plpRetail ? (
+            <Breadcrumbs
+              aria-label={t('store.categories.title')}
+              separator="/"
+              className="sf-plp-crumbs"
+              sx={{ fontSize: TS.label, color: 'var(--muted)', mb: 0.5 }}
+            >
+              <MuiLink component={Link} to={`/s/${storeSlug}`} underline="hover" sx={{ fontSize: TS.label, color: 'var(--muted)' }}>
+                {t('store.nav.home')}
+              </MuiLink>
+              {trail.length === 0 ? (
+                <Box component="span" sx={{ color: 'var(--text)' }}>
+                  {t('store.catalog.all')}
+                </Box>
+              ) : (
+                <MuiLink
+                  component="button"
+                  type="button"
+                  underline="hover"
+                  onClick={() => update('c', null)}
+                  sx={{ fontSize: TS.label, color: 'var(--muted)' }}
+                >
+                  {t('store.catalog.all')}
+                </MuiLink>
+              )}
+              {trail.map((node, index) =>
+                index === trail.length - 1 ? (
+                  <Box key={node.category_id} component="span" sx={{ color: 'var(--text)' }}>
+                    {node.name}
+                  </Box>
+                ) : (
+                  <MuiLink
+                    key={node.category_id}
+                    component="button"
+                    type="button"
+                    underline="hover"
+                    onClick={() => update('c', node.slug)}
+                    sx={{ fontSize: TS.label, color: 'var(--muted)' }}
+                  >
+                    {node.name}
+                  </MuiLink>
+                ),
+              )}
+            </Breadcrumbs>
+          ) : (
           <MuiLink
             component={Link}
             to={`/s/${storeSlug}`}
@@ -1181,6 +1233,7 @@ export function StoreHomePage() {
           >
             {`\u2190 ${t('store.catalog.back')}`}
           </MuiLink>
+          )}
           {paginaOfertas ? (
             <CatalogOffersBand
               // Resumen v2 · La campaña que antes termina, con su reloj REAL.
@@ -1192,15 +1245,23 @@ export function StoreHomePage() {
               }
             />
           ) : (
-            <Typography
-              component="h1"
-              // Rediseño v3 · cada estilo le pone su voz (versalitas en retail,
-              // serif grande en premium) desde storefront.css.
-              className="sf-plp-title"
-              sx={{ fontSize: { xs: 22, md: 26 }, fontWeight: 800, letterSpacing: '-0.02em' }}
-            >
-              {tituloCatalogo}
-            </Typography>
+            <Stack direction="row" sx={{ alignItems: 'baseline', gap: 1.25, flexWrap: 'wrap' }}>
+              <Typography
+                component="h1"
+                // Rediseño v3 · cada estilo le pone su voz (versalitas en retail,
+                // serif grande en premium) desde storefront.css.
+                className="sf-plp-title"
+                sx={{ fontSize: { xs: 22, md: 26 }, fontWeight: 800, letterSpacing: '-0.02em' }}
+              >
+                {tituloCatalogo}
+              </Typography>
+              {/* Retail · el total junto al título, «(48)», como en la lámina. */}
+              {plpRetail && results.isSuccess ? (
+                <Typography aria-hidden className="tnum" sx={{ fontSize: { xs: 15, md: 18 }, color: 'var(--muted)' }}>
+                  {`(${resultCount})`}
+                </Typography>
+              ) : null}
+            </Stack>
           )}
       </Stack>
       ) : null}
@@ -1224,7 +1285,7 @@ export function StoreHomePage() {
         <Stack sx={{ gap: 1 }}>
           {/* Las migas: sin ellas, quien abre «Desodorantes» desde el buscador
               no sabe que esta dentro de «Cuidado personal» ni como subir. */}
-          {trail.length > 0 && (
+          {trail.length > 0 && !plpRetail && (
             <Breadcrumbs
               aria-label={t('store.categories.title')}
               separator="›"
@@ -1328,7 +1389,7 @@ export function StoreHomePage() {
               }
               sortMenu={<StoreSortMenu value={sort} onChange={(next) => update('sort', next)} />}
               viewToggle={
-                <CatalogViewToggle
+                plpRetail ? undefined : <CatalogViewToggle
                   value={vista}
                   onChange={(next) => update('vista', next === 'list' ? 'lista' : 'rejilla')}
                 />
@@ -1336,6 +1397,25 @@ export function StoreHomePage() {
               activeFilters={filtrosPuestos}
               onOpenFilters={() => setCajonAbierto(true)}
               onClearFilters={quitarFiltros}
+              // Rediseño v3 · Retail: sin columna; «Filtros» abre el mismo panel
+              // en el cajón y «Solo en oferta» queda a mano en la barra.
+              filtersEverywhere={plpRetail}
+              quick={
+                plpRetail ? (
+                  <FormControlLabel
+                    className="sf-plp-quick"
+                    control={
+                      <Switch
+                        size="small"
+                        checked={soloOferta}
+                        onChange={(_, marcado) => update('oferta', marcado ? '1' : null)}
+                      />
+                    }
+                    label={t('store.filter.discounted')}
+                    sx={{ ml: 0.5, mr: 0, '& .MuiFormControlLabel-label': { fontSize: TS.label, fontWeight: 700 } }}
+                  />
+                ) : null
+              }
             />
           </Suspense>
 
@@ -1423,6 +1503,16 @@ export function StoreHomePage() {
                 favorites={favorites.ids}
                 onToggleFavorite={(productId) => void favorites.toggle(productId)}
                 view={vista}
+                feature={
+                  plpRetail && promosVigentes[0] ? (
+                    <PromoCatalogTile
+                      promo={promosVigentes[0]}
+                      storeSlug={storeSlug}
+                      currency={store.currency}
+                      assets={assetsPromos}
+                    />
+                  ) : undefined
+                }
               />
 
           {/* La siguiente página se PIDE al servidor: 24 filas, no las 48 o 72
@@ -1520,6 +1610,7 @@ export function StoreHomePage() {
          * `order` lo devuelve a la izquierda en escritorio — la vista no cambia,
          * la lectura sí.
          */}
+        {plpRetail ? null : (
         <Box
           sx={{
             display: { xs: 'none', md: 'block' },
@@ -1551,6 +1642,7 @@ export function StoreHomePage() {
             />
           </Suspense>
         </Box>
+        )}
       </Stack>
       ) : null}
 

@@ -93,6 +93,8 @@ export function StoreCatalogToolbar({
   activeFilters,
   onOpenFilters,
   onClearFilters,
+  filtersEverywhere = false,
+  quick,
 }: {
   /** Ya formateado por quien sabe si es «1 resultado» o «24 resultados». */
   count: ReactNode
@@ -105,6 +107,13 @@ export function StoreCatalogToolbar({
   /** Abre el cajón. Solo se pinta el botón si hay quien lo atienda. */
   onOpenFilters?: () => void
   onClearFilters?: () => void
+  /**
+   * Rediseño v3 · El botón «Filtros» también en escritorio. Retail no tiene
+   * columna de filtros (lámina de catálogo): el MISMO panel se abre en el cajón.
+   */
+  filtersEverywhere?: boolean
+  /** Rediseño v3 · Un atajo junto al contador («Solo en oferta» en retail). */
+  quick?: ReactNode
 }) {
   const { t } = useI18n()
   const puestos = activeFilters.length
@@ -112,6 +121,7 @@ export function StoreCatalogToolbar({
   return (
     <Stack
       data-catalog-toolbar={puestos}
+      className="sf-plp-toolbar"
       sx={{
         gap: 1,
         mb: 2,
@@ -132,10 +142,11 @@ export function StoreCatalogToolbar({
       >
         <Stack direction="row" sx={{ gap: 1, alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}>
           {/* Resumen v2 · El contador en texto, como en el diseño: «48 ofertas». */}
-          <Typography aria-live="polite" sx={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>
+          <Typography aria-live="polite" className="sf-plp-toolbar-count" sx={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>
             {count}
           </Typography>
           {note}
+          {quick}
           {/* Los filtros puestos en la MISMA línea, con su aspa, como en el
               diseño. UNA sola fila para todos los anchos: dos copias —una por
               ancho, escondidas con CSS— duplicaban cada botón en el árbol de
@@ -159,7 +170,7 @@ export function StoreCatalogToolbar({
                     fontWeight: 800,
                     color: 'var(--muted)',
                     textDecoration: 'underline',
-                    display: { md: 'none' },
+                    display: filtersEverywhere ? 'inline' : { md: 'none' },
                   }}
                 >
                   {t('store.catalog.clear')}
@@ -176,7 +187,7 @@ export function StoreCatalogToolbar({
               color="primary"
               // El cero no se pinta: un globo con un cero es ruido.
               invisible={puestos === 0}
-              sx={{ display: { md: 'none' } }}
+              sx={{ display: filtersEverywhere ? 'inline-flex' : { md: 'none' } }}
             >
               <Button
                 variant="outlined"

@@ -260,3 +260,86 @@ function Partida({
     </Box>
   )
 }
+
+/**
+ * Rediseño v3 · La campaña DENTRO de la rejilla del catálogo retail (lámina de
+ * catálogo: «−30% EN CÁRDIGANS» ocupando 2×2 entre los productos).
+ *
+ * Es la misma campaña que la portada anuncia —su foto, su texto, su vigencia y
+ * a dónde lleva—, no un producto: por eso no entra en el contador.
+ */
+export function PromoCatalogTile({
+  promo,
+  storeSlug,
+  currency,
+  assets = {},
+}: {
+  promo: StorePromotion
+  storeSlug: string
+  currency: string
+  assets?: Record<string, string>
+}) {
+  const { t, locale } = useI18n()
+  const badge = offerBadge(promo, t, locale, currency)
+  const vigencia = vigenciaTexto(promo.endsAt, t, locale)
+  const imageSrc = fuenteDe(promo.imageUrl, assets)
+
+  return (
+    <Stack
+      component="aside"
+      aria-label={promo.name}
+      data-promo-retail="tile"
+      sx={{
+        position: 'relative',
+        height: '100%',
+        minHeight: { xs: 320, md: 0 },
+        justifyContent: 'flex-end',
+        gap: 1.5,
+        p: { xs: 3, md: 4 },
+        bgcolor: 'var(--sf-soft)',
+        overflow: 'hidden',
+      }}
+    >
+      <Box
+        aria-hidden
+        sx={{
+          position: 'absolute',
+          insetInline: 0,
+          top: 0,
+          bottom: '42%',
+          display: 'grid',
+          placeItems: 'center',
+          bgcolor: 'var(--sf-photo-bg, var(--neutral-soft))',
+        }}
+      >
+        {imageSrc ? (
+          <Box
+            component="img"
+            src={imageSrc}
+            alt=""
+            loading="lazy"
+            sx={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              p: 3,
+              mixBlendMode: 'var(--sf-media-blend, normal)',
+            }}
+          />
+        ) : badge ? (
+          <Typography sx={{ ...TITULO, fontSize: { xs: 56, md: 88 }, color: 'var(--text)' }}>{badge}</Typography>
+        ) : null}
+      </Box>
+
+      <Stack sx={{ position: 'relative', gap: 1.25 }}>
+        {vigencia ? <Typography sx={{ ...ANTETITULO, color: 'var(--muted)' }}>{vigencia.texto}</Typography> : null}
+        <Typography component="h3" sx={{ ...TITULO, fontSize: { xs: 30, md: 40 } }}>
+          {promo.name}
+        </Typography>
+        <Box sx={{ mt: 0.5 }}>
+          <Puerta to={destinoDe(promo, storeSlug)} label={promo.name} invertida={false} />
+        </Box>
+      </Stack>
+    </Stack>
+  )
+}

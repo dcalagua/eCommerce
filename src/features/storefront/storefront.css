@@ -1459,3 +1459,24 @@
 .sf-scope[data-store-theme='retail'] .sf-catnav-panel ul a:hover {
   color: var(--text);
 }
+
+/* ---- Retail: el catalogo segun su lamina ------------------------------- */
+/* El total ya va junto al titulo: en la barra solo lo oye el lector. */
+.sf-scope[data-store-theme='retail'] .sf-plp-toolbar-count {
+  position: absolute;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+  block-size: 1px;
+  inline-size: 1px;
+}
+.sf-scope[data-store-theme='retail'] .sf-plp-toolbar {
+  padding-block: 12px;
+  border-block: 1px solid var(--sf-line);
+  margin-bottom: 24px;
+}
+.sf-scope[data-store-theme='retail'] [data-active-filter] {
+  background: var(--neutral-soft);
+  color: var(--text);
+  border-color: transparent;
+}
