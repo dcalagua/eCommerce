@@ -7479,6 +7479,7 @@ export type Database = {
           storage_path: string
           store_id: string | null
           updated_at: string
+          variant_id: string | null
         }
         Insert: {
           alt?: string | null
@@ -7492,6 +7493,7 @@ export type Database = {
           storage_path: string
           store_id?: string | null
           updated_at?: string
+          variant_id?: string | null
         }
         Update: {
           alt?: string | null
@@ -7505,6 +7507,7 @@ export type Database = {
           storage_path?: string
           store_id?: string | null
           updated_at?: string
+          variant_id?: string | null
         }
         Relationships: [
           {
@@ -7534,6 +7537,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "stores"
             referencedColumns: ["id", "organization_id", "company_id"]
+          },
+          {
+            foreignKeyName: "product_images_variant_fk"
+            columns: ["variant_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id", "product_id"]
+          },
+          {
+            foreignKeyName: "product_images_variant_fk"
+            columns: ["variant_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "public_product_variants"
+            referencedColumns: ["variant_id", "product_id"]
           },
         ]
       }
@@ -12367,6 +12384,7 @@ export type Database = {
           product_id: string | null
           storage_path: string | null
           store_id: string | null
+          variant_id: string | null
         }
         Insert: {
           alt?: string | null
@@ -12376,6 +12394,7 @@ export type Database = {
           product_id?: string | null
           storage_path?: string | null
           store_id?: string | null
+          variant_id?: string | null
         }
         Update: {
           alt?: string | null
@@ -12385,8 +12404,24 @@ export type Database = {
           product_id?: string | null
           storage_path?: string | null
           store_id?: string | null
+          variant_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "product_images_variant_fk"
+            columns: ["variant_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id", "product_id"]
+          },
+          {
+            foreignKeyName: "product_images_variant_fk"
+            columns: ["variant_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "public_product_variants"
+            referencedColumns: ["variant_id", "product_id"]
+          },
+        ]
       }
       public_product_variants: {
         Row: {
