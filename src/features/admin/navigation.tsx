@@ -1,3 +1,4 @@
+import MenuBookRoundedIcon from '@mui/icons-material/MenuBookRounded'
 import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded'
 import AltRouteRoundedIcon from '@mui/icons-material/AltRouteRounded'
 import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded'
@@ -200,6 +201,15 @@ export const NAV_ITEMS: NavItem[] = [
     to: '/app/orders',
     label: 'nav.orders',
     icon: <ReceiptLongRoundedIcon fontSize="small" />,
+    capability: 'orders',
+    group: 'sales',
+  },
+  {
+    // 2026-10-02 · Libro de Reclamaciones: obligación legal de toda tienda que
+    // vende al consumidor. Con los pedidos, y lo responde quien los atiende.
+    to: '/app/complaints',
+    label: 'nav.complaints',
+    icon: <MenuBookRoundedIcon fontSize="small" />,
     capability: 'orders',
     group: 'sales',
   },

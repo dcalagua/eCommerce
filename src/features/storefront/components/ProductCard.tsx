@@ -27,6 +27,8 @@ import { useStorefrontTheme } from '../theme/useStorefrontTheme'
 import type { ProductCardVariant } from '../theme/types'
 import { discountPercent, type PublicProduct } from '../types'
 import { ProductMedia } from './ProductMedia'
+import { isLightSwatch } from '../colorSwatch'
+import { useProductSwatches } from '../swatches'
 import { QuantityStepper } from './QuantityStepper'
 
 /**
@@ -177,6 +179,7 @@ export function ProductCard({
   const discount = discountPercent(product)
   const available = product.in_stock !== false
   const hasVariants = product.kind === 'variant'
+  const colores = useProductSwatches(product.product_id, hasVariants).data ?? []
   const to = `/s/${storeSlug}/product/${product.slug}`
   /**
    * Rediseño v3 · En RETAIL la compra rápida es un «+» sobre la foto y no un
@@ -491,6 +494,37 @@ export function ProductCard({
           </IconButton>
         ) : null}
       </Box>
+
+      {/* 2026-10-02 · Los colores disponibles, en bolitas (como las tiendas de
+          moda): hasta cuatro y «+N». Solo con dos o más; uno solo no informa. */}
+      {colores.length > 1 ? (
+        <Stack
+          direction="row"
+          data-card-swatches={colores.length}
+          aria-label={`${t('store.product.colors')}: ${colores.map((c) => c.label).join(', ')}`}
+          role="img"
+          sx={{ alignItems: 'center', gap: 0.625, minHeight: 14 }}
+        >
+          {colores.slice(0, 4).map((c) => (
+            <Box
+              key={c.label}
+              title={c.label}
+              sx={{
+                width: 12,
+                height: 12,
+                borderRadius: '50%',
+                background: c.swatch,
+                boxShadow: isLightSwatch(c.swatch) ? 'inset 0 0 0 1px var(--sf-line-strong, #ccc)' : 'none',
+              }}
+            />
+          ))}
+          {colores.length > 4 ? (
+            <Typography component="span" sx={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)' }}>
+              {`+${colores.length - 4}`}
+            </Typography>
+          ) : null}
+        </Stack>
+      ) : null}
 
       <Stack sx={{ gap: 0.5, flex: 1 }}>
         {vistaEmpresa && (product.brand_name || product.category_name) ? (

@@ -81,6 +81,7 @@ describe('rutas base', () => {
       '/app/assortments',
       '/app/categories',
       '/app/channels',
+      '/app/complaints',
       '/app/content',
       '/app/credit',
       '/app/customers',
@@ -122,6 +123,8 @@ describe('rutas base', () => {
       '/s/:storeSlug/cart',
       '/s/:storeSlug/checkout',
       '/s/:storeSlug/favoritos',
+      // 2026-10-02 · Libro de Reclamaciones: público, sin sesión.
+      '/s/:storeSlug/libro-de-reclamaciones',
       '/s/:storeSlug/order/:orderNumber',
       '/s/:storeSlug/p/:pageSlug',
       '/s/:storeSlug/pedido-rapido',

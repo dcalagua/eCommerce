@@ -184,7 +184,15 @@ export const BOUNDARIES: readonly Boundary[] = [
     state: 'implemented',
     responsibility:
       'El pedido una vez existe: estado, historial y consulta por el comprador o por el comercio.',
-    paths: ['features/orders', 'features/storefront/StoreOrderPage.tsx'],
+    paths: [
+      'features/orders',
+      'features/storefront/StoreOrderPage.tsx',
+      // 2026-10-02 · Libro de Reclamaciones: la posventa del pedido, con su
+      // bandeja en el backoffice y su hoja pública en la vitrina.
+      'features/complaints',
+      'features/storefront/complaints',
+      'features/storefront/StoreComplaintsPage.tsx',
+    ],
     serverSide: [
       'supabase/functions/update-order-status',
       'order_status_events (091400)',

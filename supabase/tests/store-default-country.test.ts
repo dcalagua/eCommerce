@@ -152,6 +152,8 @@ describe('lo que se publica y lo que no', () => {
       // decidir qué enseña.
       'store_description', 'hero_kicker', 'brand_lockup', 'show_theme_toggle',
       'announcement_messages',
+      // 2026-10-02 · Ayuda y datos legales del pie y del Libro de Reclamaciones.
+      'legal_name', 'tax_id', 'whatsapp_phone', 'help_note', 'business_hours', 'social_links',
       'default_country',
     ])
   })

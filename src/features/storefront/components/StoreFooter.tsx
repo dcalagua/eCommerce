@@ -1,10 +1,16 @@
+import FacebookIcon from '@mui/icons-material/Facebook'
+import InstagramIcon from '@mui/icons-material/Instagram'
+import LinkedInIcon from '@mui/icons-material/LinkedIn'
+import PinterestIcon from '@mui/icons-material/Pinterest'
+import XIcon from '@mui/icons-material/X'
+import YouTubeIcon from '@mui/icons-material/YouTube'
 import { Box, Container, Link as MuiLink, Stack, Typography } from '@mui/material'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { R, TS } from '@/theme/tokens'
 import { initials } from '../branding'
-import { resolveStoreDescription } from '../identity'
+import { resolveStoreDescription, sanitizeSocialLinks, whatsappHref, type SocialNetwork } from '../identity'
 import { usePublicCategories, useStoreNavigation } from '../hooks'
 import { useStorefrontTheme } from '../theme/useStorefrontTheme'
 import type { PublicStore } from '../types'
@@ -95,7 +101,191 @@ export function StoreFooter({ store, storeSlug }: { store: PublicStore; storeSlu
 
   // Solo las FAMILIAS, y como mucho seis. El pie orienta; no es un índice.
   const familias = (categories ?? []).filter((c) => c.parent_id === null).slice(0, 6)
-  const paginas = (pages ?? []).slice(0, 6)
+
+  /**
+   * 2026-10-02 · El pie ORGANIZADO de una tienda real (Empresa · Mi cuenta ·
+   * Legales · ¿Necesitas ayuda?). Se activa solo cuando el comercio tiene de qué
+   * llenarlo —páginas legales o datos de ayuda—; sin eso, el pie es el de
+   * siempre, y ninguna tienda cambia por desplegar esto.
+   */
+  const legales = (pages ?? []).filter((item) => item.kind === 'legal').slice(0, 8)
+  const empresa = (pages ?? []).filter((item) => item.kind !== 'legal').slice(0, 8)
+  const redes = sanitizeSocialLinks(store.social_links)
+  const whatsapp = store.whatsapp_phone?.trim() || null
+  const horario = store.business_hours?.trim() || null
+  const nota = store.help_note?.trim() || null
+  const hayAyuda = Boolean(whatsapp || horario || nota || redes.length > 0)
+  const organizado = legales.length > 0 || hayAyuda
+  const paginas = organizado ? empresa : (pages ?? []).slice(0, 6)
+  const firmaLegal = store.legal_name?.trim() || nombre
+  const reclamos = `/s/${storeSlug}/libro-de-reclamaciones`
+
+  if (organizado) {
+    return (
+      <Container
+        maxWidth={false}
+        component="footer"
+        data-content-width={style.contentWidth}
+        data-footer-layout="organized"
+        className="sf-footer"
+        sx={{ maxWidth: 'var(--sf-content-w)', mx: 'auto', pb: 3, pt: 'var(--sf-section-gap-md)' }}
+      >
+        <Box
+          sx={{
+            borderTop: '1px solid var(--sf-line)',
+            pt: 'var(--sf-section-gap-md)',
+            display: 'grid',
+            gap: { xs: 3, md: 4 },
+            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' },
+          }}
+        >
+          {paginas.length > 0 ? (
+            <BloqueDelPie titulo={t('store.footer.company')}>
+              <Stack component="nav" aria-label={t('store.footer.company')} sx={{ gap: 0.75 }}>
+                {paginas.map((item) => (
+                  <EnlaceDelPie key={item.slug} to={`/s/${storeSlug}/p/${item.slug}`}>
+                    {item.title}
+                  </EnlaceDelPie>
+                ))}
+              </Stack>
+            </BloqueDelPie>
+          ) : null}
+
+          <BloqueDelPie titulo={t('store.footer.account')}>
+            <Stack component="nav" aria-label={t('store.footer.account')} sx={{ gap: 0.75 }}>
+              <EnlaceDelPie to="/login">{t('store.footer.signIn')}</EnlaceDelPie>
+              <EnlaceDelPie to={`/s/${storeSlug}/account#pedidos`}>{t('store.footer.orders')}</EnlaceDelPie>
+              <EnlaceDelPie to={`/s/${storeSlug}/register`}>{t('store.footer.register')}</EnlaceDelPie>
+              <EnlaceDelPie to="/recuperar">{t('store.footer.recover')}</EnlaceDelPie>
+            </Stack>
+          </BloqueDelPie>
+
+          {legales.length > 0 ? (
+            <BloqueDelPie titulo={t('store.footer.legal')}>
+              <Stack component="nav" aria-label={t('store.footer.legal')} sx={{ gap: 0.75 }}>
+                {legales.map((item) => (
+                  <EnlaceDelPie key={item.slug} to={`/s/${storeSlug}/p/${item.slug}`}>
+                    {item.title}
+                  </EnlaceDelPie>
+                ))}
+              </Stack>
+            </BloqueDelPie>
+          ) : null}
+
+          <BloqueDelPie titulo={t('store.footer.help')}>
+            <Stack sx={{ gap: 1.5 }} data-footer-help>
+              {nota ? <Typography sx={{ fontSize: TS.body, fontWeight: 700 }}>{nota}</Typography> : null}
+              {whatsapp ? (
+                <Box>
+                  <Typography sx={{ fontSize: TS.body, fontWeight: 700 }}>{t('store.footer.whatsapp')}</Typography>
+                  {whatsappHref(whatsapp) ? (
+                    <EnlaceDelPie href={whatsappHref(whatsapp) as string}>{whatsapp}</EnlaceDelPie>
+                  ) : (
+                    <Typography sx={{ fontSize: TS.body }}>{whatsapp}</Typography>
+                  )}
+                </Box>
+              ) : null}
+              {contactos
+                .filter((c) => c.clave !== 'store.contact.address')
+                // El mismo número no se repite: si el teléfono ES el WhatsApp,
+                // ya está arriba.
+                .filter(
+                  (c) =>
+                    c.clave !== 'store.contact.phone' ||
+                    c.valor.replace(/\D/g, '') !== (whatsapp ?? '').replace(/\D/g, ''),
+                )
+                .map((contacto) => (
+                  <Box key={contacto.clave}>
+                    {contacto.href ? (
+                      <EnlaceDelPie href={contacto.href}>{contacto.valor}</EnlaceDelPie>
+                    ) : null}
+                  </Box>
+                ))}
+              {horario ? (
+                <Box>
+                  <Typography sx={{ fontSize: TS.body, fontWeight: 700 }}>{t('store.footer.hours')}</Typography>
+                  <Typography sx={{ fontSize: TS.body, whiteSpace: 'pre-line' }}>{horario}</Typography>
+                </Box>
+              ) : null}
+
+              <Box
+                component={Link}
+                to={reclamos}
+                data-complaints-link
+                sx={{
+                  alignSelf: 'flex-start',
+                  display: 'inline-flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 0.25,
+                  color: 'var(--text)',
+                  textDecoration: 'none',
+                  '&:hover': { textDecoration: 'underline' },
+                }}
+              >
+                <Typography component="span" sx={{ fontSize: 12, fontWeight: 800, lineHeight: 1.1, textAlign: 'center' }}>
+                  {t('store.complaints.book')}
+                </Typography>
+                <LibroIcono />
+              </Box>
+
+              {redes.length > 0 ? (
+                <Box>
+                  <Typography sx={{ fontSize: TS.label, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', mb: 1 }}>
+                    {t('store.footer.follow')}
+                  </Typography>
+                  <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
+                    {redes.map((red) => (
+                      <Box
+                        key={red.network}
+                        component="a"
+                        href={red.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={t('store.footer.social').replace('{network}', NOMBRE_RED[red.network])}
+                        sx={{
+                          width: 36,
+                          height: 36,
+                          display: 'grid',
+                          placeItems: 'center',
+                          borderRadius: '50%',
+                          border: '1px solid var(--text)',
+                          color: 'var(--text)',
+                          '&:hover': { bgcolor: 'var(--text)', color: 'var(--card)' },
+                          '& svg': { fontSize: 18, width: 18, height: 18 },
+                        }}
+                      >
+                        <IconoRed network={red.network} />
+                      </Box>
+                    ))}
+                  </Stack>
+                </Box>
+              ) : null}
+            </Stack>
+          </BloqueDelPie>
+        </Box>
+
+        <Box aria-hidden className="sf-footer-mark" data-mark={nombre} sx={{ display: 'none' }} />
+
+        <Typography
+          sx={{
+            fontSize: TS.label,
+            color: 'var(--muted)',
+            mt: 'var(--sf-section-gap-md)',
+            pt: 2,
+            borderTop: '1px solid var(--sf-line)',
+          }}
+        >
+          {[
+            `${firmaLegal.toUpperCase()} ${new Date().getFullYear()} © ${t('store.footer.rights')}`,
+            store.tax_id?.trim() ? `${t('store.footer.taxId')} ${store.tax_id.trim()}` : null,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </Typography>
+      </Container>
+    )
+  }
 
   return (
     <Container
@@ -250,6 +440,12 @@ export function StoreFooter({ store, storeSlug }: { store: PublicStore; storeSlu
         }}
       >
         {`© ${new Date().getFullYear()} ${nombre}`}
+        {' · '}
+        {/* El Libro de Reclamaciones, también en el pie de siempre: es una
+            obligación legal y ahora una función real de la tienda. */}
+        <MuiLink component={Link} to={reclamos} data-complaints-link sx={{ color: 'inherit' }}>
+          {t('store.complaints.book')}
+        </MuiLink>
       </Typography>
     </Container>
   )
@@ -307,5 +503,50 @@ function EnlaceDelPie({
     >
       {children}
     </MuiLink>
+  )
+}
+
+const NOMBRE_RED: Record<SocialNetwork, string> = {
+  facebook: 'Facebook',
+  instagram: 'Instagram',
+  youtube: 'YouTube',
+  tiktok: 'TikTok',
+  x: 'X',
+  linkedin: 'LinkedIn',
+  pinterest: 'Pinterest',
+}
+
+/** El glifo de cada red. TikTok no está en la librería: va dibujado aquí. */
+function IconoRed({ network }: { network: SocialNetwork }) {
+  switch (network) {
+    case 'facebook':
+      return <FacebookIcon aria-hidden />
+    case 'instagram':
+      return <InstagramIcon aria-hidden />
+    case 'youtube':
+      return <YouTubeIcon aria-hidden />
+    case 'x':
+      return <XIcon aria-hidden />
+    case 'linkedin':
+      return <LinkedInIcon aria-hidden />
+    case 'pinterest':
+      return <PinterestIcon aria-hidden />
+    case 'tiktok':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden fill="currentColor">
+          <path d="M16.6 3c.4 2.2 1.8 3.7 4 3.9v3.1c-1.5.1-2.8-.4-4-1.2v6.1c0 3.4-2.6 6.1-6 6.1s-6-2.7-6-6.1 2.6-6 6-6c.3 0 .7 0 1 .1v3.2a2.9 2.9 0 0 0-1-.2 2.9 2.9 0 1 0 2.9 2.9V3h3.1Z" />
+        </svg>
+      )
+  }
+}
+
+/** El libro abierto del Libro de Reclamaciones, en el color del texto. */
+function LibroIcono() {
+  return (
+    <svg width="64" height="30" viewBox="0 0 64 30" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M32 6c-6-4-16-4-26-1v21c10-3 20-3 26 1 6-4 16-4 26-1V5C48 2 38 2 32 6Z" />
+      <path d="M32 6v21" />
+      <path d="M11 10c5-1 10-1 15 1M11 15c5-1 10-1 15 1M38 11c5-2 10-2 15-1M38 16c5-2 10-2 15-1" />
+    </svg>
   )
 }

@@ -151,6 +151,12 @@ const StoreUnsubscribePage = lazyPage(() =>
 const StoreRegisterPage = lazyPage(() =>
   import('@/features/storefront/StoreRegisterPage').then((m) => ({ default: m.StoreRegisterPage })),
 )
+const ComplaintsPage = lazyPage(() =>
+  import('@/features/complaints/ComplaintsPage').then((m) => ({ default: m.ComplaintsPage })),
+)
+const StoreComplaintsPage = lazyPage(() =>
+  import('@/features/storefront/StoreComplaintsPage').then((m) => ({ default: m.StoreComplaintsPage })),
+)
 const StoreContentPage = lazyPage(() =>
   import('@/features/storefront/StoreContentPage').then((m) => ({ default: m.StoreContentPage })),
 )
@@ -242,6 +248,7 @@ export const routes: RouteObject[] = [
           { path: 'assortments', element: gated('trade.assortments', <AssortmentsPage />) },
           { path: 'planning', element: gated('planning.demand', <PlanningPage />) },
           { path: 'orders', element: gated('orders', <OrdersPage />) },
+          { path: 'complaints', element: gated('orders', <ComplaintsPage />) },
           // P09: cobros, medios y conciliacion. Gateado por la capacidad
           // `payments`: sin el addon la tienda sigue vendiendo con el pago
           // pendiente, que es lo que hacia antes de esta fase.
@@ -309,6 +316,8 @@ export const routes: RouteObject[] = [
       { path: 'pedido-rapido', element: withSuspense(<QuickOrderPage />) },
       // Alta de CONSUMIDOR dentro de la tienda (N02). No crea tenant: eso es `/onboarding`.
       { path: 'register', element: withSuspense(<StoreRegisterPage />) },
+      // Libro de Reclamaciones (2026-10-02). Sin sesión: reclamar es un derecho.
+      { path: 'libro-de-reclamaciones', element: withSuspense(<StoreComplaintsPage />) },
       // Baja de un clic de los recordatorios de carrito (cierre, ítem 8). Sin
       // sesión: el secreto del enlace es la autorización, y la página pide
       // confirmar antes de llamar para que un filtro de correo no dé de baja a

@@ -138,6 +138,18 @@ export const publicStoreSchema = z.object({
   show_theme_toggle: z.boolean().nullable().catch(false).default(false),
   announcement_messages: z.unknown(),
   /**
+   * 2026-10-02 · Ayuda y datos legales (migración `20261002120000`). Escalares
+   * con `catch(null)`: una base anterior a la migración o un valor raro deja el
+   * pie como estaba. `social_links` viaja CRUDO y lo filtra `sanitizeSocialLinks`
+   * entrada a entrada, igual que los avisos.
+   */
+  legal_name: z.string().nullable().catch(null).default(null),
+  tax_id: z.string().nullable().catch(null).default(null),
+  whatsapp_phone: z.string().nullable().catch(null).default(null),
+  help_note: z.string().nullable().catch(null).default(null),
+  business_hours: z.string().nullable().catch(null).default(null),
+  social_links: z.unknown(),
+  /**
    * H08 · País por defecto del checkout, derivado de las zonas de entrega de la
    * tienda (migración `20260913120000`). `null` si vende a varios países o no
    * configuró cobertura. `catch(null)` y `default(null)`: una base anterior a la

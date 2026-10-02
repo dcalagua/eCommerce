@@ -317,7 +317,15 @@ export async function fetchStoreContent(input: {
 }
 
 const navigationSchema = z
-  .array(z.object({ slug: z.string().min(1), title: z.string().min(1) }))
+  .array(
+    z.object({
+      slug: z.string().min(1),
+      title: z.string().min(1),
+      // 2026-10-02 · El tipo agrupa el pie (Empresa / Legales). Una base
+      // anterior a 20261002120400 no lo trae: cae a `landing`.
+      kind: z.enum(['landing', 'legal']).catch('landing').default('landing'),
+    }),
+  )
   .default([])
 
 export type StoreNavigationItem = z.infer<typeof navigationSchema>[number]

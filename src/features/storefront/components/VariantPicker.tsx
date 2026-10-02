@@ -12,6 +12,7 @@ import {
   valueState,
   variantAxes,
 } from '../variantChoice'
+import { isColorAxis, isLightSwatch, swatchesFor } from '../colorSwatch'
 
 /**
  * Elegir variante con botones de opción, uno por valor.
@@ -51,10 +52,38 @@ export function VariantPicker({
       <Stack sx={{ gap: 1.75 }}>
         {ejes.map((eje) => {
           const actual = eje.values.find((value) => value.code === eleccion[eje.code])
+          // 2026-10-02 · El eje de color en círculos, si TODOS sus valores son
+          // colores conocidos; si no, botones de texto como siempre.
+          const tonos = isColorAxis(eje) ? swatchesFor(eje.values.map((value) => value.label)) : null
           return (
             <OptionGroup key={eje.code} legend={eje.name} current={actual?.label}>
-              {eje.values.map((value) => {
+              {eje.values.map((value, indice) => {
                 const estado = valueState(variants, selected, eje.code, value.code)
+                const tono = tonos?.[indice]
+                if (tono) {
+                  return (
+                    <SwatchButton
+                      key={value.code}
+                      name={`${grupo}-${eje.code}`}
+                      label={value.label}
+                      swatch={tono}
+                      checked={actual?.code === value.code}
+                      disabled={disabled || estado === 'soldOut'}
+                      elsewhere={estado === 'elsewhere'}
+                      hint={
+                        estado === 'soldOut'
+                          ? t('store.product.variantOutOfStock')
+                          : estado === 'elsewhere'
+                            ? t('store.product.notInCombination')
+                            : undefined
+                      }
+                      onChange={() => {
+                        const siguiente = chooseValue(variants, selected, eje.code, value.code)
+                        if (siguiente) onSelect(siguiente.variant_id)
+                      }}
+                    />
+                  )
+                }
                 return (
                   <OptionButton
                     key={value.code}
@@ -164,6 +193,7 @@ function OptionButton({
   return (
     <Box
       component="label"
+      className="sf-option"
       sx={{
         position: 'relative',
         display: 'inline-flex',
@@ -227,6 +257,79 @@ function OptionButton({
           {`, ${hint}`}
         </Box>
       )}
+    </Box>
+  )
+}
+
+/**
+ * Un color, como círculo. Es el MISMO radio que los botones de texto —mismo
+ * nombre de grupo, mismo teclado, mismo anuncio— con el nombre del color como
+ * texto accesible y en `title`. Agotado: tachado en diagonal; disponible solo
+ * con otra combinación: anillo discontinuo.
+ */
+function SwatchButton({
+  name,
+  label,
+  swatch,
+  hint,
+  checked,
+  disabled,
+  elsewhere = false,
+  onChange,
+}: {
+  name: string
+  label: string
+  swatch: string
+  hint?: string
+  checked: boolean
+  disabled: boolean
+  elsewhere?: boolean
+  onChange: () => void
+}) {
+  const claro = isLightSwatch(swatch)
+  return (
+    <Box
+      component="label"
+      title={label}
+      data-swatch={label}
+      sx={{
+        position: 'relative',
+        display: 'inline-grid',
+        placeItems: 'center',
+        width: 44,
+        height: 44,
+        borderRadius: '50%',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        // El anillo exterior marca la elección; el disco va dentro con aire.
+        border: '2px solid',
+        borderStyle: elsewhere && !checked ? 'dashed' : 'solid',
+        borderColor: checked ? 'var(--text)' : 'transparent',
+        '&:hover': disabled || checked ? undefined : { borderColor: 'var(--sf-line-strong)' },
+        '&:has(input:focus-visible)': { outline: '2px solid var(--accent)', outlineOffset: 2 },
+      }}
+    >
+      <Box component="input" type="radio" name={name} checked={checked} disabled={disabled} onChange={onChange} sx={visuallyHidden} />
+      <Box
+        aria-hidden
+        sx={{
+          width: 32,
+          height: 32,
+          borderRadius: '50%',
+          background: swatch,
+          boxShadow: claro ? 'inset 0 0 0 1px var(--sf-line-strong, #ccc)' : 'none',
+          opacity: disabled ? 0.45 : 1,
+          // Agotado: una diagonal sobre el disco, que se ve en cualquier color.
+          ...(disabled
+            ? {
+                backgroundImage: `linear-gradient(135deg, transparent 46%, var(--text) 46% 54%, transparent 54%), ${swatch.startsWith('#') ? `linear-gradient(${swatch}, ${swatch})` : swatch}`,
+              }
+            : {}),
+        }}
+      />
+      <Box component="span" sx={visuallyHidden}>
+        {label}
+        {hint ? `, ${hint}` : ''}
+      </Box>
     </Box>
   )
 }

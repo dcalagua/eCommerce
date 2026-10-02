@@ -1,3 +1,4 @@
+import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded'
 import ContactMailRoundedIcon from '@mui/icons-material/ContactMailRounded'
 import LockRoundedIcon from '@mui/icons-material/LockRounded'
 import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded'
@@ -50,6 +51,7 @@ import RemoveShoppingCartRoundedIcon from '@mui/icons-material/RemoveShoppingCar
 import { StorefrontDesignSection } from './settings/StorefrontDesignSection'
 import { TaxesSection } from './settings/TaxesSection'
 import { StoreIdentitySection } from './settings/StoreIdentitySection'
+import { HelpContactSection } from './settings/HelpContactSection'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import { EmptyState, ErrorState, LoadingState, UnauthorizedState } from '@/shared/ui/states'
 import { THEME_FONTS, normalizeThemePreset } from '@/features/storefront/theme/presets'
@@ -541,6 +543,14 @@ export function SettingsPage() {
                       <Typography sx={{ color: 'var(--muted)', fontSize: 13, mt: 0.5 }}>
                         {t('settings.requirePaymentBeforeDispatchHelp')}
                       </Typography>
+                    </SectionCard>
+                    {/* 2026-10-02 · Atención y datos legales: su propio guardado. */}
+                    <SectionCard
+                      icon={<SupportAgentRoundedIcon />}
+                      title={t('settings.help.title')}
+                      subtitle={t('settings.help.subtitle')}
+                    >
+                      <HelpContactSection storeId={storeId} canManage={canManage} />
                     </SectionCard>
                   </Stack>
                 )}

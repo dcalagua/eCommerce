@@ -179,3 +179,41 @@ export function resolveHeroKicker(valor: unknown): string {
 export function resolveShowThemeToggle(valor: unknown): boolean {
   return valor === true
 }
+
+/** Las redes que el pie sabe dibujar (mismo orden y lista que la base). */
+export const SOCIAL_NETWORKS = ['facebook', 'instagram', 'youtube', 'tiktok', 'x', 'linkedin', 'pinterest'] as const
+export type SocialNetwork = (typeof SOCIAL_NETWORKS)[number]
+export interface SocialLink {
+  readonly network: SocialNetwork
+  readonly url: string
+}
+
+/**
+ * Las redes de la tienda, saneadas entrada a entrada (2026-10-02).
+ *
+ * La base ya las valida con `ebim.social_links_are_valid`; esto es la segunda
+ * línea, porque lo que se pinta es un ENLACE: solo `https://`, red de la lista
+ * cerrada, sin repetir y como mucho seis. Lo desconocido se descarta, no rompe.
+ */
+export function sanitizeSocialLinks(value: unknown): SocialLink[] {
+  if (!Array.isArray(value)) return []
+  const vistas = new Set<string>()
+  const fuera: SocialLink[] = []
+  for (const entrada of value) {
+    if (typeof entrada !== 'object' || entrada === null) continue
+    const { network, url } = entrada as Record<string, unknown>
+    if (typeof network !== 'string' || !(SOCIAL_NETWORKS as readonly string[]).includes(network)) continue
+    if (typeof url !== 'string' || !/^https:\/\/[^\s]+$/.test(url) || url.length > 300) continue
+    if (vistas.has(network)) continue
+    vistas.add(network)
+    fuera.push({ network: network as SocialNetwork, url })
+    if (fuera.length === 6) break
+  }
+  return fuera
+}
+
+/** WhatsApp como enlace `wa.me`: solo dígitos. `null` si no queda número. */
+export function whatsappHref(phone: string | null | undefined): string | null {
+  const digitos = (phone ?? '').replace(/\D/g, '')
+  return digitos.length >= 6 ? `https://wa.me/${digitos}` : null
+}
