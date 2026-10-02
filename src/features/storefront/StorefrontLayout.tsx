@@ -22,7 +22,7 @@ import {
   Typography,
   useMediaQuery,
 } from '@mui/material'
-import { lazy, Suspense, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { Link, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ErrorBoundary } from '@/app/ErrorBoundary'
 import { useSessionContext } from '@/features/auth/session-context'
@@ -62,6 +62,7 @@ import { StorefrontThemeProvider } from './theme/StorefrontThemeProvider'
 import { useStorefrontTheme } from './theme/useStorefrontTheme'
 import { themeCssVars, themeDataAttributes } from './theme/theme-context'
 import type { PublicStore } from './types'
+import { LoaderMarkContext } from '@/shared/ui/loaderMark'
 // La tipografia de la VITRINA, auto-alojada. Se importa aqui —y no en el
 // arranque de la app— para que viaje en el chunk del storefront: quien entra al
 // backoffice no baja ni un byte de ella.
@@ -136,6 +137,30 @@ export function StorefrontLayout() {
   // fuera contenido: el «soft 404» clásico. Se declara ANTES de decidir qué
   // pintar para que también cubra el fallo de red.
   const failed = !isPending && (isError || !store)
+
+  // El favicon de la TIENDA en la pestaña (2026-10-02). El campo existía en
+  // Ajustes pero nadie lo aplicaba: la pestaña seguía con el de la suite. Al
+  // salir de la vitrina se devuelve el que había.
+  const favicon = store?.favicon_url ?? null
+  useEffect(() => {
+    if (!favicon) return
+    let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
+    const creado = !link
+    if (!link) {
+      link = document.createElement('link')
+      link.rel = 'icon'
+      document.head.appendChild(link)
+    }
+    const previo = { href: link.getAttribute('href'), type: link.getAttribute('type') }
+    link.href = favicon
+    link.removeAttribute('type')
+    return () => {
+      if (!link) return
+      if (creado) return link.remove()
+      if (previo.href) link.setAttribute('href', previo.href)
+      if (previo.type) link.setAttribute('type', previo.type)
+    }
+  }, [favicon])
   useDocumentMeta(
     failed
       ? notFoundMeta({ title: t('store.notFound'), pathname, siteName: 'eCommerce by EBIM', locale })
@@ -164,6 +189,7 @@ export function StorefrontLayout() {
   }
 
   const context: StorefrontOutlet = { storeSlug: storeSlug as string, store }
+  const loaderMark = { url: store.loader_url ?? null, animation: store.loader_animation }
 
 
   return (
@@ -198,6 +224,9 @@ export function StorefrontLayout() {
             por este árbol— no lo recibe. Es la misma línea que dibuja
             `.sf-scope` en el CSS, dicha en React. */}
         <StorefrontThemeProvider store={store}>
+          {/* Las esperas de la vitrina giran con la imagen del COMERCIO si
+              subió una; si no, con la de la suite (ver `loaderMark.ts`). */}
+          <LoaderMarkContext.Provider value={loaderMark}>
           <StorefrontSurface>
           {/* Primer elemento enfocable del documento: sin él, llegar al
               catálogo con el teclado obliga a pasar por el logo, el menú, la
@@ -291,6 +320,7 @@ export function StorefrontLayout() {
         </Suspense>
       )}
           </StorefrontSurface>
+          </LoaderMarkContext.Provider>
         </StorefrontThemeProvider>
       </CartProvider>
     </AppearanceProvider>
