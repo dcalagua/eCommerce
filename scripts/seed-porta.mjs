@@ -359,7 +359,9 @@ async function settings(storeId) {
        whatsapp_phone = ${lit(STORE.whatsapp)},
        help_note = ${lit(STORE.helpNote)},
        business_hours = ${lit(STORE.hours)},
-       social_links = ${json(STORE.social)}
+       social_links = ${json(STORE.social)},
+       -- B2C: el precio publicado ya lleva el IGV; el cliente paga lo que ve.
+       tax_inclusive = true
      where store_id = ${lit(storeId)}`,
   )
   console.log('ajustes de tienda: tema, avisos, contacto, ayuda y datos legales')

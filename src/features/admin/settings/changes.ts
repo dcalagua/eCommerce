@@ -35,6 +35,7 @@ const ZONA: Partial<Record<keyof StoreFormValues, MessageKey>> = {
   show_theme_toggle: 'settings.changes.notices',
   checkout_requires_account: 'settings.changes.rules',
   require_payment_before_dispatch: 'settings.changes.rules',
+  tax_inclusive: 'settings.changes.rules',
   white_label: 'settings.changes.email',
   email_from_name: 'settings.changes.email',
   email_reply_to: 'settings.changes.email',

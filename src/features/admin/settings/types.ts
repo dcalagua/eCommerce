@@ -94,6 +94,8 @@ export const storeSettingsSchema = z.object({
   checkout_requires_account: z.boolean().nullable().default(false),
   /** P19 · La tienda no entrega mercancía sin haber cobrado. */
   require_payment_before_dispatch: z.boolean().nullable().default(false),
+  /** Los precios del catálogo ya incluyen el impuesto (B2C en Perú: con IGV). */
+  tax_inclusive: z.boolean().nullable().default(false),
   /**
    * White-label por tokens (P11-SaaS). `catch(null)` en los tres de lista
    * cerrada: un valor que la app no conoce cae al de suite en vez de dejar la
@@ -295,6 +297,12 @@ export const storeFormSchema = z.object({
    */
   require_payment_before_dispatch: z.boolean(),
   /**
+   * 2026-10-02 · Precio publicado = precio final. Con él, el pedido SACA el
+   * impuesto del precio en vez de sumarlo (`ebim` lo resuelve desde
+   * 20260827091700). Lo que espera un consumidor: paga lo que vio.
+   */
+  tax_inclusive: z.boolean(),
+  /**
    * Theme Engine. Los tres se guardan SIEMPRE para owner/admin: elegir entre
    * cuatro disposiciones de los mismos componentes es tematización, igual que
    * el acento o la densidad, y no depende de `content.white_label`. La raya
@@ -354,6 +362,7 @@ export function toForm(name: string, settings: StoreSettings | null): StoreFormV
     favicon_url: settings?.favicon_url ?? null,
     checkout_requires_account: settings?.checkout_requires_account ?? false,
     require_payment_before_dispatch: settings?.require_payment_before_dispatch ?? false,
+    tax_inclusive: settings?.tax_inclusive ?? false,
     /**
      * Theme Engine. Los tres pasan por el contrato antes de llegar al
      * formulario, así que una fila anterior al despliegue de la migración —o

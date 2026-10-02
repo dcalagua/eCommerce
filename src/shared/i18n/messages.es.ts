@@ -653,6 +653,8 @@ export const es = {
     'store.accountMenu.signOutHint': 'Cierra tu sesión en este equipo',
     'settings.section.checkout': 'Compra',
     'settings.section.checkoutHelp': 'Quién puede completar un pedido en tu tienda.',
+    'settings.taxInclusive': 'Los precios ya incluyen el impuesto',
+    'settings.taxInclusiveHelp': 'Actívalo si vendes a consumidor final: el cliente paga el precio que ve y el pedido separa el IGV de ese precio. Apagado, el impuesto se suma al precio en el pago.',
     'settings.checkoutRequiresAccount': 'Exigir cuenta para comprar',
     'settings.checkoutRequiresAccountHelp': 'Con esto activo, nadie completa un pedido sin haber iniciado sesión. El catálogo y el carrito siguen abiertos.',
     'settings.requirePaymentBeforeDispatch': 'No entregar sin haber cobrado',

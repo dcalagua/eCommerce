@@ -689,6 +689,8 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'store.accountMenu.signOutHint': 'Sign out on this device',
     'settings.section.checkout': 'Checkout',
     'settings.section.checkoutHelp': 'Who can complete an order in your store.',
+    'settings.taxInclusive': 'Prices already include tax',
+    'settings.taxInclusiveHelp': 'Turn it on if you sell to consumers: customers pay the price they see and the order breaks the tax out of it. When off, tax is added to the price at checkout.',
     'settings.checkoutRequiresAccount': 'Require an account to buy',
     'settings.checkoutRequiresAccountHelp': 'With this on, nobody completes an order without signing in. The catalog and the cart stay open.',
     'settings.requirePaymentBeforeDispatch': 'Do not hand over until paid',

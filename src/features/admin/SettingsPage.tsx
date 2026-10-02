@@ -545,6 +545,30 @@ export function SettingsPage() {
                       <Typography sx={{ color: 'var(--muted)', fontSize: 13, mt: 0.5 }}>
                         {t('settings.requirePaymentBeforeDispatchHelp')}
                       </Typography>
+
+                      {/* 2026-10-02 · Precio publicado = precio final. Sin esto el
+                          pago SUMABA el IGV a un precio que el consumidor ya leía
+                          como final (S/ 89.90 cobraba S/ 106.08). */}
+                      <Controller
+                        control={form.control}
+                        name="tax_inclusive"
+                        render={({ field }) => (
+                          <FormControlLabel
+                            sx={{ mt: 1.5 }}
+                            control={
+                              <Switch
+                                checked={field.value}
+                                disabled={busy}
+                                onChange={(event) => field.onChange(event.target.checked)}
+                              />
+                            }
+                            label={t('settings.taxInclusive')}
+                          />
+                        )}
+                      />
+                      <Typography sx={{ color: 'var(--muted)', fontSize: 13, mt: 0.5 }}>
+                        {t('settings.taxInclusiveHelp')}
+                      </Typography>
                     </SectionCard>
                     {/* 2026-10-02 · Atención y datos legales: su propio guardado. */}
                     <SectionCard

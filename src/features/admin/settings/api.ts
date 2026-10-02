@@ -75,6 +75,7 @@ const SETTINGS_COLUMNS = [
   'white_label',
   'checkout_requires_account',
   'require_payment_before_dispatch',
+  'tax_inclusive',
   'default_locale',
   'support_email',
   'hero_title',
@@ -278,6 +279,8 @@ export async function saveStoreSettings(input: SaveSettingsInput): Promise<void>
     checkout_requires_account: values.checkout_requires_account,
     // P19 · Misma naturaleza: regla de negocio del comercio, se envía siempre.
     require_payment_before_dispatch: values.require_payment_before_dispatch,
+    // 2026-10-02 · Precios con impuesto incluido: regla del comercio, se envía siempre.
+    tax_inclusive: values.tax_inclusive,
     // Theme Engine · Tematización, NO addon. Va fuera del bloque premium a
     // propósito: elegir entre cuatro disposiciones de los mismos componentes no
     // quita el lockup de la suite, y cobrar por ello sería vender una casilla en
