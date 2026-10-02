@@ -222,6 +222,21 @@ body {
   }
 }
 
+/* Indicador de carga propio de la tienda: «late» (2026-10-02). Hermano de
+   `eb-logo-anim`, con el mismo apagado por movimiento reducido. */
+.eb-loader-pulse {
+  display: inline-flex;
+  transform-origin: center;
+  animation: eb-loader-pulse 1.6s ease-in-out infinite;
+}
+@keyframes eb-loader-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.82); opacity: 0.55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .eb-loader-pulse { animation: none; }
+}
+
 /* ===== Movimiento reducido, de verdad (P15-SaaS) =====
    Hasta P14 `prefers-reduced-motion` solo apagaba el isotipo y las
    transiciones de la tarjeta de producto. El resto —los ~20 componentes de MUI

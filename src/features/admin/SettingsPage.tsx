@@ -1,4 +1,5 @@
 import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded'
+import HourglassTopRoundedIcon from '@mui/icons-material/HourglassTopRounded'
 import ContactMailRoundedIcon from '@mui/icons-material/ContactMailRounded'
 import LockRoundedIcon from '@mui/icons-material/LockRounded'
 import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded'
@@ -52,6 +53,7 @@ import { StorefrontDesignSection } from './settings/StorefrontDesignSection'
 import { TaxesSection } from './settings/TaxesSection'
 import { StoreIdentitySection } from './settings/StoreIdentitySection'
 import { HelpContactSection } from './settings/HelpContactSection'
+import { LoaderSection } from './settings/LoaderSection'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import { EmptyState, ErrorState, LoadingState, UnauthorizedState } from '@/shared/ui/states'
 import { THEME_FONTS, normalizeThemePreset } from '@/features/storefront/theme/presets'
@@ -694,6 +696,21 @@ export function SettingsPage() {
                           />
                         </Grid>
                       </Grid>
+                    </SectionCard>
+
+                    {/* 2026-10-02 · El indicador de carga de la tienda: su propio
+                        guardado, como «Datos de atención». */}
+                    <SectionCard
+                      icon={<HourglassTopRoundedIcon />}
+                      title={t('settings.loader.title')}
+                      subtitle={t('settings.loader.subtitle')}
+                      padded
+                    >
+                      <LoaderSection
+                        storeId={storeId}
+                        organizationId={tenant?.organization_id ?? null}
+                        canManage={canManage}
+                      />
                     </SectionCard>
 
                     {/* Radio y densidad: tematización, NO addon. El lockup de la

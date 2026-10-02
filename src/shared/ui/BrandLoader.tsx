@@ -1,6 +1,7 @@
 import { Box, Stack, Typography } from '@mui/material'
 import { useT } from '@/shared/i18n/i18n-context'
 import { EbimMark } from '@/shared/ui/EbimMark'
+import { useLoaderMark } from '@/shared/ui/loaderMark'
 import { T } from '@/theme/tokens'
 
 /**
@@ -37,6 +38,9 @@ export function BrandLoader({
 }) {
   const t = useT()
   const text = label ?? t('common.loading')
+  // La imagen del comercio, si la vitrina la provee (ver `loaderMark.ts`).
+  const propia = useLoaderMark()
+  const animacion = propia?.url ? propia.animation : 'spin'
 
   return (
     <Stack
@@ -44,8 +48,22 @@ export function BrandLoader({
       aria-live="polite"
       sx={{ alignItems: 'center', justifyContent: 'center', gap: 1.25, py: compact ? 1.5 : 3 }}
     >
-      <Box className="eb-logo-anim" aria-hidden sx={{ lineHeight: 0 }}>
-        <EbimMark size={size} />
+      <Box
+        className={animacion === 'spin' ? 'eb-logo-anim' : animacion === 'pulse' ? 'eb-loader-pulse' : undefined}
+        aria-hidden
+        data-loader-mark={propia?.url ? 'store' : 'suite'}
+        sx={{ lineHeight: 0 }}
+      >
+        {propia?.url ? (
+          <Box
+            component="img"
+            src={propia.url}
+            alt=""
+            sx={{ width: size, height: size, objectFit: 'contain', display: 'block' }}
+          />
+        ) : (
+          <EbimMark size={size} />
+        )}
       </Box>
       {compact ? (
         // El texto sigue existiendo para el lector de pantalla aunque no se

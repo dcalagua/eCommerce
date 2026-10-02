@@ -10473,6 +10473,8 @@ export type Database = {
           hero_title: string | null
           home_layout: Json
           legal_name: string | null
+          loader_animation: string
+          loader_url: string | null
           logo_url: string | null
           organization_id: string
           require_payment_before_dispatch: boolean
@@ -10524,6 +10526,8 @@ export type Database = {
           hero_title?: string | null
           home_layout?: Json
           legal_name?: string | null
+          loader_animation?: string
+          loader_url?: string | null
           logo_url?: string | null
           organization_id: string
           require_payment_before_dispatch?: boolean
@@ -10575,6 +10579,8 @@ export type Database = {
           hero_title?: string | null
           home_layout?: Json
           legal_name?: string | null
+          loader_animation?: string
+          loader_url?: string | null
           logo_url?: string | null
           organization_id?: string
           require_payment_before_dispatch?: boolean
@@ -12525,6 +12531,8 @@ export type Database = {
           hero_title: string | null
           home_layout: Json | null
           legal_name: string | null
+          loader_animation: string | null
+          loader_url: string | null
           logo_url: string | null
           name: string | null
           show_theme_toggle: boolean | null

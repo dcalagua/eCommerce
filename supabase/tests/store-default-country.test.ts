@@ -155,6 +155,8 @@ describe('lo que se publica y lo que no', () => {
       // 2026-10-02 · Ayuda y datos legales del pie y del Libro de Reclamaciones.
       'legal_name', 'tax_id', 'whatsapp_phone', 'help_note', 'business_hours', 'social_links',
       'default_country',
+      // 2026-10-02 · Indicador de carga propio de la tienda.
+      'loader_url', 'loader_animation',
     ])
   })
 })

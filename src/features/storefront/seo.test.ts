@@ -61,6 +61,8 @@ const store: PublicStore = {
   help_note: null,
   business_hours: null,
   default_country: null,
+  loader_url: null,
+  loader_animation: 'spin',
 }
 
 const product: PublicProduct = {

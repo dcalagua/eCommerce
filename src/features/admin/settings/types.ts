@@ -74,7 +74,7 @@ export const ALLOWED_ASSET_TYPES: Record<string, string> = {
  * de una tienda es uno y dura; las imágenes de campaña se suben, se cambian y
  * se quedan atrás cada temporada.
  */
-export type AssetKind = 'logo' | 'banner' | 'favicon' | 'content'
+export type AssetKind = 'logo' | 'banner' | 'favicon' | 'content' | 'loader'
 
 export const storeSettingsSchema = z.object({
   store_id: z.string().uuid(),

@@ -161,6 +161,9 @@ export const publicStoreSchema = z.object({
     .nullable()
     .catch(null)
     .default(null),
+  /** 2026-10-02 · Indicador de carga propio: ruta en `store-assets` (se firma). */
+  loader_url: assetRef.optional().default(null),
+  loader_animation: z.enum(['spin', 'pulse', 'none']).catch('spin').default('spin'),
 })
 export type PublicStore = z.infer<typeof publicStoreSchema>
 

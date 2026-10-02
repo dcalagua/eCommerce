@@ -215,7 +215,7 @@ function isExternalAsset(value: string): boolean {
  * Clearbit al provisionar): ese no se firma, se devuelve tal cual.
  */
 async function resolveStoreAssets(store: PublicStore): Promise<PublicStore> {
-  const paths = [store.logo_url, store.banner_url].filter(
+  const paths = [store.logo_url, store.banner_url, store.favicon_url, store.loader_url].filter(
     (value): value is string => Boolean(value) && !isExternalAsset(value as string),
   )
   if (paths.length === 0) return store
@@ -236,7 +236,13 @@ async function resolveStoreAssets(store: PublicStore): Promise<PublicStore> {
   const resolve = (value: string | null) =>
     value === null ? null : isExternalAsset(value) ? value : (signed[value] ?? null)
 
-  return { ...store, logo_url: resolve(store.logo_url), banner_url: resolve(store.banner_url) }
+  return {
+    ...store,
+    logo_url: resolve(store.logo_url),
+    banner_url: resolve(store.banner_url),
+    favicon_url: resolve(store.favicon_url),
+    loader_url: resolve(store.loader_url),
+  }
 }
 
 /**
