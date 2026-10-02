@@ -103,6 +103,28 @@ export function createEbimTheme({
           root: { backgroundImage: 'none', borderRadius: R.lg },
         },
       },
+      /**
+       * El cuerpo de un dialogo largo es lo unico que se desplaza, y con una
+       * barra fina en los tonos del tema: la gruesa del sistema, gris claro
+       * sobre el modo oscuro, era lo primero que se veia de la pantalla.
+       */
+      MuiDialogContent: {
+        styleOverrides: {
+          root: {
+            scrollbarWidth: 'thin',
+            scrollbarColor: 'var(--border) transparent',
+            '&::-webkit-scrollbar': { width: 8 },
+            '&::-webkit-scrollbar-track': { background: 'transparent' },
+            '&::-webkit-scrollbar-thumb': {
+              background: 'var(--border)',
+              borderRadius: 999,
+              border: '2px solid transparent',
+              backgroundClip: 'padding-box',
+            },
+            '&:hover::-webkit-scrollbar-thumb': { background: 'var(--muted)', backgroundClip: 'padding-box' },
+          },
+        },
+      },
       MuiCard: {
         styleOverrides: {
           root: {

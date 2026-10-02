@@ -192,6 +192,10 @@ export function BulkImagesDialog({ scope, onClose }: { scope: BulkImagesScope; o
     const nuevas: Fila[] = emparejadas.map((par, index) => {
       const yaTiene = par.productId ? (cuentas.get(par.productId) ?? 0) > 0 : false
       const estado: Estado = !par.productId ? 'unmatched' : yaTiene ? 'hasImages' : 'ready'
+      // La que no casa con ningún SKU no se prepara, pero se ve tal cual: un
+      // cuadro en blanco no ayuda a saber qué foto es.
+      const preview = par.productId ? null : URL.createObjectURL(par.file)
+      if (preview) previews.current.push(preview)
       return {
         key: `${index}-${par.file.name}`,
         name: par.file.name,
@@ -202,7 +206,7 @@ export function BulkImagesDialog({ scope, onClose }: { scope: BulkImagesScope; o
         warnings: [],
         estado,
         include: estado === 'ready',
-        preview: null,
+        preview,
         errorKey: null,
       }
     })
@@ -414,8 +418,16 @@ export function BulkImagesDialog({ scope, onClose }: { scope: BulkImagesScope; o
                 </Alert>
               )}
 
-              <Box sx={{ overflowX: 'auto', maxHeight: 420 }}>
-                <Table size="small" stickyHeader aria-label={t('bulkImages.review')}>
+              {/* Sin scroll propio: con dos barras anidadas (la del dialogo y la
+                  de la tabla) la lista se perdia. Se desplaza el dialogo y la
+                  cabecera se queda pegada arriba. */}
+              <Box sx={{ border: '1px solid var(--border)', borderRadius: 1 }}>
+                <Table
+                  size="small"
+                  stickyHeader
+                  aria-label={t('bulkImages.review')}
+                  sx={{ '& .MuiTableCell-stickyHeader': { top: -16, bgcolor: 'background.paper' } }}
+                >
                   <TableHead>
                     <TableRow>
                       <TableCell padding="checkbox" />
