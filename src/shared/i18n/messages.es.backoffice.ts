@@ -990,7 +990,7 @@ export const esBackoffice = {
   'catalogImport.action': 'Importar',
   'bulkImages.action': 'Subir imágenes',
   'bulkImages.title': 'Subir imágenes por SKU',
-  'bulkImages.help': 'Nombra cada foto con el SKU del producto. Si tiene varias, añade un número detrás: la primera es la principal.',
+  'bulkImages.help': 'Nombra cada foto con el SKU del producto, o con el de una variante para que la tienda la enseñe al elegir ese color. Si tiene varias, añade un número detrás: la primera es la principal.',
   'bulkImages.whiteSquare': 'Fondo blanco y formato cuadrado (recomendado)',
   'bulkImages.whiteSquareHelp': 'Recorta el sobrante, centra el producto en un cuadrado blanco con el mismo margen y aplana la transparencia. No quita fondos de color: esas fotos se marcan para que decidas.',
   'bulkImages.chooseFiles': 'Elegir fotos',

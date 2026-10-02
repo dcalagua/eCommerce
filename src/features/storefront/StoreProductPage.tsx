@@ -43,6 +43,7 @@ import { useRelatedSections } from './relations'
 import { useProductReviews } from './reviews/hooks'
 import { useFavorites } from './useFavorites'
 import { useVariantChoice } from './useVariantChoice'
+import { galleryForVariant, galleryKey } from './variantGallery'
 import { useStorefrontTheme } from './theme/useStorefrontTheme'
 
 /**
@@ -104,6 +105,9 @@ export function StoreProductPage() {
     product.data && product.data.kind !== 'variant' ? product.data.product_id : null,
   )
   const variants = usePublicVariants(product.data)
+  // La variante elegida vive en la pagina y no en la caja de compra: la
+  // galeria tambien la necesita, para ensenar las fotos de ESE color.
+  const choice = useVariantChoice(variants.data ?? [], product.data?.kind === 'variant')
 
   /**
    * El precio del acuerdo, si quien mira tiene uno.
@@ -487,7 +491,10 @@ export function StoreProductPage() {
          */}
         <Box data-pdp-gallery="true">
           <ProductGallery
-            images={gallery.data ?? []}
+            // Otro color es otra galeria: se monta de nuevo y empieza en su
+            // primera foto, no en el indice que tenia la anterior.
+            key={galleryKey(choice.selected)}
+            images={galleryForVariant(gallery.data ?? [], variants.data ?? [], choice.selected)}
             alt={item.name}
             badge={!conAcuerdo && !hasVariants && discount !== null ? `−${discount} %` : null}
             // Rediseño v3 · retail: todas las fotos grandes en rejilla (lámina).
@@ -668,6 +675,7 @@ export function StoreProductPage() {
 
           <AddToCart
             product={item}
+            choice={choice}
             available={available}
             variants={hasVariants ? (variants.data ?? []) : []}
             variantsPending={hasVariants && variants.isPending}
@@ -851,6 +859,7 @@ function SheetRow({ label, value }: { label: string; value: string | null }) {
  */
 function AddToCart({
   product,
+  choice,
   available,
   variants,
   variantsPending,
@@ -859,6 +868,8 @@ function AddToCart({
   tiers = [],
 }: {
   product: PublicProduct
+  /** La variante elegida y como cambiarla: la lleva la pagina (ver arriba). */
+  choice: ReturnType<typeof useVariantChoice>
   available: boolean
   variants: PublicVariant[]
   variantsPending: boolean
@@ -884,7 +895,7 @@ function AddToCart({
   const navigate = useNavigate()
 
   const hasVariants = product.kind === 'variant'
-  const { selected, select } = useVariantChoice(variants, hasVariants)
+  const { selected, select } = choice
   const canBuy = available && (!hasVariants || (selected !== null && selected.in_stock !== false))
 
   /**

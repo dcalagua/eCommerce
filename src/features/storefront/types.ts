@@ -321,6 +321,8 @@ export const publicProductImageSchema = z.object({
   alt: z.string().nullable().default(null),
   position: z.number().int(),
   is_primary: z.boolean().nullable().default(false),
+  /** Variante a la que pertenece; `null` = del producto (ver `variantGallery`). */
+  variant_id: z.string().uuid().nullable().default(null),
 })
 export type PublicProductImage = z.infer<typeof publicProductImageSchema>
 

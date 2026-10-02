@@ -18,7 +18,7 @@
  *
  *   node scripts/seed-porta.mjs --check
  *   node scripts/seed-porta.mjs                 (todo menos fotos)
- *   node scripts/seed-porta.mjs --images <dir>  (sube <dir>/<SKU>.png)
+ *   node scripts/seed-porta.mjs --images <dir> [--replace]  (sube <dir>/<SKU>[-N].png; SKU de producto o de variante)
  *
  * Contraseña del owner: PORTA_OWNER_PASSWORD o una aleatoria que se imprime
  * una sola vez al crear.
@@ -384,34 +384,104 @@ async function pages(storeId) {
   console.log(`páginas: ${PAGES.length}`)
 }
 
-/** Sube `<dir>/<SKU>.png` como foto principal de cada producto que no tenga. */
-async function images(dir) {
+/**
+ * Sube las fotos de `<dir>`, nombradas como en la carga masiva del backoffice:
+ *
+ *   PT-BA01.png              foto del producto (vale para todos los colores)
+ *   PT-BA01-NEG.png, -2, -3  fotos de la variante negra (y de sus hermanas
+ *                            del mismo color: otra talla comparte fotos)
+ *
+ * Con `--replace` borra antes las fotos de la tienda (filas y objetos). La
+ * principal de cada producto es la primera de su variante por defecto, que es
+ * la que se ve en la tarjeta del catálogo.
+ */
+async function images(dir, replace) {
   if (!existsSync(dir)) throw new Error(`No existe ${dir}`)
   const map = await skuMap()
   const [store] = await sql(`select id from public.stores where slug = ${lit(STORE.slug)}`)
-  const conFoto = new Set((await sql(`select product_id from public.product_images where company_id = ${lit(STORE.companyId)}`)).map((r) => r.product_id))
-  let subidas = 0
-  for (const file of readdirSync(dir)) {
-    const sku = file.slice(0, -extname(file).length)
-    const ref = map.get(sku)
-    if (!ref || ref.variant_id || conFoto.has(ref.product_id)) continue
-    const ext = extname(file).slice(1).toLowerCase()
-    const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'webp' ? 'image/webp' : 'image/png'
-    // La ruta la exige `ebim.assert_product_image_path`: {organización}/{tienda}/...
-    const path = `${STORE.organizationId}/${store.id}/${ref.product_id}/${randomUUID()}.${ext}`
-    const response = await fetch(`${cfg.url}/storage/v1/object/product-images/${path}`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${cfg.secret}`, apikey: cfg.secret, 'Content-Type': mime, 'x-upsert': 'false' },
-      body: readFileSync(join(dir, file)),
+  const storage = (path, init) =>
+    fetch(`${cfg.url}/storage/v1/object/product-images${path}`, {
+      ...init,
+      headers: { Authorization: `Bearer ${cfg.secret}`, apikey: cfg.secret, ...init.headers },
     })
-    if (!response.ok) throw new Error(`storage ${response.status} ${sku}`)
-    const nombre = PRODUCTS.find((p) => p.sku === sku)?.name ?? sku
+
+  if (replace) {
+    const viejas = await sql(`select storage_path from public.product_images where store_id = ${lit(store.id)}`)
+    for (let i = 0; i < viejas.length; i += 100) {
+      const prefixes = viejas.slice(i, i + 100).map((r) => r.storage_path)
+      const res = await storage('', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prefixes }) })
+      if (!res.ok) throw new Error(`storage delete ${res.status}`)
+    }
+    await sql(`delete from public.product_images where store_id = ${lit(store.id)}`)
+    console.log(`fotos anteriores borradas: ${viejas.length}`)
+  }
+
+  const conFoto = new Set((await sql(`select product_id from public.product_images where store_id = ${lit(store.id)}`)).map((r) => r.product_id))
+  // Nombre → (SKU, orden): primero el nombre entero, después sin «-N».
+  const archivos = []
+  for (const file of readdirSync(dir)) {
+    const ext = extname(file).slice(1).toLowerCase()
+    if (!['png', 'jpg', 'jpeg', 'webp'].includes(ext)) continue
+    const base = file.slice(0, -ext.length - 1).toUpperCase()
+    const m = /^(.*)-(\d{1,2})$/.exec(base)
+    const lectura = map.get(base) ? { sku: base, orden: 1 } : m && map.get(m[1]) ? { sku: m[1], orden: Number(m[2]) } : null
+    if (!lectura) continue
+    const ref = map.get(lectura.sku)
+    if (conFoto.has(ref.product_id)) continue
+    archivos.push({ file, ext, ...lectura, ref })
+  }
+  archivos.sort((a, b) => a.sku.localeCompare(b.sku) || a.orden - b.orden)
+
+  const posicion = new Map()
+  let subidas = 0
+  for (const a of archivos) {
+    const mime = a.ext === 'jpg' || a.ext === 'jpeg' ? 'image/jpeg' : a.ext === 'webp' ? 'image/webp' : 'image/png'
+    // La ruta la exige `ebim.assert_product_image_path`: {organización}/{tienda}/...
+    const path = `${STORE.organizationId}/${store.id}/${a.ref.product_id}/${randomUUID()}.${a.ext}`
+    const res = await storage(`/${path}`, { method: 'POST', headers: { 'Content-Type': mime, 'x-upsert': 'false' }, body: readFileSync(join(dir, a.file)) })
+    if (!res.ok) throw new Error(`storage ${res.status} ${a.file}`)
+    const pos = posicion.get(a.ref.product_id) ?? 0
+    posicion.set(a.ref.product_id, pos + 1)
+    const nombre = PRODUCTS.find((p) => a.sku.startsWith(p.sku))?.name ?? a.sku
     await sql(
-      `insert into public.product_images (organization_id, company_id, store_id, product_id, storage_path, alt, position, is_primary)
-       values (${T}, ${lit(store.id)}, ${lit(ref.product_id)}, ${lit(path)}, ${lit(nombre)}, 0, true)`,
+      `insert into public.product_images (organization_id, company_id, store_id, product_id, variant_id, storage_path, alt, position, is_primary)
+       values (${T}, ${lit(store.id)}, ${lit(a.ref.product_id)}, ${a.ref.variant_id ? lit(a.ref.variant_id) : 'null'}, ${lit(path)}, ${lit(nombre)}, ${pos}, false)`,
     )
     subidas += 1
+    if (subidas % 50 === 0) console.log(`  ${subidas}/${archivos.length}`)
   }
+
+  // Principal: la primera foto de la variante por defecto (o de cualquiera de
+  // su mismo color); si no tiene, la que el trigger ya eligió.
+  await sql(
+    `with elegida as (
+       select distinct on (i.product_id) i.product_id, i.id
+       from public.product_images i
+       join public.product_variants d on d.product_id = i.product_id and d.is_default
+       join public.product_variants v on v.id = i.variant_id
+       where i.store_id = ${lit(store.id)}
+         and (v.id = d.id or split_part(v.sku, '-', 3) = split_part(d.sku, '-', 3))
+       order by i.product_id, (v.id = d.id) desc, i.position
+     ), apaga as (
+       update public.product_images i set is_primary = false
+       from elegida e where i.product_id = e.product_id and i.id <> e.id and i.is_primary
+       returning 1
+     )
+     select count(*) from apaga`,
+  )
+  await sql(
+    `update public.product_images i set is_primary = true
+     from (
+       select distinct on (i.product_id) i.product_id, i.id
+       from public.product_images i
+       join public.product_variants d on d.product_id = i.product_id and d.is_default
+       join public.product_variants v on v.id = i.variant_id
+       where i.store_id = ${lit(store.id)}
+         and (v.id = d.id or split_part(v.sku, '-', 3) = split_part(d.sku, '-', 3))
+       order by i.product_id, (v.id = d.id) desc, i.position
+     ) e
+     where i.id = e.id and not i.is_primary`,
+  )
   console.log(`fotos subidas: ${subidas}`)
 }
 
@@ -433,7 +503,7 @@ async function main() {
   const args = process.argv.slice(2)
   if (args.includes('--check')) return check()
   const i = args.indexOf('--images')
-  if (i >= 0) return images(args[i + 1])
+  if (i >= 0) return images(args[i + 1], args.includes('--replace'))
 
   const ownerId = await owner()
   const storeId = await tenant(ownerId)

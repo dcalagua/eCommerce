@@ -26,7 +26,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
 import { prepareProductPhoto, type PhotoWarning } from '@/shared/lib/productPhoto'
-import { fetchImageCounts, fetchSkuIndex } from '../api/bulkImages'
+import { fetchImageCounts, fetchSkuIndex, fetchVariantSkuIndex, type VariantTarget } from '../api/bulkImages'
 import { CatalogError } from '../api/errors'
 import { ALLOWED_IMAGE_TYPES, uploadProductImage } from '../api/images'
 import { CATALOG_KEY } from '../useProducts'
@@ -62,6 +62,8 @@ interface Fila {
   readonly key: string
   readonly name: string
   readonly productId: string | null
+  /** Si el archivo lleva el SKU de una variante, la foto es de ella. */
+  readonly variantId: string | null
   readonly sku: string | null
   readonly order: number
   file: File
@@ -173,10 +175,20 @@ export function BulkImagesDialog({ scope, onClose }: { scope: BulkImagesScope; o
 
     setFase('analyzing')
     let indice = new Map<string, string>()
+    let variantes = new Map<string, VariantTarget>()
+    let productos = new Map<string, string>()
     let cuentas = new Map<string, number>()
     const emparejadas = await (async () => {
       try {
-        indice = await fetchSkuIndex(scope.companyId)
+        ;[productos, variantes] = await Promise.all([
+          fetchSkuIndex(scope.companyId),
+          fetchVariantSkuIndex(scope.companyId),
+        ])
+        // Un archivo con el SKU de una VARIANTE va a su producto, marcado con
+        // ella. Si un SKU es a la vez de producto y de variante, manda el del
+        // producto: es lo que significaba ese nombre antes de que existiera esto.
+        indice = new Map(productos)
+        for (const [sku, destino] of variantes) if (!indice.has(sku)) indice.set(sku, destino.productId)
         const pares = matchFiles(aceptadas, indice)
         const ids = [...new Set(pares.flatMap((par) => (par.productId ? [par.productId] : [])))]
         cuentas = await fetchImageCounts(ids)
@@ -200,6 +212,7 @@ export function BulkImagesDialog({ scope, onClose }: { scope: BulkImagesScope; o
         key: `${index}-${par.file.name}`,
         name: par.file.name,
         productId: par.productId,
+        variantId: par.sku && !productos.has(par.sku) ? (variantes.get(par.sku)?.variantId ?? null) : null,
         sku: par.sku,
         order: par.order,
         file: par.file,
@@ -263,7 +276,13 @@ export function BulkImagesDialog({ scope, onClose }: { scope: BulkImagesScope; o
       let posicion = cuentas.get(productId) ?? 0
       for (const fila of lista) {
         try {
-          await uploadProductImage({ ...scope, productId, file: fila.file, position: posicion })
+          await uploadProductImage({
+            ...scope,
+            productId,
+            variantId: fila.variantId,
+            file: fila.file,
+            position: posicion,
+          })
           posicion += 1
           actualizar(fila.key, { estado: 'uploaded', include: false })
         } catch (error) {
@@ -315,7 +334,7 @@ export function BulkImagesDialog({ scope, onClose }: { scope: BulkImagesScope; o
               lineHeight: 1.7,
             }}
           >
-            FMX-0158.jpg · FMX-0158-2.jpg · FMX-0158-3.jpg
+            FMX-0158.jpg · FMX-0158-2.jpg · FMX-0158-NEGRO.jpg · FMX-0158-NEGRO-2.jpg
           </Box>
 
           <FormControlLabel

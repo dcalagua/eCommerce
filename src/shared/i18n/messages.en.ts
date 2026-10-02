@@ -4574,7 +4574,7 @@ export const en: Readonly<Record<MessageKey, string>> = {
   'catalogImport.action': 'Import',
   'bulkImages.action': 'Upload images',
   'bulkImages.title': 'Upload images by SKU',
-  'bulkImages.help': 'Name each photo with the product SKU. For several, add a number after it: the first one is the main image.',
+  'bulkImages.help': 'Name each photo with the product SKU, or with a variant SKU so the store shows it when that color is picked. For several, add a number after it: the first one is the main image.',
   'bulkImages.whiteSquare': 'White background, square format (recommended)',
   'bulkImages.whiteSquareHelp': 'Trims the excess, centers the product on a white square with the same margin and flattens transparency. It does not remove colored backgrounds: those photos are flagged for you to decide.',
   'bulkImages.chooseFiles': 'Choose photos',

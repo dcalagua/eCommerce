@@ -29,6 +29,7 @@ const image = (id: string): ProductImage => ({
   store_id: STORE,
   storage_path: `${ORG}/${STORE}/${PRODUCT}/${id}.jpg`,
   alt: null,
+  variant_id: null,
   position: 0,
   is_primary: false,
 })

@@ -28,6 +28,7 @@ import { ProductGallery } from './ProductGallery'
 import { QuantityStepper } from './QuantityStepper'
 import { useVariantChoice } from '../useVariantChoice'
 import { VariantPicker } from './VariantPicker'
+import { galleryForVariant, galleryKey } from '../variantGallery'
 import { themeDataAttributes } from '../theme/theme-context'
 import { useStorefrontTheme } from '../theme/useStorefrontTheme'
 
@@ -232,7 +233,11 @@ export function ProductQuickView({
                 boxShadow: 'var(--sf-shadow)',
               }}
             >
-              <ProductGallery images={gallery.data ?? []} alt={item.name} />
+              <ProductGallery
+                key={galleryKey(selected)}
+                images={galleryForVariant(gallery.data ?? [], variants.data ?? [], selected)}
+                alt={item.name}
+              />
             </Card>
 
             <Stack sx={{ flex: 1, minWidth: 0, gap: 2 }}>

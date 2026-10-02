@@ -352,6 +352,91 @@ describe('public_product_images — galería de lo publicado', () => {
   })
 })
 
+describe('public_product_images — foto por variante (2026-10-02)', () => {
+  let mochila: string
+  let negra: string
+  let azul: string
+
+  beforeAll(async () => {
+    await asRole(db, 'service_role', null, async () => {
+      mochila = String(
+        (
+          await sql(
+            `insert into public.products
+               (organization_id, company_id, store_id, category_id, sku, slug, name,
+                price, currency, stock, status, published_at, kind)
+             values ($1, $2, $3, $4, 'A-MOCH', 'mochila', 'Mochila', '120.00', 'PEN', 0,
+                     'published', now(), 'variant')
+             returning id`,
+            [TENANT_A.organizationId, TENANT_A.companyId, storeA, sillasA],
+          )
+        )[0]?.id,
+      )
+      const variante = (sku: string, nombre: string) =>
+        sql(
+          `insert into public.product_variants
+             (organization_id, company_id, store_id, product_id, sku, name, price, stock, is_active, is_default)
+           values ($1, $2, $3, $4, $5, $6, null, 5, true, $7) returning id`,
+          [TENANT_A.organizationId, TENANT_A.companyId, storeA, mochila, sku, nombre, sku.endsWith('NEG')],
+        ).then((rows) => String(rows[0]?.id))
+      negra = await variante('A-MOCH-NEG', 'Negro')
+      azul = await variante('A-MOCH-AZU', 'Azul')
+      await sql(
+        `insert into public.product_images
+           (organization_id, company_id, store_id, product_id, storage_path, position, variant_id)
+         values ($1, $2, $3, $4, $5, 0, $6), ($1, $2, $3, $4, $7, 1, $8)`,
+        [
+          TENANT_A.organizationId, TENANT_A.companyId, storeA, mochila,
+          `${TENANT_A.organizationId}/${storeA}/${mochila}/negra.jpg`, negra,
+          `${TENANT_A.organizationId}/${storeA}/${mochila}/azul.jpg`, azul,
+        ],
+      )
+    })
+  })
+
+  it('el comprador ve a qué variante pertenece cada foto', async () => {
+    const rows = await anon(() =>
+      sql(
+        `select variant_id from public.public_product_images where product_id = $1 order by position`,
+        [mochila],
+      ),
+    )
+    expect(rows.map((r) => r.variant_id)).toEqual([negra, azul])
+  })
+
+  it('no se cuelga una foto de la variante de OTRO producto', async () => {
+    const message = await asRole(db, 'service_role', null, () =>
+      expectFailure(() =>
+        sql(
+          `insert into public.product_images
+             (organization_id, company_id, store_id, product_id, storage_path, position, variant_id)
+           values ($1, $2, $3, $4, $5, 2, $6)`,
+          [
+            TENANT_A.organizationId, TENANT_A.companyId, storeA, publicadoA,
+            `${TENANT_A.organizationId}/${storeA}/${publicadoA}/ajena.jpg`, negra,
+          ],
+        ),
+      ),
+    )
+    expect(message).toMatch(/product_images_variant_fk|foreign key/i)
+  })
+
+  it('al borrar la variante, su foto vuelve a ser del producto', async () => {
+    await asRole(db, 'service_role', null, () =>
+      sql(`delete from public.product_variants where id = $1`, [azul]),
+    )
+    const rows = await asRole(db, 'service_role', null, () =>
+      sql(`select product_id, variant_id from public.product_images where storage_path like '%/azul.jpg'`),
+    )
+    expect(rows).toEqual([{ product_id: mochila, variant_id: null }])
+  })
+
+  // Las pruebas de abajo cuentan el catálogo de A: la mochila no es parte de él.
+  afterAll(async () => {
+    await asRole(db, 'service_role', null, () => sql(`delete from public.products where id = $1`, [mochila]))
+  })
+})
+
 describe('el comprador anónimo no puede escribir por las vistas', () => {
   for (const view of ['public_stores', 'public_products', 'public_categories', 'public_product_images']) {
     it(`no inserta en ${view}`, async () => {

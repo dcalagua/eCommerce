@@ -176,7 +176,7 @@ const PRODUCT_SELECT = [
   'price_from::text',
 ].join(', ')
 
-const IMAGE_SELECT = 'image_id, product_id, storage_path, alt, position, is_primary'
+const IMAGE_SELECT = 'image_id, product_id, storage_path, alt, position, is_primary, variant_id'
 
 const VARIANT_SELECT = [
   'variant_id',

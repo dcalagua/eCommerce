@@ -64,7 +64,7 @@ export function buildImagePath(input: {
   return `${input.organizationId}/${input.storeId}/${input.productId}/${crypto.randomUUID()}.${extension}`
 }
 
-const IMAGE_SELECT = 'id, product_id, store_id, storage_path, alt, position, is_primary'
+const IMAGE_SELECT = 'id, product_id, store_id, storage_path, alt, position, is_primary, variant_id'
 
 export async function fetchProductImages(productId: string | null): Promise<ProductImage[]> {
   if (!productId) return []
@@ -120,6 +120,8 @@ export async function uploadProductImage(input: {
   companyId: string
   storeId: string
   productId: string
+  /** La variante de la foto, o nada si es del producto (vale para todas). */
+  variantId?: string | null
   file: File
   position: number
 }): Promise<ProductImage> {
@@ -168,6 +170,7 @@ export async function uploadProductImage(input: {
       company_id: input.companyId,
       store_id: input.storeId,
       product_id: input.productId,
+      variant_id: input.variantId ?? null,
       storage_path: path,
       position: input.position,
       is_primary: false,

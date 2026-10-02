@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '@/test/render'
 
-const api = vi.hoisted(() => ({ fetchSkuIndex: vi.fn(), fetchImageCounts: vi.fn() }))
+const api = vi.hoisted(() => ({ fetchSkuIndex: vi.fn(), fetchVariantSkuIndex: vi.fn(), fetchImageCounts: vi.fn() }))
 const images = vi.hoisted(() => ({ uploadProductImage: vi.fn() }))
 const photo = vi.hoisted(() => ({ prepareProductPhoto: vi.fn() }))
 
@@ -41,6 +41,10 @@ beforeEach(() => {
       ['FMX-0200', 'p-200'],
       ['FMX-0300', 'p-300'],
     ]),
+  )
+  // FMX-0300-AZU es la variante azul de FMX-0300.
+  api.fetchVariantSkuIndex.mockResolvedValue(
+    new Map([['FMX-0300-AZU', { productId: 'p-300', variantId: 'v-300-azu' }]]),
   )
   // FMX-0200 ya tiene una foto.
   api.fetchImageCounts.mockResolvedValue(new Map([['p-200', 1]]))
@@ -106,6 +110,24 @@ describe('subir imágenes por SKU', () => {
     // Detrás de la foto que ya tenía.
     expect(images.uploadProductImage).toHaveBeenCalledWith(
       expect.objectContaining({ ...SCOPE, productId: 'p-200', position: 1 }),
+    )
+  })
+
+  it('con el SKU de una variante, la foto va a su producto marcada con ella', async () => {
+    const { user, dialog } = await elegir([jpg('FMX-0300-AZU.jpg'), jpg('FMX-0300-AZU-2.jpg'), jpg('FMX-0158.jpg')])
+    await user.click(within(dialog).getByRole('button', { name: 'Subir 3 fotos' }))
+
+    await within(dialog).findByText('Fotos subidas. Ya se ven en las fichas y en la tienda.')
+    expect(api.fetchVariantSkuIndex).toHaveBeenCalledWith('co-1')
+    expect(images.uploadProductImage).toHaveBeenCalledWith(
+      expect.objectContaining({ productId: 'p-300', variantId: 'v-300-azu', position: 0 }),
+    )
+    expect(images.uploadProductImage).toHaveBeenCalledWith(
+      expect.objectContaining({ productId: 'p-300', variantId: 'v-300-azu', position: 1 }),
+    )
+    // La del SKU del producto sigue siendo del producto.
+    expect(images.uploadProductImage).toHaveBeenCalledWith(
+      expect.objectContaining({ productId: 'p-158', variantId: null }),
     )
   })
 

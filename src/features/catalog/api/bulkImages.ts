@@ -1,4 +1,4 @@
-import { ADMIN_PRODUCT_MASTERS_VIEW } from '@/shared/lib/db-schema'
+import { ADMIN_PRODUCT_MASTERS_VIEW, PRODUCT_VARIANTS_TABLE } from '@/shared/lib/db-schema'
 import { PRODUCT_IMAGES_TABLE } from '../types'
 import { catalogClient } from './client'
 import { catalogErrorFromDb } from './errors'
@@ -29,6 +29,37 @@ export async function fetchSkuIndex(companyId: string): Promise<Map<string, stri
     const filas = (data ?? []) as { id: string; sku: string | null }[]
     for (const fila of filas) {
       if (fila.sku) indice.set(fila.sku.trim().toUpperCase(), fila.id)
+    }
+    if (filas.length < PAGINA) return indice
+  }
+}
+
+/** A qué producto y variante va una foto nombrada con el SKU de una variante. */
+export interface VariantTarget {
+  readonly productId: string
+  readonly variantId: string
+}
+
+/**
+ * SKU de VARIANTE (en mayúsculas) → su producto y su variante (2026-10-02).
+ *
+ * `PT-BA01-AZM.png` es la foto de la bandolera AZUL: se cuelga del producto,
+ * marcada con su variante, y la ficha la enseña al elegir ese color.
+ */
+export async function fetchVariantSkuIndex(companyId: string): Promise<Map<string, VariantTarget>> {
+  const supabase = catalogClient()
+  const indice = new Map<string, VariantTarget>()
+  for (let desde = 0; ; desde += PAGINA) {
+    const { data, error } = await supabase
+      .from(PRODUCT_VARIANTS_TABLE)
+      .select('id, product_id, sku')
+      .eq('company_id', companyId)
+      .order('sku')
+      .range(desde, desde + PAGINA - 1)
+    if (error) throw catalogErrorFromDb(error)
+    const filas = (data ?? []) as { id: string; product_id: string; sku: string | null }[]
+    for (const fila of filas) {
+      if (fila.sku) indice.set(fila.sku.trim().toUpperCase(), { productId: fila.product_id, variantId: fila.id })
     }
     if (filas.length < PAGINA) return indice
   }
