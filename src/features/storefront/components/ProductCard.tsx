@@ -309,6 +309,8 @@ export function ProductCard({
             miniatura cuadrada: ahí la foto identifica, no vende. */}
         <ProductMedia
           url={imageUrl}
+          // Tiene foto y su URL firmada aún no llega: esqueleto, no «sin foto».
+          pending={Boolean(product.primary_image_path) && !imageUrl}
           alt={product.primary_image_alt ?? product.name}
           fit="var(--sf-media-fit, contain)"
           ratio="var(--sf-image-ratio, 1 / 1)"

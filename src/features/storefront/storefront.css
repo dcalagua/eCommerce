@@ -2239,3 +2239,30 @@
 .sf-scope[data-store-theme='retail'] .sf-option:hover {
   border-color: var(--text);
 }
+
+/* Foto de producto (2026-10-02): esqueleto con brillo mientras carga y
+   fundido al llegar. Sin animacion si el sistema pide movimiento reducido. */
+.sf-media-shimmer {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(100deg, transparent 20%, color-mix(in srgb, var(--card, #fff) 70%, transparent) 50%, transparent 80%)
+      0 0 / 220% 100% no-repeat,
+    color-mix(in srgb, var(--text, #111) 6%, var(--sf-photo-bg, var(--card, #fff)));
+  animation: sf-media-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes sf-media-shimmer {
+  from { background-position: 130% 0, 0 0; }
+  to { background-position: -30% 0, 0 0; }
+}
+.sf-media-img {
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+.sf-media-img[data-ready] {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sf-media-shimmer { animation: none; }
+  .sf-media-img { transition: none; }
+}

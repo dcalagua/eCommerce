@@ -41,8 +41,11 @@ export function ProductGallery({
   badge = null,
   favorite,
   layout = 'viewer',
+  loading = false,
 }: {
   images: GalleryImage[]
+  /** La galería aún no llegó: esqueletos con la forma de la galería. */
+  loading?: boolean
   alt: string
   /** «−20 %» sobre la foto, arriba a la izquierda (lámina 31). */
   badge?: string | null
@@ -97,6 +100,63 @@ export function ProductGallery({
       {favorite.active ? <FavoriteRoundedIcon sx={{ fontSize: 20 }} /> : <FavoriteBorderRoundedIcon sx={{ fontSize: 20 }} />}
     </IconButton>
   ) : null
+
+  const insignia = badge ? (
+    <Box
+      data-gallery-badge
+      sx={{
+        position: 'absolute',
+        top: 14,
+        left: 14,
+        px: 1.25,
+        py: 0.5,
+        borderRadius: 'var(--sf-pill)',
+        bgcolor: 'var(--accent-deep)',
+        color: '#FFFFFF',
+        fontSize: 13,
+        fontWeight: 800,
+        pointerEvents: 'none',
+      }}
+    >
+      {badge}
+    </Box>
+  ) : null
+
+  // Mientras llega la galería, su FORMA con brillo: el marcador de «sin foto»
+  // aquí decía que el producto no tiene fotos justo antes de enseñarlas.
+  // En el visor basta con que la foto grande diga «cargando» (ver abajo): así
+  // el corazón y el descuento son el MISMO nodo antes y después de llegar.
+  if (loading && images.length === 0 && layout === 'grid') {
+    const huecos = 4
+    return (
+      <Box
+        component="section"
+        aria-label={t('store.product.gallery')}
+        aria-busy
+        data-gallery-loading
+        sx={{
+          position: 'relative',
+          ...(layout === 'grid'
+            ? { display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, gap: { xs: 1, md: 1.25 } }
+            : { borderRadius: 'var(--sf-radius, 16px)', overflow: 'hidden' }),
+        }}
+      >
+        {Array.from({ length: huecos }, (_, slot) => (
+          <Box key={slot} sx={slot > 0 ? { display: { xs: 'none', md: 'block' } } : undefined}>
+            <ProductMedia
+              url={null}
+              alt=""
+              pending
+              ratio={layout === 'grid' ? '4 / 5' : 'var(--sf-pdp-ratio, 1 / 1)'}
+            />
+          </Box>
+        ))}
+        {/* El descuento y el corazón no esperan a las fotos: son del producto. */}
+        {insignia}
+        {corazon}
+      </Box>
+    )
+  }
 
   if (layout === 'grid' && images.length > 0) {
     return (
@@ -213,30 +273,12 @@ export function ProductGallery({
             ratio="var(--sf-pdp-ratio, 1 / 1)"
             sizePx={40}
             eager
+            pending={loading && !hasImages}
             fit="var(--sf-pdp-fit, contain)"
           />
         </ButtonBase>
 
-        {badge ? (
-          <Box
-            data-gallery-badge
-            sx={{
-              position: 'absolute',
-              top: 14,
-              left: 14,
-              px: 1.25,
-              py: 0.5,
-              borderRadius: 'var(--sf-pill)',
-              bgcolor: 'var(--accent-deep)',
-              color: '#FFFFFF',
-              fontSize: 13,
-              fontWeight: 800,
-              pointerEvents: 'none',
-            }}
-          >
-            {badge}
-          </Box>
-        ) : null}
+        {insignia}
 
         {/* Hermano del botón de la foto, no hijo: un botón dentro de otro no
             es HTML válido y el lector de pantalla no sabría cuál pulsa. */}

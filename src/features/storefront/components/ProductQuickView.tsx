@@ -236,6 +236,7 @@ export function ProductQuickView({
               <ProductGallery
                 key={galleryKey(selected)}
                 images={galleryForVariant(gallery.data ?? [], variants.data ?? [], selected)}
+                loading={gallery.isPending}
                 alt={item.name}
               />
             </Card>

@@ -495,6 +495,7 @@ export function StoreProductPage() {
             // primera foto, no en el indice que tenia la anterior.
             key={galleryKey(choice.selected)}
             images={galleryForVariant(gallery.data ?? [], variants.data ?? [], choice.selected)}
+            loading={gallery.isPending}
             alt={item.name}
             badge={!conAcuerdo && !hasVariants && discount !== null ? `−${discount} %` : null}
             // Rediseño v3 · retail: todas las fotos grandes en rejilla (lámina).
