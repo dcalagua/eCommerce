@@ -139,6 +139,13 @@ export function ProductMedia({
         borderRadius: `var(--sf-radius-sm, ${R.md}px)`,
         overflow: 'hidden',
         display: 'grid',
+        // Una sola celda del tamaño de la CAJA (2026-10-02). Sin esto la fila
+        // crecía hasta el alto natural de la foto (1200 px) y, en una caja de
+        // alto fijo —las ofertas de la portada Retail—, `height: 100%` se
+        // medía contra esa fila: la foto se salía y quedaba recortada abajo en
+        // vez de entera y centrada.
+        gridTemplateRows: 'minmax(0, 1fr)',
+        gridTemplateColumns: 'minmax(0, 1fr)',
         placeItems: 'center',
       }}
     >
