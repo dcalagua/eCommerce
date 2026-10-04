@@ -35,6 +35,7 @@ import { StoreValueProps } from '../components/StoreValueProps'
 import { campanaQueTerminaAntes, mayorDescuento } from '../feria'
 import type { ResolvedPresentation } from '../theme/presentation'
 import type { HomeSectionData, HomeSectionRegistry } from './types'
+import { sanitizeHomeVideos } from '../homeVideos'
 
 /**
  * El contenido del CMS llega por `lazy` (Storefront V2 · P14).
@@ -82,6 +83,11 @@ const CategoryIconCards = lazy(() =>
  */
 const CategoryMosaic = lazy(() =>
   import('../components/CategoryMosaic').then((modulo) => ({ default: modulo.CategoryMosaic })),
+)
+
+/** 2026-10-04 · Apagada por defecto: no pesa en la portada de quien no la usa. */
+const VideoCarousel = lazy(() =>
+  import('../components/VideoCarousel').then((modulo) => ({ default: modulo.VideoCarousel })),
 )
 
 const ContentBlocks = lazy(() =>
@@ -794,4 +800,15 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
 
   // Declarada en el contrato, sin componente. Ver la cabecera.
   newsletter: () => null,
+
+  // 2026-10-04 · Los videos del comercio, uno tras otro. Sin videos, nada.
+  videos: (data) => {
+    const lista = sanitizeHomeVideos(data.store.home_videos)
+    if (lista.length === 0) return null
+    return (
+      <Suspense fallback={null}>
+        <VideoCarousel videos={lista} />
+      </Suspense>
+    )
+  },
 }

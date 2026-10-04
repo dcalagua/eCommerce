@@ -228,6 +228,8 @@ const SECCIONES_HEREDADAS: readonly HomeSectionConfig[] = [
   { id: 'featured', enabled: false },
   { id: 'business-info', enabled: false },
   { id: 'newsletter', enabled: false },
+  // Apagada: sin videos subidos no hay nada que enseñar.
+  { id: 'videos', enabled: false },
 ]
 
 export const DEFAULT_HOME_LAYOUT: HomeLayout = {

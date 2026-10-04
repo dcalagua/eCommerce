@@ -102,6 +102,7 @@ const NOMBRE_SECCION: Record<HomeSectionId, MessageKey> = {
   trust: 'settings.design.section.trust',
   'business-info': 'settings.design.section.businessInfo',
   newsletter: 'settings.design.section.newsletter',
+  videos: 'settings.design.section.videos',
 }
 
 /** Las que pintan una rejilla de producto, que es lo que hace visible la densidad. */

@@ -341,8 +341,9 @@ describe('ordenar la portada', () => {
     expect(primera).toBe('hero')
     expect(screen.getByRole('button', { name: 'Subir: Portada' })).toBeDisabled()
     // Desde P12 la última ORDENABLE es la última que se pinta: «Boletín» ya no
-    // está en la lista, está en «Próximamente» y no tiene flechas.
-    expect(screen.getByRole('button', { name: 'Bajar: Datos del negocio' })).toBeDisabled()
+    // está en la lista, está en «Próximamente» y no tiene flechas. Desde el
+    // 2026-10-04 la última es «Videos», que entra apagada al final.
+    expect(screen.getByRole('button', { name: 'Bajar: Videos' })).toBeDisabled()
   })
 
   it('bajar una sección la mueve una posición, con el teclado', async () => {

@@ -224,6 +224,8 @@ export const HOME_SECTION_IDS = [
   'trust',
   'business-info',
   'newsletter',
+  // 2026-10-04 · Carrusel de videos del comercio (30 s a 1 min), uno tras otro.
+  'videos',
 ] as const
 export type HomeSectionId = (typeof HOME_SECTION_IDS)[number]
 

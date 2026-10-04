@@ -115,6 +115,9 @@ describe('contentSecurityPolicy', () => {
   it('solo marcos propios (la vista previa del taller), ni objetos ni base reescribible', () => {
     expect(parsed.get('frame-src')).toEqual(["'self'"])
     expect(parsed.get('object-src')).toEqual(["'none'"])
+    // Los videos de la portada: solo del Storage del proyecto (y la vista previa local).
+    expect(parsed.get('media-src')).toEqual(parsed.get('img-src')?.filter((origen) => origen !== 'data:'))
+    expect(parsed.get('media-src')).toContain(SUPABASE)
     expect(parsed.get('base-uri')).toEqual(["'self'"])
     expect(parsed.get('form-action')).toEqual(["'self'"])
   })

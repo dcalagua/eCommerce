@@ -137,6 +137,7 @@ export const SECTION_PRESENTATION_RULES: Readonly<
   trust: { variants: BRAND_PRESENTATIONS, surfaces: ['plain', 'soft'] },
   'business-info': { variants: [], surfaces: ['plain', 'soft'] },
   newsletter: { variants: [], surfaces: ['plain', 'soft'] },
+  videos: { variants: [], surfaces: SECTION_SURFACES },
 }
 
 // ---------------------------------------------------------------------------

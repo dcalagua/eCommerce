@@ -10472,6 +10472,7 @@ export type Database = {
           hero_subtitle: string | null
           hero_title: string | null
           home_layout: Json
+          home_videos: Json
           legal_name: string | null
           loader_animation: string
           loader_url: string | null
@@ -10525,6 +10526,7 @@ export type Database = {
           hero_subtitle?: string | null
           hero_title?: string | null
           home_layout?: Json
+          home_videos?: Json
           legal_name?: string | null
           loader_animation?: string
           loader_url?: string | null
@@ -10578,6 +10580,7 @@ export type Database = {
           hero_subtitle?: string | null
           hero_title?: string | null
           home_layout?: Json
+          home_videos?: Json
           legal_name?: string | null
           loader_animation?: string
           loader_url?: string | null
@@ -12530,6 +12533,7 @@ export type Database = {
           hero_subtitle: string | null
           hero_title: string | null
           home_layout: Json | null
+          home_videos: Json | null
           legal_name: string | null
           loader_animation: string | null
           loader_url: string | null

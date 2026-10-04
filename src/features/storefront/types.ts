@@ -164,6 +164,8 @@ export const publicStoreSchema = z.object({
   /** 2026-10-02 · Indicador de carga propio: ruta en `store-assets` (se firma). */
   loader_url: assetRef.optional().default(null),
   loader_animation: z.enum(['spin', 'pulse', 'none']).catch('spin').default('spin'),
+  /** 2026-10-04 · Videos de la portada; crudo, lo limpia `sanitizeHomeVideos`. */
+  home_videos: z.unknown().optional(),
 })
 export type PublicStore = z.infer<typeof publicStoreSchema>
 

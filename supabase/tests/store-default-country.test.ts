@@ -157,6 +157,8 @@ describe('lo que se publica y lo que no', () => {
       'default_country',
       // 2026-10-02 · Indicador de carga propio de la tienda.
       'loader_url', 'loader_animation',
+      // 2026-10-04 · Videos del carrusel de la portada.
+      'home_videos',
     ])
   })
 })

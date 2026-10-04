@@ -1,5 +1,6 @@
 import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded'
 import HourglassTopRoundedIcon from '@mui/icons-material/HourglassTopRounded'
+import VideoLibraryRoundedIcon from '@mui/icons-material/VideoLibraryRounded'
 import ContactMailRoundedIcon from '@mui/icons-material/ContactMailRounded'
 import LockRoundedIcon from '@mui/icons-material/LockRounded'
 import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded'
@@ -54,6 +55,7 @@ import { TaxesSection } from './settings/TaxesSection'
 import { StoreIdentitySection } from './settings/StoreIdentitySection'
 import { HelpContactSection } from './settings/HelpContactSection'
 import { LoaderSection } from './settings/LoaderSection'
+import { HomeVideosSection } from './settings/HomeVideosSection'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import { EmptyState, ErrorState, LoadingState, UnauthorizedState } from '@/shared/ui/states'
 import { THEME_FONTS, normalizeThemePreset } from '@/features/storefront/theme/presets'
@@ -1019,6 +1021,7 @@ export function SettingsPage() {
             content: (
               <ManagedSection>
                 {gate ?? (
+                  <Stack spacing={2.5}>
                   <Card>
                     <CardContent>
                       {/* Va en su propia pestaña y no dentro de «Marca»: son dos
@@ -1034,6 +1037,21 @@ export function SettingsPage() {
                       />
                     </CardContent>
                   </Card>
+                  {/* 2026-10-04 · Los videos del carrusel de la portada: su propio
+                      guardado. La sección se enciende arriba, en «Portada». */}
+                  <SectionCard
+                    icon={<VideoLibraryRoundedIcon />}
+                    title={t('settings.videos.title')}
+                    subtitle={t('settings.videos.subtitle')}
+                    padded
+                  >
+                    <HomeVideosSection
+                      storeId={storeId}
+                      organizationId={tenant?.organization_id ?? null}
+                      canManage={canManage}
+                    />
+                  </SectionCard>
+                  </Stack>
                 )}
               </ManagedSection>
             ),

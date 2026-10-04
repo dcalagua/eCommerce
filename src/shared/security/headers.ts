@@ -121,6 +121,10 @@ export function contentSecurityPolicy(input: CspInput): string {
     // es la previsualización local al subir una imagen desde el backoffice.
     ['img-src', ["'self'", 'data:', 'blob:', ...api]],
     ['connect-src', ["'self'", ...api, ...sockets, ...gateway]],
+    // 2026-10-04 · Los videos de la portada viven en el mismo Storage que las
+    // fotos. Sin esta línea `default-src 'none'` los bloquea en producción. `blob:`
+    // es la vista previa local al subir uno desde el backoffice.
+    ['media-src', ["'self'", 'blob:', ...api]],
     ['manifest-src', ["'self'"]],
     ['worker-src', ["'self'", 'blob:']],
     // Ni un `<iframe>` de terceros, ni un `<object>`, ni un `<embed>`. `'self'`

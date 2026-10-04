@@ -84,6 +84,7 @@ const NOMBRE: Record<HomeSectionId, MessageKey> = {
   trust: 'settings.design.section.trust',
   'business-info': 'settings.design.section.businessInfo',
   newsletter: 'settings.design.section.newsletter',
+  videos: 'settings.design.section.videos',
 }
 
 /**
