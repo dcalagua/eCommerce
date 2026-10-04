@@ -32,6 +32,12 @@ export const homeVideoSchema = z.object({
   title: z.string().trim().max(HOME_VIDEO_RULES.titleMax).nullable().default(null),
   /** Segundos, entero, 30..60. */
   duration: z.number().int().min(HOME_VIDEO_RULES.minSeconds).max(HOME_VIDEO_RULES.maxSeconds),
+  /**
+   * 2026-10-04 · El producto que enseña el video: su tarjeta sale debajo del
+   * video activo y lleva a la ficha. Opcional; si ya no está publicado, la
+   * tarjeta simplemente no sale.
+   */
+  product_id: z.string().uuid().nullable().default(null),
 })
 export type HomeVideo = z.infer<typeof homeVideoSchema>
 
@@ -50,11 +56,24 @@ export function sanitizeHomeVideos(raw: unknown): HomeVideo[] {
   return videos
 }
 
-export type HomeVideoIssue = 'type' | 'weight' | 'short' | 'long' | 'unreadable'
+export type HomeVideoIssue = 'type' | 'weight' | 'short' | 'long' | 'unreadable' | 'orientation'
 
-/** La regla pura sobre lo que se sabe de un archivo (la parte que se prueba). */
-export function evaluateHomeVideo(facts: { type: string; bytes: number; seconds: number | null }): HomeVideoIssue[] {
+/**
+ * La regla pura sobre lo que se sabe de un archivo (la parte que se prueba).
+ *
+ * VERTICAL (2026-10-04): el carrusel es de formato Reels/TikTok, 9:16, varios
+ * a la vez con el activo al centro. Un video apaisado ahí se recortaría por
+ * los lados hasta no reconocerse, así que se exige alto mayor que ancho.
+ */
+export function evaluateHomeVideo(facts: {
+  type: string
+  bytes: number
+  seconds: number | null
+  width?: number | null
+  height?: number | null
+}): HomeVideoIssue[] {
   const issues: HomeVideoIssue[] = []
+  if (facts.width && facts.height && facts.height <= facts.width) issues.push('orientation')
   if (!(HOME_VIDEO_RULES.types as readonly string[]).includes(facts.type)) issues.push('type')
   if (facts.bytes > HOME_VIDEO_RULES.maxBytes) issues.push('weight')
   if (facts.seconds === null || !Number.isFinite(facts.seconds)) {

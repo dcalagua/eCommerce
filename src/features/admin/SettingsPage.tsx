@@ -1048,6 +1048,7 @@ export function SettingsPage() {
                     <HomeVideosSection
                       storeId={storeId}
                       organizationId={tenant?.organization_id ?? null}
+                      companyId={activeCompanyId}
                       canManage={canManage}
                     />
                   </SectionCard>

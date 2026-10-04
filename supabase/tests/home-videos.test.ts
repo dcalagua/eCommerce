@@ -108,6 +108,11 @@ describe('videos de la portada', () => {
     await falla(() => guardar([video({ title: 'x'.repeat(81) })]), /home_videos_check/)
   })
 
+  it('cada video puede enlazar un producto (uuid) o ninguno', async () => {
+    expect(await guardar([video({ product_id: '44444444-4444-4444-8444-444444444444' }), video({ product_id: null })])).toHaveLength(1)
+    await falla(() => guardar([video({ product_id: 'mochila-negra' })]), /home_videos_check/)
+  })
+
   it('el owner de A no toca los videos de B', async () => {
     const filas = await comoOwnerA(`update public.store_settings set home_videos = '[]' where store_id = $1 returning store_id`, [
       storeB,

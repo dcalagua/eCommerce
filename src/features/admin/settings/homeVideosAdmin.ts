@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { STORE_ASSETS_BUCKET } from '@/shared/lib/db-schema'
+import { ADMIN_PRODUCT_MASTERS_VIEW, STORE_ASSETS_BUCKET } from '@/shared/lib/db-schema'
 import { tryGetSupabaseClient } from '@/shared/lib/supabase'
 import {
   evaluateHomeVideo,
@@ -68,6 +68,7 @@ export function useSaveHomeVideos(storeId: string | null) {
             path: video.path,
             title: video.title?.trim() ? video.title.trim() : null,
             duration: video.duration,
+            product_id: video.product_id ?? null,
           })),
         })
         .eq('store_id', storeId)
@@ -77,19 +78,30 @@ export function useSaveHomeVideos(storeId: string | null) {
   })
 }
 
-/** Lee la duración de un archivo de video en el navegador; `null` si no se puede. */
-export function readVideoSeconds(file: File): Promise<number | null> {
+interface VideoFacts {
+  readonly seconds: number | null
+  readonly width: number | null
+  readonly height: number | null
+}
+
+/** Duración y medidas de un archivo de video, leídas en el navegador. */
+export function readVideoFacts(file: File): Promise<VideoFacts> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file)
     const video = document.createElement('video')
-    const fin = (valor: number | null) => {
+    const fin = (valor: VideoFacts) => {
       URL.revokeObjectURL(url)
       resolve(valor)
     }
     video.preload = 'metadata'
     video.muted = true
-    video.onloadedmetadata = () => fin(Number.isFinite(video.duration) ? video.duration : null)
-    video.onerror = () => fin(null)
+    video.onloadedmetadata = () =>
+      fin({
+        seconds: Number.isFinite(video.duration) ? video.duration : null,
+        width: video.videoWidth || null,
+        height: video.videoHeight || null,
+      })
+    video.onerror = () => fin({ seconds: null, width: null, height: null })
     video.src = url
   })
 }
@@ -97,11 +109,62 @@ export function readVideoSeconds(file: File): Promise<number | null> {
 /** Comprueba un archivo: lo que falla, o los segundos si cumple. */
 export async function inspectHomeVideo(file: File): Promise<{ issues: HomeVideoIssue[]; seconds: number | null }> {
   const tipoValido = (HOME_VIDEO_RULES.types as readonly string[]).includes(file.type)
-  const seconds = tipoValido ? await readVideoSeconds(file) : null
+  const facts = tipoValido ? await readVideoFacts(file) : { seconds: null, width: null, height: null }
   return {
-    issues: evaluateHomeVideo({ type: file.type, bytes: file.size, seconds }),
-    seconds,
+    issues: evaluateHomeVideo({ type: file.type, bytes: file.size, ...facts }),
+    seconds: facts.seconds,
   }
+}
+
+/** Un producto de la sociedad para enlazar a un video. */
+export interface VideoProductOption {
+  readonly id: string
+  readonly name: string
+  readonly sku: string | null
+}
+
+/**
+ * Busca productos de la SOCIEDAD por nombre o SKU (2026-10-04). El
+ * `company_id` va en la consulta como alcance de la pantalla —la RLS ya limita
+ * al tenant del JWT—, igual que la carga masiva de fotos.
+ */
+export function useVideoProductSearch(companyId: string | null, term: string) {
+  const limpio = term.trim().replace(/[%_,()]/g, ' ').trim()
+  return useQuery({
+    queryKey: ['admin', 'video-products', companyId, limpio] as const,
+    enabled: Boolean(companyId) && limpio.length >= 2,
+    staleTime: 60 * 1000,
+    queryFn: async (): Promise<VideoProductOption[]> => {
+      const client = tryGetSupabaseClient()
+      if (!client || !companyId) throw new Error('SIN_BACKEND')
+      const { data, error } = await client
+        .from(ADMIN_PRODUCT_MASTERS_VIEW)
+        .select('id, name, sku')
+        .eq('company_id', companyId)
+        .or(`name.ilike.%${limpio}%,sku.ilike.%${limpio}%`)
+        .order('name')
+        .limit(20)
+      if (error) throw error
+      return (data ?? []) as VideoProductOption[]
+    },
+  })
+}
+
+/** Nombre y SKU de los productos ya enlazados, para pintarlos al abrir. */
+export function useVideoProductLabels(ids: readonly string[]) {
+  const unicos = [...new Set(ids)].sort()
+  return useQuery({
+    queryKey: ['admin', 'video-product-labels', unicos] as const,
+    enabled: unicos.length > 0,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async (): Promise<VideoProductOption[]> => {
+      const client = tryGetSupabaseClient()
+      if (!client) throw new Error('SIN_BACKEND')
+      const { data, error } = await client.from(ADMIN_PRODUCT_MASTERS_VIEW).select('id, name, sku').in('id', unicos)
+      if (error) throw error
+      return (data ?? []) as VideoProductOption[]
+    },
+  })
 }
 
 const EXTENSION: Record<string, string> = {
@@ -135,6 +198,7 @@ export async function uploadHomeVideo(input: {
     path,
     title: nombre || null,
     duration: storedSeconds(input.seconds),
+    product_id: null,
     preview: urls[path] ?? null,
   }
 }

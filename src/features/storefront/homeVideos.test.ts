@@ -19,6 +19,13 @@ describe('requisitos de un video de portada', () => {
     expect(evaluateHomeVideo({ type: 'video/mp4', bytes: 1, seconds: null })).toEqual(['unreadable'])
   })
 
+  it('exige vertical (formato Reels): alto mayor que ancho', () => {
+    expect(evaluateHomeVideo({ type: 'video/mp4', bytes: 1, seconds: 40, width: 1080, height: 1920 })).toEqual([])
+    expect(evaluateHomeVideo({ type: 'video/mp4', bytes: 1, seconds: 40, width: 1920, height: 1080 })).toEqual([
+      'orientation',
+    ])
+  })
+
   it('guarda segundos enteros dentro de 30..60', () => {
     expect(storedSeconds(29.97)).toBe(30)
     expect(storedSeconds(60.4)).toBe(60)
@@ -34,7 +41,7 @@ describe('la lista guardada, limpia', () => {
       { path: ruta('webm'), duration: 90 },
       'basura',
     ])
-    expect(lista).toEqual([{ path: ruta(), title: 'Colección', duration: 40 }])
+    expect(lista).toEqual([{ path: ruta(), title: 'Colección', duration: 40, product_id: null }])
   })
 
   it('no es una lista: ninguna', () => {

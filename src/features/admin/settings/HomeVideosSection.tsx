@@ -12,17 +12,61 @@ import type { MessageKey } from '@/shared/i18n/messages'
 import { useFeedback } from '@/shared/ui/feedback-context'
 import { LoadingState } from '@/shared/ui/states'
 import { R, T } from '@/theme/tokens'
+import { EntityPicker, type PickerOption } from '@/shared/ui/EntityPicker'
 import {
   inspectHomeVideo,
   uploadHomeVideo,
   useHomeVideos,
   useSaveHomeVideos,
+  useVideoProductLabels,
+  useVideoProductSearch,
   type AdminHomeVideo,
+  type VideoProductOption,
 } from './homeVideosAdmin'
+
+const comoOpcion = (p: VideoProductOption): PickerOption => ({ id: p.id, primary: p.name, secondary: p.sku })
+
+/**
+ * El producto que enseña un video: su tarjeta sale bajo el video en la tienda.
+ * Se busca por nombre o SKU entre los productos de la sociedad.
+ */
+function VideoProductPicker({
+  companyId,
+  value,
+  disabled,
+  label,
+  onChange,
+}: {
+  companyId: string | null
+  value: VideoProductOption | null
+  disabled: boolean
+  label: string
+  onChange: (next: VideoProductOption | null) => void
+}) {
+  const { t } = useI18n()
+  const [term, setTerm] = useState('')
+  const busqueda = useVideoProductSearch(companyId, term)
+  const opciones = busqueda.data ?? []
+  return (
+    <EntityPicker
+      label={label}
+      placeholder={t('settings.videos.productSearch')}
+      term={term}
+      onTermChange={setTerm}
+      options={opciones.map(comoOpcion)}
+      value={value ? comoOpcion(value) : null}
+      loading={busqueda.isFetching}
+      disabled={disabled}
+      onPick={(opcion) => onChange(opciones.find((p) => p.id === opcion.id) ?? null)}
+      onClear={() => onChange(null)}
+    />
+  )
+}
 
 const REQUISITOS: ReadonlyArray<{ issues: HomeVideoIssue[]; key: MessageKey }> = [
   { issues: ['type', 'unreadable'], key: 'settings.videos.rule.type' },
   { issues: ['short', 'long'], key: 'settings.videos.rule.duration' },
+  { issues: ['orientation'], key: 'settings.videos.rule.vertical' },
   { issues: ['weight'], key: 'settings.videos.rule.weight' },
 ]
 
@@ -43,10 +87,13 @@ const conValores = (texto: string) =>
 export function HomeVideosSection({
   storeId,
   organizationId,
+  companyId,
   canManage,
 }: {
   storeId: string | null
   organizationId: string | null
+  /** La sociedad activa: alcance del buscador de productos. */
+  companyId: string | null
   canManage: boolean
 }) {
   const { t } = useI18n()
@@ -57,6 +104,11 @@ export function HomeVideosSection({
   const [lista, setLista] = useState<AdminHomeVideo[]>([])
   const [fallos, setFallos] = useState<HomeVideoIssue[] | null>(null)
   const [subiendo, setSubiendo] = useState(false)
+  // Lo que ya se eligió en esta sesión, para pintarlo sin volver a buscarlo.
+  const [elegidos, setElegidos] = useState<Record<string, VideoProductOption>>({})
+  const etiquetas = useVideoProductLabels(lista.flatMap((video) => (video.product_id ? [video.product_id] : [])))
+  const productoDe = (id: string | null): VideoProductOption | null =>
+    id ? (elegidos[id] ?? etiquetas.data?.find((p) => p.id === id) ?? null) : null
 
   useEffect(() => {
     if (actual.data) setLista(actual.data)
@@ -65,8 +117,9 @@ export function HomeVideosSection({
   if (actual.isPending) return <LoadingState />
   if (actual.isError) return <Alert severity="error">{t('settings.error.generic')}</Alert>
 
-  const original = JSON.stringify(actual.data.map(({ path, title, duration }) => ({ path, title, duration })))
-  const cambiado = JSON.stringify(lista.map(({ path, title, duration }) => ({ path, title, duration }))) !== original
+  const firma = (videos: readonly AdminHomeVideo[]) =>
+    JSON.stringify(videos.map(({ path, title, duration, product_id }) => ({ path, title, duration, product_id })))
+  const cambiado = firma(lista) !== firma(actual.data)
   const ocupado = !canManage || subiendo || guardar.isPending
   const lleno = lista.length >= HOME_VIDEO_RULES.maxVideos
 
@@ -215,8 +268,9 @@ export function HomeVideosSection({
             >
               <Box
                 sx={{
-                  width: { xs: '100%', sm: 160 },
-                  aspectRatio: '16 / 9',
+                  // Vertical, como se verá en la tienda.
+                  width: { xs: 120, sm: 96 },
+                  aspectRatio: '9 / 16',
                   borderRadius: `${R.sm}px`,
                   overflow: 'hidden',
                   bgcolor: '#0b0b0b',
@@ -240,17 +294,31 @@ export function HomeVideosSection({
                   />
                 ) : null}
               </Box>
-              <TextField
-                size="small"
-                fullWidth
-                label={`${t('settings.videos.titleLabel')} ${i + 1}`}
-                value={video.title ?? ''}
-                disabled={!canManage}
-                inputProps={{ maxLength: HOME_VIDEO_RULES.titleMax }}
-                onChange={(event) =>
-                  setLista((previa) => previa.map((v, j) => (j === i ? { ...v, title: event.target.value } : v)))
-                }
-              />
+              <Stack spacing={1.25} sx={{ flex: 1, minWidth: 0 }}>
+                <TextField
+                  size="small"
+                  fullWidth
+                  label={`${t('settings.videos.titleLabel')} ${i + 1}`}
+                  value={video.title ?? ''}
+                  disabled={!canManage}
+                  inputProps={{ maxLength: HOME_VIDEO_RULES.titleMax }}
+                  onChange={(event) =>
+                    setLista((previa) => previa.map((v, j) => (j === i ? { ...v, title: event.target.value } : v)))
+                  }
+                />
+                <VideoProductPicker
+                  companyId={companyId}
+                  label={`${t('settings.videos.product')} ${i + 1}`}
+                  value={productoDe(video.product_id)}
+                  disabled={!canManage}
+                  onChange={(producto) => {
+                    if (producto) setElegidos((previos) => ({ ...previos, [producto.id]: producto }))
+                    setLista((previa) =>
+                      previa.map((v, j) => (j === i ? { ...v, product_id: producto?.id ?? null } : v)),
+                    )
+                  }}
+                />
+              </Stack>
               <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexShrink: 0 }}>
                 <Chip size="small" label={`${video.duration} s`} />
                 <IconButton

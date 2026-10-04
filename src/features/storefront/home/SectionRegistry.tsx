@@ -807,7 +807,7 @@ export const HOME_SECTIONS: HomeSectionRegistry = {
     if (lista.length === 0) return null
     return (
       <Suspense fallback={null}>
-        <VideoCarousel videos={lista} />
+        <VideoCarousel videos={lista} storeId={data.store.store_id} storeSlug={data.storeSlug} />
       </Suspense>
     )
   },
