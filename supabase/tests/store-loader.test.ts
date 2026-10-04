@@ -98,6 +98,20 @@ describe('indicador de carga propio', () => {
     await falla(() => guardar(null, 'bounce'), /loader_animation_check/)
   })
 
+  // 2026-10-04 · El formulario de Ajustes envía todas sus columnas en un UPDATE:
+  // una sola sin GRANT tumba el guardado entero. Estas son las que añadieron
+  // las pantallas del 2026-10-02 al 04.
+  it('el owner puede escribir las columnas que envía Ajustes', async () => {
+    const filas = await comoOwnerA(
+      `update public.store_settings
+          set tax_inclusive = true, loader_animation = 'pulse', home_videos = '[]'::jsonb,
+              legal_name = 'Tienda A SAC', whatsapp_phone = '+51 999 111 222'
+        where store_id = $1 returning tax_inclusive`,
+      [storeA],
+    )
+    expect(filas).toEqual([{ tax_inclusive: true }])
+  })
+
   it('el owner de A no toca el indicador de B', async () => {
     const filas = await comoOwnerA(
       `update public.store_settings set loader_animation = 'none' where store_id = $1 returning store_id`,
