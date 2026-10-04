@@ -296,13 +296,30 @@ describe('el formulario replica los CHECK de la base', () => {
     ['una clave de estilo que no existe', { storefront_style: { css: '.x{}' } }],
     ['un valor de estilo fuera de la lista', { storefront_style: { contentWidth: 'full' } }],
     ['una sección desconocida', { home_layout: { version: 1, sections: [{ id: 'ads', enabled: true }] } }],
-    ['una versión futura', { home_layout: { version: 2, sections: [] } }],
+    ['una versión futura', { home_layout: { version: 3, sections: [] } }],
+    [
+      'una variante que su sección no tiene',
+      { home_layout: { version: 2, sections: [{ id: 'videos', enabled: true, presentation: { variant: 'grid' } }] } },
+    ],
     [
       'un tope desbordado',
       { home_layout: { version: 1, sections: [{ id: 'offers', enabled: true, maxItems: 99 }] } },
     ],
   ])('rechaza %s', (_caso, parche) => {
     expect(storeFormSchema.safeParse({ ...base, ...parche }).success).toBe(false)
+  })
+
+  // 2026-10-04 · La portada que escribe el editor (v2 con presentación) se
+  // puede guardar: antes el formulario la rechazaba y Ajustes no guardaba.
+  it('acepta la portada v2 que escribe el editor', () => {
+    const home_layout = {
+      version: 2,
+      sections: [
+        { id: 'offers', enabled: true, presentation: { variant: 'flash', surface: 'contrast', width: 'bleed' } },
+        { id: 'videos', enabled: true, presentation: { surface: 'soft' } },
+      ],
+    }
+    expect(storeFormSchema.safeParse({ ...base, home_layout }).success).toBe(true)
   })
 })
 

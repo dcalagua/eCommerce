@@ -14,6 +14,7 @@ import {
   type StorefrontStyle,
 } from './types'
 import { MAX_ITEMS_LIMITS } from './normalize'
+import { SECTION_PRESENTATION_RULES, SECTION_SURFACES, SECTION_WIDTHS } from './presentation'
 
 /**
  * El contrato del tema, escrito otra vez en Zod para el FORMULARIO.
@@ -55,16 +56,39 @@ export const storefrontStyleOverridesSchema = z
   })
   .strict()
 
+/**
+ * Cómo se enseña una sección (Storefront V3 · P06). Hasta el 2026-10-04 el
+ * formulario no la conocía: el editor escribía `version: 2` con `presentation`
+ * y el formulario lo rechazaba, así que personalizar una sección dejaba Ajustes
+ * sin poder guardarse. Mismas reglas que `ebim.section_presentation_is_valid`:
+ * variante y fondo de la lista de SU sección, ancho de dos.
+ */
+const sectionPresentationSchema = z
+  .object({
+    variant: z.string().min(1).max(40).optional(),
+    surface: z.enum(SECTION_SURFACES).optional(),
+    width: z.enum(SECTION_WIDTHS).optional(),
+  })
+  .strict()
+
 export const homeSectionSchema = z
   .object({
     id: z.enum(HOME_SECTION_IDS),
     enabled: z.boolean(),
     maxItems: z.number().int().min(MAX_ITEMS_LIMITS.min).max(MAX_ITEMS_LIMITS.max).optional(),
+    presentation: sectionPresentationSchema.optional(),
   })
   .strict()
+  .refine((seccion) => {
+    const reglas = SECTION_PRESENTATION_RULES[seccion.id]
+    const { variant, surface } = seccion.presentation ?? {}
+    if (variant !== undefined && variant !== 'auto' && !reglas.variants.includes(variant)) return false
+    if (surface !== undefined && !reglas.surfaces.includes(surface)) return false
+    return true
+  })
 
 export const homeLayoutSchema = z.object({
-  version: z.literal(1),
+  version: z.union([z.literal(1), z.literal(2)]),
   sections: z.array(homeSectionSchema),
 })
 
