@@ -123,6 +123,8 @@ function toRow(scope: PromotionScopeIds, values: PromotionFormValues) {
     name: values.name.trim(),
     description: nullable(values.description),
     image_url: values.imageUrl,
+    // Sin imagen no hay video: la base lo exige y aquí no se manda uno huérfano.
+    video_url: values.imageUrl ? values.videoUrl : null,
     kind: values.kind,
     status: values.status,
     priority: values.priority,
@@ -162,7 +164,7 @@ export async function updatePromotion(
   id: string,
   values: PromotionFormValues,
   /** La campaña tal como estaba. Sirve para no mandar lo que no ha cambiado. */
-  previa?: { image_url: string | null } | null,
+  previa?: { image_url: string | null; video_url?: string | null } | null,
 ): Promise<void> {
   // `promotions` tiene GRANT **por columna** para `authenticated`: la RLS filtra
   // filas y nunca columnas, así que la lista de lo actualizable se enumera una a
@@ -186,6 +188,8 @@ export async function updatePromotion(
   const row = toRow(scope, values)
   const fuera = new Set(['organization_id', 'company_id', 'store_id', 'kind'])
   if (previa && previa.image_url === row.image_url) fuera.add('image_url')
+  // Igual con el video (2026-10-04): solo viaja cuando cambia.
+  if (previa && (previa.video_url ?? null) === row.video_url) fuera.add('video_url')
 
   const editable = Object.fromEntries(
     Object.entries(row).filter(([key]) => !fuera.has(key)),

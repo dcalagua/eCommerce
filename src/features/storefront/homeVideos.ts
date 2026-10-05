@@ -58,32 +58,68 @@ export function sanitizeHomeVideos(raw: unknown): HomeVideo[] {
 
 export type HomeVideoIssue = 'type' | 'weight' | 'short' | 'long' | 'unreadable' | 'orientation'
 
+/** Lo que hay que cumplir: formatos, duración, peso y orientación. */
+export interface VideoRules {
+  readonly types: readonly string[]
+  readonly minSeconds: number
+  readonly maxSeconds: number
+  readonly maxBytes: number
+  readonly orientation: 'portrait' | 'landscape'
+}
+
+/** Lo que se sabe de un archivo antes de subirlo. */
+export interface VideoFacts {
+  readonly type: string
+  readonly bytes: number
+  readonly seconds: number | null
+  readonly width?: number | null
+  readonly height?: number | null
+}
+
 /**
  * La regla pura sobre lo que se sabe de un archivo (la parte que se prueba).
  *
- * VERTICAL (2026-10-04): el carrusel es de formato Reels/TikTok, 9:16, varios
- * a la vez con el activo al centro. Un video apaisado ahí se recortaría por
- * los lados hasta no reconocerse, así que se exige alto mayor que ancho.
+ * La ORIENTACIÓN depende de dónde va: el carrusel de portada es de formato
+ * Reels (vertical) y el fondo de una promoción es una banda (horizontal). Un
+ * video de la otra forma se recortaría hasta no reconocerse.
  */
-export function evaluateHomeVideo(facts: {
-  type: string
-  bytes: number
-  seconds: number | null
-  width?: number | null
-  height?: number | null
-}): HomeVideoIssue[] {
+export function evaluateVideo(facts: VideoFacts, rules: VideoRules): HomeVideoIssue[] {
   const issues: HomeVideoIssue[] = []
-  if (facts.width && facts.height && facts.height <= facts.width) issues.push('orientation')
-  if (!(HOME_VIDEO_RULES.types as readonly string[]).includes(facts.type)) issues.push('type')
-  if (facts.bytes > HOME_VIDEO_RULES.maxBytes) issues.push('weight')
+  if (facts.width && facts.height) {
+    const vertical = facts.height > facts.width
+    if (rules.orientation === 'portrait' ? !vertical : facts.width <= facts.height) issues.push('orientation')
+  }
+  if (!rules.types.includes(facts.type)) issues.push('type')
+  if (facts.bytes > rules.maxBytes) issues.push('weight')
   if (facts.seconds === null || !Number.isFinite(facts.seconds)) {
     if (!issues.includes('type')) issues.push('unreadable')
     return issues
   }
   // Medio segundo de holgura: un clip «de 30 s» exportado dura 29,97.
-  if (facts.seconds < HOME_VIDEO_RULES.minSeconds - 0.5) issues.push('short')
-  if (facts.seconds > HOME_VIDEO_RULES.maxSeconds + 0.5) issues.push('long')
+  if (facts.seconds < rules.minSeconds - 0.5) issues.push('short')
+  if (facts.seconds > rules.maxSeconds + 0.5) issues.push('long')
   return issues
+}
+
+/** Videos del carrusel de portada: verticales, 30 s a 1 min. */
+export function evaluateHomeVideo(facts: VideoFacts): HomeVideoIssue[] {
+  return evaluateVideo(facts, { ...HOME_VIDEO_RULES, orientation: 'portrait' })
+}
+
+/**
+ * Video de fondo de una promoción (2026-10-04): horizontal, corto (se repite
+ * en bucle) y ligero (se carga en la portada). Es ambiente, no protagonista.
+ */
+export const PROMO_VIDEO_RULES: VideoRules = {
+  types: ['video/mp4', 'video/webm'],
+  minSeconds: 5,
+  maxSeconds: 30,
+  maxBytes: 15 * 1024 * 1024,
+  orientation: 'landscape',
+}
+
+export function evaluatePromoVideo(facts: VideoFacts): HomeVideoIssue[] {
+  return evaluateVideo(facts, PROMO_VIDEO_RULES)
 }
 
 /** Segundos que se guardan: redondeados y dentro de 30..60. */

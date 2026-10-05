@@ -6,6 +6,7 @@ import { HORIZONTE_RELOJ_MS } from '../feria'
 import { offerBadge, vigenciaTexto } from '../offer'
 import type { StorePromotion } from '../promotions'
 import { Countdown } from './Countdown'
+import { PromoBackgroundVideo } from './PromoBackgroundVideo'
 
 /**
  * Rediseño v3 · Las campañas de RETAIL (lámina «01 — Retail · Home»).
@@ -46,7 +47,12 @@ export function PromoRetail({
       data-promotions-presentation="retail"
       sx={{ gap: 'var(--sf-section-gap-md)', scrollMarginTop: 96 }}
     >
-      <Banda promo={primera} storeSlug={storeSlug} currency={currency} />
+      <Banda
+        promo={primera}
+        storeSlug={storeSlug}
+        currency={currency}
+        imageSrc={primera.videoUrl ? fuenteDe(primera.imageUrl, assets) : null}
+      />
       {segunda ? (
         <Partida
           promo={segunda}
@@ -125,17 +131,33 @@ function Puerta({ to, label, invertida }: { to: string; label: string; invertida
   )
 }
 
-function Banda({ promo, storeSlug, currency }: { promo: StorePromotion; storeSlug: string; currency: string }) {
+function Banda({
+  promo,
+  storeSlug,
+  currency,
+  imageSrc,
+}: {
+  promo: StorePromotion
+  storeSlug: string
+  currency: string
+  /** Solo con video: la imagen es su respaldo, de fondo. Sin video la banda es de tinta. */
+  imageSrc: string | null
+}) {
   const { t, locale } = useI18n()
   const badge = offerBadge(promo, t, locale, currency)
   const vigencia = vigenciaTexto(promo.endsAt, t, locale)
   const reloj = enRectaFinal(promo.endsAt)
   const antetitulo = [badge, vigencia?.texto].filter(Boolean).join(' · ')
+  // 2026-10-04 · Con video, la banda lo lleva de fondo (y la imagen debajo).
+  const conFondo = Boolean(promo.videoUrl)
 
   return (
     <Box
       data-promo-retail="band"
+      data-promo-background={conFondo ? 'video' : undefined}
       sx={{
+        position: 'relative',
+        overflow: 'hidden',
         // A sangre: el fondo llega a los bordes y el contenido se queda en el
         // ancho de la tienda (la misma fórmula que el marco de sección).
         marginInline: 'calc(50% - 50vw)',
@@ -144,9 +166,38 @@ function Banda({ promo, storeSlug, currency }: { promo: StorePromotion; storeSlu
         color: '#fff',
       }}
     >
+      {conFondo ? (
+        <>
+          {imageSrc ? (
+            <Box
+              component="img"
+              src={imageSrc}
+              alt=""
+              aria-hidden
+              sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }}
+            />
+          ) : null}
+          <PromoBackgroundVideo path={promo.videoUrl as string} />
+          {/* El velo va siempre que hay fondo, se mueva o no: con movimiento
+              reducido se ve la imagen, y el texto blanco tiene que leerse igual. */}
+          <Box
+            aria-hidden
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 0,
+              background: 'linear-gradient(90deg, rgba(0,0,0,.72) 0%, rgba(0,0,0,.5) 55%, rgba(0,0,0,.35) 100%)',
+            }}
+          />
+        </>
+      ) : null}
       <Stack
         direction={{ xs: 'column', md: 'row' }}
         sx={{
+          position: 'relative',
+          zIndex: 1,
+          // Con video, más alto: el fondo también se tiene que ver.
+          minHeight: conFondo ? { xs: 360, md: 420 } : undefined,
           py: { xs: 5, md: 7 },
           gap: { xs: 3, md: 4 },
           alignItems: { xs: 'flex-start', md: 'center' },
@@ -243,6 +294,8 @@ function Partida({
             {badge}
           </Typography>
         ) : null}
+        {/* 2026-10-04 · El video, encima de la foto, en todo el hueco. */}
+        {promo.videoUrl ? <PromoBackgroundVideo path={promo.videoUrl} /> : null}
       </Box>
 
       <Stack sx={{ gap: 1.5, justifyContent: 'center', p: { xs: 3, md: 6 } }}>

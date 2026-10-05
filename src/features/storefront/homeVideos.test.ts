@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { evaluateHomeVideo, sanitizeHomeVideos, storedSeconds } from './homeVideos'
+import { evaluateHomeVideo, evaluatePromoVideo, sanitizeHomeVideos, storedSeconds } from './homeVideos'
 
 const ORG = '11111111-1111-4111-8111-111111111111'
 const TIENDA = '22222222-2222-4222-8222-222222222222'
@@ -47,5 +47,19 @@ describe('la lista guardada, limpia', () => {
   it('no es una lista: ninguna', () => {
     expect(sanitizeHomeVideos(null)).toEqual([])
     expect(sanitizeHomeVideos({})).toEqual([])
+  })
+})
+
+describe('requisitos del video de fondo de una promoción', () => {
+  it('horizontal, de 5 a 30 s y hasta 15 MB', () => {
+    expect(evaluatePromoVideo({ type: 'video/mp4', bytes: 8e6, seconds: 12, width: 1920, height: 1080 })).toEqual([])
+    expect(evaluatePromoVideo({ type: 'video/mp4', bytes: 8e6, seconds: 12, width: 1080, height: 1920 })).toEqual([
+      'orientation',
+    ])
+    expect(evaluatePromoVideo({ type: 'video/mp4', bytes: 8e6, seconds: 3, width: 1920, height: 1080 })).toEqual(['short'])
+    expect(evaluatePromoVideo({ type: 'video/mp4', bytes: 8e6, seconds: 45, width: 1920, height: 1080 })).toEqual(['long'])
+    expect(evaluatePromoVideo({ type: 'video/mp4', bytes: 20 * 1024 * 1024, seconds: 12, width: 1920, height: 1080 })).toEqual([
+      'weight',
+    ])
   })
 })

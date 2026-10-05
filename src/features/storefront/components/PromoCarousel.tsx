@@ -9,6 +9,7 @@ import { TS } from '@/theme/tokens'
 import { SectionHeading } from './SectionHeading'
 import { moneyCorto, offerBadge, vigenciaTexto } from '../offer'
 import type { StorePromotion } from '../promotions'
+import { PromoBackgroundVideo } from './PromoBackgroundVideo'
 
 /** Cada cuánto pasa sola. Seis segundos: lo que se tarda en leer un cartel. */
 const INTERVALO_MS = 6000
@@ -302,15 +303,19 @@ function PromoSlide({
           }}
         >
           {imageSrc ? (
-            <Box
-              component="img"
-              src={imageSrc}
-              alt=""
-              aria-hidden
-              loading="lazy"
-              decoding="async"
-              sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            />
+            <>
+              <Box
+                component="img"
+                src={imageSrc}
+                alt=""
+                aria-hidden
+                loading="lazy"
+                decoding="async"
+                sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              />
+              {/* 2026-10-04 · Con video, encima de la foto (que queda de respaldo). */}
+              {promo.videoUrl ? <PromoBackgroundVideo path={promo.videoUrl} /> : null}
+            </>
           ) : (
             // Sin foto no se deja el hueco: el medallón se hace grande y ocupa
             // ese sitio. Una campaña sin imagen tiene que seguir pareciendo una

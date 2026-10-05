@@ -97,7 +97,7 @@ export function useSavePromotion(scope: PromotionScopeIds | null) {
       id: string | null
       values: PromotionFormValues
       /** La campaña tal como estaba: sin ella se manda la foto aunque no cambie. */
-      previa?: { image_url: string | null } | null
+      previa?: { image_url: string | null; video_url?: string | null } | null
     }) => {
       if (!scope) throw new Error('SIN_TIENDA')
       return input.id === null

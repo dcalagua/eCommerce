@@ -78,6 +78,7 @@ const VALORES = {
   name: 'Navidad',
   description: '',
   imageUrl: 'tienda/promo.jpg',
+  videoUrl: null,
   kind: 'percentage' as const,
   status: 'active' as const,
   priority: 10,

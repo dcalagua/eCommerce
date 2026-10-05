@@ -8642,6 +8642,7 @@ export type Database = {
           valid_to: string | null
           value_amount: number | null
           value_percent: number | null
+          video_url: string | null
         }
         Insert: {
           buy_quantity?: number | null
@@ -8672,6 +8673,7 @@ export type Database = {
           valid_to?: string | null
           value_amount?: number | null
           value_percent?: number | null
+          video_url?: string | null
         }
         Update: {
           buy_quantity?: number | null
@@ -8702,6 +8704,7 @@ export type Database = {
           valid_to?: string | null
           value_amount?: number | null
           value_percent?: number | null
+          video_url?: string | null
         }
         Relationships: [
           {
@@ -12181,6 +12184,7 @@ export type Database = {
           exclusion_count: number | null
           free_quantity: number | null
           id: string | null
+          image_url: string | null
           is_exclusive: boolean | null
           kind: Database["public"]["Enums"]["promotion_kind"] | null
           max_discount_amount: number | null
@@ -12204,6 +12208,7 @@ export type Database = {
           valid_to: string | null
           value_amount: number | null
           value_percent: number | null
+          video_url: string | null
         }
         Insert: {
           audience_count?: never
@@ -12218,6 +12223,7 @@ export type Database = {
           exclusion_count?: never
           free_quantity?: number | null
           id?: string | null
+          image_url?: string | null
           is_exclusive?: boolean | null
           kind?: Database["public"]["Enums"]["promotion_kind"] | null
           max_discount_amount?: number | null
@@ -12241,6 +12247,7 @@ export type Database = {
           valid_to?: string | null
           value_amount?: number | null
           value_percent?: number | null
+          video_url?: string | null
         }
         Update: {
           audience_count?: never
@@ -12255,6 +12262,7 @@ export type Database = {
           exclusion_count?: never
           free_quantity?: number | null
           id?: string | null
+          image_url?: string | null
           is_exclusive?: boolean | null
           kind?: Database["public"]["Enums"]["promotion_kind"] | null
           max_discount_amount?: number | null
@@ -12278,6 +12286,7 @@ export type Database = {
           valid_to?: string | null
           value_amount?: number | null
           value_percent?: number | null
+          video_url?: string | null
         }
         Relationships: [
           {

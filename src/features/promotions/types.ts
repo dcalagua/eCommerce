@@ -99,6 +99,8 @@ export const promotionSchema = z.object({
   description: z.string().nullable().default(null),
   /** Foto de la campaña. Una oferta sin imagen es un cartel de texto. */
   image_url: z.string().nullable().default(null),
+  /** 2026-10-04 · Video de fondo (mudo, en bucle). Exige imagen de respaldo. */
+  video_url: z.string().nullable().default(null),
   kind: z.enum(PROMOTION_KINDS),
   status: z.enum(PROMOTION_STATUSES),
   effective_status: z.enum(EFFECTIVE_STATUSES),
@@ -257,6 +259,8 @@ export interface PromotionFormValues {
   description: string
   /** Ruta del bucket de la tienda o URL https. `null` = sin foto. */
   imageUrl: string | null
+  /** Ruta del video de fondo en el bucket de la tienda. `null` = sin video. */
+  videoUrl: string | null
   kind: PromotionKind
   status: PromotionStatus
   priority: number

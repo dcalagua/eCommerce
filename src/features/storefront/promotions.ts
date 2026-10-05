@@ -30,6 +30,13 @@ const promotionSchema = z.object({
   ends_at: z.string().nullable().default(null),
   priority: z.coerce.number().nullable().default(0),
   image_url: z.string().nullable().default(null),
+  // 2026-10-04 · Solo una ruta de video de la tienda; cualquier otra cosa, nada.
+  video_url: z
+    .string()
+    .regex(/^[0-9a-f-]{36}\/[0-9a-f-]{36}\/content\/video-[0-9a-f-]{36}\.(mp4|webm)$/i)
+    .nullable()
+    .catch(null)
+    .default(null),
   category_slug: z.string().nullable().default(null),
   brand_code: z.string().nullable().default(null),
 })
@@ -52,6 +59,11 @@ export interface StorePromotion {
   readonly endsAt: string | null
   /** Foto de la campaña: ruta del bucket de la tienda o URL https externa. */
   readonly imageUrl: string | null
+  /**
+   * 2026-10-04 · Video de fondo (ruta del bucket de la tienda). Opcional: la
+   * imagen sigue siendo el respaldo y lo que se ve sin movimiento.
+   */
+  readonly videoUrl?: string | null
   /** A dónde lleva el botón: la categoría o la marca a la que alcanza. */
   readonly categorySlug: string | null
   readonly brandCode: string | null
@@ -94,6 +106,7 @@ export async function fetchStorePromotions(
     minSubtotal: promotion.min_subtotal,
     endsAt: promotion.ends_at,
     imageUrl: promotion.image_url,
+    videoUrl: promotion.video_url,
     categorySlug: promotion.category_slug,
     brandCode: promotion.brand_code,
   }))

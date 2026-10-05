@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import { offerBadge, vigenciaTexto } from '../offer'
 import type { StorePromotion } from '../promotions'
+import { PromoBackgroundVideo } from './PromoBackgroundVideo'
 
 /**
  * Las campañas como BANNER EDITORIAL (tema Premium · lámina 33 del diseño).
@@ -88,20 +89,25 @@ export function PromoEditorial({
       }}
     >
       {conFoto ? (
+        // 2026-10-04 · Un marco para la foto y, si lo hay, el video encima.
         <Box
-          component="img"
-          src={imagen}
-          alt=""
-          loading="lazy"
-          decoding="async"
           sx={{
             order: { xs: 0, md: 1 },
-            width: '100%',
+            position: 'relative',
+            overflow: 'hidden',
             height: { xs: 220, md: '100%' },
-            objectFit: 'cover',
-            display: 'block',
           }}
-        />
+        >
+          <Box
+            component="img"
+            src={imagen}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+          {promo.videoUrl ? <PromoBackgroundVideo path={promo.videoUrl} /> : null}
+        </Box>
       ) : null}
 
       <Stack

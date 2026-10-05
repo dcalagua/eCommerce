@@ -15,6 +15,7 @@ import {
 } from '@mui/material'
 import { useEffect, useState } from 'react'
 import { StoreAssetField } from '@/features/admin/settings/StoreAssetField'
+import { PromotionVideoField } from './PromotionVideoField'
 import { useAssetUrls } from '@/features/admin/settings/useStoreSettings'
 import { useI18n } from '@/shared/i18n/i18n-context'
 import type { MessageKey } from '@/shared/i18n/messages'
@@ -56,6 +57,7 @@ const EMPTY: PromotionFormValues = {
   name: '',
   description: '',
   imageUrl: null,
+  videoUrl: null,
   kind: 'percentage',
   status: 'draft',
   priority: 100,
@@ -92,6 +94,7 @@ function fromPromotion(promotion: Promotion): PromotionFormValues {
     name: promotion.name,
     description: promotion.description ?? '',
     imageUrl: promotion.image_url,
+    videoUrl: promotion.video_url ?? null,
     kind: promotion.kind,
     status: promotion.status,
     priority: promotion.priority,
@@ -244,7 +247,9 @@ export function PromotionDrawer({
       const id = await save.mutateAsync({
         id: promotion?.id ?? null,
         values,
-        previa: promotion ? { image_url: promotion.image_url ?? null } : null,
+        previa: promotion
+          ? { image_url: promotion.image_url ?? null, video_url: promotion.video_url ?? null }
+          : null,
       })
       /**
        * Lo elegido en el alcance y no añadido se guarda TAMBIÉN.
@@ -398,7 +403,21 @@ export function PromotionDrawer({
           disabled={save.isPending}
           organizationId={scope?.organizationId ?? ''}
           storeId={scope?.storeId ?? ''}
-          onChange={(next: string | null) => set('imageUrl', next)}
+          onChange={(next: string | null) => {
+            set('imageUrl', next)
+            // Sin imagen, el video se va con ella: es su respaldo obligatorio.
+            if (!next) set('videoUrl', null)
+          }}
+        />
+
+        {/* 2026-10-04 · El video de fondo de la campaña en la portada. */}
+        <PromotionVideoField
+          value={values.videoUrl}
+          hasImage={Boolean(values.imageUrl)}
+          disabled={save.isPending}
+          organizationId={scope?.organizationId ?? ''}
+          storeId={scope?.storeId ?? ''}
+          onChange={(next) => set('videoUrl', next)}
         />
 
         <TextField

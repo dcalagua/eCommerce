@@ -3,7 +3,9 @@ import { ADMIN_PRODUCT_MASTERS_VIEW, STORE_ASSETS_BUCKET } from '@/shared/lib/db
 import { tryGetSupabaseClient } from '@/shared/lib/supabase'
 import {
   evaluateHomeVideo,
+  evaluatePromoVideo,
   HOME_VIDEO_RULES,
+  PROMO_VIDEO_RULES,
   sanitizeHomeVideos,
   storedSeconds,
   type HomeVideo,
@@ -173,12 +175,16 @@ const EXTENSION: Record<string, string> = {
 }
 
 /** Sube un video que YA cumple; devuelve la entrada para la lista. */
-export async function uploadHomeVideo(input: {
+/**
+ * Sube un video que YA cumple sus requisitos y devuelve su ruta y una URL
+ * firmada para verlo en la pantalla. Lo usan el carrusel de portada y el
+ * fondo de las promociones (2026-10-04).
+ */
+export async function uploadStoreVideo(input: {
   organizationId: string
   storeId: string
   file: File
-  seconds: number
-}): Promise<AdminHomeVideo> {
+}): Promise<{ path: string; preview: string | null }> {
   const client = tryGetSupabaseClient()
   if (!client) throw new Error('SIN_BACKEND')
   const extension = EXTENSION[input.file.type]
@@ -193,12 +199,44 @@ export async function uploadHomeVideo(input: {
   })
   if (error) throw error
   const urls = await resolveAssetUrls(client, [path])
+  return { path, preview: urls[path] ?? null }
+}
+
+/** Comprueba un video para el FONDO de una promoción (horizontal, 5 a 30 s, 15 MB). */
+export async function inspectPromoVideo(file: File): Promise<HomeVideoIssue[]> {
+  const tipoValido = (PROMO_VIDEO_RULES.types as readonly string[]).includes(file.type)
+  const facts = tipoValido ? await readVideoFacts(file) : { seconds: null, width: null, height: null }
+  return evaluatePromoVideo({ type: file.type, bytes: file.size, ...facts })
+}
+
+/** URL firmada de un video ya subido, para la vista previa. */
+export function useStoreVideoPreview(path: string | null) {
+  return useQuery({
+    queryKey: ['admin', 'store-video-preview', path] as const,
+    enabled: Boolean(path),
+    staleTime: 30 * 60 * 1000,
+    queryFn: async (): Promise<string | null> => {
+      const client = tryGetSupabaseClient()
+      if (!client || !path) return null
+      const urls = await resolveAssetUrls(client, [path])
+      return urls[path] ?? null
+    },
+  })
+}
+
+export async function uploadHomeVideo(input: {
+  organizationId: string
+  storeId: string
+  file: File
+  seconds: number
+}): Promise<AdminHomeVideo> {
+  const { path, preview } = await uploadStoreVideo(input)
   const nombre = input.file.name.replace(/\.[^.]+$/, '').slice(0, HOME_VIDEO_RULES.titleMax)
   return {
     path,
     title: nombre || null,
     duration: storedSeconds(input.seconds),
     product_id: null,
-    preview: urls[path] ?? null,
+    preview,
   }
 }
