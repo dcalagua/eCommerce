@@ -71,9 +71,15 @@ export function CategoryBar({
   counts,
   total,
   trailing,
+  allSlug = null,
 }: {
   categories: PublicCategory[]
   selected: string | null
+  /**
+   * A dónde lleva «Todo»: la familia que la barra está partiendo, o `null` para
+   * el catálogo entero (ver `categoryBarAllSlug`).
+   */
+  allSlug?: string | null
   onSelect: (slug: string | null) => void
   /** Cuántos hay por familia, si se saben. Sin ellos no se inventa ninguno. */
   counts?: ReadonlyMap<string, number | null> | null
@@ -91,10 +97,11 @@ export function CategoryBar({
         <ScrollRow component="nav" ariaLabel={t('store.categories.title')} gap={1}>
           <Chip
             label={<Etiqueta nombre={t('store.categories.all')} cuenta={total ?? undefined} />}
-            onClick={() => onSelect(null)}
-            aria-pressed={selected === null}
+            onClick={() => onSelect(allSlug)}
+            data-all-slug={allSlug ?? ''}
+            aria-pressed={selected === allSlug}
             className="sf-cat-pill"
-            sx={pillSx(selected === null)}
+            sx={pillSx(selected === allSlug)}
           />
           {categories.map((category) => {
             const active = selected === category.slug
@@ -102,7 +109,7 @@ export function CategoryBar({
               <Chip
                 key={category.category_id}
                 label={<Etiqueta nombre={category.name} cuenta={counts?.get(category.slug) ?? undefined} />}
-                onClick={() => onSelect(active ? null : category.slug)}
+                onClick={() => onSelect(active ? allSlug : category.slug)}
                 aria-pressed={active}
                 className="sf-cat-pill"
                 sx={pillSx(active)}

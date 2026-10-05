@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { categoryBarItems, categoryTrail, rollUpCategoryCounts } from './categoryTree'
+import { categoryBarAllSlug, categoryBarItems, categoryTrail, rollUpCategoryCounts } from './categoryTree'
 import type { PublicCategory } from './types'
 
 /**
@@ -105,5 +105,20 @@ describe('categoryBarItems', () => {
    */
   it('en una hoja enseña sus hermanas', () => {
     expect(categoryBarItems(ARBOL, 'leches').map((c) => c.slug)).toEqual(['leches', 'vitaminas'])
+  })
+})
+
+describe('categoryBarAllSlug — a dónde lleva «Todo»', () => {
+  it('en una hoja con hermanas: a la madre, no fuera del catálogo', () => {
+    expect(categoryBarAllSlug(ARBOL, 'leches')).toBe('nutricion')
+  })
+
+  it('en una madre que enseña sus hijas: a ella misma', () => {
+    expect(categoryBarAllSlug(ARBOL, 'nutricion')).toBe('nutricion')
+  })
+
+  it('sin familia, o en una del primer nivel sin hijas: al catálogo entero', () => {
+    expect(categoryBarAllSlug(ARBOL, null)).toBeNull()
+    expect(categoryBarAllSlug([...ARBOL, cat('regalos')], 'regalos')).toBeNull()
   })
 })

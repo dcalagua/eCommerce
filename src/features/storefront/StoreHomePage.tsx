@@ -54,7 +54,7 @@ import {
   useStoreNavigation,
   useStorePromotions,
 } from './hooks'
-import { categoryBarItems, categoryTrail, rollUpCategoryCounts } from './categoryTree'
+import { categoryBarAllSlug, categoryBarItems, categoryTrail, rollUpCategoryCounts } from './categoryTree'
 import { hitToPublicProduct } from './search'
 import { homeMeta } from './seo'
 
@@ -229,6 +229,27 @@ export function StoreHomePage() {
         const next = new URLSearchParams(prev)
         if (value) next.set(key, value)
         else next.delete(key)
+        return next
+      })
+    },
+    [setParams],
+  )
+
+  /**
+   * A una familia, o al catálogo ENTERO con `null` (2026-10-04). Quitar la
+   * categoría a secas no basta: sin categoría ni `ver=todo` la página es la
+   * portada, y «Todo» sacaba al comprador del catálogo.
+   */
+  const irAFamilia = useCallback(
+    (slug: string | null) => {
+      setParams((prev) => {
+        const next = new URLSearchParams(prev)
+        if (slug) {
+          next.set('c', slug)
+        } else {
+          next.delete('c')
+          next.set('ver', 'todo')
+        }
         return next
       })
     },
@@ -1200,7 +1221,7 @@ export function StoreHomePage() {
                   component="button"
                   type="button"
                   underline="hover"
-                  onClick={() => update('c', null)}
+                  onClick={() => irAFamilia(null)}
                   sx={{ fontSize: TS.label, color: 'var(--muted)' }}
                 >
                   {t('store.catalog.all')}
@@ -1302,7 +1323,7 @@ export function StoreHomePage() {
                 component="button"
                 type="button"
                 underline="hover"
-                onClick={() => update('c', null)}
+                onClick={() => irAFamilia(null)}
                 sx={{ fontSize: TS.label, color: 'var(--muted)' }}
               >
                 {/* «Todo el catálogo» y no «Todo»: la píldora de la barra ya se
@@ -1338,7 +1359,8 @@ export function StoreHomePage() {
               (category) => categorySlug !== null || !hayCuentasDeFamilia || (categoryCounts.get(category.slug) ?? 1) > 0,
             )}
             selected={categorySlug}
-            onSelect={(slug) => update('c', slug)}
+            allSlug={categoryBarAllSlug(categories.data ?? [], categorySlug)}
+            onSelect={irAFamilia}
             // Las cantidades solo sin familia elegida: con una puesta, las
             // facetas de las demás salen a cero y dirían algo falso.
             counts={categorySlug || !hayCuentasDeFamilia ? null : categoryCounts}

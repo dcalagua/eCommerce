@@ -121,3 +121,25 @@ export function categoryBarItems(
   const siblings = categories.filter((category) => category.parent_id === selected.parent_id)
   return siblings.length > 0 ? siblings : roots
 }
+
+/**
+ * A dónde lleva «Todo» de esa misma barra (2026-10-04).
+ *
+ * «Todo» es el conjunto que la barra está partiendo, no la tienda entera:
+ *
+ *  - la barra enseña las HIJAS de la elegida → «Todo» es la elegida;
+ *  - enseña sus HERMANAS (estás en una hoja, p. ej. «Mochilas escolares») →
+ *    «Todo» es la madre («Mochilas»);
+ *  - está en el primer nivel → «Todo» es el catálogo entero (`null`).
+ *
+ * Antes era siempre `null`, y quitar la categoría sin más devolvía a la
+ * PORTADA: desde «Mochilas escolares», «Todo» sacaba al comprador del catálogo.
+ */
+export function categoryBarAllSlug(categories: PublicCategory[], selectedSlug: string | null): string | null {
+  if (!selectedSlug) return null
+  const selected = categories.find((category) => category.slug === selectedSlug)
+  if (!selected) return null
+  if (categories.some((category) => category.parent_id === selected.category_id)) return selected.slug
+  if (selected.parent_id === null) return null
+  return categories.find((category) => category.category_id === selected.parent_id)?.slug ?? null
+}
