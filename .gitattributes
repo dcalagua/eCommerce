@@ -6,3 +6,9 @@
 # contenido tenga nada mal. Forzar LF aquí hace que no dependa de cómo tenga
 # configurado git cada máquina.
 scripts/*.mjs text eol=lf
+
+# Los fixtures de contrato se fijan por SHA-256 (p. ej. FIX-USG-v1): con
+# `core.autocrlf=true` git los saca con CRLF, la huella cambia y la prueba de
+# integridad falla en Windows sin que el contenido haya cambiado.
+supabase/tests/fixtures/** text eol=lf
+docs/platform-provisioning/** text eol=lf
