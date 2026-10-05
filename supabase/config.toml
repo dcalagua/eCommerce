@@ -84,6 +84,12 @@ verify_jwt = true
 [functions.notifications-dispatch]
 verify_jwt = false
 
+# CCP fase 17: entrega del outbox de uso a EBIM MasterAdmin. Mismo patron:
+# servidor a servidor con EBIM_WORKER_KEY en cabecera, sin usuario. Apagado por
+# defecto (USAGE_OUTBOX_SENDER_ENABLED != 'true').
+[functions.usage-outbox-worker]
+verify_jwt = false
+
 # Correos de Supabase Auth por Microsoft Graph (contrato §14). La llama Auth, no
 # un usuario: la autenticacion es la firma Standard Webhooks del hook, y el flag
 # de la plataforma pediria un token que Auth no manda.

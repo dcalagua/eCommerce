@@ -52,13 +52,14 @@ Esto es lo más importante que hay que entender antes de tocar nada, y está doc
 | **Entitlement** | ¿la cuenta CONTRATÓ el módulo? | el hub EBIM | `tenant_entitlements` + cache |
 | **Flag** | ¿está encendido técnicamente? | el tenant | `tenant_feature_flags` |
 
-La composición es `app_active AND (baseline OR entitlement) AND flag ≠ false`, implementada
+La composición es `baseline OR (app_active AND entitlement AND flag ≠ false)` (D-14 regla 2,
+2026-09-29; antes `app_active AND (baseline OR …)`), implementada
 **dos veces a propósito**: en `resolveCapabilities()` (puro, para la UI) y en
 `ebim.has_capability` (dentro de las policies, que es la autoridad real).
 
 Tres reglas fijadas por test que las fases B2B **no pueden romper**:
 
-1. `appActive: false` no deja ni lo baseline.
+1. `appActive: false` retira lo vendible y conserva lo baseline (D-14 regla 2, 2026-09-29).
 2. Un flag jamás concede — solo resta.
 3. Un flag no apaga lo baseline.
 

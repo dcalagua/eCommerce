@@ -73,10 +73,10 @@ export const NAV_GROUPS: readonly { id: NavGroupId; label: MessageKey }[] = [
 /**
  * Navegación del backoffice. Fuente única del sidebar y de las migas.
  *
- * `capability` no es decoración: si el hub declara que la cuenta no tiene
- * eCommerce activo (`app_active: false`), estos módulos dejan de listarse y su
- * ruta pinta el estado «no contratado» en vez de un listado vacío que parece
- * un fallo. Configuración se queda SIN capacidad a propósito: hay que poder
+ * `capability` no es decoración: un módulo sin su capacidad deja de listarse y
+ * su ruta pinta el estado «no contratado» en vez de un listado vacío que parece
+ * un fallo. Con `app_active: false` solo se retiran los módulos vendibles; los
+ * baseline (catálogo, pedidos…) siguen (D-14 regla 2, 2026-09-29). Configuración se queda SIN capacidad a propósito: hay que poder
  * llegar a los ajustes aunque no haya un solo módulo contratado, si no la
  * única salida de un tenant mal configurado sería llamar por teléfono.
  */

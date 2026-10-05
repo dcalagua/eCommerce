@@ -1,0 +1,268 @@
+
+ RUN  v3.2.7 /Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1
+
+ ❯ supabase/tests/usage-outbox-db.test.ts (25 tests | 24 failed) 572ms
+   × privacidad > esquema propio sin USAGE para anon/authenticated y tablas sin GRANT 30ms
+     → relation "platform_usage.usage_outbox" does not exist
+   × privacidad > authenticated no lee el outbox 6ms
+     → expected 'relation "platform_usage.usage_outbox…' to match /permission denied/
+   × privacidad > las RPC de entrega son solo de service_role, DEFINER con search_path fijo 3ms
+     → expected [] to deeply equal [ { …(6) }, { …(6) } ]
+   ✓ privacidad > las funciones internas del esquema no las ejecuta nadie de fuera 1ms
+   × privacidad > el reclamo usa FOR UPDATE SKIP LOCKED 0ms
+     → function "public.platform_usage_outbox_claim(integer, integer)" does not exist
+   × se escribe en la misma transacción que la traza de IA > traza del servidor → un evento ecommerce.ai.calls con el tenant de MasterAdmin 3ms
+     → relation "platform_usage.usage_outbox" does not exist
+   × se escribe en la misma transacción que la traza de IA > también en fallo: la llamada que no respondió se mide igual 2ms
+     → relation "platform_usage.usage_outbox" does not exist
+   × se escribe en la misma transacción que la traza de IA > si la transacción de la traza se deshace, el evento también 0ms
+     → relation "platform_usage.usage_outbox" does not exist
+   × se escribe en la misma transacción que la traza de IA > la ruta JWT (`public.ai_record` con ticket) también encola 10ms
+     → relation "platform_usage.usage_outbox" does not exist
+   × se escribe en la misma transacción que la traza de IA > sin mapping de provisioning ACTIVE: PENDING con TENANT_NOT_MAPPED, sin tenant inventado 2ms
+     → relation "platform_usage.usage_outbox" does not exist
+   × se escribe en la misma transacción que la traza de IA > una traza sin sociedad o de una funcionalidad no declarada no encola 0ms
+     → relation "platform_usage.usage_outbox" does not exist
+   × el hecho es inmutable > quantity no cambia 1ms
+     → expected 'relation "platform_usage.usage_outbox…' to match /USAGE_FACT_IMMUTABLE/
+   × el hecho es inmutable > meter_code no cambia 1ms
+     → expected 'relation "platform_usage.usage_outbox…' to match /USAGE_FACT_IMMUTABLE/
+   × el hecho es inmutable > control_plane_tenant_id no cambia 2ms
+     → expected 'relation "platform_usage.usage_outbox…' to match /USAGE_FACT_IMMUTABLE/
+   × el hecho es inmutable > occurred_at no cambia 1ms
+     → expected 'relation "platform_usage.usage_outbox…' to match /USAGE_FACT_IMMUTABLE/
+   × el hecho es inmutable > internal no cambia 1ms
+     → expected 'relation "platform_usage.usage_outbox…' to match /USAGE_FACT_IMMUTABLE/
+   × el hecho es inmutable > event_id no cambia 1ms
+     → expected 'relation "platform_usage.usage_outbox…' to match /USAGE_FACT_IMMUTABLE/
+   × el hecho es inmutable > no se borra 1ms
+     → expected 'relation "platform_usage.usage_outbox…' to match /USAGE_FACT_IMMUTABLE/
+   × el hecho es inmutable > la cantidad nunca es negativa 0ms
+     → expected 'relation "platform_usage.usage_outbox…' to match /usage_outbox_quantity_ck|check constr…/
+   × reclamo, marcas y backoff > reclama solo lo mapeado y vencido; el lease impide un segundo reclamo 1ms
+     → function public.platform_usage_outbox_claim(unknown, unknown) does not exist
+   × reclamo, marcas y backoff > SENT (ACCEPTED/DUPLICATE), DEAD con código y RETRY con backoff 0ms
+     → relation "platform_usage.usage_outbox" does not exist
+   × reclamo, marcas y backoff > backoff min(30·2^(n−1), 21600) por intento 1ms
+     → relation "platform_usage.usage_outbox" does not exist
+   × reclamo, marcas y backoff > SENT y DEAD son terminales: una marca posterior se ignora y el UPDATE directo falla 1ms
+     → relation "platform_usage.usage_outbox" does not exist
+   × reclamo, marcas y backoff > un evento sin tenant nunca se marca como enviado 1ms
+     → relation "platform_usage.usage_outbox" does not exist
+   × reclamo, marcas y backoff > una marca malformada se rechaza entera 1ms
+     → relation "platform_usage.usage_outbox" does not exist
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  supabase/tests/usage-fixtures-pin.test.ts [ supabase/tests/usage-fixtures-pin.test.ts ]
+Error: Cannot find module '../functions/_shared/usageOutbox/contract.ts' imported from '/Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1/supabase/tests/usage-fixtures-pin.test.ts'
+ ❯ supabase/tests/usage-fixtures-pin.test.ts:17:1
+     15| import { fileURLToPath } from 'node:url'
+     16| import { describe, expect, it } from 'vitest'
+     17| import { ECOMMERCE_USAGE_METERS } from '../functions/_shared/usageOutb…
+       | ^
+     18| 
+     19| /** sha256 de CHECKSUMS.sha256 publicado por MasterAdmin (FIX-USG-v1).…
+
+Caused by: Error: Failed to load url ../functions/_shared/usageOutbox/contract.ts (resolved id: ../functions/_shared/usageOutbox/contract.ts) in /Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1/supabase/tests/usage-fixtures-pin.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/26]⎯
+
+ FAIL  supabase/tests/usage-outbox-sender.test.ts [ supabase/tests/usage-outbox-sender.test.ts ]
+Error: Cannot find module '../functions/_shared/usageOutbox/sender.ts' imported from '/Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1/supabase/tests/usage-outbox-sender.test.ts'
+ ❯ supabase/tests/usage-outbox-sender.test.ts:17:1
+     15| import { fileURLToPath } from 'node:url'
+     16| import { describe, expect, it, vi } from 'vitest'
+     17| import {
+       | ^
+     18|   buildUsageEvent,
+     19|   runUsageOutboxSender,
+
+Caused by: Error: Failed to load url ../functions/_shared/usageOutbox/sender.ts (resolved id: ../functions/_shared/usageOutbox/sender.ts) in /Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1/supabase/tests/usage-outbox-sender.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/26]⎯
+
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 24 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  supabase/tests/usage-outbox-db.test.ts > privacidad > esquema propio sin USAGE para anon/authenticated y tablas sin GRANT
+ FAIL  supabase/tests/usage-outbox-db.test.ts > se escribe en la misma transacción que la traza de IA > traza del servidor → un evento ecommerce.ai.calls con el tenant de MasterAdmin
+ FAIL  supabase/tests/usage-outbox-db.test.ts > se escribe en la misma transacción que la traza de IA > también en fallo: la llamada que no respondió se mide igual
+ FAIL  supabase/tests/usage-outbox-db.test.ts > se escribe en la misma transacción que la traza de IA > si la transacción de la traza se deshace, el evento también
+ FAIL  supabase/tests/usage-outbox-db.test.ts > se escribe en la misma transacción que la traza de IA > la ruta JWT (`public.ai_record` con ticket) también encola
+ FAIL  supabase/tests/usage-outbox-db.test.ts > se escribe en la misma transacción que la traza de IA > sin mapping de provisioning ACTIVE: PENDING con TENANT_NOT_MAPPED, sin tenant inventado
+ FAIL  supabase/tests/usage-outbox-db.test.ts > se escribe en la misma transacción que la traza de IA > una traza sin sociedad o de una funcionalidad no declarada no encola
+ FAIL  supabase/tests/usage-outbox-db.test.ts > reclamo, marcas y backoff > SENT (ACCEPTED/DUPLICATE), DEAD con código y RETRY con backoff
+ FAIL  supabase/tests/usage-outbox-db.test.ts > reclamo, marcas y backoff > backoff min(30·2^(n−1), 21600) por intento
+ FAIL  supabase/tests/usage-outbox-db.test.ts > reclamo, marcas y backoff > SENT y DEAD son terminales: una marca posterior se ignora y el UPDATE directo falla
+ FAIL  supabase/tests/usage-outbox-db.test.ts > reclamo, marcas y backoff > un evento sin tenant nunca se marca como enviado
+ FAIL  supabase/tests/usage-outbox-db.test.ts > reclamo, marcas y backoff > una marca malformada se rechaza entera
+error: relation "platform_usage.usage_outbox" does not exist
+ ❯ pe.Ue ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:442:11
+ ❯ pe.tt ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:220:16
+ ❯ pe.parse ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:104:21
+ ❯ N.qe ../../node_modules/@electric-sql/pglite/src/pglite.ts:753:26
+ ❯ ../../node_modules/@electric-sql/pglite/src/pglite.ts:706:14
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:5922000
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2616044
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2648530
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2649134
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:5569870
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/26]⎯
+
+ FAIL  supabase/tests/usage-outbox-db.test.ts > privacidad > authenticated no lee el outbox
+AssertionError: expected 'relation "platform_usage.usage_outbox…' to match /permission denied/
+
+[32m- Expected:[39m 
+/permission denied/
+
+[31m+ Received:[39m 
+"relation \"platform_usage.usage_outbox\" does not exist"
+
+ ❯ supabase/tests/usage-outbox-db.test.ts:139:21
+    137|       asRole(db, 'authenticated', claimsFor(TENANT_A), () => db.query(…
+    138|     )
+    139|     expect(message).toMatch(/permission denied/)
+       |                     ^
+    140|   })
+    141| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/26]⎯
+
+ FAIL  supabase/tests/usage-outbox-db.test.ts > privacidad > las RPC de entrega son solo de service_role, DEFINER con search_path fijo
+AssertionError: expected [] to deeply equal [ { …(6) }, { …(6) } ]
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- [[39m
+[32m-   {[39m
+[32m-     "anon": false,[39m
+[32m-     "auth": false,[39m
+[32m-     "config": "search_path=\"\"",[39m
+[32m-     "definer": true,[39m
+[32m-     "fn": "platform_usage_outbox_claim",[39m
+[32m-     "svc": true,[39m
+[32m-   },[39m
+[32m-   {[39m
+[32m-     "anon": false,[39m
+[32m-     "auth": false,[39m
+[32m-     "config": "search_path=\"\"",[39m
+[32m-     "definer": true,[39m
+[32m-     "fn": "platform_usage_outbox_mark",[39m
+[32m-     "svc": true,[39m
+[32m-   },[39m
+[32m- ][39m
+[31m+ [][39m
+
+ ❯ supabase/tests/usage-outbox-db.test.ts:153:18
+    151|        where n.nspname = 'public' and p.proname like 'platform_usage_o…
+    152|        order by 1`)
+    153|     expect(rows).toEqual([
+       |                  ^
+    154|       { fn: 'platform_usage_outbox_claim', anon: false, auth: false, s…
+    155|       { fn: 'platform_usage_outbox_mark', anon: false, auth: false, sv…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/26]⎯
+
+ FAIL  supabase/tests/usage-outbox-db.test.ts > privacidad > el reclamo usa FOR UPDATE SKIP LOCKED
+error: function "public.platform_usage_outbox_claim(integer, integer)" does not exist
+ ❯ pe.Ue ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:442:11
+ ❯ pe.tt ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:220:16
+ ❯ pe.parse ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:104:21
+ ❯ N.qe ../../node_modules/@electric-sql/pglite/src/pglite.ts:753:26
+ ❯ ../../node_modules/@electric-sql/pglite/src/pglite.ts:706:14
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:5922000
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2616044
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2648530
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2649134
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:5569870
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/26]⎯
+
+ FAIL  supabase/tests/usage-outbox-db.test.ts > el hecho es inmutable > quantity no cambia
+ FAIL  supabase/tests/usage-outbox-db.test.ts > el hecho es inmutable > meter_code no cambia
+ FAIL  supabase/tests/usage-outbox-db.test.ts > el hecho es inmutable > control_plane_tenant_id no cambia
+ FAIL  supabase/tests/usage-outbox-db.test.ts > el hecho es inmutable > occurred_at no cambia
+ FAIL  supabase/tests/usage-outbox-db.test.ts > el hecho es inmutable > internal no cambia
+ FAIL  supabase/tests/usage-outbox-db.test.ts > el hecho es inmutable > event_id no cambia
+AssertionError: expected 'relation "platform_usage.usage_outbox…' to match /USAGE_FACT_IMMUTABLE/
+
+[32m- Expected:[39m 
+/USAGE_FACT_IMMUTABLE/
+
+[31m+ Received:[39m 
+"relation \"platform_usage.usage_outbox\" does not exist"
+
+ ❯ supabase/tests/usage-outbox-db.test.ts:284:21
+    282|       su(`update platform_usage.usage_outbox set ${set} where source_i…
+    283|     )
+    284|     expect(message).toMatch(/USAGE_FACT_IMMUTABLE/)
+       |                     ^
+    285|   })
+    286| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/26]⎯
+
+ FAIL  supabase/tests/usage-outbox-db.test.ts > el hecho es inmutable > no se borra
+AssertionError: expected 'relation "platform_usage.usage_outbox…' to match /USAGE_FACT_IMMUTABLE/
+
+[32m- Expected:[39m 
+/USAGE_FACT_IMMUTABLE/
+
+[31m+ Received:[39m 
+"relation \"platform_usage.usage_outbox\" does not exist"
+
+ ❯ supabase/tests/usage-outbox-db.test.ts:292:21
+    290|       su('delete from platform_usage.usage_outbox where source_interac…
+    291|     )
+    292|     expect(message).toMatch(/USAGE_FACT_IMMUTABLE/)
+       |                     ^
+    293|   })
+    294| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/26]⎯
+
+ FAIL  supabase/tests/usage-outbox-db.test.ts > el hecho es inmutable > la cantidad nunca es negativa
+AssertionError: expected 'relation "platform_usage.usage_outbox…' to match /usage_outbox_quantity_ck|check constr…/
+
+[32m- Expected:[39m 
+/usage_outbox_quantity_ck|check constraint/
+
+[31m+ Received:[39m 
+"relation \"platform_usage.usage_outbox\" does not exist"
+
+ ❯ supabase/tests/usage-outbox-db.test.ts:301:21
+    299|           values (now(), 'ecommerce.ai.calls', -1, 'call', $1, $2)`, […
+    300|     )
+    301|     expect(message).toMatch(/usage_outbox_quantity_ck|check constraint…
+       |                     ^
+    302|   })
+    303| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/26]⎯
+
+ FAIL  supabase/tests/usage-outbox-db.test.ts > reclamo, marcas y backoff > reclama solo lo mapeado y vencido; el lease impide un segundo reclamo
+error: function public.platform_usage_outbox_claim(unknown, unknown) does not exist
+ ❯ pe.Ue ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:442:11
+ ❯ pe.tt ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:220:16
+ ❯ pe.parse ../../node_modules/@electric-sql/pg-protocol/src/parser.ts:104:21
+ ❯ N.qe ../../node_modules/@electric-sql/pglite/src/pglite.ts:753:26
+ ❯ ../../node_modules/@electric-sql/pglite/src/pglite.ts:706:14
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:5922000
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2616044
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2648530
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:2649134
+ ❯ null.<anonymous> wasm:/wasm/0267bb86:1:5569870
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/26]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  24 failed | 1 passed (25)
+   Start at  13:13:27
+   Duration  1.12s (transform 111ms, setup 603ms, collect 25ms, tests 572ms, environment 0ms, prepare 126ms)
+

@@ -95,16 +95,31 @@ describe('resolución de capacidades efectivas', () => {
   })
 
   /**
-   * Si el hub dice que la cuenta no tiene esta app, no queda ni el catálogo.
-   * No es un tenant con plan mínimo: es un tenant que no es cliente.
+   * D-14 regla 2 (2026-09-29): `appActive: false` retira lo COMERCIAL (lo
+   * vendible), no la operación. Lo baseline —catálogo, vitrina, checkout,
+   * pedidos, analítica básica— sigue; ningún entitlement ni fallback legado
+   * concede nada mientras la app esté inactiva.
    */
-  it('`app_active: false` no deja ni lo baseline', () => {
+  it('`app_active: false` retira lo vendible y conserva lo baseline (D-14 regla 2)', () => {
     const result = resolveCapabilities({
       appActive: false,
       entitlements: [`${ENTITLEMENT_PREFIX}payments`],
+      synced: false,
     })
-    expect(result.capabilities).toEqual([])
-    expect(result.entitled).toEqual([])
+    expect(result.capabilities).toEqual([...BASELINE_CAPABILITY_IDS].sort())
+    expect(result.entitled).toEqual([...BASELINE_CAPABILITY_IDS].sort())
+    expect(result.capabilities).not.toContain('payments')
+    expect(result.disabledByFlag).toEqual([])
+    expect(result.unknownEntitlements).toEqual([])
+  })
+
+  it('`app_active: false`: un flag tampoco apaga lo baseline', () => {
+    const result = resolveCapabilities({
+      appActive: false,
+      entitlements: [],
+      flags: { catalog: false, orders: false },
+    })
+    expect(result.capabilities).toEqual([...BASELINE_CAPABILITY_IDS].sort())
   })
 
   /** La regla que impide que los ajustes del tenant sean una caja registradora. */

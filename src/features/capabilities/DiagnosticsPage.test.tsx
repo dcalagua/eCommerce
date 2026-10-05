@@ -202,6 +202,23 @@ describe('DiagnosticsPage', () => {
     expect(texto).not.toMatch(/Bearer /)
   })
 
+  /**
+   * CCP fase 09: con el tenant en DUAL_READ/PRIMARY la caché la escribe el
+   * receptor de EBIM MasterAdmin. El diagnóstico lo dice tal cual (no lo
+   * disfraza de «sin contexto») y no ofrece «volver a leer del hub», que en
+   * PRIMARY el servidor rechaza.
+   */
+  it('dice cuando la configuración viene de EBIM MasterAdmin y no ofrece releer del hub', async () => {
+    holder.client = backend({
+      context: makePlatformContext({ source: 'masteradmin', plan: 'ecommerce-shared-standard' }),
+    })
+    renderPage()
+
+    expect(await screen.findByText(/Configuración recibida de EBIM MasterAdmin/)).toBeInTheDocument()
+    expect(screen.getByText('ecommerce-shared-standard')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Volver a leer del hub/ })).not.toBeInTheDocument()
+  })
+
   it('el botón de refresco llama a la Edge Function, no al hub desde el navegador', async () => {
     renderPage()
     const client = holder.client as FakeSupabase

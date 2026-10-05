@@ -23,7 +23,9 @@ export {
  * hablamos con el hub» son dos incidencias distintas para quien da soporte, y
  * la segunda no se arregla vendiendo nada.
  */
-export const CONTEXT_SOURCES = ['hub', 'provisioning', 'sin-contexto'] as const
+// `masteradmin`: la escribió el receptor de snapshots de EBIM MasterAdmin
+// (tenant en DUAL_READ/PRIMARY, CCP fase 09).
+export const CONTEXT_SOURCES = ['hub', 'provisioning', 'masteradmin', 'sin-contexto'] as const
 export type ContextSource = (typeof CONTEXT_SOURCES)[number]
 
 /**

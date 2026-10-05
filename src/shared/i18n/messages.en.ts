@@ -996,6 +996,8 @@ export const en: Readonly<Record<MessageKey, string>> = {
     'diagnostics.source.hub': 'Configuration read from the EBIM hub.',
     'diagnostics.source.provisioning':
       'Configuration loaded by the operator. It does not come from the EBIM hub yet.',
+    'diagnostics.source.masteradmin':
+      'Configuration received from EBIM MasterAdmin (versioned snapshot). The hub no longer decides it.',
     'diagnostics.source.none':
       'The hub configuration was never read. Only the included modules are active.',
     'diagnostics.field.product': 'Product and version',

@@ -239,7 +239,8 @@ export default defineConfig(({ mode }) => {
       // suite los recoge: corre cada archivo una vez por worktree y mezcla en el
       // resultado código a medio hacer de otra rama, que es justo lo contrario
       // de lo que un gate tiene que medir.
-      exclude: [...configDefaults.exclude, '.claude/**'],
+      // `.worktrees` es lo mismo con otro nombre (worktrees de programa).
+      exclude: [...configDefaults.exclude, '.claude/**', '.worktrees/**'],
       css: false,
       // Los flujos completos (login -> alta -> panel) recorren el router real con
       // rutas `React.lazy`. Con la suite entera en paralelo, resolver esos

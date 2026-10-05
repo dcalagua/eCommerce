@@ -602,15 +602,15 @@ export interface CapabilityResolution {
 }
 
 /**
- * Capacidad efectiva = app activa AND (baseline OR entitlement OR fallback
- * legado) AND flag ≠ false, donde fallback legado = `legacyUntilSynced` y
+ * Capacidad efectiva = baseline OR (app activa AND (entitlement OR fallback
+ * legado) AND flag ≠ false), donde fallback legado = `legacyUntilSynced` y
  * sociedad nunca sincronizada (`synced: false`).
  *
  * Tres decisiones que no son obvias y que un test fija:
  *
- * 1. **`appActive: false` no deja ni lo baseline.** Si el hub dice que la
- *    cuenta no tiene esta app, no hay nada que gatear: no es un tenant con
- *    plan mínimo, es un tenant que no es cliente de eCommerce.
+ * 1. **`appActive: false` retira lo comercial, no la operación** (D-14 regla 2,
+ *    2026-09-29). Lo vendible se apaga aunque el addon siga contratado; lo
+ *    baseline (catálogo, vitrina, checkout, pedidos, analítica básica) sigue.
  * 2. **Un flag jamás concede.** `flags['payments'] = true` sin el addon no
  *    enciende nada. Si pudiera, la pantalla de ajustes del propio cliente
  *    sería un sistema de facturación en la sombra.
@@ -623,15 +623,6 @@ export interface CapabilityResolution {
  */
 export function resolveCapabilities(input: PlatformContextInput): CapabilityResolution {
   const flags = input.flags ?? {}
-
-  if (!input.appActive) {
-    return {
-      capabilities: [],
-      entitled: [],
-      disabledByFlag: [],
-      unknownEntitlements: [...input.entitlements].sort(),
-    }
-  }
 
   const active = new Set(input.entitlements)
   const known = new Set(
@@ -647,6 +638,8 @@ export function resolveCapabilities(input: PlatformContextInput): CapabilityReso
   for (const item of CAPABILITIES) {
     const isBaseline = item.entitlement === null
     const legacy = !synced && item.legacyUntilSynced === true
+    // D-14 regla 2: app inactiva = nada vendible, pero lo baseline se queda.
+    if (!isBaseline && !input.appActive) continue
     if (!isBaseline && !legacy && !active.has(item.entitlement as string)) continue
 
     entitled.push(item.id)

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ebim.pe/contracts/usage/v1/request.schema.json",
+  "title": "ebim.usage/v1 — lote de eventos de uso",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "environment", "batchId", "events"],
+  "properties": {
+    "schema": { "const": "ebim.usage/v1" },
+    "environment": { "enum": ["DEV", "QAS", "DEMO", "PRD"] },
+    "productCode": { "type": "string", "pattern": "^[a-z0-9]+$" },
+    "batchId": { "type": "string", "format": "uuid" },
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["eventId", "meterCode", "quantity", "unit", "occurredAt", "controlPlaneTenantId"],
+        "properties": {
+          "eventId": { "type": "string", "format": "uuid" },
+          "meterCode": { "type": "string", "pattern": "^[a-z0-9]+([._][a-z0-9]+)*$", "maxLength": 120 },
+          "quantity": { "type": "number" },
+          "unit": { "type": "string", "pattern": "^[a-z0-9]+(_[a-z0-9]+)*$" },
+          "occurredAt": { "type": "string", "format": "date-time" },
+          "controlPlaneTenantId": { "type": "string", "format": "uuid" },
+          "externalCompanyId": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "subjectRef": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "capabilityCode": { "type": "string", "pattern": "^[a-z0-9]+(\\.[a-z0-9_]+)+$" },
+          "internal": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "provider": { "type": "string", "minLength": 1, "maxLength": 100 },
+              "model": { "type": "string", "minLength": 1, "maxLength": 100 },
+              "inputTokens": { "type": "integer", "minimum": 0 },
+              "outputTokens": { "type": "integer", "minimum": 0 },
+              "cacheTokens": { "type": "integer", "minimum": 0 },
+              "latencyMs": { "type": "integer", "minimum": 0 },
+              "costAmount": { "type": "number", "minimum": 0 },
+              "costCurrency": { "type": "string", "pattern": "^[A-Z]{3}$" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -20,6 +20,11 @@
  *   EBIM_MASTERADMIN_M2M_CREATE_SCOPE         ecommerce:tenant:create
  *   EBIM_MASTERADMIN_M2M_READ_SCOPE           ecommerce:tenant:read
  *   EBIM_MASTERADMIN_M2M_PUBLIC_KEY_B64       Base64 del PEM `BEGIN PUBLIC KEY` (P-256)
+ *
+ * Entitlements (contrato `ebim.entitlements/v1`, rutas ADITIVAS
+ * `PUT|GET /tenants/{id}/entitlements` y `GET /entitlements/manifest`): ver
+ * `_shared/platformEntitlements/config.ts`. Sin sus secretos, solo esas rutas
+ * responden 503; las de provisioning no cambian.
  */
 import { createClient } from 'npm:@supabase/supabase-js@2.48.0'
 import { handleProvisioningRequest } from '../_shared/platformProvisioning/handler.ts'
@@ -28,6 +33,9 @@ import {
   loadM2MConfig,
 } from '../_shared/platformProvisioning/m2m.ts'
 import { createRpcRepository } from '../_shared/platformProvisioning/repository.ts'
+import { loadEntitlementsConfig } from '../_shared/platformEntitlements/config.ts'
+import { handleEntitlementsRequest, isEntitlementsRoute } from '../_shared/platformEntitlements/handler.ts'
+import { createEntitlementsRpcRepository } from '../_shared/platformEntitlements/repository.ts'
 import { edgeSecurityHeaders } from '../_shared/securityHeaders.ts'
 
 /**
@@ -45,7 +53,34 @@ function secured(response: Response): Response {
 const config = loadM2MConfig(Deno.env)
 let publicKeyPromise: Promise<CryptoKey> | null = null
 
-Deno.serve(async (req) =>
+// ── Entitlements (CCP fase 09): se despachan ANTES y no tocan provisioning ──
+const entitlementsConfig = loadEntitlementsConfig(Deno.env)
+let entitlementsKeyPromise: Promise<CryptoKey> | null = null
+
+function serveEntitlements(req: Request): Promise<Response> {
+  return handleEntitlementsRequest(req, {
+    config: entitlementsConfig,
+    publicKey: () => {
+      if (!entitlementsConfig) return Promise.reject(new Error('Entitlements no configurado'))
+      entitlementsKeyPromise ??= importMasterAdminPublicKey(entitlementsConfig.m2m.publicKeyB64).catch((e) => {
+        entitlementsKeyPromise = null
+        throw e
+      })
+      return entitlementsKeyPromise
+    },
+    repository: () => {
+      const url = Deno.env.get('SUPABASE_URL')
+      const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+      if (!url || !key) throw new Error('Faltan credenciales de servidor')
+      return createEntitlementsRpcRepository(
+        createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } }),
+      )
+    },
+    log: (event) => console.log(JSON.stringify(event)),
+  })
+}
+
+Deno.serve(async (req) => isEntitlementsRoute(req.url) ? secured(await serveEntitlements(req)) :
   secured(await handleProvisioningRequest(req, {
     config,
     publicKey: () => {

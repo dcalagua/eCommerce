@@ -1,0 +1,21 @@
+
+ RUN  v3.2.7 /Users/edudavidmorenoccama/Documents/Documentos-Edus-MacBook-Pro-2/EBIM/eCommerce/.worktrees/ebim-commercial-control-plane-v1
+
+ ✓ src/shared/i18n/backoffice-split.test.ts (4 tests) 52ms
+ ✓ src/shared/i18n/messages.test.ts (8 tests) 216ms
+stderr | src/features/capabilities/capabilities.test.tsx > CapabilityGate > deja pasar un módulo baseline: viene con el producto
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+stderr | src/features/capabilities/DiagnosticsPage.test.tsx > DiagnosticsPage > dice de dónde salió la configuración y cuál es la sociedad activa
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+ ✓ src/features/capabilities/capabilities.test.tsx (12 tests) 152ms
+ ✓ src/features/capabilities/DiagnosticsPage.test.tsx (10 tests) 493ms
+
+ Test Files  4 passed (4)
+      Tests  34 passed (34)
+   Start at  01:29:37
+   Duration  2.79s (transform 838ms, setup 919ms, collect 3.01s, tests 913ms, environment 631ms, prepare 307ms)
+
