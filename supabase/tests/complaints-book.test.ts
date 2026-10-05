@@ -201,7 +201,7 @@ describe('datos de ayuda de la tienda', () => {
   it('se publican en public_stores', async () => {
     await svc(
       `update public.store_settings
-          set legal_name = 'PRO BAGS PERU SAC', tax_id = '20601234567', whatsapp_phone = '+51 970 510 698',
+          set legal_name = 'TIENDA DEMO SAC', tax_id = '20000000001', whatsapp_phone = '+51 900 000 001',
               help_note = 'Ventas corporativas', business_hours = E'Lunes a viernes: 9 a 18\\nSábados: 9 a 13',
               social_links = '[{"network":"instagram","url":"https://instagram.com/porta"}]'::jsonb
         where store_id = $1`,
@@ -209,7 +209,7 @@ describe('datos de ayuda de la tienda', () => {
     )
     const [s] = await anon(`select legal_name, tax_id, whatsapp_phone, business_hours, social_links
                               from public.public_stores where slug = $1`, [TENANT_A.storeSlug])
-    expect(s?.legal_name).toBe('PRO BAGS PERU SAC')
+    expect(s?.legal_name).toBe('TIENDA DEMO SAC')
     expect(String(s?.business_hours)).toContain('\n')
     expect(s?.social_links).toEqual([{ network: 'instagram', url: 'https://instagram.com/porta' }])
   })

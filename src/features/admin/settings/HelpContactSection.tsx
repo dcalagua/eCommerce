@@ -61,7 +61,7 @@ export function HelpContactSection({ storeId, canManage }: { storeId: string | n
           <TextField fullWidth label={t('settings.help.taxId')} value={v.tax_id} onChange={(e) => set('tax_id', e.target.value)} error={malo('tax_id')} disabled={!canManage} />
         </Grid>
         <Grid item xs={12} md={4}>
-          <TextField fullWidth label={t('settings.help.whatsapp')} placeholder="+51 970 510 698" value={v.whatsapp_phone} onChange={(e) => set('whatsapp_phone', e.target.value)} error={malo('whatsapp_phone')} disabled={!canManage} />
+          <TextField fullWidth label={t('settings.help.whatsapp')} placeholder="+51 900 000 001" value={v.whatsapp_phone} onChange={(e) => set('whatsapp_phone', e.target.value)} error={malo('whatsapp_phone')} disabled={!canManage} />
         </Grid>
         <Grid item xs={12} md={8}>
           <TextField fullWidth label={t('settings.help.note')} placeholder={t('settings.help.notePlaceholder')} value={v.help_note} onChange={(e) => set('help_note', e.target.value)} error={malo('help_note')} disabled={!canManage} />

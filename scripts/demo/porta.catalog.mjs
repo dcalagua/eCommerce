@@ -15,7 +15,7 @@ export const STORE = {
   slug: 'porta',
   name: 'Porta',
   tenantSlug: 'porta',
-  tenantName: 'PRO BAGS PERÚ SAC',
+  tenantName: 'TIENDA DEMO PORTA S.A.C.',
   ownerEmail: 'owner@porta.demo',
   // Fijos: correr el script dos veces no crea dos tenants.
   organizationId: '7d1e4b2a-9c35-4f6e-8a17-3b5c9d0e2f41',
@@ -29,18 +29,20 @@ export const STORE = {
   heroKicker: 'Nueva colección 2026',
   announcements: ['ENVÍO GRATIS A TODO EL PERÚ DESDE S/199', 'HASTA 6 CUOTAS SIN INTERESES DESDE S/199'],
   supportEmail: 'ventas@porta.demo',
-  contactPhone: '+51 970 510 698',
-  contactAddress: 'Av. Javier Prado Este 4200, Santiago de Surco, Lima',
-  legalName: 'PRO BAGS PERÚ SAC',
-  taxId: '20612345671',
-  whatsapp: '+51 970 510 698',
+  // Datos de DEMOSTRACIÓN, ficticios a propósito: ni teléfono, ni dirección,
+  // ni RUC, ni redes de nadie real.
+  contactPhone: '+51 900 000 001',
+  contactAddress: 'Av. Demostración 123, Lima (dirección ficticia)',
+  legalName: 'TIENDA DEMO PORTA S.A.C.',
+  taxId: '20000000001',
+  whatsapp: '+51 900 000 001',
   helpNote: 'Ventas Corporativas.',
   hours: 'Lunes a viernes: 9:00 a.m. a 6:00 p.m.\nSábados: 9:00 a.m. a 1:00 p.m.\n(solo días hábiles)',
   social: [
-    { network: 'facebook', url: 'https://www.facebook.com/portaperu' },
-    { network: 'instagram', url: 'https://www.instagram.com/portaperu' },
-    { network: 'youtube', url: 'https://www.youtube.com/@portaperu' },
-    { network: 'tiktok', url: 'https://www.tiktok.com/@portaperu' },
+    { network: 'facebook', url: 'https://www.facebook.com/tienda-demo-porta-ebim' },
+    { network: 'instagram', url: 'https://www.instagram.com/tienda.demo.porta.ebim' },
+    { network: 'youtube', url: 'https://www.youtube.com/@tienda-demo-porta-ebim' },
+    { network: 'tiktok', url: 'https://www.tiktok.com/@tienda.demo.porta.ebim' },
   ],
 }
 
@@ -249,7 +251,7 @@ export const PROMOTIONS = [
 /** Almacenes: el centro de distribución y la tienda insignia. */
 export const WAREHOUSES = [
   { code: 'CD-LURIN', name: 'Centro de distribución Lurín', city: 'Lima', region: 'Lima', isDefault: true, share: 0.8 },
-  { code: 'TDA-JOCKEY', name: 'Tienda Jockey Plaza', city: 'Lima', region: 'Lima', isDefault: false, share: 0.2 },
+  { code: 'TDA-JOCKEY', name: 'Tienda Demo Centro', city: 'Lima', region: 'Lima', isDefault: false, share: 0.2 },
 ]
 
 const p = (text) => ({ type: 'paragraph', text })
@@ -265,7 +267,7 @@ export const PAGES = [
   ] },
   { slug: 'nuestras-tiendas', title: 'Nuestras tiendas', kind: 'landing', body: [
     p('Visítanos y prueba tu próxima mochila o maleta.'),
-    l('Jockey Plaza · Av. Javier Prado Este 4200, Surco · 10:00 a.m. a 10:00 p.m.', 'Real Plaza Salaverry · Av. Salaverry 2370, Jesús María · 10:00 a.m. a 10:00 p.m.', 'Mall Aventura Arequipa · Av. Porongoche 500 · 10:00 a.m. a 9:00 p.m.'),
+    l('Tienda Demo Centro · Av. Demostración 123, Lima · 10:00 a.m. a 10:00 p.m.', 'Tienda Demo Norte · Av. Ejemplo 456, Lima · 10:00 a.m. a 10:00 p.m.', 'Tienda Demo Sur · Calle Ficticia 789, Arequipa · 10:00 a.m. a 9:00 p.m.'),
   ] },
   { slug: 'distribuidor-porta', title: 'Distribuidor Porta', kind: 'landing', body: [
     p('¿Tienes una tienda o un negocio y quieres vender Porta? Te ofrecemos precios por volumen, material de exhibición y capacitación.'),
@@ -282,7 +284,7 @@ export const PAGES = [
     p('Lo recomendable es que no supere el 10 % del peso del niño. Ajusta las correas para que quede a la altura de la cintura.'),
   ] },
   { slug: 'contactanos', title: 'Contáctanos', kind: 'landing', body: [
-    p('WhatsApp: +51 970 510 698 (atención solo por mensajes, no llamadas).'),
+    p('WhatsApp: +51 900 000 001 (atención solo por mensajes, no llamadas).'),
     p('Correo: ventas@porta.demo'),
     p('Lunes a viernes de 9:00 a.m. a 6:00 p.m. y sábados de 9:00 a.m. a 1:00 p.m.'),
   ] },
@@ -307,7 +309,7 @@ export const PAGES = [
     l('Los cambios por talla o color son gratuitos.', 'El reembolso se realiza por el mismo medio de pago en un plazo de hasta 15 días hábiles.', 'Los productos en liquidación no tienen cambio, salvo por falla de fábrica.'),
   ] },
   { slug: 'politica-de-privacidad', title: 'Política de privacidad', kind: 'legal', body: [
-    p('PRO BAGS PERÚ SAC trata tus datos personales conforme a la Ley N.º 29733, Ley de Protección de Datos Personales, y su reglamento.'),
+    p('TIENDA DEMO PORTA S.A.C. trata tus datos personales conforme a la Ley N.º 29733, Ley de Protección de Datos Personales, y su reglamento.'),
     p('Usamos tus datos para procesar tus pedidos, atender tus consultas y, si lo aceptas, enviarte novedades. Puedes ejercer tus derechos de acceso, rectificación, cancelación y oposición escribiendo a ventas@porta.demo.'),
   ] },
   { slug: 'politica-de-cookies', title: 'Política de cookies', kind: 'legal', body: [
@@ -315,6 +317,6 @@ export const PAGES = [
   ] },
   { slug: 'terminos-y-condiciones', title: 'Términos y condiciones', kind: 'legal', body: [
     p('Al comprar en esta tienda aceptas estos términos. Los precios incluyen IGV y están expresados en soles. Las promociones son válidas hasta agotar stock o hasta la fecha indicada.'),
-    p('PRO BAGS PERÚ SAC, RUC 20612345671, Av. Javier Prado Este 4200, Santiago de Surco, Lima.'),
+    p('TIENDA DEMO PORTA S.A.C., RUC 20000000001, Av. Demostración 123, Lima (dirección ficticia).'),
   ] },
 ]

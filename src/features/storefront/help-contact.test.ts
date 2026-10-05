@@ -21,7 +21,7 @@ describe('redes de la tienda', () => {
   })
 
   it('WhatsApp se vuelve wa.me con solo dígitos', () => {
-    expect(whatsappHref('+51 970 510 698')).toBe('https://wa.me/51970510698')
+    expect(whatsappHref('+51 900 000 001')).toBe('https://wa.me/51900000001')
     expect(whatsappHref('abc')).toBeNull()
   })
 })
