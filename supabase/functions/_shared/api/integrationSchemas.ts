@@ -70,6 +70,53 @@ export const INTEGRATION_SCHEMAS: Record<string, Record<string, unknown>> = {
       },
     },
   },
+  // 2026-11-26 · POST /v1/orders/{number}/tracking
+  OrderTrackingAdd: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['tracking_number', 'events'],
+    properties: {
+      tracking_number: {
+        type: 'string',
+        description: 'Guía de un envío ya registrado en el pedido (con POST /v1/orders/{number}/status).',
+      },
+      events: {
+        type: 'array',
+        minItems: 1,
+        maxItems: 50,
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['status'],
+          properties: {
+            id: {
+              type: 'string',
+              description: 'Id del evento en tu sistema. Reenviar el mismo id no duplica el evento.',
+            },
+            status: {
+              type: 'string',
+              enum: [
+                'label_created',
+                'picked_up',
+                'in_transit',
+                'out_for_delivery',
+                'delivery_attempted',
+                'delivered',
+                'exception',
+                'returned',
+                'cancelled',
+                'info',
+              ],
+            },
+            occurred_at: { type: 'string', format: 'date-time', description: 'Por defecto, ahora.' },
+            carrier_status: { type: 'string', maxLength: 120, description: 'El estado tal como lo dice el transportista.' },
+            description: { type: 'string', maxLength: 1000 },
+            location: { type: 'string', maxLength: 200 },
+          },
+        },
+      },
+    },
+  },
   CustomerBatchRequest: {
     type: 'object',
     additionalProperties: false,

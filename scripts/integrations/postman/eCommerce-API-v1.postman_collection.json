@@ -308,6 +308,59 @@
               }
             }
           ]
+        },
+        {
+          "name": "POST /v1/orders/{number}/tracking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/v1/orders/{{orderNumber}}/tracking?store={{store}}",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "v1",
+                "orders",
+                "{{orderNumber}}",
+                "tracking"
+              ],
+              "query": [
+                {
+                  "key": "store",
+                  "value": "{{store}}",
+                  "description": "Slug de la tienda. Se puede omitir si la sociedad tiene una sola; con varias es obligatorio.",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Permiso:** `order.update`\n\nEl ERP añade eventos de seguimiento a un envío ya registrado (por su guía): recogido, en tránsito, entregado, incidencia. Avanza el estado del envío y de la entrega como un transportista integrado; reenviar el mismo `id` de evento no lo duplica.\n\nLleva `Idempotency-Key` (la pone sola el script de la colección).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tracking_number\": \"GR-T001-00012345\",\n  \"events\": [\n    {\n      \"id\": \"olva-001\",\n      \"status\": \"in_transit\",\n      \"occurred_at\": \"2026-11-27T09:15:00-05:00\",\n      \"location\": \"Lima\"\n    },\n    {\n      \"id\": \"olva-002\",\n      \"status\": \"delivered\",\n      \"occurred_at\": \"2026-11-28T16:40:00-05:00\",\n      \"description\": \"Recibido por almacén\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },

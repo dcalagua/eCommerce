@@ -24,7 +24,7 @@ const FOLDERS: Array<{ name: string; description: string; ops: string[] }> = [
   {
     name: '1 · Pedidos',
     description: 'Leer pedidos, crear uno y devolver su ciclo (estado, pago, entrega) con las referencias del ERP.',
-    ops: ['listOrders', 'getOrder', 'createOrder', 'updateOrderStatus'],
+    ops: ['listOrders', 'getOrder', 'createOrder', 'updateOrderStatus', 'addOrderTracking'],
   },
   {
     name: '2 · Catálogo y stock',

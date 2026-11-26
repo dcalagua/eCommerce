@@ -236,6 +236,24 @@ Cuerpo: `{ "error": { "code", "message", "status", "correlation_id", "request_id
 
 Los esquemas exactos están en `GET /v1/openapi.json` y una prueba fija que coinciden con lo que devuelve la base.
 
+### 6.6 `POST /v1/orders/{number}/tracking` · `order.update` (2026-11-26)
+
+El ERP (o su operador logístico) añade eventos de seguimiento a un envío **ya registrado** con su guía en
+`.../status` + `shipment`.
+
+```json
+{ "tracking_number": "GR-T001-00012345",
+  "events": [ { "id": "olva-001", "status": "in_transit", "occurred_at": "2026-11-27T09:15:00-05:00", "location": "Lima" },
+              { "id": "olva-002", "status": "delivered",  "occurred_at": "2026-11-28T16:40:00-05:00" } ] }
+```
+
+- `status`: `label_created`, `picked_up`, `in_transit`, `out_for_delivery`, `delivery_attempted`, `delivered`,
+  `exception`, `returned`, `cancelled`, `info`. Opcionales: `id`, `occurred_at`, `carrier_status`, `description`, `location`.
+- Avanza el envío y la entrega con la misma ingesta que un transportista integrado; dispara `shipment.updated`.
+- Reenviar un evento con el mismo `id` no lo duplica (`tracking.duplicated`). Máximo 50 eventos por llamada.
+- Respuesta: el pedido completo + `tracking: { accepted, duplicated, … }`. Errores: `GUIA_REQUERIDA`,
+  `EVENTOS_REQUERIDOS`, `ENVIO_NO_ENCONTRADO`, `ESTADO_NO_VALIDO`, `CAMPO_NO_PERMITIDO`.
+
 ---
 
 ## 7. Eventos (webhooks)
@@ -245,14 +263,24 @@ Se configuran en **Integraciones › Webhooks**: URL `https`, eventos suscritos 
 - Cabeceras: `x-ebim-event-type`, `x-ebim-delivery-id`, `x-ebim-signature: t=<epoch>,v1=<hex>`.
 - Firma: `HMAC-SHA256(secreto, "<t>.<cuerpo crudo>")`. Rechaza entregas con `t` de más de 5 minutos.
 - Reintentos con backoff ante respuestas no-2xx; deduplica por `x-ebim-delivery-id`.
-- Eventos: `order.created`, `order.status_changed`, `order.payment_status_changed`, `order.fulfillment_status_changed`,
-  `order.approval_requested`, `order.approval_decided`, `payment.captured`, `payment.failed`, `fulfillment.created`,
-  `fulfillment.state_changed`, `fulfillment.delivered`, `return.requested`, `return.approved`, `return.completed`,
-  `quote.requested`, `quote.accepted`, `quote.converted` (comodines `order.*`, `payment.*`, …).
+- Eventos: `order.created`, `order.updated`, `order.status_changed`, `order.payment_status_changed`,
+  `order.fulfillment_status_changed`, `order.approval_requested`, `order.approval_decided`, `payment.captured`,
+  `payment.failed`, `fulfillment.created`, `fulfillment.state_changed`, `fulfillment.delivered`, `shipment.created`,
+  `shipment.updated`, `return.requested`, `return.approved`, `return.completed`, `quote.requested`, `quote.accepted`,
+  `quote.converted` (comodines `order.*`, `shipment.*`, `payment.*`, …).
+  - `order.created` sale para **todo** pedido: vitrina, `POST /v1/orders`, hub y cotización convertida (2026-11-26).
+  - `order.updated` = se editó algo que no es estado: direcciones, contacto, notas, OC o cuenta de empresa;
+    `data.changed` dice qué.
+  - `shipment.created` = se registró una guía (también la que manda el ERP en `.../status`); `shipment.updated` =
+    cambió su estado, guía, transportista, fecha estimada o costo (`data.changed`, y `from`/`to` si cambió el estado).
 
-- **Cuerpo:** `data` trae los datos del evento y, si el evento es de un pedido, `data.order` con el **pedido
-  completo** (el mismo objeto que `GET /v1/orders/{number}`, con líneas, cliente, direcciones y entregas). El ERP no
-  necesita volver a llamar para facturar o despachar.
+- **Cuerpo:** `data` trae los datos del evento y, si el evento es de un pedido (o de uno de sus envíos), `data.order`
+  con el **pedido completo** (el mismo objeto que `GET /v1/orders/{number}`, con líneas, cliente, direcciones,
+  entregas y envíos). El ERP no necesita volver a llamar para facturar o despachar.
+- **Sobre** (2026-11-26): `{ event_id, event_type, delivery_id, occurred_at, schema_version, aggregate, data }`.
+  `schema_version: 2` = `data.order` completo. `aggregate: { type, id, version }`: `version` crece con cada hecho del
+  mismo pedido o envío; si llega un mensaje con `version` menor que la última que procesaste, descártalo (los
+  reintentos pueden llegar desordenados).
 
 **Bucle de pedido recomendado:** `order.created` (webhook) → el ERP crea su pedido → `POST /v1/orders/{n}/status` con
 `external_refs` → al facturar/despachar, otro `.../status` → eCommerce notifica al comprador.
@@ -307,6 +335,7 @@ La colección Bruno de `scripts/integrations/bruno/` cubre los mismos pasos.
 
 | Fecha | Cambio |
 |---|---|
+| 2026-11-26 | `order.created` para todo pedido; eventos `order.updated`, `shipment.created`, `shipment.updated`; sobre con `schema_version` y `aggregate.version`; `POST /v1/orders/{number}/tracking` (§6.6). |
 | 2026-11-24 | Campos completos (§6.5): pedido, producto, cliente y stock completos en lectura; `GET /v1/products/{sku}` y `GET /v1/customers/{code}`; alta de pedido con cuenta de empresa, facturación, OC, entrega y referencias; clientes con direcciones, contactos y crédito; catálogo con viñetas, peso y presentaciones; guía de despacho; `data.order` en los webhooks. |
 | 2026-11-24 | v1 consolidada: `orders/{number}/status`, `customers:batch`, `stock:batch`, `price-lists/{code}/items:batch`, `updated_since` + `server_time`, scopes `order.update` · `stock.write` · `customer.write` · `price.write`, código `ESTADO_EN_CONFLICTO`. `GET /v1/products` pasa a leer la publicación de la tienda. |
 | 2026-09-21 | `catalog/products:batch` (ver `catalog-ingest.md`). |

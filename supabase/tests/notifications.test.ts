@@ -116,6 +116,12 @@ async function correos(filtro = 'true') {
 
 beforeAll(async () => {
   db = await createTestDatabase()
+  // Esta suite prueba el REPARTO de un hecho que ella misma publica (con su
+  // carga y su clave). Desde 2026-11-26 todo pedido publica su `order.created`
+  // al confirmarse (`orders_created_event`); como aquí los pedidos se insertan
+  // a mano y el hecho se publica aparte, ese disparador duplicaría el aviso.
+  // Que ese disparador funcione lo prueba `integration-full-payloads.test.ts`.
+  await db.query(`alter table public.orders disable trigger orders_created_event`)
 
   for (const tenant of [TENANT_A, TENANT_B]) {
     await crearUsuario(tenant.ownerId, tenant.adminEmail)

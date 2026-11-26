@@ -295,6 +295,11 @@ export const RESPONSE_EXAMPLES: Record<string, unknown> = {
     ...ORDER_FULL,
     changes: { changed: ['fulfillment_status', 'payment_status'], unchanged: [], external_refs: 2, shipment: true },
   },
+  // 2026-11-26 · Seguimiento de un envío ya registrado.
+  addOrderTracking: {
+    ...ORDER_FULL,
+    tracking: { shipment_id: '7c2e…', accepted: 2, duplicated: 0, replay: false, status: 'delivered' },
+  },
   upsertCustomers: {
     dry_run: false,
     applied: true,
@@ -354,6 +359,8 @@ export const WEBHOOK_BODY_EXAMPLE = {
   event_type: 'order.created',
   delivery_id: '41aa…',
   occurred_at: '2026-11-21T03:46:48Z',
+  schema_version: 2,
+  aggregate: { type: 'order', id: '…', version: 1 },
   data: { order_id: '…', order_number: 'EC-20261121-00061', status: 'paid', total: '245.80' },
 }
 

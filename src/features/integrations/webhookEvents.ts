@@ -15,6 +15,8 @@ export const WEBHOOK_EVENT_TYPES = [
   'order.fulfillment_status_changed',
   'order.approval_requested',
   'order.approval_decided',
+  // 2026-11-26 · Dirección, contacto, notas, OC o cuenta editados.
+  'order.updated',
   'payment.*',
   'payment.captured',
   'payment.failed',
@@ -23,6 +25,10 @@ export const WEBHOOK_EVENT_TYPES = [
   // 2026-11-20 · Cada paso de la entrega (empacada, lista, en camino…).
   'fulfillment.state_changed',
   'fulfillment.delivered',
+  // 2026-11-26 · El bulto: guía, transportista, qué salió y su estado.
+  'shipment.*',
+  'shipment.created',
+  'shipment.updated',
   'return.*',
   'return.requested',
   'return.approved',
