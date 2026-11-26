@@ -1356,6 +1356,151 @@
         }
       }
     },
+    "/v1/orders/{number}/tracking": {
+      "post": {
+        "operationId": "addOrderTracking",
+        "summary": "El ERP añade eventos de seguimiento a un envío ya registrado (por su guía): recogido, en tránsito, entregado, incidencia. Avanza el estado del envío y de la entrega como un transportista integrado; reenviar el mismo `id` de evento no lo duplica.",
+        "security": [
+          {
+            "bearerAuth": [
+              "order.update"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "number",
+            "in": "path",
+            "required": true,
+            "description": "Número de pedido.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "store",
+            "in": "query",
+            "required": false,
+            "description": "Slug de la tienda. Se puede omitir si la sociedad tiene una sola; con varias es obligatorio.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "description": "Clave de idempotencia. Repetir la misma clave con el mismo cuerpo devuelve la primera respuesta; con otro cuerpo, 409.",
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": false,
+            "description": "Hilo del incidente. Si se envía, se conserva y vuelve en la respuesta; si no, el servidor abre uno y lo devuelve.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Correcto"
+          },
+          "400": {
+            "description": "Petición inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token ausente, inválido o caducado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El token no incluye el permiso necesario",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "El recurso no existe en esta sociedad",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La clave de idempotencia ya se usó con otro contenido, o la operación sigue en curso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Límite de tasa superado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderTrackingAdd"
+              },
+              "example": {
+                "tracking_number": "GR-T001-00012345",
+                "events": [
+                  {
+                    "id": "olva-001",
+                    "status": "in_transit",
+                    "occurred_at": "2026-11-27T09:15:00-05:00",
+                    "location": "Lima"
+                  },
+                  {
+                    "id": "olva-002",
+                    "status": "delivered",
+                    "occurred_at": "2026-11-28T16:40:00-05:00",
+                    "description": "Recibido por almacén"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/customers:batch": {
       "post": {
         "operationId": "upsertCustomers",
@@ -2489,6 +2634,71 @@
           "shipment": {
             "$ref": "#/components/schemas/Shipment",
             "description": "Guía de despacho (2026-11-24). Puede ir sola o junto con los estados."
+          }
+        }
+      },
+      "OrderTrackingAdd": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "tracking_number",
+          "events"
+        ],
+        "properties": {
+          "tracking_number": {
+            "type": "string",
+            "description": "Guía de un envío ya registrado en el pedido (con POST /v1/orders/{number}/status)."
+          },
+          "events": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 50,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "status"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Id del evento en tu sistema. Reenviar el mismo id no duplica el evento."
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "label_created",
+                    "picked_up",
+                    "in_transit",
+                    "out_for_delivery",
+                    "delivery_attempted",
+                    "delivered",
+                    "exception",
+                    "returned",
+                    "cancelled",
+                    "info"
+                  ]
+                },
+                "occurred_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "Por defecto, ahora."
+                },
+                "carrier_status": {
+                  "type": "string",
+                  "maxLength": 120,
+                  "description": "El estado tal como lo dice el transportista."
+                },
+                "description": {
+                  "type": "string",
+                  "maxLength": 1000
+                },
+                "location": {
+                  "type": "string",
+                  "maxLength": 200
+                }
+              }
+            }
           }
         }
       },

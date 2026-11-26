@@ -318,6 +318,29 @@ export const API_ROUTES: readonly ApiRoute[] = [
   },
   {
     method: 'POST',
+    path: '/v1/orders/{number}/tracking',
+    operationId: 'addOrderTracking',
+    summary:
+      'El ERP añade eventos de seguimiento a un envío ya registrado (por su guía): recogido, en tránsito, entregado, incidencia. Avanza el estado del envío y de la entrega como un transportista integrado; reenviar el mismo `id` de evento no lo duplica.',
+    scope: 'order.update',
+    rpc: 'api_order_tracking_add',
+    pathParams: [
+      { name: 'number', kind: 'string', required: true, description: 'Número de pedido.', arg: 'p_number' },
+    ],
+    query: [STORE],
+    requiresIdempotencyKey: true,
+    successStatus: 200,
+    requestSchema: 'OrderTrackingAdd',
+    requestExample: {
+      tracking_number: 'GR-T001-00012345',
+      events: [
+        { id: 'olva-001', status: 'in_transit', occurred_at: '2026-11-27T09:15:00-05:00', location: 'Lima' },
+        { id: 'olva-002', status: 'delivered', occurred_at: '2026-11-28T16:40:00-05:00', description: 'Recibido por almacén' },
+      ],
+    },
+  },
+  {
+    method: 'POST',
     path: '/v1/customers:batch',
     operationId: 'upsertCustomers',
     summary:

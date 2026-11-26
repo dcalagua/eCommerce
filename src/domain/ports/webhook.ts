@@ -53,6 +53,21 @@ export interface WebhookEnvelope {
   readonly data: Record<string, unknown>
   /** Presente solo cuando la entrega es una reproducción autorizada. */
   readonly replay_of?: string
+  /**
+   * 2026-11-26 · `2` = `data.order` lleva el pedido completo, el mismo que
+   * sirve `GET /v1/orders/{number}`, cuando el hecho es de un pedido.
+   */
+  readonly schema_version?: number
+  /**
+   * De qué recurso es el hecho y su número de orden: `version` crece con cada
+   * hecho del mismo pedido, entrega o envío, para descartar uno que llega
+   * después de otro más nuevo.
+   */
+  readonly aggregate?: {
+    readonly type: string
+    readonly id: string | null
+    readonly version: number | null
+  }
 }
 
 const EVENT_TYPE_FORMAT = /^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$/

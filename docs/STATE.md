@@ -11,6 +11,17 @@ el recorrido SaaS P00–P17 queda cerrado)
 > (`claude-saas-opus/config/phases.json`), que se identifica siempre como «P0x-SaaS». No son la misma
 > serie: el P12 histórico es el framework de integraciones; el P12-SaaS es fulfillment y devoluciones.
 
+## Integración ERP: los eventos que faltaban (2026-11-26, a pedido del operador)
+Migración `20261126100000_integration_events_complete.sql`, encima del contrato v1 (20261124*), sin redefinir sus
+funciones salvo `ebim.webhook_fanout` (cuerpo literal de 20261124190000 + `schema_version` y `aggregate`).
+- `order.created` para todo pedido (API, hub, cotización): disparador diferido; no se repite si la vitrina ya lo publicó.
+- `order.updated` (direcciones, contacto, notas, OC, cuenta), `shipment.created` (diferido, uno por despacho) y
+  `shipment.updated` (estado, guía, transportista, fecha, costo).
+- `POST /v1/orders/{number}/tracking` (scope `order.update`): eventos de seguimiento por guía vía `shipment_track_ingest`.
+- Tests: `supabase/tests/integration-events-complete.test.ts` (13). `notifications.test` desactiva `orders_created_event`
+  porque cuenta sus propios eventos. Kit Postman/OpenAPI regenerado; contrato §6.6, §7 e historial.
+- Sustituye a la rama local `wip/erp-envios-2026-11-26` (pisaba el trabajo de 20261124*; no se usa).
+
 ## API de integración: campos completos (2026-11-24, a pedido del operador)
 
 «Que la integración tenga todos los campos completos, tanto lo que envía como lo que recibe». Aditivo (contrato v1 §10).
