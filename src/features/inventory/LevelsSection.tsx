@@ -104,6 +104,20 @@ export function LevelsSection() {
   const isEmpty = !query.isPending && !query.isError && (query.data ?? []).length === 0
   const noWarehouses = !warehouses.isPending && (warehouses.data ?? []).length === 0
 
+  // 2026-11-27 · Existencias solo enseña los almacenes que ABASTECEN la tienda
+  // (igual que `fetchLevels`: sin ningún vínculo, todos). Un almacén sin vínculo
+  // tiene su saldo —p. ej. el que trae una fuente del ERP— pero aquí salía
+  // «Nada coincide» sin decir por qué.
+  const storeLinks = useStoreWarehouses(activeStore?.id ?? null)
+  const notServing = useMemo(() => {
+    const links = storeLinks.data ?? []
+    if (links.length === 0) return new Set<string>()
+    const serving = new Set(links.filter((link) => link.is_active).map((link) => link.warehouse_id))
+    return new Set((warehouses.data ?? []).filter((w) => !serving.has(w.id)).map((w) => w.id))
+  }, [storeLinks.data, warehouses.data])
+  const selectedNotServing = warehouseId !== '' && notServing.has(warehouseId)
+  const selectedWarehouse = (warehouses.data ?? []).find((w) => w.id === warehouseId)
+
   // Pagina lo que YA esta cargado: es para poder leer la tabla, no para
   // aligerar la consulta. Va ANTES de la primera guarda con retorno,
   // porque un hook detras de un `return` cambia de orden entre renders.
@@ -139,10 +153,28 @@ export function LevelsSection() {
           {(warehouses.data ?? []).map((warehouse) => (
             <MenuItem key={warehouse.id} value={warehouse.id}>
               {warehouse.code} · {warehouse.name}
+              {notServing.has(warehouse.id) && (
+                <Typography component="span" sx={{ ml: 1, fontSize: 12, color: 'var(--muted)' }}>
+                  ({t('inventory.levels.notServingTag')})
+                </Typography>
+              )}
             </MenuItem>
           ))}
         </SelectField>
       </FilterBar>
+
+      {selectedNotServing && (
+        <Alert
+          severity="warning"
+          action={
+            <Button color="inherit" size="small" href="#almacenes">
+              {t('inventory.levels.notServingAction')}
+            </Button>
+          }
+        >
+          {t('inventory.levels.notServing').replace('{code}', selectedWarehouse?.code ?? '')}
+        </Alert>
+      )}
 
       <Card>
         {query.isPending && <TableSkeleton columns={6} />}

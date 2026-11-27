@@ -2963,6 +2963,10 @@ export const es = {
       'Registra una entrada o carga la existencia del catálogo desde la pestaña de almacenes.',
     'inventory.levels.noWarehouses':
       'Aún no hay almacenes. Mientras no los haya, la tienda vende contra la existencia del catálogo.',
+    'inventory.levels.notServingTag': 'no abastece esta tienda',
+    'inventory.levels.notServing':
+      '{code} no abastece esta tienda: sus existencias no se muestran aquí ni cuentan para la vitrina. Actívalo en Almacenes con «Abastece esta tienda».',
+    'inventory.levels.notServingAction': 'Ir a Almacenes',
     'inventory.levels.newMovement': 'Registrar movimiento',
     'inventory.levels.movementHelp':
       'Toda entrada y toda corrección deja asiento. La salida por venta la hace el pedido.',

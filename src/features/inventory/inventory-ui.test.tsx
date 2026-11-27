@@ -326,6 +326,37 @@ describe('Inventario — la pantalla', () => {
     expect(await within(drawer).findByText(aviso)).toBeInTheDocument()
   })
 
+  it('2026-11-27 · filtrar por un almacén que no abastece la tienda explica por qué no hay filas', async () => {
+    // Antes: «Nada coincide con tu búsqueda» aunque el almacén tuviera saldo
+    // (p. ej. el que trae una fuente del ERP).
+    const user = userEvent.setup()
+    renderInventory(backend({ links: true }))
+    await screen.findByText('CD Lima')
+    await user.click(screen.getByRole('tab', { name: 'Existencias' }))
+    await screen.findByText('A-JABON')
+    const aviso = /ERP-AQP no abastece esta tienda/
+
+    await user.click(screen.getByRole('combobox', { name: 'Almacén' }))
+    await user.click(await screen.findByRole('option', { name: 'LIMA · CD Lima' }))
+    expect(screen.queryByText(aviso)).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('combobox', { name: 'Almacén' }))
+    await user.click(await screen.findByRole('option', { name: /ERP-AQP · Arequipa \(ERP\).*no abastece/ }))
+    expect(await screen.findByText(aviso)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Ir a Almacenes' })).toHaveAttribute('href', '#almacenes')
+  })
+
+  it('sin almacenes declarados todos abastecen: no hay aviso', async () => {
+    const user = userEvent.setup()
+    renderInventory(backend({ links: false }))
+    await screen.findByText('CD Lima')
+    await user.click(screen.getByRole('tab', { name: 'Existencias' }))
+    await screen.findByText('A-JABON')
+    await user.click(screen.getByRole('combobox', { name: 'Almacén' }))
+    await user.click(await screen.findByRole('option', { name: 'ERP-AQP · Arequipa (ERP)' }))
+    expect(screen.queryByText(/no abastece esta tienda/)).not.toBeInTheDocument()
+  })
+
   it('al elegir almacén y producto enseña su stock y cómo quedará', async () => {
     const user = userEvent.setup()
     renderInventory(backend())
