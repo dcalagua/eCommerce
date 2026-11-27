@@ -3598,6 +3598,10 @@ export const en: Readonly<Record<MessageKey, string>> = {
       'Record a receipt, or load catalog stock from the warehouses tab.',
     'inventory.levels.noWarehouses':
       'No warehouses yet. Until there are, the store sells against catalog stock.',
+    'inventory.levels.notServingTag': 'does not supply this store',
+    'inventory.levels.notServing':
+      '{code} does not supply this store: its stock is not shown here and does not count for the storefront. Turn on «Supplies this store» in Warehouses.',
+    'inventory.levels.notServingAction': 'Go to Warehouses',
     'inventory.levels.newMovement': 'Record movement',
     'inventory.levels.movementHelp':
       'Every receipt and every correction leaves an entry. Sales issues are made by the order.',
